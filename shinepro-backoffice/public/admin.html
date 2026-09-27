@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Back Office · Shine Pro Cleaning</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar hidden" id="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#/"><span class="brand-mark">S</span><span><span class="s">Shine Pro</span> <span class="c">Cleaning</span></span></a>
+      <span class="pill">🛡 Admin</span>
+      <span class="spacer"></span>
+      <nav class="nav" id="nav">
+        <a href="#/" data-nav="">Home</a>
+        <a href="#/leads" data-nav="leads">Leads <span class="badge hidden" id="new-leads-badge"></span></a>
+        <a href="#/jobs" data-nav="jobs">Bookings</a>
+        <a href="#/calendar" data-nav="calendar">Calendar</a>
+        <a href="#/customers" data-nav="customers">Clients</a>
+        <a href="#/employees" data-nav="employees">Employees</a>
+        <a href="#/alerts" data-nav="alerts">Alerts</a>
+        <a href="#" id="logout">Log out</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container" id="app"></main>
+  <script src="/admin.js"></script>
+</body>
+</html>

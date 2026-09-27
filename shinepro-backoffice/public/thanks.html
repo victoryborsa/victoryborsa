@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thank You · Shine Pro Cleaning</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="quote-wrap" style="text-align:center;padding-top:60px">
+    <div style="font-size:3rem">✨</div>
+    <h1>Thank you! We got your request.</h1>
+    <p id="price" class="muted"></p>
+    <p>We'll call or text you shortly to confirm the details.</p>
+    <p><a class="btn" href="https://pghshinepro.com">Back to website</a></p>
+  </main>
+  <script>
+    var p = new URLSearchParams(location.search).get('price');
+    if (p) document.getElementById('price').textContent = 'Your estimated price: $' + Number(p).toLocaleString();
+  </script>
+</body>
+</html>

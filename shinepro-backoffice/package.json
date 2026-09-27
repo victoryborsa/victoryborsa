@@ -1,0 +1,23 @@
+{
+  "name": "shinepro-backoffice",
+  "version": "1.0.0",
+  "description": "Lead capture, alerts, customer, employee and job management for Shine Pro Cleaning",
+  "main": "src/server.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "express": "^4.22.3",
+    "nodemailer": "^10.0.10"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22.13"
+  }
+}
