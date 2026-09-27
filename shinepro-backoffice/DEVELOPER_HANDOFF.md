@@ -98,6 +98,10 @@ A JSON post returns `201 {ok, id, estimated_price}`. A normal form post redirect
 
 **The existing Back Office page:** point its tiles at the new admin (the URLs are in the snippet file), or port `src/service.js`, `src/chat.js` and `src/notifier.js` into the existing backend. None of them depend on the framework.
 
+## SEO
+
+See **`SEO_KIT.md`**. It covers finding and fixing site errors, a technical SEO checklist, HouseCleaningService structured data, page titles, Google Business Profile, and lead tracking. The back office itself is `noindex` and blocked in `robots.txt`, so it never competes with the main site. The chat sends `generate_lead` to GA4, GTM and Meta automatically.
+
 ## Chat API (`/api/chat`, CORS for ALLOWED_ORIGINS)
 
 | Call | Purpose |
@@ -143,3 +147,4 @@ A JSON post returns `201 {ok, id, estimated_price}`. A normal form post redirect
 - [ ] On a lead, "Text via Google Voice" opens (412) 447-8047
 - [ ] Owner reviewed `knowledge.md` (all `[CONFIRM]` lines)
 - [ ] Existing Back Office tiles link to the new admin
+- [ ] Worked through `SEO_KIT.md` section 8 ("Done when")

@@ -58,6 +58,10 @@ Your website's prices stay exactly as they are (`PRICE_SOURCE=site`, the default
 - **Customer replies** arrive in your Google Voice app. Use "📥 Log customer's text reply" to save them on the lead.
 - Sign in to Google Voice on the same phone or computer you use for the admin.
 
+## Getting found on Google (SEO)
+
+`SEO_KIT.md` is a step-by-step list for your developer, and for you (Google Business Profile, reviews). The chat reports every lead to Google Analytics so you can see what's working.
+
 ## Security built in
 
 - Chat: email codes are 6 digits, expire in 10 minutes, can be used once, and lock after 5 wrong tries. Phone numbers are verified by Firebase, and the server checks Google's signature. Chats are rate-limited.

@@ -246,6 +246,16 @@ test("website's own prices are kept (default): lead stores the site's price and 
   assert.equal(lead.frequency, 'Every 2 weeks');
 });
 
+test('SEO: back office is never indexed (only the main website should rank)', async (t) => {
+  const s = setup();
+  t.after(s.close);
+  const robots = await s.req('/robots.txt');
+  assert.match(robots.data, /Disallow: \//);
+  for (const p of ['/admin', '/quote', '/chat.js', '/api/pricing']) {
+    assert.equal((await s.req(p)).headers.get('x-robots-tag'), 'noindex, nofollow', p);
+  }
+});
+
 test('pages and embed are served', async (t) => {
   const s = setup();
   t.after(s.close);

@@ -53,6 +53,9 @@ function createApp({
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    // SEO: this service (admin.pghshinepro.com) must never show up in Google or compete with
+    // the main website. Only pghshinepro.com should be indexed.
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     next();
   });
   app.use(express.json({ limit: '100kb' }));
@@ -63,6 +66,7 @@ function createApp({
 
   // ---------------- public ----------------
   app.get('/health', (req, res) => res.json({ ok: true }));
+  app.get('/robots.txt', (req, res) => res.type('text/plain').send('User-agent: *\nDisallow: /\n'));
 
   const cors = (req, res, next) => {
     const origin = req.get('Origin');

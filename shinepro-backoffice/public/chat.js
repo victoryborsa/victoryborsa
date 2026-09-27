@@ -254,6 +254,7 @@
         state.token = d.token; store(STORE, d.token);
         state.messages = d.messages; state.lastId = lastId(d.messages);
         state.busy = false; state.view = 'chat'; render(); startPolling();
+        trackLead('chat_started');
       }).catch(fail);
     } else if (kind === 'msg') {
       if (!v.message || state.busy) return;
@@ -268,8 +269,18 @@
       state.busy = true; render();
       api('/callback', { method: 'POST', body: v }).then(function (d) {
         addMessages(d.messages); state.busy = false; state.view = 'chat'; render();
+        trackLead('callback_request');
       }).catch(fail);
     }
+  }
+
+  // Lead tracking for Google Analytics 4 / Google Ads / Meta, if the website has them installed.
+  function trackLead(kind) {
+    try {
+      if (window.gtag) window.gtag('event', 'generate_lead', { lead_source: kind });
+      if (window.dataLayer) window.dataLayer.push({ event: 'shinepro_' + kind });
+      if (window.fbq) window.fbq('track', 'Lead', { content_name: kind });
+    } catch (e) {}
   }
 
   function lastId(list) { return list.reduce(function (m, x) { return Math.max(m, x.id || 0); }, state.lastId || 0); }
