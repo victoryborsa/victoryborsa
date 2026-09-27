@@ -1,0 +1,142 @@
+SHINE PRO CLEANING — INSTRUCTIONS TO PASTE INTO GODADDY AIRO
+=============================================================
+
+HOW TO USE THIS FILE
+- Open your website in GoDaddy Airo.
+- Copy ONE step at a time (everything between the lines), paste it into Airo, and let it finish.
+- Check the result, then do the next step. Small steps work much better than one huge request.
+- If Airo says it can't do something, copy its answer and ask Claude for help.
+- Never paste passwords or keys into a chat. Enter them only in GoDaddy's own settings screens.
+
+Business facts used below:
+  Business: Shine Pro Cleaning, Pittsburgh PA
+  Website: pghshinepro.com
+  Phone/text (Google Voice): (412) 447-8047
+  Owner alert email: victoryborsa@gmail.com
+  My prices and packages are already correct. DO NOT change any prices.
+
+
+----------------------------------------------------------------
+STEP 1 — Never lose a quote request (fix lead capture + alerts)
+----------------------------------------------------------------
+Please fix and improve how my website handles quote requests. Do not change my prices or packages.
+
+1. Every time someone submits the quote form, SAVE the request in the database FIRST (name, phone, email, address, ZIP, service, bedrooms, bathrooms, square feet, frequency, preferred date, the price shown to them, their message, and whether they agreed to receive offers). Save it even if sending the notification email fails.
+2. Require name, a valid email, and a valid US phone number (10 digits). Show a friendly error message if something is missing. Keep the phone stored in one format, like +14125550123.
+3. Right after saving, email me at victoryborsa@gmail.com with the subject "New quote request: [name] ([price])". Include all their details and a link to open the lead in my admin page.
+4. Also email the customer an automatic confirmation: "Thanks [first name], we received your request. Your estimated price is [price]. We'll contact you shortly. Questions? Call or text (412) 447-8047."
+5. If the same email or phone already exists, attach the new request to the existing client. Don't create a duplicate client.
+6. Add a hidden spam-trap field. If it's filled in, don't save or alert.
+7. After submitting, show a thank-you message with their price and our phone number.
+8. On the admin Leads page, show a warning if any alert email failed to send, so I never miss a lead.
+Then test it: submit a test quote and confirm (a) it appears in Leads, (b) I got the email, (c) the customer got the confirmation.
+
+
+----------------------------------------------------------------
+STEP 2 — Leads page: follow up and reply to customers
+----------------------------------------------------------------
+Please improve my admin "Leads" page:
+
+1. Each lead has a status: New, Contacted, Quoted, Booked, Lost. New leads show first, with a red count badge on the menu.
+2. The lead detail page shows all their details, plus buttons for:
+   - "Call" (opens the phone dialer)
+   - "Text via Google Voice": opens https://voice.google.com/u/0/messages?itemId=t.%2B1XXXXXXXXXX with the customer's number (digits only after +1) in a new tab, and copies my typed message to the clipboard so I can paste it
+   - "Email": a reply box that sends the email to the customer from the website and saves it in the lead's history
+3. A conversation history on each lead showing every email sent, every text I logged, and private notes. Add a "Log customer's text reply" option so I can paste replies they sent to my Google Voice.
+4. Quick-reply templates:
+   - "Hi [first name], this is Shine Pro Cleaning, thanks for your quote request! When would be a good day for your cleaning?"
+   - "Hi [first name], just following up on your cleaning quote. We have openings this week. Would you like to book?"
+   - "Hi [first name], you're all set! We'll see you on the scheduled date."
+5. When I send the first reply, change the status from New to Contacted automatically.
+6. A search box (name, phone, email, address) and filters by status.
+7. A "Book job" button that creates a booking from the lead (see step 4) and marks the lead Booked.
+
+
+----------------------------------------------------------------
+STEP 3 — Clients: add, edit, and collect contacts for marketing
+----------------------------------------------------------------
+Please improve my admin "Clients" page:
+
+1. I can ADD a new client manually and EDIT any client: name, phone, email, street address, city, ZIP, notes (gate code, pets, preferences), and a checkbox "OK to send offers and updates".
+2. I can delete a client (ask me to confirm first).
+3. Search by name, phone, email or address.
+4. Each client page shows their quote requests, bookings, and message history.
+5. Every quote request and chat automatically creates or updates the client, so I collect every email and phone number.
+6. Add two buttons that download a spreadsheet (CSV): "Export all clients" and "Export marketing list" (only people who checked "OK to send offers"). Columns: name, email, phone, address, city, ZIP, opted-in, date added.
+
+
+----------------------------------------------------------------
+STEP 4 — Employees and assigning cleaners to jobs
+----------------------------------------------------------------
+Please improve my admin "Employees", "Scheduling/All Bookings" and "Calendar" pages:
+
+1. Employees: I can ADD and EDIT employees (name, mobile phone, email, role, notes, Active yes/no). Inactive employees can't be assigned but keep their history.
+2. Bookings: create a booking for a client with date and time, duration, address (default to the client's address), service, price, notes, and status (Scheduled, Completed, Cancelled).
+3. Assign one or more cleaners to each booking. When I assign someone, automatically email them the date, time, address, client name, service and notes. Also show a "Text [name] via Google Voice" button that copies those details and opens Google Voice for that employee's number.
+4. On each employee's page, show their upcoming and past jobs.
+5. Calendar: month, week and day views of bookings. Highlight bookings with NO cleaner assigned in orange. Clicking a booking opens it for editing.
+6. On the admin home page, show a count of "Jobs needing a cleaner".
+
+
+----------------------------------------------------------------
+STEP 5 — Website chat: verified customers, AI answers, call-back requests
+----------------------------------------------------------------
+Please upgrade the "Chat With Us" chat on my website:
+
+1. Before chatting, the customer must enter their name, email and mobile phone and VERIFY both:
+   - Email: send a 6-digit code to their email. It expires in 10 minutes, works only once, and locks after 5 wrong tries.
+   - Phone: send a 6-digit code by text message and ask them to enter it.
+   If either code is wrong, do NOT start the chat. (If you need a texting service for the phone code, tell me which one you support and what I need to set up. Note: my Google Voice number can't send automatic codes.)
+2. After verification, save them as a client and a lead (source "Chat"), and email me: "New verified chat: [name], [phone], [email]".
+3. The AI assistant answers questions about our services using ONLY the business information on my website. Keep answers short and friendly. It must NOT quote prices or dollar amounts. For prices, send them to the quote form or offer a call back. If it doesn't know something, it says the team will follow up.
+4. Add a big "Request a call back" button in the chat. It asks "What can we help with?" and "Best time to call (optional)". When submitted:
+   - Save it on the lead and mark the lead "Call back requested" (show these at the top of Leads in red).
+   - Email me immediately with the subject "CALL BACK REQUESTED: [name] [phone]" and their note.
+   - Tell the customer: "Got it! We'll call you at [phone] as soon as possible. Urgent? Call or text (412) 447-8047."
+5. Save every chat message in the lead's conversation history so I can read it in the admin. Let me reply from the admin, and have my reply appear in the customer's chat window.
+6. The chat must not slow down the website: load it only when the visitor opens it.
+
+
+----------------------------------------------------------------
+STEP 6 — SEO: get found on Google (don't change my prices or design)
+----------------------------------------------------------------
+Please do a full SEO and error check of pghshinepro.com and fix what you find:
+
+1. Every page has a unique title (under 60 characters) and meta description (under 155 characters) with local keywords, for example:
+   - Home: "House Cleaning Pittsburgh | Shine Pro Cleaning". Description: "Trusted house cleaning in Pittsburgh. Standard, deep, move-in/out & Airbnb cleaning. Instant online quote or call (412) 447-8047."
+   - Deep cleaning page: "Deep Cleaning Services in Pittsburgh | Shine Pro"
+   - Move in/out page: "Move-In & Move-Out Cleaning Pittsburgh | Shine Pro"
+   - Contact page: "Contact Shine Pro Cleaning | (412) 447-8047"
+2. Each page has exactly one main heading (H1), and headings in a logical order.
+3. Every image has descriptive alt text (e.g. "Clean kitchen after deep cleaning in Pittsburgh"). Compress large images.
+4. Add LocalBusiness / HouseCleaningService structured data (JSON-LD) on the home page, with name "Shine Pro Cleaning", url https://pghshinepro.com, telephone +1-412-447-8047, area served Pittsburgh PA, and our real opening hours.
+5. Make sure there's a sitemap.xml and robots.txt, and that the admin, back office and customer portal pages are hidden from Google (noindex) and not in the sitemap.
+6. Make sure http, https, www and non-www all go to ONE address (https://pghshinepro.com).
+7. Check for broken links, broken images, pages that don't load, and anything that looks wrong on phones. Fix them.
+8. Add a click-to-call phone number (412) 447-8047 in the header on phones.
+9. Give each service its own page with real details (what's included, FAQs) and a "Get a Quote" button near the top.
+10. Improve mobile page speed (target 90+ on Google PageSpeed Insights).
+11. If Google Analytics or Meta Pixel is connected, record a "generate_lead" event when a quote is submitted, a verified chat starts, or a call back is requested.
+Tell me the list of problems you found and what you fixed.
+
+
+----------------------------------------------------------------
+STEP 7 — Final check (paste this last)
+----------------------------------------------------------------
+Please test everything end to end and tell me the result of each item:
+1. Submit a test quote: it appears in Leads with the correct price, I get the alert email, and the customer gets the confirmation.
+2. Reply to that lead by email: the email arrives, and the status changes to Contacted.
+3. "Text via Google Voice" opens Google Voice with the right number.
+4. Add a client, edit them, and export both CSV lists.
+5. Add an employee, create a booking, assign them: they get the job email, and the booking shows on the calendar.
+6. Chat: a wrong email code is rejected, a wrong phone code is rejected, correct codes start the chat, the AI answers a question without quoting a price, and "Request a call back" emails me.
+7. Every page has a unique title and description, there are no broken links, and the admin pages are hidden from Google.
+List anything that failed and fix it.
+
+
+----------------------------------------------------------------
+THINGS ONLY YOU (THE OWNER) NEED TO DO
+----------------------------------------------------------------
+- Google Business Profile (business.google.com): claim your business as a service-area business, category "House cleaning service", phone (412) 447-8047, website pghshinepro.com.
+- After every cleaning, send the customer your Google review link.
+- On your phone, turn on Gmail notifications so lead alerts pop up instantly.
