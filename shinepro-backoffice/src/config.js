@@ -8,7 +8,9 @@ function loadConfig(env = process.env) {
     publicUrl: (env.PUBLIC_URL || `http://localhost:${Number(env.PORT) || 3000}`).replace(/\/$/, ''),
     dbFile: env.DATABASE_FILE || './data/shinepro.db',
     businessName: env.BUSINESS_NAME || 'Shine Pro Cleaning',
-    businessPhone: env.BUSINESS_PHONE || '',
+    businessPhone: env.BUSINESS_PHONE || '(412) 447-8047',
+    // Texting with customers happens in Google Voice (no API), so the admin opens it for you.
+    googleVoiceNumber: env.GOOGLE_VOICE_NUMBER || env.BUSINESS_PHONE || '(412) 447-8047',
     adminPassword: env.ADMIN_PASSWORD || '',
     sessionSecret: env.SESSION_SECRET || '',
     allowedOrigins: (env.ALLOWED_ORIGINS || 'https://pghshinepro.com,https://www.pghshinepro.com')

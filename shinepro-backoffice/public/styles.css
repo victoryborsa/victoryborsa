@@ -208,3 +208,4 @@ textarea { min-height: 90px; resize: vertical; }
   .nav a { flex: none; }
   h1 { font-size: 1.6rem; }
 }
+.st-gvoice { background: var(--ok-soft); color: var(--ok); }

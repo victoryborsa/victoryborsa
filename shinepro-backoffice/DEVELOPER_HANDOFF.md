@@ -6,8 +6,8 @@ It's a small, self-contained Node.js service. You can run it next to the existin
 ## Owner's requirements (what this must do)
 
 1. Every quote request on the website is saved. None can be lost, even if email/SMS is down.
-2. The owner gets an **email and a text** for every new lead.
-3. The owner can **reply to customers by text or email from the admin**, and customer text replies appear there.
+2. The owner gets an **instant email alert** for every new lead (they'll use Gmail phone notifications).
+3. The owner can **reply to customers from the admin**: email is sent directly, and texts go through the owner's **Google Voice number (412) 447-8047** (see below). **The owner does not want Twilio.**
 4. Emails and phones are collected (with marketing opt-in) for future marketing.
 5. Book jobs and **assign cleaners**. Cleaners get notified.
 6. **Add/edit customers and employees** from the admin.
@@ -18,14 +18,14 @@ All of the above is implemented and covered by `npm test` (10 integration tests)
 
 - **Node.js ≥ 22.13**, Express 4, Nodemailer. No other runtime dependencies.
 - **SQLite** via Node's built-in `node:sqlite`, stored in a single file (`DATABASE_FILE`). It needs a **persistent disk**.
-- Twilio is called over its REST API with `fetch` (no SDK).
+- **Texting = Google Voice (412) 447-8047.** Google Voice has no public API, so the admin opens `voice.google.com/u/0/messages?itemId=t.+1XXXXXXXXXX` for the contact with the message copied to the clipboard. The owner pastes and sends, and the message is logged (`channel: gvoice`). Inbound texts can be logged with `channel: sms_in`. Twilio support is still in the code but switches off unless `TWILIO_*` is set. Leave it unset.
 - Admin UI is a plain-JS SPA (`public/admin.js`) with no build step.
 
 ```
 src/server.js      entry point
 src/app.js         routes (public + /api/admin/*)
 src/service.js     business logic (leads, customers, messages, employees, jobs)
-src/notifier.js    email (SMTP) + SMS (Twilio) delivery, logged to `notifications`
+src/notifier.js    email (SMTP) delivery (+ optional Twilio SMS), logged to `notifications`
 src/auth.js        password login, HMAC-signed HttpOnly cookie, rate limit
 src/db.js          schema (auto-created on start)
 public/pricing.js  price table + estimator, shared by browser AND server
@@ -43,10 +43,8 @@ test/              node:test integration tests
 2. **DNS:** point `admin.pghshinepro.com` (CNAME) at the host and enable HTTPS. Set `PUBLIC_URL=https://admin.pghshinepro.com`.
 3. **Env vars:** copy `.env.example`. Required in production: `ADMIN_PASSWORD` (10+ chars) and `SESSION_SECRET` (32+ chars). The app refuses to start without them.
 4. **Email:** any SMTP. For Gmail, use an App Password. Set `ALERT_EMAILS` to the owner's address.
-5. **SMS:** Twilio number + **A2P 10DLC registration** (required for US business SMS). Set `ALERT_PHONES` to the owner's cell.
-   In Twilio, set the number's **"A message comes in"** webhook → `POST https://admin.pghshinepro.com/api/twilio/sms`.
-   Signatures are verified against `PUBLIC_URL`, so it must exactly match the public URL.
-6. Log in at `/admin` → **Alerts → Send test alert** and confirm both the email and the text arrive.
+5. **Texting:** set `GOOGLE_VOICE_NUMBER="(412) 447-8047"` and `BUSINESS_PHONE="(412) 447-8047"`. Leave all `TWILIO_*` and `ALERT_PHONES` unset. Nothing else is needed. Have the owner sign in to Google Voice in the same browser/phone they use for the admin.
+6. Log in at `/admin` → **Alerts → Send test alert** and confirm the email arrives. Help the owner turn on Gmail push notifications on their phone.
 
 ## Connect the website's quote form (pick one)
 
@@ -85,7 +83,7 @@ The current site already has a Back Office page with Leads/Clients/Employees til
 ## Admin API (all under `/api/admin`, cookie session, JSON bodies)
 
 `POST /login {password}` · `POST /logout` · `GET /stats` · `GET /notifications` · `POST /test-alert`
-`GET|POST /leads` · `GET|PATCH|DELETE /leads/:id` · `POST /leads/:id/messages {channel: sms|email|note, subject?, body}`
+`GET|POST /leads` · `GET|PATCH|DELETE /leads/:id` · `POST /leads/:id/messages {channel: email|gvoice|sms_in|note, subject?, body}`
 `GET|POST /customers` · `GET|PUT|DELETE /customers/:id` · `POST /customers/:id/messages` · `GET /customers/export.csv?opted_in=1`
 `GET|POST /employees` · `GET|PUT|DELETE /employees/:id`
 `GET|POST /jobs?from&to&status&employee_id&customer_id` · `GET|PUT|DELETE /jobs/:id {customer_id, scheduled_at "YYYY-MM-DDTHH:MM", employee_ids[], notify_employees, …}`
@@ -103,9 +101,9 @@ Non-GET/DELETE admin requests must be `application/json`. Together with the `Sam
 
 - [ ] Deployed with a persistent disk, HTTPS, and `NODE_ENV=production`
 - [ ] `ADMIN_PASSWORD` and `SESSION_SECRET` set; owner can log in
-- [ ] SMTP + Twilio configured; **test alert** received by both email and text
-- [ ] Twilio inbound webhook set; texting the business number shows up in the admin
-- [ ] Website form connected (A, B or C). Submit a real test quote and confirm the lead, owner email, owner text and customer confirmation.
+- [ ] SMTP configured; **test alert** email received, and Gmail notifications on the owner's phone
+- [ ] On a lead, "Text via Google Voice" opens Google Voice (412) 447-8047 for that customer
+- [ ] Website form connected (A, B or C). Submit a real test quote and confirm the lead, the owner email and the customer confirmation.
 - [ ] `ALLOWED_ORIGINS` includes both `https://pghshinepro.com` and `https://www.pghshinepro.com`
 - [ ] Prices in `public/pricing.js` confirmed with the owner
 - [ ] Existing Back Office tiles linked to the new admin

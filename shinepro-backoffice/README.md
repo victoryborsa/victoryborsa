@@ -5,13 +5,13 @@ Lead capture + admin for **pghshinepro.com**. Nothing gets missed:
 | Feature | What it does |
 |---|---|
 | **Instant quote form** | Visitors see their price live. Every submission is saved *first*, then alerts go out. |
-| **New-lead alerts** | Email **and** text message to you the moment someone requests a quote, with a link straight to the lead. Customer gets an automatic "we got your request" email. |
+| **New-lead alerts** | An email the moment someone requests a quote, with all their details and a link straight to the lead. Turn on Gmail notifications on your phone and it pops up like a text. Customer gets an automatic "we got your request" email showing your number (412) 447-8047. |
 | **Leads pipeline** | New → Contacted → Quoted → Booked / Lost. Dashboard shows new leads first, with a red badge. |
-| **Reply from admin** | Send the customer a **text** or **email** from the lead page (quick-reply templates included). Private notes too. |
-| **Customer replies** | When a customer texts back, it shows up in the conversation and you get an email. Texts from unknown numbers become new leads. |
+| **Reply from admin** | **Email** customers straight from the lead page. For **texts**, press "Text via Google Voice": it copies your message and opens that customer's conversation in Google Voice (412) 447-8047. Paste, send, and the admin keeps a record. Quick-reply templates and private notes included. |
+| **Customer replies** | Customer texts arrive in your Google Voice app. Use "Log customer's text reply" to save important ones on the lead so the full history is in one place. |
 | **Clients** | Add, edit, search, delete. Every lead auto-creates/updates a client. Export all, or only the people who opted in to marketing, to CSV (for Mailchimp, etc.). |
 | **Employees** | Add/edit cleaners, mark inactive, see each person's upcoming jobs. |
-| **Bookings & calendar** | Book a job from a lead or client, assign one or more cleaners. Cleaners get a text/email with date, address and notes. Week calendar highlights jobs with no cleaner. |
+| **Bookings & calendar** | Book a job from a lead or client, assign one or more cleaners. Cleaners are emailed the date, address and notes automatically, and there's a one-tap "Text via Google Voice" button for each cleaner. Week calendar highlights jobs with no cleaner. |
 | **Alerts log** | Every email/text shows as sent, failed or skipped. There's a "Send test alert" button, and a warning on the dashboard if alerts aren't working. |
 
 ## 1. Run it on your computer (to try it)
@@ -40,14 +40,16 @@ Open http://localhost:3000/admin (dev password: `changeme123`) and http://localh
 2. Search "App passwords" → create one → copy the 16-character code.
 3. Set `SMTP_HOST=smtp.gmail.com`, `SMTP_USER=you@gmail.com`, `SMTP_PASS=<app password>`, `EMAIL_FROM=you@gmail.com`, `ALERT_EMAILS=you@gmail.com`.
 
-## 4. Turn on text alerts + two-way texting (Twilio)
+## 4. Texting with Google Voice (412) 447-8047
 
-1. Sign up at twilio.com, buy a local 412 number (about $1.15/month plus about $0.008 per text).
-2. Register the number for **A2P 10DLC** (required in the US for business texting; Twilio walks you through it).
-3. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`, and `ALERT_PHONES=+1412...` (your cell).
-4. In Twilio → Phone Numbers → your number → **"A message comes in"** → Webhook, POST:
-   `https://YOUR-BACKOFFICE-URL/api/twilio/sms`
-   Customer replies now show up in the admin.
+Google Voice doesn't let other software send texts for you, so the admin works *with* your Google Voice app:
+
+- **Replying:** choose "💬 Text via Google Voice", type your message, and press the button. Your message is copied and Google Voice opens on that customer's conversation. Paste it, send it, and the reply is saved in the admin.
+- **Customer replies:** they arrive in the Google Voice app as usual. Use "📥 Log customer's text reply" to save them on the lead.
+- **Instant lead alerts on your phone:** install the Gmail app and turn on notifications for the inbox in `ALERT_EMAILS`. Tip: in Gmail, make a filter for subjects containing "New quote request", mark it Important, and give it its own notification sound.
+- Sign in to Google Voice on the same phone or computer you use for the admin, so the button opens the right account.
+
+> Want fully automatic texts later (alerts to your cell, cleaners texted automatically)? That needs a texting service like Twilio. The code already supports it: fill in the `TWILIO_*` settings and it switches on.
 
 Then open **Admin → Alerts → Send test alert**.
 

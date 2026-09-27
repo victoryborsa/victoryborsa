@@ -105,7 +105,10 @@ function createApp({ config, db = openDb(config.dbFile), senders = createSenders
   const id = (req) => Number(req.params.id);
 
   admin.get('/stats', (req, res) => res.json(svc.stats()));
-  admin.get('/meta', (req, res) => res.json({ pricing: PRICING, leadStatuses: svc.LEAD_STATUSES, jobStatuses: svc.JOB_STATUSES }));
+  admin.get('/meta', (req, res) => res.json({
+    pricing: PRICING, leadStatuses: svc.LEAD_STATUSES, jobStatuses: svc.JOB_STATUSES,
+    smsConfigured: notifier.senders.smsEnabled, googleVoiceNumber: config.googleVoiceNumber,
+  }));
   admin.get('/notifications', (req, res) => res.json(
     db.prepare('SELECT * FROM notifications ORDER BY id DESC LIMIT 200').all()
   ));

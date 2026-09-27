@@ -10,6 +10,7 @@
 (function () {
   var script = document.currentScript;
   var BASE = script && script.src ? new URL(script.src).origin : '';
+  var PHONE = (script && script.getAttribute('data-phone')) || '(412) 447-8047';
   var mount = document.getElementById('shinepro-quote');
   if (!mount) return;
 
@@ -64,7 +65,7 @@
       '<div class="hp" aria-hidden="true"><label>Company website<input name="company_website" tabindex="-1" autocomplete="off"></label></div>' +
       '<div class="err" data-err hidden></div>' +
       '<button type="submit">Get My Quote</button>' +
-      '<p class="muted" style="text-align:center">By submitting you agree to be contacted about your quote.</p>' +
+      '<p class="muted" style="text-align:center">By submitting you agree to be contacted about your quote.<br>Questions? Call or text <a href="tel:' + PHONE.replace(/\D/g, '') + '">' + PHONE + '</a></p>' +
       '</form>';
 
     var form = mount.querySelector('form');
@@ -107,7 +108,7 @@
           if (!res.ok) throw new Error(res.d.error || 'Something went wrong');
           mount.innerHTML = '<div class="spq"><div class="ok"><div style="font-size:2.5rem">✨</div><h3>Thank you, ' + escapeHtml(v.name.split(' ')[0]) + '!</h3>' +
             (res.d.estimated_price != null ? '<p>Your estimated price is <strong>$' + res.d.estimated_price + '</strong>.</p>' : '') +
-            '<p>We received your request and will contact you shortly to confirm.</p></div></div>';
+            '<p>We received your request and will contact you shortly to confirm.</p><p class="muted">Need us sooner? Call or text ' + PHONE + '</p></div></div>';
           if (window.gtag) window.gtag('event', 'generate_lead', { value: res.d.estimated_price, currency: 'USD' });
           if (window.fbq) window.fbq('track', 'Lead');
         })

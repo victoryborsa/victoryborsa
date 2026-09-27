@@ -164,10 +164,12 @@ function createService({ db, notifier, config }) {
   }
 
   // ---------- messaging ----------
+  // channel: email | sms (sent by Twilio if configured) | gvoice (you sent it in Google Voice; we log it)
+  //          | sms_in (you're logging a text the customer sent you) | note
   async function sendMessage({ leadId = null, customerId = null, channel, subject, body }) {
     const text = str(body, 5000);
     if (!text) throw new HttpError(400, 'Message cannot be empty');
-    if (!['email', 'sms', 'note'].includes(channel)) throw new HttpError(400, 'Channel must be email, sms, or note');
+    if (!['email', 'sms', 'gvoice', 'sms_in', 'note'].includes(channel)) throw new HttpError(400, 'Channel must be email, sms, gvoice, sms_in, or note');
     const lead = leadId ? getLead(leadId) : null;
     const customer = customerId ? getCustomer(customerId) : lead && lead.customer_id ? q('SELECT * FROM customers WHERE id = ?').get(lead.customer_id) : null;
     const contact = { email: (lead && lead.email) || (customer && customer.email), phone: (lead && lead.phone) || (customer && customer.phone) };
@@ -177,6 +179,14 @@ function createService({ db, notifier, config }) {
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
     if (channel === 'note') {
       const r = insert.run(leadId, cid, 'note', 'note', null, text, 'logged', null);
+      return q('SELECT * FROM messages WHERE id = ?').get(r.lastInsertRowid);
+    }
+    if (channel === 'gvoice' || channel === 'sms_in') {
+      const outbound = channel === 'gvoice';
+      const r = insert.run(leadId, cid, outbound ? 'out' : 'in', 'sms', null, text, outbound ? 'gvoice' : 'received', null);
+      if (outbound && lead && lead.status === 'new') {
+        q(`UPDATE leads SET status = 'contacted', updated_at = datetime('now') WHERE id = ?`).run(lead.id);
+      }
       return q('SELECT * FROM messages WHERE id = ?').get(r.lastInsertRowid);
     }
     const to = channel === 'email' ? contact.email : contact.phone;
@@ -312,7 +322,7 @@ function createService({ db, notifier, config }) {
     const results = [];
     for (const eid of employeeIds) {
       const e = getEmployee(eid);
-      if (e.phone) results.push(await notifier.deliver({ kind: 'job_assigned', channel: 'sms', to: e.phone, payload: { body: text } }));
+      if (e.phone && notifier.senders.smsEnabled) results.push(await notifier.deliver({ kind: 'job_assigned', channel: 'sms', to: e.phone, payload: { body: text } }));
       if (e.email) results.push(await notifier.deliver({ kind: 'job_assigned', channel: 'email', to: e.email, payload: { subject: `New job assignment — ${when}`, text } }));
     }
     return results;
@@ -382,6 +392,7 @@ function createService({ db, notifier, config }) {
         sms_configured: notifier.senders.smsEnabled,
         alert_emails: config.alertEmails.length,
         alert_phones: config.alertPhones.length,
+        google_voice_number: config.googleVoiceNumber,
       },
     };
   }

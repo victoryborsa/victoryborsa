@@ -93,7 +93,7 @@ test('lead is still saved when alerts fail, and failure is visible', async (t) =
   await s.until(() => false);
   const stats = await s.req('/api/admin/stats');
   assert.equal(stats.data.new_leads, 1);
-  assert.ok(stats.data.failed_alerts >= 2);
+  assert.equal(stats.data.failed_alerts, 1); // owner email failed (no SMS provider, so no text attempted)
   const lead = await s.req(`/api/admin/leads/${r.data.id}`);
   assert.equal(lead.data.admin_notified, 0);
 });
@@ -238,6 +238,37 @@ test('employees and jobs: book from lead, assign cleaners, cleaners get notified
   assert.equal((await s.req('/api/admin/jobs', { method: 'POST', body: { customer_id: 999, scheduled_at: '2030-05-01T09:00' } })).status, 404);
   assert.equal((await s.req('/api/admin/jobs', { method: 'POST', body: { customer_id: leadDetail.customer_id, scheduled_at: 'tomorrow' } })).status, 400);
   assert.equal((await s.req(`/api/admin/jobs/${job.data.id}`, { method: 'DELETE' })).status, 200);
+});
+
+test('Google Voice mode: email alerts, manual texts are logged, customer replies can be recorded', async (t) => {
+  const s = setup({ smsEnabled: false });
+  t.after(s.close);
+  const { data: lead } = await s.req('/api/leads', { method: 'POST', body: quote });
+  await s.until(() => s.sent.length >= 2);
+  await s.login();
+  assert.equal(s.sent.filter((m) => m.channel === 'sms').length, 0);
+  assert.equal((await s.req(`/api/admin/leads/${lead.id}`)).data.admin_notified, 1);
+  const stats = (await s.req('/api/admin/stats')).data;
+  assert.equal(stats.failed_alerts, 0); // no "SMS skipped" noise
+  const meta = (await s.req('/api/admin/meta')).data;
+  assert.equal(meta.smsConfigured, false);
+  assert.equal(meta.googleVoiceNumber, '(412) 447-8047');
+
+  const out = await s.req(`/api/admin/leads/${lead.id}/messages`, { method: 'POST', body: { channel: 'gvoice', body: 'Hi Jane, this is Shine Pro!' } });
+  assert.equal(out.status, 201);
+  assert.equal(out.data.status, 'gvoice');
+  const reply = await s.req(`/api/admin/leads/${lead.id}/messages`, { method: 'POST', body: { channel: 'sms_in', body: 'Friday works' } });
+  assert.equal(reply.data.direction, 'in');
+  const detail = (await s.req(`/api/admin/leads/${lead.id}`)).data;
+  assert.equal(detail.status, 'contacted');
+  assert.deepEqual(detail.messages.map((m) => [m.direction, m.channel]), [['out', 'sms'], ['in', 'sms']]);
+
+  // Cleaners are emailed; no text attempts (and no failure) without an SMS provider
+  const e = (await s.req('/api/admin/employees', { method: 'POST', body: { name: 'Maria', phone: '4125550150', email: 'maria@x.com' } })).data;
+  s.sent.length = 0;
+  const job = await s.req('/api/admin/jobs', { method: 'POST', body: { customer_id: detail.customer_id, scheduled_at: '2030-05-01T09:00', employee_ids: [e.id] } });
+  assert.deepEqual(job.data.notifications.map((n) => n.ok), [true]);
+  assert.deepEqual(s.sent.map((m) => m.to), ['maria@x.com']);
 });
 
 test('pages and embed are served', async (t) => {

@@ -106,7 +106,8 @@ function createNotifier({ db, config, senders }) {
         },
       }));
     }
-    for (const phone of config.alertPhones) {
+    // Owner text alerts need an SMS provider (Twilio). With Google Voice, alerts arrive by email.
+    for (const phone of senders.smsEnabled ? config.alertPhones : []) {
       const to = normalizePhone(phone);
       if (!to) continue;
       tasks.push(deliver({
@@ -130,8 +131,9 @@ function createNotifier({ db, config, senders }) {
         },
       }));
     }
+    const adminTaskCount = tasks.length - (config.sendCustomerConfirmation && lead.email ? 1 : 0);
     const results = await Promise.all(tasks);
-    const adminReached = results.some((r, i) => r.ok && i < config.alertEmails.length + config.alertPhones.length);
+    const adminReached = results.slice(0, adminTaskCount).some((r) => r.ok);
     if (adminReached) db.prepare('UPDATE leads SET admin_notified = 1 WHERE id = ?').run(lead.id);
     return results;
   }

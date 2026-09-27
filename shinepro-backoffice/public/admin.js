@@ -46,9 +46,15 @@
   const serviceLabel = (k) => (META && META.pricing.services[k] ? META.pricing.services[k].label : k || '');
   const freqLabel = (k) => (META && META.pricing.frequency[k] ? META.pricing.frequency[k].label : k || '');
   const localISO = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  // Google Voice has no API: we open the conversation for that number and copy the message to paste.
+  const gvLink = (phone) => `https://voice.google.com/u/0/messages?itemId=t.${encodeURIComponent(phone)}`;
+  function openGoogleVoice(phone, text) {
+    if (text && navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+    window.open(gvLink(phone), '_blank', 'noopener');
+  }
   const contactLinks = (p) => `
     <div class="row">
-      ${p.phone ? `<a class="btn sm secondary" href="tel:${esc(p.phone)}">📞 Call</a><a class="btn sm secondary" href="sms:${esc(p.phone)}">💬 Text</a>` : ''}
+      ${p.phone ? `<a class="btn sm secondary" href="tel:${esc(p.phone)}">📞 Call</a><a class="btn sm secondary" href="${gvLink(p.phone)}" target="_blank" rel="noopener">💬 Text (Google Voice)</a>` : ''}
       ${p.email ? `<a class="btn sm secondary" href="mailto:${esc(p.email)}">✉️ Email</a>` : ''}
     </div>`;
 
@@ -174,8 +180,7 @@
     const a = s.alerts;
     const alertProblems = [];
     if (!a.email_configured) alertProblems.push('email sending (SMTP) is not set up');
-    if (!a.sms_configured) alertProblems.push('text messaging (Twilio) is not set up');
-    if (!a.alert_emails && !a.alert_phones) alertProblems.push('no ALERT_EMAILS / ALERT_PHONES are set');
+    if (!a.alert_emails) alertProblems.push('no ALERT_EMAILS address is set');
     app.innerHTML = `
       <h1>Back Office</h1>
       ${alertProblems.length ? `<div class="banner warn"><strong>Lead alerts need attention:</strong> ${esc(alertProblems.join('; '))}. New leads are still saved here. <a href="#/alerts">See alert settings →</a></div>` : ''}
@@ -303,7 +308,8 @@
   // ---------- conversation ----------
   function conversationCard(messages, contact) {
     const channels = [];
-    if (contact.phone) channels.push(['sms', '💬 Text message']);
+    if (contact.phone && META.smsConfigured) channels.push(['sms', '💬 Text message']);
+    if (contact.phone && !META.smsConfigured) channels.push(['gvoice', '💬 Text via Google Voice'], ['sms_in', "📥 Log customer's text reply"]);
     if (contact.email) channels.push(['email', '✉️ Email']);
     channels.push(['note', '📝 Private note']);
     const firstName = (contact.name || '').split(' ')[0];
@@ -316,7 +322,7 @@
     return `<div class="card">
       <h2>Conversation</h2>
       <div class="thread" id="thread">${messages.length ? messages.map(msgHtml).join('') : '<div class="empty small">No messages yet. Send your first reply below — the customer receives it as a text or email.</div>'}</div>
-      <form id="reply" style="margin-top:14px">
+      <form id="reply" style="margin-top:14px" data-phone="${esc(contact.phone || '')}">
         <div class="row" style="margin-bottom:8px">
           <select name="channel" style="flex:1">${channels.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>
           <select id="tpl" style="flex:1">${templates.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')}</select>
@@ -331,7 +337,7 @@
   function msgHtml(m) {
     const cls = m.direction === 'note' ? 'note' : m.direction === 'in' ? 'in' : 'out';
     const failed = m.status === 'failed' || m.status === 'skipped';
-    const label = m.direction === 'note' ? 'Note' : `${m.channel === 'sms' ? 'Text' : 'Email'}${m.direction === 'in' ? ' from customer' : ''}`;
+    const label = m.direction === 'note' ? 'Note' : `${m.channel === 'sms' ? 'Text' : 'Email'}${m.direction === 'in' ? ' from customer' : ''}${m.status === 'gvoice' ? ' via Google Voice' : ''}`;
     return `<div class="msg ${cls}${failed ? ' failed' : ''}">${m.subject ? `<strong>${esc(m.subject)}</strong>\n` : ''}${esc(m.body)}
       <div class="meta">${esc(label)} · ${esc(fmtAgo(m.created_at))}${failed ? ` · NOT SENT: ${esc(m.error || m.status)}` : ''}</div></div>`;
   }
@@ -343,7 +349,14 @@
     const syncChannel = () => {
       const ch = form.channel.value;
       form.subject.classList.toggle('hidden', ch !== 'email');
-      $('#reply-hint').textContent = ch === 'note' ? 'Only visible to your team' : ch === 'sms' ? 'Sent from your business number' : 'Customer replies go to your inbox';
+      $('#reply-hint').textContent = {
+        note: 'Only visible to your team',
+        sms: 'Sent from your business number',
+        gvoice: `Opens Google Voice (${META.googleVoiceNumber}) with your message copied — paste & send`,
+        sms_in: 'Paste a text the customer sent to your Google Voice number',
+        email: 'Customer replies go to your inbox',
+      }[ch];
+      $('button', form).textContent = ch === 'gvoice' ? 'Copy & open Google Voice' : ch === 'sms_in' || ch === 'note' ? 'Save' : 'Send';
     };
     form.channel.onchange = syncChannel;
     syncChannel();
@@ -351,10 +364,14 @@
     form.onsubmit = async (e) => {
       e.preventDefault();
       const btn = $('button', form);
+      const ch = form.channel.value;
+      if (!form.body.value.trim()) return toast('Type a message first', true);
+      // Must run inside the click, before any await, or the browser blocks the new tab / clipboard.
+      if (ch === 'gvoice') openGoogleVoice(form.dataset.phone, form.body.value);
       btn.disabled = true;
       try {
-        await api(endpoint, { method: 'POST', body: { channel: form.channel.value, subject: form.subject.value, body: form.body.value } });
-        toast(form.channel.value === 'note' ? 'Note saved' : 'Message sent ✅');
+        await api(endpoint, { method: 'POST', body: { channel: ch, subject: form.subject.value, body: form.body.value } });
+        toast({ note: 'Note saved', gvoice: 'Message copied — paste it in Google Voice and hit send', sms_in: 'Customer reply saved' }[ch] || 'Message sent ✅');
         render();
       } catch (err) {
         toast(err.message, true);
@@ -523,7 +540,8 @@
       <div class="field full"><label>Assign cleaner(s)</label>
         ${employees.filter((e) => e.active || assigned.has(e.id)).map((e) => `<label class="check"><input type="checkbox" name="employee_ids" data-multi="1" value="${e.id}" ${assigned.has(e.id) ? 'checked' : ''}> ${esc(e.name)} <span class="muted small">${esc(fmtPhone(e.phone))}</span></label>`).join('') || '<div class="muted small">No employees yet — <a href="#/employees">add one</a>.</div>'}
       </div>
-      ${checkbox('notify_employees', 'Text/email newly assigned cleaners the job details', true)}
+      ${checkbox('notify_employees', META.smsConfigured ? 'Text/email newly assigned cleaners the job details' : 'Email newly assigned cleaners the job details', true)}
+      ${existing && !META.smsConfigured && (job.employees || []).some((e) => e.phone) ? `<div class="field full"><label>Text cleaners (Google Voice)</label><div class="row">${job.employees.filter((e) => e.phone).map((e) => `<button type="button" class="btn sm secondary" data-gv="${esc(e.phone)}">💬 Text ${esc(e.name.split(' ')[0])}</button>`).join('')}</div><div class="muted small">Copies the job details and opens Google Voice.</div></div>` : ''}
       ${textarea('notes', 'Job notes (visible to cleaner in their text)', job.notes)}
       <input type="hidden" name="lead_id" value="${esc(job.lead_id ?? '')}">
       </div>`, async (data) => {
@@ -531,9 +549,12 @@
       const saved = existing ? await api(`/jobs/${job.id}`, { method: 'PUT', body: data }) : await api('/jobs', { method: 'POST', body: data });
       const failed = (saved.notifications || []).filter((n) => !n.ok);
       if (failed.length) toast(`Job saved, but ${failed.length} cleaner notification(s) failed: ${failed[0].error}`, true);
+      else if (!META.smsConfigured && saved.employees.some((e) => e.phone)) toast('Job saved. Open the job to text cleaners via Google Voice.');
       else toast(saved.notifications && saved.notifications.length ? 'Job saved & cleaners notified ✅' : 'Job saved');
       render();
     }, { submitLabel: existing ? 'Save job' : 'Book job', danger: existing ? { label: 'Delete job', confirm: 'Delete this job?', action: async () => { await api(`/jobs/${job.id}`, { method: 'DELETE' }); render(); } } : null });
+    const jobText = `Shine Pro Cleaning job: ${fmtWhen(job.scheduled_at || '')} at ${job.address || ''}${job.customer ? ` for ${job.customer.name}` : ''}${job.service_type ? ` (${job.service_type})` : ''}.${job.notes ? ` Notes: ${job.notes}` : ''}`;
+    $$('[data-gv]', form).forEach((b) => (b.onclick = () => { openGoogleVoice(b.dataset.gv, jobText); toast('Job details copied — paste in Google Voice'); }));
     // Auto-fill address from selected client
     form.customer_id.addEventListener('change', () => {
       const c = customers.find((x) => String(x.id) === form.customer_id.value);
@@ -576,9 +597,8 @@
       <div class="card">
         <h2>How you get notified about new leads</h2>
         ${row(a.email_configured, 'Email sending (SMTP)')}
-        ${row(a.sms_configured, 'Text messaging (Twilio)')}
         ${row(a.alert_emails > 0, `Alert email address(es): ${a.alert_emails}`)}
-        ${row(a.alert_phones > 0, `Alert phone number(s): ${a.alert_phones}`)}
+        ${a.sms_configured ? row(a.alert_phones > 0, `Alert phone number(s): ${a.alert_phones}`) : `<div>📱 Texting uses Google Voice <strong>${esc(a.google_voice_number)}</strong>. New-lead alerts come by email, so turn on Gmail notifications on your phone to see them instantly.</div>`}
         <p class="muted small">These are set in the server's environment settings (see README). Every lead is saved in the Leads page even if an alert fails.</p>
         <button class="btn" id="test">Send test alert</button>
       </div>

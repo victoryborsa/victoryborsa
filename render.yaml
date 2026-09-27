@@ -23,8 +23,6 @@ services:
         sync: false
       - key: ALERT_EMAILS
         sync: false
-      - key: ALERT_PHONES
-        sync: false
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_USER
@@ -33,12 +31,10 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
-      - key: TWILIO_ACCOUNT_SID
-        sync: false
-      - key: TWILIO_AUTH_TOKEN
-        sync: false
-      - key: TWILIO_FROM_NUMBER
-        sync: false
+      - key: GOOGLE_VOICE_NUMBER
+        value: "(412) 447-8047"
+      - key: BUSINESS_PHONE
+        value: "(412) 447-8047"
     disk:
       name: data
       mountPath: /var/data
