@@ -16,7 +16,7 @@ Lead capture + admin for **pghshinepro.com**. Nothing gets missed:
 
 ## 1. Run it on your computer (to try it)
 
-Requires Node.js 22.13 or newer.
+Requires Node.js 22.13 or newer. **Web developer? Start with [DEVELOPER_HANDOFF.md](DEVELOPER_HANDOFF.md).**
 
 ```bash
 cd shinepro-backoffice
