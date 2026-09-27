@@ -4,6 +4,7 @@ const { loadConfig } = require('../src/config');
 
 function setup({ emailEnabled = true, smsEnabled = true, failEmail = false, env = {}, ai = null, verifyPhoneToken = null } = {}) {
   const config = loadConfig({
+    PRICE_SOURCE: 'package',
     ...env,
     ADMIN_PASSWORD: 'test-password-123',
     SESSION_SECRET: 'x'.repeat(40),

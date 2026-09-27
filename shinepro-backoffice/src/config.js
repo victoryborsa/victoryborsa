@@ -33,6 +33,11 @@ function loadConfig(env = process.env) {
       from: env.TWILIO_FROM_NUMBER || '',
     },
     sendCustomerConfirmation: env.SEND_CUSTOMER_CONFIRMATION !== 'false',
+    // Where prices come from:
+    //  'site'    (default) the website already has its own prices/quote form. Leads keep the price the
+    //            website sent, and the chat assistant never quotes numbers (sends people to the quote form).
+    //  'package' use the price table in public/pricing.js everywhere (quote widget, leads, chat).
+    priceSource: env.PRICE_SOURCE === 'package' ? 'package' : 'site',
     // Website chat
     anthropicApiKey: env.ANTHROPIC_API_KEY || '',
     aiModel: env.AI_MODEL || 'claude-opus-5',

@@ -33,6 +33,8 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: PRICE_SOURCE
+        value: site
       - key: AI_MODEL
         value: claude-opus-5
       - key: FIREBASE_API_KEY

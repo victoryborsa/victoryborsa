@@ -7,7 +7,7 @@ Lead capture, website chat and admin for **pghshinepro.com**. Built so no potent
 | Feature | What it does |
 |---|---|
 | **Website chat** | A "Chat With Us" window on every page. Before chatting, the customer confirms their **email** with a code we email them and their **phone** with a code we text them. Anyone who can't verify can't chat. The **AI assistant** answers questions about services and prices. The customer can tap **"Request a call back"** and leave a note, and you get an urgent email. You can also reply from the admin, and your reply appears in their chat window. |
-| **Instant quote form** | Visitors see their price live. Every submission is saved *first*, then alerts go out. |
+| **Quote requests** | Your website's existing quote form (with your real prices) also sends each request here. It is saved *first*, then alerts go out. |
 | **New-lead alerts** | An email the moment someone requests a quote, starts a chat or asks for a call back, with a link straight to the lead. Turn on Gmail notifications on your phone and it pops up like a text. |
 | **Leads pipeline** | New → Contacted → Quoted → Booked / Lost. Call-back requests are pinned to the top in red. |
 | **Reply to customers** | Email directly from the admin. For texts, press "Text via Google Voice" (412) 447-8047: it copies your message and opens Google Voice. You can also reply into the website chat. Quick-reply templates and private notes are included. |
@@ -48,9 +48,9 @@ See **DEVELOPER_HANDOFF.md**. In short: Render.com (about $7/month) using the in
 
 Edit **`knowledge.md`** in plain English: service area, hours, what's included, policies, add-ons. Lines marked `[CONFIRM]` are guesses you should check. The assistant only answers from this file and the prices in `public/pricing.js`. For anything else, it tells the customer the team will follow up and suggests "Request a call back". Restart the server after editing.
 
-## Change your prices
+## Prices
 
-Edit `public/pricing.js`. The quote form, the server and the chat assistant all use it.
+Your website's prices stay exactly as they are (`PRICE_SOURCE=site`, the default). Leads keep the price your website's form showed, and the chat assistant never quotes dollar amounts. It sends customers to your quote form or offers a call back. `public/pricing.js` holds sample prices that are only used if you switch to `PRICE_SOURCE=package`.
 
 ## Texting with Google Voice
 

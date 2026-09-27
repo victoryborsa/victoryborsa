@@ -229,6 +229,23 @@ test('Google Voice mode: email alerts, manual texts are logged, customer replies
   assert.deepEqual(s.sent.map((m) => m.to), ['maria@x.com']);
 });
 
+test("website's own prices are kept (default): lead stores the site's price and service name as sent", async (t) => {
+  const s = setup({ env: { PRICE_SOURCE: 'site' } });
+  t.after(s.close);
+  const r = await s.req('/api/leads', { method: 'POST', body: { name: 'Site Form', phone: '4125550111', service_type: 'Deep Clean Package', frequency: 'Every 2 weeks', estimated_price: 289.5 } });
+  assert.equal(r.status, 201);
+  assert.equal(r.data.estimated_price, 289.5);
+  // a known package key is NOT re-priced from the sample table either
+  const r2 = await s.req('/api/leads', { method: 'POST', body: { name: 'Site Form 2', phone: '4125550112', service_type: 'deep', bedrooms: 3, estimated_price: 199 } });
+  assert.equal(r2.data.estimated_price, 199);
+  const bad = await s.req('/api/leads', { method: 'POST', body: { name: 'Bad Price', phone: '4125550113', estimated_price: -5 } });
+  assert.equal(bad.data.estimated_price, null);
+  await s.login();
+  const lead = (await s.req(`/api/admin/leads/${r.data.id}`)).data;
+  assert.equal(lead.service_type, 'Deep Clean Package');
+  assert.equal(lead.frequency, 'Every 2 weeks');
+});
+
 test('pages and embed are served', async (t) => {
   const s = setup();
   t.after(s.close);

@@ -1,6 +1,6 @@
 # What the chat assistant knows about Shine Pro Cleaning
 <!-- Edit this file in plain English. The chat assistant answers ONLY from what is written here
-     (plus the prices in public/pricing.js). Restart the server after editing.
+     (it does not quote prices unless you write them here; customers are sent to the website's quote form). Restart the server after editing.
      Lines marked [CONFIRM] are reasonable defaults the owner should check. -->
 
 ## Contact

@@ -22,6 +22,7 @@ All of the above is covered by `npm test` (19 integration tests, including the c
 
 - **Node.js ≥ 22.13**, Express 4, Nodemailer, `@anthropic-ai/sdk`. There is no build step.
 - **SQLite** via Node's built-in `node:sqlite`, stored in one file (`DATABASE_FILE`). It needs a **persistent disk**.
+- **Prices:** `PRICE_SOURCE=site` (default) means the website's prices are the source of truth. The chat assistant **never quotes dollar amounts** and sends people to the site's quote form or a call back.
 - **AI:** Claude via the official Anthropic SDK (`src/ai.js`), model `claude-opus-5` (override with `AI_MODEL`).
   - Low effort for short answers.
   - The system prompt is cached.
@@ -76,23 +77,24 @@ WEBSITE_SNIPPET.html  exactly what to paste into the website
 
 Everything is in **`WEBSITE_SNIPPET.html`**:
 - **Chat:** `<script src="https://admin.pghshinepro.com/chat.js" async></script>` before `</body>` on every page. **Remove the site's current "Chat With Us" widget** so there's only one.
-- **Quote form:** `<div id="shinepro-quote"></div>` + `<script src="https://admin.pghshinepro.com/embed.js" async></script>`, or link to `/quote`.
+- **Quote form: keep the website's existing form and prices.** The owner's prices are final. Also POST each submission to `/api/leads` so the lead is saved and the owner is alerted (`sendLeadToShinePro()` in the snippet). With the default `PRICE_SOURCE=site`, the back office stores the price and service names **exactly as your form sends them** and never re-prices. Don't install the package's `embed.js` quote widget: it uses sample prices, and is only for `PRICE_SOURCE=package`.
 - The site's origins must be in `ALLOWED_ORIGINS` (defaults to both `https://pghshinepro.com` and `https://www.pghshinepro.com`).
 
-**Keeping your own quote form instead?** POST JSON or a normal form to `/api/leads`. Fields:
+**`/api/leads` fields** (POST JSON or a normal form):
 
 | field | notes |
 |---|---|
 | `name` | required |
 | `phone`, `email` | at least one required |
-| `service_type` | `standard` \| `deep` \| `move` \| `airbnb` \| `office` |
+| `service_type` | any text (e.g. "Deep Cleaning") |
 | `bedrooms`, `bathrooms`, `sqft` | numbers |
-| `frequency` | `once` \| `monthly` \| `biweekly` \| `weekly` |
+| `frequency` | any text |
+| `estimated_price` | the price your form showed. It's stored as-is when `PRICE_SOURCE=site`. |
 | `address`, `zip`, `preferred_date`, `message` | text |
 | `marketing_opt_in` | boolean |
 | `company_website` | honeypot: keep it hidden and empty |
 
-A JSON post returns `201 {ok, id, estimated_price}`. A normal form post redirects with a 303 to `/thanks.html`. The server recalculates the price.
+A JSON post returns `201 {ok, id, estimated_price}`. A normal form post redirects with a 303 to `/thanks.html`.
 
 **The existing Back Office page:** point its tiles at the new admin (the URLs are in the snippet file), or port `src/service.js`, `src/chat.js` and `src/notifier.js` into the existing backend. None of them depend on the framework.
 
@@ -136,7 +138,8 @@ A JSON post returns `201 {ok, id, estimated_price}`. A normal form post redirect
   - The AI answers a price question.
   - "Request a call back" sends the owner an urgent email.
   - A reply from the admin shows up in the chat.
-- [ ] Quote form connected. A real test quote produces the lead, the owner email and the customer confirmation.
+- [ ] Existing quote form also posts to `/api/leads`. A real test quote shows in Admin → Leads **with the same price the website showed**, and the owner email and customer confirmation arrive.
+- [ ] Ask the chat "how much is a deep clean?". It should point to the website's quote form, not give a number.
 - [ ] On a lead, "Text via Google Voice" opens (412) 447-8047
-- [ ] Owner reviewed `knowledge.md` (all `[CONFIRM]` lines) and `public/pricing.js`
+- [ ] Owner reviewed `knowledge.md` (all `[CONFIRM]` lines)
 - [ ] Existing Back Office tiles link to the new admin

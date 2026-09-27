@@ -88,8 +88,10 @@ function createService({ db, notifier, config }) {
     if (body.phone && !phone) throw new HttpError(400, 'Please enter a valid phone number');
     if (!email && !phone) throw new HttpError(400, 'Please enter a phone number or email so we can reach you');
 
-    const service_type = PRICING.services[body.service_type] ? body.service_type : null;
-    const frequency = PRICING.frequency[body.frequency] ? body.frequency : null;
+    // With the website's own prices ('site'), keep whatever service/frequency names the site's form sends.
+    const sitePrices = config.priceSource === 'site';
+    const service_type = PRICING.services[body.service_type] ? body.service_type : sitePrices ? str(body.service_type, 60) : null;
+    const frequency = PRICING.frequency[body.frequency] ? body.frequency : sitePrices ? str(body.frequency, 40) : null;
     const lead = {
       name, email, phone,
       address: str(body.address, 250),
@@ -103,7 +105,10 @@ function createService({ db, notifier, config }) {
       message: str(body.message, 5000),
       marketing_opt_in: bool(body.marketing_opt_in) ? 1 : 0,
     };
-    lead.estimated_price = service_type ? estimatePrice(lead) : num(body.estimated_price);
+    const sentPrice = num(body.estimated_price);
+    lead.estimated_price = sitePrices
+      ? (sentPrice != null && sentPrice >= 0 && sentPrice < 100000 ? Math.round(sentPrice * 100) / 100 : null)
+      : (PRICING.services[service_type] ? estimatePrice(lead) : sentPrice);
 
     db.exec('BEGIN');
     try {

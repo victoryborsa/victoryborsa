@@ -96,6 +96,7 @@
       e.preventDefault();
       var v = values();
       v.source = 'embed';
+      v.estimated_price = window.ShinePricing.estimatePrice(v);
       errEl.hidden = true;
       if (!v.name.trim()) return showErr('Please enter your name.');
       if (v.phone.replace(/\D/g, '').length < 10) return showErr('Please enter your phone number (with area code).');
