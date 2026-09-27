@@ -1,109 +1,142 @@
-# Developer Handoff — Shine Pro Cleaning Back Office
+# Developer Handoff — Shine Pro Cleaning Back Office (final)
 
-Hi! This package adds lead capture, owner alerts, and customer/employee/job management to **pghshinepro.com**.
-It's a small, self-contained Node.js service. You can run it next to the existing site, or port its logic into the existing backend.
+Hi! This package adds lead capture, a verified AI website chat, owner alerts, and customer/employee/job management to **pghshinepro.com**.
+It's a small, self-contained Node.js service. Run it on a subdomain next to the existing site, then paste the snippets in `WEBSITE_SNIPPET.html` into the site.
 
-## Owner's requirements (what this must do)
+## What the owner needs
 
-1. Every quote request on the website is saved. None can be lost, even if email/SMS is down.
-2. The owner gets an **instant email alert** for every new lead (they'll use Gmail phone notifications).
-3. The owner can **reply to customers from the admin**: email is sent directly, and texts go through the owner's **Google Voice number (412) 447-8047** (see below). **The owner does not want Twilio.**
-4. Emails and phones are collected (with marketing opt-in) for future marketing.
-5. Book jobs and **assign cleaners**. Cleaners get notified.
-6. **Add/edit customers and employees** from the admin.
+1. **No lead is ever lost.** Every quote request and chat is saved before any alert is sent.
+2. **Instant email alert** for every new lead, verified chat, and call-back request. The owner uses Gmail phone notifications.
+3. **Website chat:**
+   - The customer enters name, email and phone.
+   - **Email is verified** with a 6-digit code (sent by SMTP). **Phone is verified** with a text code (Firebase Phone Auth).
+   - **No verification, no chat.** The server enforces this.
+   - Then an **AI assistant answers questions**, and the customer can **leave a note to request a call back**.
+4. The owner **replies from the admin**: email is sent directly, texts go through the owner's **Google Voice number (412) 447-8047**, and replies can also be sent into the website chat. **The owner does not want Twilio.**
+5. Emails and phones are collected with a marketing opt-in, exportable to CSV.
+6. Book jobs, **assign cleaners** (emailed automatically), and **add or edit customers and employees**.
 
-All of the above is implemented and covered by `npm test` (10 integration tests).
+All of the above is covered by `npm test` (19 integration tests, including the chat verification rules).
 
 ## Stack
 
-- **Node.js ≥ 22.13**, Express 4, Nodemailer. No other runtime dependencies.
-- **SQLite** via Node's built-in `node:sqlite`, stored in a single file (`DATABASE_FILE`). It needs a **persistent disk**.
-- **Texting = Google Voice (412) 447-8047.** Google Voice has no public API, so the admin opens `voice.google.com/u/0/messages?itemId=t.+1XXXXXXXXXX` for the contact with the message copied to the clipboard. The owner pastes and sends, and the message is logged (`channel: gvoice`). Inbound texts can be logged with `channel: sms_in`. Twilio support is still in the code but switches off unless `TWILIO_*` is set. Leave it unset.
-- Admin UI is a plain-JS SPA (`public/admin.js`) with no build step.
+- **Node.js ≥ 22.13**, Express 4, Nodemailer, `@anthropic-ai/sdk`. There is no build step.
+- **SQLite** via Node's built-in `node:sqlite`, stored in one file (`DATABASE_FILE`). It needs a **persistent disk**.
+- **AI:** Claude via the official Anthropic SDK (`src/ai.js`), model `claude-opus-5` (override with `AI_MODEL`).
+  - Low effort for short answers.
+  - The system prompt is cached.
+  - Server-side refusal fallbacks are on (`fallbacks: "default"`).
+- **Phone verification:** Firebase Phone Auth in the browser (loaded from gstatic). The resulting ID token is **verified on the server** (`src/firebase.js`) against Google's public certs: signature, audience, issuer, expiry, and that `phone_number` matches what the user typed.
+- **Texting = Google Voice (412) 447-8047.** It has no API, so the admin opens `voice.google.com/u/0/messages?itemId=t.+1XXXXXXXXXX` with the message copied, and logs it. Twilio code exists but is **off** unless `TWILIO_*` is set. Leave it unset.
 
 ```
 src/server.js      entry point
-src/app.js         routes (public + /api/admin/*)
-src/service.js     business logic (leads, customers, messages, employees, jobs)
-src/notifier.js    email (SMTP) delivery (+ optional Twilio SMS), logged to `notifications`
-src/auth.js        password login, HMAC-signed HttpOnly cookie, rate limit
-src/db.js          schema (auto-created on start)
-public/pricing.js  price table + estimator, shared by browser AND server
-public/embed.js    drop-in quote widget for any website
+src/app.js         routes (public, /api/chat/*, /api/admin/*)
+src/chat.js        website chat: email codes, phone-token check, sessions, AI replies, call-backs
+src/ai.js          Claude call + system prompt (built from knowledge.md + pricing)
+src/firebase.js    Firebase ID-token verification (no firebase-admin needed)
+src/service.js     leads, customers, messages, employees, jobs
+src/notifier.js    email delivery, every attempt logged to `notifications`
+src/auth.js        admin login, signed HttpOnly cookie, rate limit
+src/db.js          schema (created automatically)
+knowledge.md       what the chat assistant knows. The OWNER edits this.
+public/chat.js     chat widget (one <script> tag)
+public/embed.js    quote-form widget
+public/pricing.js  price table, used by browser, server and AI
 public/admin.*     admin app
-test/              node:test integration tests
+WEBSITE_SNIPPET.html  exactly what to paste into the website
 ```
 
-## Install (recommended: run alongside the site on a subdomain)
+## Install
 
-1. **Host:** Render (the `render.yaml` blueprint at the repo root is ready, with a 1 GB disk at `/var/data`), Railway, Fly.io, or any VPS with Node 22.
+1. **Run the tests**
    ```bash
-   cd shinepro-backoffice && npm ci && npm test && npm start
+   cd shinepro-backoffice && npm ci && npm test && npm start   # http://localhost:3000/admin, password changeme123
    ```
-2. **DNS:** point `admin.pghshinepro.com` (CNAME) at the host and enable HTTPS. Set `PUBLIC_URL=https://admin.pghshinepro.com`.
-3. **Env vars:** copy `.env.example`. Required in production: `ADMIN_PASSWORD` (10+ chars) and `SESSION_SECRET` (32+ chars). The app refuses to start without them.
-4. **Email:** any SMTP. For Gmail, use an App Password. Set `ALERT_EMAILS` to the owner's address.
-5. **Texting:** set `GOOGLE_VOICE_NUMBER="(412) 447-8047"` and `BUSINESS_PHONE="(412) 447-8047"`. Leave all `TWILIO_*` and `ALERT_PHONES` unset. Nothing else is needed. Have the owner sign in to Google Voice in the same browser/phone they use for the admin.
-6. Log in at `/admin` → **Alerts → Send test alert** and confirm the email arrives. Help the owner turn on Gmail push notifications on their phone.
+2. **Host:** Render. New → Blueprint reads `render.yaml`, which sets up a 1 GB disk at `/var/data`. Any Node 22 host with a persistent disk also works.
+3. **DNS:** add a CNAME for `admin.pghshinepro.com` pointing at the host, with HTTPS. Set `PUBLIC_URL=https://admin.pghshinepro.com`.
+4. **Environment variables:** copy them from `.env.example`. In production the app refuses to start without `ADMIN_PASSWORD` (10+ characters) and `SESSION_SECRET` (32+ characters).
+5. **Email (SMTP):** use Gmail with an App Password. Set `SMTP_*`, `EMAIL_FROM`, and `ALERT_EMAILS` (the owner's inbox). Email is required for the chat's email codes.
+6. **Firebase Phone Auth** (for chat phone codes):
+   1. console.firebase.google.com → Add project.
+   2. Build → Authentication → Get started → Sign-in method → enable **Phone**.
+   3. Authentication → Settings:
+      - **Authorized domains:** add `pghshinepro.com` and `www.pghshinepro.com`.
+      - **SMS region policy:** allow only **United States** (this blocks SMS-fraud costs).
+   4. Upgrade to the **Blaze (pay-as-you-go)** plan if Firebase asks. It's required for sending real SMS beyond test numbers. Set a budget alert.
+   5. Project settings → Your apps → add a **Web app**. Copy `apiKey`, `authDomain` and `projectId` into `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN` and `FIREBASE_PROJECT_ID`.
+   6. Optional: add a test phone number under Sign-in method → Phone for QA without real texts.
 
-## Connect the website's quote form (pick one)
+   Keep `REQUIRE_PHONE_VERIFICATION=true`. If Firebase or SMTP isn't configured, the chat shows "Chat is offline, call or text (412) 447-8047" instead of allowing unverified chats.
+7. **AI:** create a key at console.anthropic.com → `ANTHROPIC_API_KEY`. If the key is missing or the API fails, the chat still works: the customer gets a polite "we'll get back to you" reply and the owner is emailed the question.
+8. **Texting:** set `GOOGLE_VOICE_NUMBER="(412) 447-8047"` and `BUSINESS_PHONE="(412) 447-8047"`. Leave `TWILIO_*` and `ALERT_PHONES` unset.
+9. **Test:** Admin → Alerts shows green checks for Email, AI and Phone verification. Press **Send test alert**.
 
-**A. Embed widget (fastest).** It has its own scoped CSS and live price calculation:
-```html
-<div id="shinepro-quote"></div>
-<script src="https://admin.pghshinepro.com/embed.js" async></script>
-```
-It fires `gtag('event','generate_lead')` and `fbq('track','Lead')` on success if those exist.
+## Put it on the website
 
-**B. Keep the existing form.** POST to `https://admin.pghshinepro.com/api/leads` as JSON (response `201 {ok, id, estimated_price}`), or as a normal HTML form post (it redirects 303 to `/thanks.html`). The site's origin must be in `ALLOWED_ORIGINS` (CORS).
+Everything is in **`WEBSITE_SNIPPET.html`**:
+- **Chat:** `<script src="https://admin.pghshinepro.com/chat.js" async></script>` before `</body>` on every page. **Remove the site's current "Chat With Us" widget** so there's only one.
+- **Quote form:** `<div id="shinepro-quote"></div>` + `<script src="https://admin.pghshinepro.com/embed.js" async></script>`, or link to `/quote`.
+- The site's origins must be in `ALLOWED_ORIGINS` (defaults to both `https://pghshinepro.com` and `https://www.pghshinepro.com`).
+
+**Keeping your own quote form instead?** POST JSON or a normal form to `/api/leads`. Fields:
 
 | field | notes |
 |---|---|
 | `name` | required |
-| `phone`, `email` | at least one required; phone normalized to E.164 |
+| `phone`, `email` | at least one required |
 | `service_type` | `standard` \| `deep` \| `move` \| `airbnb` \| `office` |
 | `bedrooms`, `bathrooms`, `sqft` | numbers |
 | `frequency` | `once` \| `monthly` \| `biweekly` \| `weekly` |
 | `address`, `zip`, `preferred_date`, `message` | text |
-| `marketing_opt_in` | boolean / `on` / `1` |
-| `company_website` | **honeypot**: leave it as a hidden, empty field |
+| `marketing_opt_in` | boolean |
+| `company_website` | honeypot: keep it hidden and empty |
 
-The server **recalculates the price** from `public/pricing.js`, so a client-sent `estimated_price` is ignored when `service_type` is valid. **To change prices, edit that one file.** If the existing site shows its own prices, make the numbers match.
+A JSON post returns `201 {ok, id, estimated_price}`. A normal form post redirects with a 303 to `/thanks.html`. The server recalculates the price.
 
-Rate limit: 20 submissions/hour/IP.
+**The existing Back Office page:** point its tiles at the new admin (the URLs are in the snippet file), or port `src/service.js`, `src/chat.js` and `src/notifier.js` into the existing backend. None of them depend on the framework.
 
-**C. Link out.** Point the "Get a Quote" button to `https://admin.pghshinepro.com/quote`.
+## Chat API (`/api/chat`, CORS for ALLOWED_ORIGINS)
 
-## Existing admin ("Back Office" page)
+| Call | Purpose |
+|---|---|
+| `GET /config` | `{enabled, reason?, phoneVerification, firebase:{apiKey,authDomain,projectId}, businessPhone}` |
+| `POST /email-code {email}` | Emails a 6-digit code. It expires in 10 min, is limited to 5 per email per hour, and 10 per hour per IP. |
+| `POST /start {name,email,phone,email_code,phone_token,marketing_opt_in}` | Checks both verifications, then creates the client, lead and chat session. Returns `{token, messages}`. Codes lock after 5 wrong tries. |
+| `POST /message {message}` | Bearer token. Saves the question and returns the AI reply. Limited to 40 messages per session and 1 every 1.5 s. |
+| `GET /messages?after=ID` | Bearer token. The widget polls this every 5 s to show replies sent from the admin. |
+| `POST /callback {note, best_time}` | Bearer token. Flags the lead as a call back and emails the owner urgently. |
 
-The current site already has a Back Office page with Leads/Clients/Employees tiles. Options:
-- **Simplest:** point those tiles at `https://admin.pghshinepro.com/admin#/leads`, `#/customers`, `#/employees`, `#/jobs`, `#/calendar`.
-- **Or port it:** if you'd rather keep a single app, `src/service.js` (logic), `src/notifier.js` (alerts) and the schema in `src/db.js` are framework-agnostic and map 1:1 to Postgres/Supabase tables. The important rule to keep: **insert the lead first, then send alerts asynchronously, and log each delivery result.**
+## Admin API (`/api/admin`, cookie session, JSON bodies)
 
-## Admin API (all under `/api/admin`, cookie session, JSON bodies)
-
-`POST /login {password}` · `POST /logout` · `GET /stats` · `GET /notifications` · `POST /test-alert`
-`GET|POST /leads` · `GET|PATCH|DELETE /leads/:id` · `POST /leads/:id/messages {channel: email|gvoice|sms_in|note, subject?, body}`
+`POST /login` · `POST /logout` · `GET /stats` · `GET /meta` · `GET /notifications` · `POST /test-alert`
+`GET|POST /leads` · `GET|PATCH|DELETE /leads/:id` · `POST /leads/:id/messages {channel: email|gvoice|sms_in|chat|note, subject?, body}`
 `GET|POST /customers` · `GET|PUT|DELETE /customers/:id` · `POST /customers/:id/messages` · `GET /customers/export.csv?opted_in=1`
 `GET|POST /employees` · `GET|PUT|DELETE /employees/:id`
-`GET|POST /jobs?from&to&status&employee_id&customer_id` · `GET|PUT|DELETE /jobs/:id {customer_id, scheduled_at "YYYY-MM-DDTHH:MM", employee_ids[], notify_employees, …}`
-
-Non-GET/DELETE admin requests must be `application/json`. Together with the `SameSite=Strict` cookie, that is the CSRF protection.
+`GET|POST /jobs?from&to&status&employee_id&customer_id` · `GET|PUT|DELETE /jobs/:id`
 
 ## Operations
 
-- **Backups:** the DB is one file. Snapshot the disk (Render does it daily) or copy `shinepro.db*` on a schedule.
-- **Health check:** `GET /health`.
-- **Logs:** failed deliveries are logged to stdout and shown in Admin → Alerts. The dashboard warns if lead alerts failed in the last 7 days.
-- **Not included yet:** payments, gift cards, job applications. These are still handled by the existing site.
+- **Backups:** the DB is one file (`shinepro.db*`). Snapshot the disk daily (Render does this).
+- **Health check:** `GET /health`. Failed emails appear in Admin → Alerts and as a dashboard warning.
+- **Costs to watch:** Firebase SMS (set a budget alert), Anthropic usage (set a spend limit in the console).
+- **Not included:** payments, gift cards, job applications. These stay on the existing site.
 
 ## Go-live checklist
 
-- [ ] Deployed with a persistent disk, HTTPS, and `NODE_ENV=production`
-- [ ] `ADMIN_PASSWORD` and `SESSION_SECRET` set; owner can log in
-- [ ] SMTP configured; **test alert** email received, and Gmail notifications on the owner's phone
-- [ ] On a lead, "Text via Google Voice" opens Google Voice (412) 447-8047 for that customer
-- [ ] Website form connected (A, B or C). Submit a real test quote and confirm the lead, the owner email and the customer confirmation.
-- [ ] `ALLOWED_ORIGINS` includes both `https://pghshinepro.com` and `https://www.pghshinepro.com`
-- [ ] Prices in `public/pricing.js` confirmed with the owner
-- [ ] Existing Back Office tiles linked to the new admin
+- [ ] Deployed with a persistent disk, HTTPS and `NODE_ENV=production`; `ADMIN_PASSWORD` and `SESSION_SECRET` set
+- [ ] SMTP works: test alert received, and Gmail notifications on for the owner's phone
+- [ ] Firebase: Phone sign-in enabled, both domains authorized, SMS region = US, web config in env
+- [ ] `ANTHROPIC_API_KEY` set. Admin → Alerts shows all green.
+- [ ] Old chat widget removed; `chat.js` added to every page
+- [ ] **End-to-end chat test on the live site:**
+  - Email code arrives.
+  - Text code arrives.
+  - A wrong code is rejected.
+  - The AI answers a price question.
+  - "Request a call back" sends the owner an urgent email.
+  - A reply from the admin shows up in the chat.
+- [ ] Quote form connected. A real test quote produces the lead, the owner email and the customer confirmation.
+- [ ] On a lead, "Text via Google Voice" opens (412) 447-8047
+- [ ] Owner reviewed `knowledge.md` (all `[CONFIRM]` lines) and `public/pricing.js`
+- [ ] Existing Back Office tiles link to the new admin

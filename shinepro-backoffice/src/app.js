@@ -5,6 +5,9 @@ const { openDb } = require('./db');
 const { createAuth, safeEqual } = require('./auth');
 const { createSenders, createNotifier } = require('./notifier');
 const { createService } = require('./service');
+const { createChatRouter } = require('./chat');
+const { createAi } = require('./ai');
+const { createPhoneVerifier } = require('./firebase');
 const { PRICING } = require('../public/pricing');
 const { HttpError, formatPhone } = require('./util');
 
@@ -33,7 +36,13 @@ function twilioSignatureValid(req, config) {
   return safeEqual(expected, signature);
 }
 
-function createApp({ config, db = openDb(config.dbFile), senders = createSenders(config) }) {
+function createApp({
+  config,
+  db = openDb(config.dbFile),
+  senders = createSenders(config),
+  ai = createAi(config),
+  verifyPhoneToken = config.firebase.projectId && config.firebase.apiKey ? createPhoneVerifier({ projectId: config.firebase.projectId }) : null,
+}) {
   const app = express();
   const notifier = createNotifier({ db, config, senders });
   const svc = createService({ db, notifier, config });
@@ -61,7 +70,7 @@ function createApp({ config, db = openDb(config.dbFile), senders = createSenders
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     }
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
@@ -95,6 +104,13 @@ function createApp({ config, db = openDb(config.dbFile), senders = createSenders
     res.type('text/xml').send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
   }));
 
+  // Website chat (verified customers, AI answers, call-back requests)
+  app.use('/api/chat', createChatRouter({ db, config, svc, notifier, ai, verifyPhoneToken, cors, rateLimit }));
+  app.get('/chat.js', cors, (req, res, next) => {
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    next();
+  });
+
   // ---------------- admin auth ----------------
   app.post('/api/admin/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }), auth.login);
   app.post('/api/admin/logout', auth.logout);
@@ -108,6 +124,7 @@ function createApp({ config, db = openDb(config.dbFile), senders = createSenders
   admin.get('/meta', (req, res) => res.json({
     pricing: PRICING, leadStatuses: svc.LEAD_STATUSES, jobStatuses: svc.JOB_STATUSES,
     smsConfigured: notifier.senders.smsEnabled, googleVoiceNumber: config.googleVoiceNumber,
+    chat: { aiEnabled: Boolean(ai), phoneVerification: config.requirePhoneVerification, phoneVerificationReady: Boolean(verifyPhoneToken) },
   }));
   admin.get('/notifications', (req, res) => res.json(
     db.prepare('SELECT * FROM notifications ORDER BY id DESC LIMIT 200').all()
@@ -130,6 +147,7 @@ function createApp({ config, db = openDb(config.dbFile), senders = createSenders
     const lead = svc.getLead(id(req));
     res.json({
       ...lead,
+      has_chat: Boolean(db.prepare('SELECT 1 FROM chat_sessions WHERE lead_id = ?').get(lead.id)),
       messages: svc.listMessages({ leadId: lead.id }),
       customer: lead.customer_id ? db.prepare('SELECT * FROM customers WHERE id = ?').get(lead.customer_id) : null,
       jobs: svc.listJobs().filter((j) => j.lead_id === lead.id),

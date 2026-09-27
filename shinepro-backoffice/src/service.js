@@ -158,9 +158,10 @@ function createService({ db, notifier, config }) {
       params.push(like, like, `%${search.replace(/\D/g, '') || search}%`, like);
     }
     return q(`SELECT l.*, (SELECT MAX(created_at) FROM messages m WHERE m.lead_id = l.id AND m.direction = 'out') AS last_contacted_at,
-              (SELECT COUNT(*) FROM messages m WHERE m.lead_id = l.id AND m.direction = 'in') AS reply_count
+              (SELECT COUNT(*) FROM messages m WHERE m.lead_id = l.id AND m.direction = 'in') AS reply_count,
+              EXISTS (SELECT 1 FROM chat_sessions c WHERE c.lead_id = l.id) AS has_chat
               FROM leads l ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-              ORDER BY l.created_at DESC, l.id DESC LIMIT 1000`).all(...params);
+              ORDER BY (l.callback_requested = 1 AND l.status = 'new') DESC, l.created_at DESC, l.id DESC LIMIT 1000`).all(...params);
   }
 
   // ---------- messaging ----------
@@ -169,7 +170,7 @@ function createService({ db, notifier, config }) {
   async function sendMessage({ leadId = null, customerId = null, channel, subject, body }) {
     const text = str(body, 5000);
     if (!text) throw new HttpError(400, 'Message cannot be empty');
-    if (!['email', 'sms', 'gvoice', 'sms_in', 'note'].includes(channel)) throw new HttpError(400, 'Channel must be email, sms, gvoice, sms_in, or note');
+    if (!['email', 'sms', 'gvoice', 'sms_in', 'chat', 'note'].includes(channel)) throw new HttpError(400, 'Channel must be email, sms, gvoice, sms_in, chat, or note');
     const lead = leadId ? getLead(leadId) : null;
     const customer = customerId ? getCustomer(customerId) : lead && lead.customer_id ? q('SELECT * FROM customers WHERE id = ?').get(lead.customer_id) : null;
     const contact = { email: (lead && lead.email) || (customer && customer.email), phone: (lead && lead.phone) || (customer && customer.phone) };
@@ -179,6 +180,12 @@ function createService({ db, notifier, config }) {
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
     if (channel === 'note') {
       const r = insert.run(leadId, cid, 'note', 'note', null, text, 'logged', null);
+      return q('SELECT * FROM messages WHERE id = ?').get(r.lastInsertRowid);
+    }
+    if (channel === 'chat') {
+      // Reply shown live in the customer's website chat window (it checks for new messages every few seconds).
+      if (!lead || !q('SELECT 1 FROM chat_sessions WHERE lead_id = ?').get(lead.id)) throw new HttpError(400, 'This lead has no website chat');
+      const r = insert.run(leadId, cid, 'out', 'chat', null, text, 'sent', null);
       return q('SELECT * FROM messages WHERE id = ?').get(r.lastInsertRowid);
     }
     if (channel === 'gvoice' || channel === 'sms_in') {
@@ -380,6 +387,7 @@ function createService({ db, notifier, config }) {
     return {
       customers: one('SELECT COUNT(*) FROM customers'),
       new_leads: one(`SELECT COUNT(*) FROM leads WHERE status = 'new'`),
+      callbacks: one(`SELECT COUNT(*) FROM leads WHERE callback_requested = 1 AND status = 'new'`),
       open_leads: one(`SELECT COUNT(*) FROM leads WHERE status IN ('new', 'contacted', 'quoted')`),
       leads_this_week: one(`SELECT COUNT(*) FROM leads WHERE created_at >= datetime('now', '-7 days')`),
       upcoming_jobs: one(`SELECT COUNT(*) FROM jobs WHERE status = 'scheduled' AND scheduled_at >= strftime('%Y-%m-%dT%H:%M', 'now', 'localtime')`),

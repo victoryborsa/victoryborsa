@@ -184,6 +184,7 @@
     app.innerHTML = `
       <h1>Back Office</h1>
       ${alertProblems.length ? `<div class="banner warn"><strong>Lead alerts need attention:</strong> ${esc(alertProblems.join('; '))}. New leads are still saved here. <a href="#/alerts">See alert settings →</a></div>` : ''}
+      ${s.callbacks ? `<div class="banner danger"><strong>📞 ${s.callbacks} customer(s) asked you to call them back.</strong> <a href="#/leads?status=new">Call them now →</a></div>` : ''}
       ${s.failed_alerts ? `<div class="banner danger"><strong>${s.failed_alerts} lead alert(s) failed or were skipped this week.</strong> Check the <a href="#/leads">Leads</a> list so nobody is missed. <a href="#/alerts">Details →</a></div>` : ''}
       <div class="tiles">
         ${tile('#/leads', '📈', 'i-gold', 'Leads', `${s.new_leads} new · ${s.open_leads} open`)}
@@ -216,7 +217,7 @@
 
   // ---------- leads ----------
   const leadItem = (l) => `<a class="item" href="#/leads/${l.id}">
-      <div class="main"><div class="title">${esc(l.name)} ${l.reply_count ? `<span class="badge" title="Replies">${l.reply_count} 💬</span>` : ''}</div>
+      <div class="main"><div class="title">${l.callback_requested && l.status === 'new' ? '<span class="status st-failed">📞 Call back</span> ' : ''}${l.has_chat ? '💻 ' : ''}${esc(l.name)} ${l.reply_count ? `<span class="badge" title="Replies">${l.reply_count} 💬</span>` : ''}</div>
       <div class="sub">${esc([fmtPhone(l.phone), l.email, serviceLabel(l.service_type)].filter(Boolean).join(' · '))}</div></div>
       <div style="text-align:right">${status(l.status)}<div class="sub small">${money(l.estimated_price)} ${esc(fmtAgo(l.created_at))}</div></div></a>`;
 
@@ -283,6 +284,7 @@
               <dt>Preferred date</dt><dd>${esc(l.preferred_date) || '—'}</dd>
               <dt>Estimate</dt><dd><strong>${money(l.estimated_price) || '—'}</strong></dd>
               <dt>Marketing OK</dt><dd>${l.marketing_opt_in ? '✅ Yes' : 'No'}</dd>
+              ${l.callback_requested ? `<dt>Call back</dt><dd><strong style="color:var(--danger)">📞 Requested</strong></dd>` : ''}
               <dt>Admin alerted</dt><dd>${l.admin_notified ? '✅ Yes' : '⚠️ No — alert failed or not configured'}</dd>
               ${l.message ? `<dt>Message</dt><dd style="white-space:pre-wrap">${esc(l.message)}</dd>` : ''}
             </dl>
@@ -308,6 +310,7 @@
   // ---------- conversation ----------
   function conversationCard(messages, contact) {
     const channels = [];
+    if (contact.has_chat) channels.push(['chat', '💻 Reply in website chat']);
     if (contact.phone && META.smsConfigured) channels.push(['sms', '💬 Text message']);
     if (contact.phone && !META.smsConfigured) channels.push(['gvoice', '💬 Text via Google Voice'], ['sms_in', "📥 Log customer's text reply"]);
     if (contact.email) channels.push(['email', '✉️ Email']);
@@ -337,7 +340,9 @@
   function msgHtml(m) {
     const cls = m.direction === 'note' ? 'note' : m.direction === 'in' ? 'in' : 'out';
     const failed = m.status === 'failed' || m.status === 'skipped';
-    const label = m.direction === 'note' ? 'Note' : `${m.channel === 'sms' ? 'Text' : 'Email'}${m.direction === 'in' ? ' from customer' : ''}${m.status === 'gvoice' ? ' via Google Voice' : ''}`;
+    const label = m.direction === 'note' ? 'Note'
+      : m.channel === 'chat' ? (m.direction === 'in' ? 'Website chat · customer' : m.status === 'ai' ? 'Website chat · AI assistant' : m.status === 'auto' ? 'Website chat · automatic' : 'Website chat · you')
+      : `${m.channel === 'sms' ? 'Text' : 'Email'}${m.direction === 'in' ? ' from customer' : ''}${m.status === 'gvoice' ? ' via Google Voice' : ''}`;
     return `<div class="msg ${cls}${failed ? ' failed' : ''}">${m.subject ? `<strong>${esc(m.subject)}</strong>\n` : ''}${esc(m.body)}
       <div class="meta">${esc(label)} · ${esc(fmtAgo(m.created_at))}${failed ? ` · NOT SENT: ${esc(m.error || m.status)}` : ''}</div></div>`;
   }
@@ -355,6 +360,7 @@
         gvoice: `Opens Google Voice (${META.googleVoiceNumber}) with your message copied — paste & send`,
         sms_in: 'Paste a text the customer sent to your Google Voice number',
         email: 'Customer replies go to your inbox',
+        chat: 'Appears in the customer\'s chat window on your website',
       }[ch];
       $('button', form).textContent = ch === 'gvoice' ? 'Copy & open Google Voice' : ch === 'sms_in' || ch === 'note' ? 'Save' : 'Send';
     };
@@ -371,7 +377,7 @@
       btn.disabled = true;
       try {
         await api(endpoint, { method: 'POST', body: { channel: ch, subject: form.subject.value, body: form.body.value } });
-        toast({ note: 'Note saved', gvoice: 'Message copied — paste it in Google Voice and hit send', sms_in: 'Customer reply saved' }[ch] || 'Message sent ✅');
+        toast({ chat: 'Sent to website chat ✅', note: 'Note saved', gvoice: 'Message copied — paste it in Google Voice and hit send', sms_in: 'Customer reply saved' }[ch] || 'Message sent ✅');
         render();
       } catch (err) {
         toast(err.message, true);
@@ -599,6 +605,10 @@
         ${row(a.email_configured, 'Email sending (SMTP)')}
         ${row(a.alert_emails > 0, `Alert email address(es): ${a.alert_emails}`)}
         ${a.sms_configured ? row(a.alert_phones > 0, `Alert phone number(s): ${a.alert_phones}`) : `<div>📱 Texting uses Google Voice <strong>${esc(a.google_voice_number)}</strong>. New-lead alerts come by email, so turn on Gmail notifications on your phone to see them instantly.</div>`}
+        <h3 style="margin-top:16px">Website chat</h3>
+        ${row(META.chat.aiEnabled, 'AI assistant (ANTHROPIC_API_KEY)')}
+        ${row(!META.chat.phoneVerification || META.chat.phoneVerificationReady, META.chat.phoneVerification ? 'Phone verification (Firebase)' : 'Phone verification is OFF (testing only)')}
+        ${row(a.email_configured, 'Email verification codes (SMTP)')}
         <p class="muted small">These are set in the server's environment settings (see README). Every lead is saved in the Leads page even if an alert fails.</p>
         <button class="btn" id="test">Send test alert</button>
       </div>

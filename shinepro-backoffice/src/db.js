@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS leads (
   source TEXT NOT NULL DEFAULT 'website',
   marketing_opt_in INTEGER NOT NULL DEFAULT 0,
   admin_notified INTEGER NOT NULL DEFAULT 0,
+  callback_requested INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -90,6 +91,31 @@ CREATE TABLE IF NOT EXISTS job_assignments (
   job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
   employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
   PRIMARY KEY (job_id, employee_id)
+);
+
+CREATE TABLE IF NOT EXISTS email_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  code_hash TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  used INTEGER NOT NULL DEFAULT 0,
+  expires_at INTEGER NOT NULL,      -- unix ms
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_codes(email);
+
+CREATE TABLE IF NOT EXISTS chat_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token_hash TEXT NOT NULL UNIQUE,
+  lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+  customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  phone_verified INTEGER NOT NULL DEFAULT 0,
+  customer_messages INTEGER NOT NULL DEFAULT 0,
+  expires_at INTEGER NOT NULL,      -- unix ms
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS notifications (

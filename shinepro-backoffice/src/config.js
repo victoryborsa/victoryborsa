@@ -33,6 +33,16 @@ function loadConfig(env = process.env) {
       from: env.TWILIO_FROM_NUMBER || '',
     },
     sendCustomerConfirmation: env.SEND_CUSTOMER_CONFIRMATION !== 'false',
+    // Website chat
+    anthropicApiKey: env.ANTHROPIC_API_KEY || '',
+    aiModel: env.AI_MODEL || 'claude-opus-5',
+    firebase: {
+      apiKey: env.FIREBASE_API_KEY || '',
+      authDomain: env.FIREBASE_AUTH_DOMAIN || '',
+      projectId: env.FIREBASE_PROJECT_ID || '',
+    },
+    // Only turn this off for local testing. The owner requires verified phone numbers.
+    requirePhoneVerification: env.REQUIRE_PHONE_VERIFICATION !== 'false',
   };
 
   if (isProd) {

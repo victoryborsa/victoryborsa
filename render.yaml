@@ -31,6 +31,16 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: claude-opus-5
+      - key: FIREBASE_API_KEY
+        sync: false
+      - key: FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
       - key: GOOGLE_VOICE_NUMBER
         value: "(412) 447-8047"
       - key: BUSINESS_PHONE
