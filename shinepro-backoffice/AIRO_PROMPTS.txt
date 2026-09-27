@@ -12,7 +12,7 @@ Business facts used below:
   Business: Shine Pro Cleaning, Pittsburgh PA
   Website: pghshinepro.com
   Phone/text (Google Voice): (412) 447-8047
-  Owner alert email: victoryborsa@gmail.com
+  Owner alert email: pghshinepro@gmail.com
   My prices and packages are already correct. DO NOT change any prices.
 
 
@@ -23,7 +23,7 @@ Please fix and improve how my website handles quote requests. Do not change my p
 
 1. Every time someone submits the quote form, SAVE the request in the database FIRST (name, phone, email, address, ZIP, service, bedrooms, bathrooms, square feet, frequency, preferred date, the price shown to them, their message, and whether they agreed to receive offers). Save it even if sending the notification email fails.
 2. Require name, a valid email, and a valid US phone number (10 digits). Show a friendly error message if something is missing. Keep the phone stored in one format, like +14125550123.
-3. Right after saving, email me at victoryborsa@gmail.com with the subject "New quote request: [name] ([price])". Include all their details and a link to open the lead in my admin page.
+3. Right after saving, email me at pghshinepro@gmail.com with the subject "New quote request: [name] ([price])". Include all their details and a link to open the lead in my admin page.
 4. Also email the customer an automatic confirmation: "Thanks [first name], we received your request. Your estimated price is [price]. We'll contact you shortly. Questions? Call or text (412) 447-8047."
 5. If the same email or phone already exists, attach the new request to the existing client. Don't create a duplicate client.
 6. Add a hidden spam-trap field. If it's filled in, don't save or alert.
