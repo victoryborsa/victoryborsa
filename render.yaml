@@ -1,0 +1,53 @@
+# One-click deploy on Render.com (Blueprint). Fill in the env vars in the Render dashboard.
+services:
+  - type: web
+    name: shinepro-backoffice
+    runtime: node
+    plan: starter
+    rootDir: shinepro-backoffice
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_FILE
+        value: /var/data/shinepro.db
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: ALERT_EMAILS
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PRICE_SOURCE
+        value: site
+      - key: AI_MODEL
+        value: claude-opus-5
+      - key: FIREBASE_API_KEY
+        sync: false
+      - key: FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: GOOGLE_VOICE_NUMBER
+        value: "(412) 447-8047"
+      - key: BUSINESS_PHONE
+        value: "(412) 447-8047"
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1

@@ -1,0 +1,54 @@
+<!--
+  ============================================================
+  SHINE PRO CLEANING — CODE TO PASTE INTO pghshinepro.com
+  ============================================================
+  Replace https://admin.pghshinepro.com below with the address
+  where the back office is hosted (if different).
+-->
+
+<!-- 1) WEBSITE CHAT — paste once, right before </body>, on every page.
+        (Remove the old "Chat With Us" widget first so there aren't two.) -->
+<script src="https://admin.pghshinepro.com/chat.js" async></script>
+
+
+<!-- 2) KEEP THE WEBSITE'S EXISTING QUOTE FORM AND PRICES (the owner's prices are final).
+        Just ALSO send each submission to the back office so the lead is saved and the
+        owner is emailed. Add this after the form's existing submit logic succeeds.
+        Map field names to whatever the current form uses; only "name" and phone or email are required. -->
+<script>
+  function sendLeadToShinePro(data) {
+    return fetch('https://admin.pghshinepro.com/api/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: data.name,                     // required
+        phone: data.phone,                   // phone and/or email required
+        email: data.email,
+        address: data.address,
+        zip: data.zip,
+        service_type: data.service,          // any text, e.g. "Deep Cleaning"
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
+        sqft: data.sqft,
+        frequency: data.frequency,           // any text, e.g. "Every 2 weeks"
+        preferred_date: data.date,
+        estimated_price: data.price,         // the price YOUR form showed (kept exactly)
+        message: data.notes,
+        marketing_opt_in: data.optIn === true
+      })
+    }).catch(function () { /* never block the customer if this fails */ });
+  }
+</script>
+
+
+<!-- 3) NOT NEEDED (the site already has a quote form). The package's own quote widget
+        (embed.js) uses SAMPLE prices; only use it after copying the real prices into
+        public/pricing.js and setting PRICE_SOURCE=package. -->
+
+
+<!-- 4) RECOMMENDED — link the existing Back Office tiles to the new admin:
+        Leads      https://admin.pghshinepro.com/admin#/leads
+        Clients    https://admin.pghshinepro.com/admin#/customers
+        Employees  https://admin.pghshinepro.com/admin#/employees
+        Bookings   https://admin.pghshinepro.com/admin#/jobs
+        Calendar   https://admin.pghshinepro.com/admin#/calendar        -->
