@@ -3,6 +3,7 @@ SHINE PRO CLEANING — INSTRUCTIONS TO PASTE INTO GODADDY AIRO
 
 HOW TO USE THIS FILE
 - Open your website in GoDaddy Airo.
+- YOUR CHAT SHOWS "temporarily unavailable"? Do STEP 7 first.
 - Copy ONE step at a time (everything between the lines), paste it into Airo, and let it finish.
 - Check the result, then do the next step. Small steps work much better than one huge request.
 - If Airo says it can't do something, copy its answer and ask Claude for help.
@@ -121,7 +122,110 @@ Tell me the list of problems you found and what you fixed.
 
 
 ----------------------------------------------------------------
-STEP 7 — Final check (paste this last)
+STEP 7 — Fix the chat error + add tap-to-answer questions
+----------------------------------------------------------------
+My website chat has a bug. EVERY message gets the reply "I'm sorry, our assistant is temporarily unavailable. Please call or text us at (412) 447-8047..." Even "I need to clean my house" gets it. Please fix it and rebuild the chat as described below. This replaces the chat design from earlier instructions wherever they differ. Do not change my prices or my site design.
+
+PART A — Find and fix the error
+1. Check why the AI reply fails: the AI connection/integration, API key, credits or usage limit, and model name. Look at the error logs for the chat's AI function and tell me the EXACT error message.
+2. Fix it. Test by typing "Do you clean Airbnb properties?" and confirm a real answer comes back.
+3. Even if the AI is down, the chat must never dead-end. Show: "Thanks! A team member will reply soon. Tap 'Talk to someone' to leave your number, or call/text (412) 447-8047." Also save the customer's message as a lead and email it to pghshinepro@gmail.com, so no question is lost.
+
+PART B — Tap-to-answer menu (works WITHOUT the AI)
+When the chat opens, greet with: "Hi! 👋 How can we help today?" and show these buttons:
+[Get a free estimate] [Services] [Pricing] [What's included] [Availability] [Service area & special requests] [Talk to someone]
+Tapping a topic shows its questions as buttons. Tapping a question shows the answer below (a fixed answer, instant, no AI). After each answer, show buttons: [Get a free estimate] [Talk to someone] [Back to menu]. Customers can still type their own question, which goes to the AI.
+
+SERVICES
+- What cleaning services do you offer? → We offer home, deep, move-in/move-out, Airbnb turnover, and office cleaning. What do you need cleaned?
+- Do you clean houses and apartments? → Yes. Send us your address and the number of bedrooms and bathrooms for an estimate.
+- Do you clean Airbnb properties? → Yes. Tell us the property address, size, and turnover date.
+- Do you clean offices? → Yes. Tell us the location, approximate size, and how often you need cleaning.
+- Do you offer one-time cleaning? → Yes. What would you like cleaned, and when?
+- Do you offer regular cleaning? → Yes. Are you looking for weekly, every two weeks, or monthly visits?
+- Do you do deep cleaning? → Yes. Tell us which areas need extra attention.
+- Do you do move-out cleaning? → Yes. When is your move-out date, and will the property be empty?
+- Do you do move-in cleaning? → Yes. Send us the address, property size, and the date you need it cleaned.
+- Do you clean after events? → Yes. Tell us the event location, date, and what cleanup is needed.
+- Do you clean carpets or upholstery? → Tell us what you need cleaned, and we'll confirm whether we can help.
+
+PRICING
+- How much does cleaning cost? → The price depends on the size and condition of the space. Share a few details for a free estimate.
+- Can I get a free estimate? → Of course. What is the property address, and what type of cleaning do you need?
+- Can you give me a price by text? → Yes. Send us the property details and photos if available, and we'll review them.
+- Is there a minimum charge? → Send us the job details and we'll confirm the price before scheduling.
+- Is there a travel fee? → A $25 travel fee may apply. Send us the address and we'll confirm your total.
+- Do you charge extra for pets? → Please tell us how many cats or dogs you have, and we'll include any applicable fee in your estimate.
+- Do you offer discounts for regular cleaning? → Recurring cleaning may cost less per visit. Tell us how often you'd like service.
+- Do I have to pay online? → We'll explain your payment options when we confirm the booking.
+
+WHAT'S INCLUDED
+- What's included in standard cleaning? → It covers routine cleaning of the main rooms, kitchen, and bathrooms. Tell us about your home for a specific scope.
+- What's included in deep cleaning? → Deep cleaning gives extra attention to buildup and areas that need more time. Tell us your priorities.
+- Will you clean inside the fridge? → Yes, you can request that as an add-on.
+- Will you clean inside the oven? → Yes, you can request that as an add-on.
+- Do you clean inside cabinets? → Yes, you can request that as an add-on.
+- Do you clean interior windows? → Yes, you can request that as an add-on.
+- Can you do laundry? → Yes, you can request one load of laundry as an add-on.
+- Can you wash dishes? → Yes, hand washing dishes is available as an add-on.
+- Can you make the beds? → Tell us which beds need to be made when requesting your estimate.
+- Can I choose what you focus on? → Absolutely. Tell us your top priorities before the cleaning.
+- Can you clean just one room or one area? → Tell us what you need cleaned and we'll let you know what we can offer.
+
+AVAILABILITY
+- Are you available today? → Send us your address and the time you need us. We'll check availability.
+- Are you available this week? → What day works for you, and what type of cleaning do you need?
+- How soon can I book? → Share your preferred date and address, and we'll check the schedule.
+- Do you offer weekend cleaning? → Send us your preferred date and we'll check availability.
+- How long will the cleaning take? → It depends on the size and condition of the space. We can give you an estimate after a few details.
+- Do I need to be home? → You can discuss access arrangements with us before your appointment.
+- How do I reschedule? → Send us your name and appointment date, and we'll help you find another time.
+- How do I cancel? → Send us your name and appointment date so we can help.
+
+SERVICE AREA & SPECIAL REQUESTS
+- What areas do you serve? → We serve Pittsburgh and nearby areas. Send us your address to confirm.
+- Do you come to my ZIP code? → Send us your ZIP code and we'll check.
+- Do you bring cleaning supplies? → Tell us about any product preferences or special surfaces, and we'll confirm supplies before the visit.
+- Can you use my cleaning products? → Let us know which products you'd like us to use, and we'll discuss it before scheduling.
+- I have pets. Is that okay? → Yes. Please tell us whether you have cats or dogs and how many.
+- I have allergies. Can you accommodate that? → Tell us what products or ingredients you need us to avoid before booking.
+- Can I send photos? → Yes. Photos can help us understand the job and prepare a more accurate estimate. (Let them attach photos in the chat.)
+- Can someone call me? → Yes. Leave your name, phone number, and the best time to call. (Opens "Talk to someone".)
+- Can I speak with a person? → Of course. Leave your name and phone number, and we'll follow up. (Opens "Talk to someone".)
+
+PART C — "Get a free estimate" (guided, ONE question at a time, with tap buttons where possible)
+1. "What's the property address (or ZIP code)?" (text)
+2. "What type of cleaning?" [Standard] [Deep] [Move-in/out] [Airbnb turnover] [Office] [Post-event] [Other]
+3. "How big is the property?" Bedrooms [1][2][3][4][5+] and bathrooms [1][1.5][2][2.5][3+]. For offices, approximate square feet.
+4. "When would you like the cleaning?" (date picker) and "How often?" [One time] [Weekly] [Every 2 weeks] [Monthly]
+5. "Any pets?" [No pets] [Cats] [Dogs] [Both], then "How many?"
+6. "Any add-ons?" Multi-select: [Inside fridge] [Inside oven] [Inside cabinets] [Interior windows] [1 load of laundry] [Hand-wash dishes] [None]
+7. "Anything else we should know? You can add photos." (optional text + photo upload)
+8. "Your name, phone number and email so we can send your estimate." Verify the email and phone here, as in step 5. Don't submit until both are verified.
+9. Finish with: "Thanks! We received your request and will contact you to confirm the details and price."
+Then SAVE it as a lead (source "Chat estimate") with every answer, create or update the client, and email pghshinepro@gmail.com with the subject "New chat estimate request: [name] [phone]" and all the answers.
+Show a [Back] button on every question so they can fix an answer.
+
+PART D — "Talk to someone"
+Ask for name, phone (verified), best time to call, and a short note. Save it as a lead marked "Call back requested" (at the top of Leads, in red). Email pghshinepro@gmail.com with the subject "CALL BACK REQUESTED: [name] [phone]". Reply: "Got it! We'll call you as soon as possible. Urgent? Call or text (412) 447-8047."
+
+PART E — Rules for the AI (typed questions only)
+- Answer in 1-3 short sentences using ONLY the answers above and my website's information.
+- Never make up prices. The only price it may mention is the "$25 travel fee may apply" above. For anything else about price, offer [Get a free estimate].
+- If unsure, say the team will confirm, and show [Talk to someone].
+
+PART F — Test and report
+Test on phone and computer:
+(1) Every topic and question button shows the right answer.
+(2) A typed question gets a real AI answer.
+(3) Temporarily break the AI (or simulate an error): the friendly fallback shows, and the message is emailed to me.
+(4) The free-estimate flow completes, the lead appears in Leads, and I get the email.
+(5) "Talk to someone" emails me and shows the lead in red.
+Tell me the exact error you found in Part A and what you changed.
+
+
+----------------------------------------------------------------
+STEP 8 — Final check (paste this last)
 ----------------------------------------------------------------
 Please test everything end to end and tell me the result of each item:
 1. Submit a test quote: it appears in Leads with the correct price, I get the alert email, and the customer gets the confirmation.
@@ -129,7 +233,7 @@ Please test everything end to end and tell me the result of each item:
 3. "Text via Google Voice" opens Google Voice with the right number.
 4. Add a client, edit them, and export both CSV lists.
 5. Add an employee, create a booking, assign them: they get the job email, and the booking shows on the calendar.
-6. Chat: a wrong email code is rejected, a wrong phone code is rejected, correct codes start the chat, the AI answers a question without quoting a price, and "Request a call back" emails me.
+6. Chat: every tap-to-answer button works, a typed question gets a real answer (no "temporarily unavailable"), the free-estimate flow saves a lead and emails me, wrong verification codes are rejected, and "Talk to someone" emails me.
 7. Every page has a unique title and description, there are no broken links, and the admin pages are hidden from Google.
 List anything that failed and fix it.
 
