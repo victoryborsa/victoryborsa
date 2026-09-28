@@ -225,6 +225,40 @@ Tell me the exact error you found in Part A and what you changed.
 
 
 ----------------------------------------------------------------
+STEP 9 — Address suggestions (autocomplete) + fix address not saving
+----------------------------------------------------------------
+Please add address autocomplete (address suggestions) to my website and admin. Do not change my prices or design.
+
+WHERE: every address field, including:
+- Add Appointment and Edit Appointment ("Property" / "Add property address")
+- Add and Edit Client
+- The quote / free estimate form and the chat estimate
+- Anywhere else I type an address
+
+HOW IT SHOULD WORK:
+1. As I start typing (after 3 characters), show a dropdown of matching real addresses.
+2. Only show US addresses, and prefer addresses near Pittsburgh, PA.
+3. When I tap a suggestion, automatically fill in Street address, City, State and ZIP.
+4. If I type a ZIP code or city first, suggest addresses in that area.
+5. I must still be able to type an address by hand if no suggestion appears. Never block saving.
+6. Fix this bug: in Edit Appointment, the address I type (for example "524 paddington Ln.") appears above the "Street address *" field, which stays empty. Whatever I type or select must go into the Street address field and be saved with the appointment and the client. After saving, reopening the appointment must show the full address.
+7. Also save the address's map coordinates (latitude/longitude) when available, so I can open it in Google Maps later. Add an "Open in Google Maps" link next to each saved address.
+8. Works on phone and computer, and is fast (wait about 0.3 seconds after I stop typing before searching).
+
+SERVICE TO USE: Google Maps Places Autocomplete (Places API).
+- Tell me step by step what I need to set up in Google Cloud (create the key, enable Places API, add billing).
+- Restrict the key to my website domains (pghshinepro.com and www.pghshinepro.com) and to the Places API only.
+- Set a monthly budget alert so I never get a surprise bill.
+- Enter the key in the secure settings/environment, never in visible page code or chat.
+- If you support a different address service that is built into GoDaddy/Airo, tell me and use that instead.
+
+TEST AND REPORT:
+- Edit an appointment, type "524 padd", pick the suggestion, and confirm street, city, state and ZIP fill in and save correctly.
+- Add a new client with a typed address (no suggestion) and confirm it still saves.
+- Tell me what you set up and anything I need to do.
+
+
+----------------------------------------------------------------
 STEP 8 — Final check (paste this last)
 ----------------------------------------------------------------
 Please test everything end to end and tell me the result of each item:
