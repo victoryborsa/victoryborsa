@@ -22,6 +22,13 @@ Until these are resolved, I can't say what is causing the slowness and errors. A
 5. **Known errors:** what guests, hosts and admins see, how often, and on which pages.
 6. **Network access:** add `sevgio.com` and `booking.onefinebnb.com` to the allowed domains so the live site can be measured (page weight, load times, broken requests) and the reference layout can be studied.
 
+### Reference site notes (from search results, since direct access is blocked)
+
+- `booking.onefinebnb.com` is One Fine BnB's direct-booking site, separate from its marketing site `onefinebnb.com`.
+- Search takes location, check-in/check-out dates and guest count. Filters cover amenities such as air conditioning, pool and pet-friendly.
+- Listing URLs look like `/listings/158663`. Numeric IDs like that are the URL pattern of a PMS-hosted booking website (this looks like Hostaway's, but that is **inferred and not confirmed**). In other words, the reference site is most likely a stock PMS booking site with a custom theme, not custom-built.
+- **What this means for Sevgio:** if Sevgio already uses a PMS, or would adopt one, a similar result is possible either through that PMS's built-in booking site or through a faster custom front end on its API. This supports Option A in Section 3.
+
 ## 2. How the audit will be done (once access is granted)
 
 - **Front end:** measure page weight, Core Web Vitals (LCP, INP, CLS) on mobile and desktop, unoptimized images, render-blocking scripts, and third-party script cost.
