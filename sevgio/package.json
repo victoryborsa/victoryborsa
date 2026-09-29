@@ -15,7 +15,8 @@
     "seed:demo": "node scripts/seed-demo.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types tests/unit/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "start:host": "node scripts/migrate.mjs && node scripts/bootstrap.mjs && next start"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",

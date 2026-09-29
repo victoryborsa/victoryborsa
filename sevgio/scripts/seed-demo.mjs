@@ -86,7 +86,8 @@ const props = [
 const TYPE = { villa: "lodge", apartment: "apartment", house: "house", cabin: "cabin" };
 const KINDS = [["exterior", "Outside"], ["living", "Living room"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["view", "The view"]];
 
-const password = await bcrypt.hash("demo-password-2026", 12);
+const demoPassword = process.env.DEMO_PASSWORD || "demo-password-2026";
+const password = await bcrypt.hash(demoPassword, 12);
 const users = {
   u1: ["Sarah Miller", "guest@demo.sevgio.com", "customer"],
   u2: ["Dana Brooks", "dana@demo.sevgio.com", "host"],
@@ -122,5 +123,5 @@ for (const p of props) {
   }
   console.log("Added:", p.name);
 }
-console.log("\nDemo accounts (password: demo-password-2026): guest@demo.sevgio.com, dana@demo.sevgio.com, marcus@demo.sevgio.com");
+console.log(process.env.DEMO_PASSWORD ? "\nDemo accounts created with a private password." : "\nDemo accounts (password: demo-password-2026): guest@demo.sevgio.com, dana@demo.sevgio.com, marcus@demo.sevgio.com");
 await client.end();
