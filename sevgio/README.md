@@ -1,0 +1,121 @@
+# Sevgio
+
+The booking website for Sevgio vacation rentals in Pennsylvania: guest search and booking, host dashboard, and admin dashboard.
+
+- **Guests** search by town, dates and guests; see real-time availability and the full price; book instantly or send a request; manage their trips; reset their password.
+- **Hosts** manage only their own listings: details, photos, pricing, blocked dates, Airbnb/Vrbo calendar sync, booking requests, and guest questions.
+- **Admins** manage users and roles, all listings and bookings, site settings (tax, contact details, payment note), and see every error or failed booking in one log.
+
+Online payment is intentionally off for now. Guests see a note (editable in Admin → Settings) saying the host arranges payment. See "Adding payments later" below.
+
+## How it is built
+
+| Part | Choice | Why |
+|---|---|---|
+| Website | Next.js 15 (React), server-rendered | Fast first load (≈106 KB of JavaScript), works on phones, good for Google |
+| Database | PostgreSQL 14+ | Reliable; double bookings are blocked **by the database itself** |
+| Photos | Stored in the database, resized to WebP on upload | Nothing extra to set up; photos are cached for a year by browsers |
+| Sign-in | Email + password, bcrypt hashing, secure HTTP-only cookies | No third-party accounts needed |
+| Email | Any SMTP provider (optional) | Without it, emails are printed to the server log |
+
+### How double bookings are prevented
+
+1. The calendar only lets guests pick free nights.
+2. When a guest confirms, the server locks that listing, re-checks every booked night and every blocked night, then saves.
+3. The database has an exclusion constraint (`bookings_no_overlap`) that refuses any two active bookings for the same listing on overlapping nights, even if the first two checks were somehow skipped.
+
+The automated tests fire 20 simultaneous bookings at the same nights and confirm exactly one succeeds.
+
+### How access is protected
+
+- Every host and admin page, and every action behind it, checks the signed-in user's role on the server. Hiding a button is never the only protection.
+- Hosts can only load or change listings and bookings where they are the host. Admins can manage everything.
+- Guests' phone numbers and emails are shown to hosts only for active bookings on their own listings. The street address and arrival instructions are shown to guests only after a booking is confirmed.
+- Passwords are hashed with bcrypt. Sessions are random tokens stored hashed. After 5 failed sign-ins for one email in 15 minutes, sign-in pauses.
+- Password reset links are single-use and expire after 30 minutes. Changing a password or role signs that person out everywhere.
+- Calendar import links can only reach public internet addresses.
+- Security headers (HSTS, no framing, no sniffing) are set on every page.
+
+## Run it on your computer
+
+Requirements: Node.js 20+ and PostgreSQL 14+.
+
+```bash
+cd sevgio
+cp .env.example .env              # then edit DATABASE_URL
+npm install
+npm run migrate                   # creates the tables
+npm run create-admin -- "Your Name" you@example.com "a-long-password"
+npm run seed:demo                 # optional: 6 sample Pennsylvania listings
+npm run build && npm start        # http://localhost:3000
+```
+
+Remove the sample listings any time with `npm run seed:demo -- --remove`.
+
+## Tests
+
+```bash
+DATABASE_URL=postgres://…/sevgio_test npm test     # booking engine: overlaps, blocks, pricing, calendars
+npm run build && npm run test:e2e                  # browser tests of guest, host and admin workflows
+```
+
+The browser tests wipe and rebuild the test database set in `E2E_DATABASE_URL` (default `postgres://sevgio:sevgio@localhost:5432/sevgio_test`). Never point it at the live database.
+
+## Going live (recommended: Render)
+
+Render runs the website and the database together, with daily backups. The monthly cost for a small site is roughly the price of the web service plus the database plan you pick.
+
+1. **Put the code on GitHub.** It is already in this repository under `sevgio/`.
+2. **Create the database.** On [render.com](https://render.com): New → PostgreSQL. Choose a paid plan so you get backups. Copy the **Internal Database URL**.
+3. **Create the website.** New → Web Service → connect this repository.
+   - Root directory: `sevgio`
+   - Build command: `npm ci && npm run build`
+   - Pre-deploy command: `npm run migrate`
+   - Start command: `npm start`
+   - Environment variables: `DATABASE_URL` (from step 2), `SITE_URL=https://sevgio.com`, `CRON_SECRET` (any long random text), and the `SMTP_*` / `EMAIL_FROM` values for email.
+4. **Create your admin account.** In the web service's Shell tab: `npm run create-admin -- "Your Name" you@example.com "a-long-password"`.
+5. **Schedule calendar sync.** New → Cron Job, schedule `0 * * * *`, command:
+   `curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://sevgio.com/api/cron/sync-calendars`
+   (set the same `CRON_SECRET` on the cron job). This imports Airbnb/Vrbo calendars hourly and expires unanswered requests.
+6. **Test on Render's temporary address** (like `sevgio.onrender.com`) before switching the domain.
+
+Vercel with a Neon or Supabase database also works: set the same environment variables, add `?sslmode=require` to the database URL, and run `npm run migrate` from your computer against the live database before the first deploy.
+
+## Pointing sevgio.com at the new site (GoDaddy)
+
+Do this only after the new site is tested.
+
+1. In Render: your web service → Settings → Custom Domains → add `sevgio.com` and `www.sevgio.com`. Render shows the exact DNS records to use.
+2. In GoDaddy: **My Products → sevgio.com → DNS**.
+   - Change the `A` record for `@` to the IP address Render shows.
+   - Change the `CNAME` record for `www` to the address Render shows (like `sevgio.onrender.com`).
+   - **Don't touch `MX` or `TXT` email records**, so your @sevgio.com email keeps working.
+3. Wait 5 minutes to a few hours. Render issues the HTTPS certificate automatically.
+4. To go back to the old site, restore the old `A` and `CNAME` values.
+
+## Email
+
+Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` and `EMAIL_FROM`. Any provider works, for example:
+- GoDaddy / Microsoft 365 email: host `smtp.office365.com`, port 587, your mailbox and password (SMTP sending must be enabled for the mailbox).
+- Google Workspace: host `smtp.gmail.com`, port 587, an app password.
+- A sending service such as Resend, Postmark or SendGrid (best delivery rates).
+
+Emails sent: booking confirmations and requests (to guest and host), accept/decline/cancel notices, password resets, invitations, and contact-form messages (to the contact email in Admin → Settings).
+
+## Managing the site day to day
+
+- **Add a host:** Admin → Users & roles → Invite a host. They get an email to set their password. Or change an existing account's role.
+- **Add a listing:** Host dashboard → Listings → Add a listing → upload photos → set Visibility to Published.
+- **Block dates:** Listing → Calendar & sync → click the dates → Block these dates.
+- **Sync with Airbnb/Vrbo:** Listing → Calendar & sync. Copy the Sevgio link into Airbnb/Vrbo, and paste their export link into Sevgio.
+- **Answer requests:** Host dashboard → Overview. Unanswered requests expire after 48 hours and release the dates.
+- **Check for problems:** Admin → Errors & activity. Failed emails, calendar imports, refused bookings and server errors appear here.
+- **Taxes and notices:** Admin → Settings.
+
+## Adding payments later
+
+The booking step is the only place that changes. The recommended path is Stripe Checkout: when a guest confirms, create a Checkout Session for `total_cents`, hold the dates as a `pending` booking, and confirm it from Stripe's webhook. Card details then never touch Sevgio's servers.
+
+## Moving data from the old site
+
+When the old site's data is available (a database export or CSV of listings, guests and upcoming bookings), write a one-time import script into `scripts/` that inserts into the same tables. The database constraints will refuse any overlapping bookings, which also catches problems in the old data. Check the counts against the old system before switching the domain.

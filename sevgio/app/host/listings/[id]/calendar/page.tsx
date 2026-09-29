@@ -1,0 +1,77 @@
+import { requireManageable } from "@/lib/access.ts";
+import { q } from "@/lib/db.ts";
+import { addDays, eachNight, fmtDate, todayLocal } from "@/lib/dates.ts";
+import { siteUrl } from "@/lib/email.ts";
+import { HostCalendar } from "@/components/HostCalendar.tsx";
+import { ActionForm, SubmitButton } from "@/components/forms.tsx";
+import { CopyField } from "@/components/CopyField.tsx";
+import { addBlockAction, addFeedAction, removeBlockAction, removeFeedAction, syncFeedAction } from "@/app/actions/host.ts";
+
+export default async function CalendarPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { p } = await requireManageable(id);
+  const today = todayLocal(), until = addDays(today, 560);
+  const [bookings, blocks, feeds] = await Promise.all([
+    q<{ check_in: string; check_out: string }>("SELECT check_in, check_out FROM bookings WHERE property_id = $1 AND status IN ('pending','confirmed') AND check_out > $2", [p.id, today]),
+    q<{ id: string; start_date: string; end_date: string; note: string; source: string }>("SELECT id, start_date, end_date, note, source FROM blocks WHERE property_id = $1 AND end_date > $2 ORDER BY start_date", [p.id, today]),
+    q<{ id: string; name: string; url: string; last_synced_at: string | null; last_error: string | null }>("SELECT id, name, url, last_synced_at, last_error FROM ical_feeds WHERE property_id = $1 ORDER BY created_at", [p.id]),
+  ]);
+  const booked = bookings.flatMap(b => eachNight(b.check_in, b.check_out < until ? b.check_out : until));
+  const blocked = blocks.flatMap(b => eachNight(b.start_date, b.end_date < until ? b.end_date : until));
+  const hostBlocks = blocks.filter(b => b.source === "host");
+  const exportUrl = `${siteUrl()}/api/ical/${p.ical_token}`;
+
+  return (
+    <div className="stack" style={{ gap: 20 }}>
+      <HostCalendar propertyId={p.id} today={today} booked={booked} blocked={blocked} action={addBlockAction} />
+
+      <div className="box">
+        <h3>Your blocked dates</h3>
+        {hostBlocks.length === 0 ? <p className="muted">No dates blocked.</p> : (
+          <ul className="stack" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {hostBlocks.map(b => (
+              <li key={b.id} className="row">
+                <span style={{ flex: 1 }}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)} <span className="muted">· {b.note}</span></span>
+                <form action={removeBlockAction}><input type="hidden" name="id" value={p.id} /><input type="hidden" name="block" value={b.id} /><button className="btn btn-ghost btn-sm">Open these dates</button></form>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="box">
+        <h3>Sync with Airbnb, Vrbo and Booking.com</h3>
+        <p className="muted">Two-way calendar sync prevents double bookings when this home is listed on other sites too.</p>
+        <div className="stack">
+          <strong>1. Send Sevgio bookings to other sites</strong>
+          <p className="hint">Paste this link into the other site's "import calendar" setting. It stays private: anyone with the link can see which dates are booked, but not who booked them.</p>
+          <CopyField value={exportUrl} label="Sevgio calendar link" />
+        </div>
+        <div className="stack">
+          <strong>2. Block dates booked on other sites</strong>
+          <p className="hint">Paste the other site's "export calendar" link. Sevgio checks it every hour, and you can refresh it any time.</p>
+          {feeds.map(f => (
+            <div key={f.id} className="row" style={{ borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <b>{f.name}</b>
+                <div className="hint" style={{ wordBreak: "break-all" }}>{f.url.slice(0, 80)}{f.url.length > 80 ? "…" : ""}</div>
+                <div className="hint">{f.last_synced_at ? `Last updated ${new Date(f.last_synced_at).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" })}` : "Not imported yet"}</div>
+                {f.last_error && <div className="err-text">{f.last_error}</div>}
+              </div>
+              <form action={syncFeedAction}><input type="hidden" name="id" value={p.id} /><input type="hidden" name="feed" value={f.id} /><button className="btn btn-ghost btn-sm">Refresh now</button></form>
+              <form action={removeFeedAction}><input type="hidden" name="id" value={p.id} /><input type="hidden" name="feed" value={f.id} /><button className="btn btn-danger btn-sm">Remove</button></form>
+            </div>
+          ))}
+          <ActionForm action={addFeedAction} className="stack" resetOnOk>
+            <input type="hidden" name="id" value={p.id} />
+            <div className="grid-2">
+              <label className="field"><span>Site</span><select className="input" name="name"><option>Airbnb</option><option>Vrbo</option><option>Booking.com</option><option>Other calendar</option></select></label>
+              <label className="field"><span>Calendar link (.ics)</span><input className="input" name="url" type="url" placeholder="https://www.airbnb.com/calendar/ical/…" /></label>
+            </div>
+            <div><SubmitButton className="btn btn-ghost" pendingText="Importing…">Add and import</SubmitButton></div>
+          </ActionForm>
+        </div>
+      </div>
+    </div>
+  );
+}
