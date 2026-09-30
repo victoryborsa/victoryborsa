@@ -153,3 +153,20 @@ test("scheduled job requires the secret", async ({ request }) => {
   const ok = await request.get("/api/cron/sync-calendars", { headers: { authorization: "Bearer e2e-secret" } });
   expect(ok.status()).toBe(200);
 });
+
+test("host links a room to a whole home; each page points to the other", async ({ page }) => {
+  await signIn(page, "dana@demo.sevgio.com", "demo-password-2026");
+  await page.goto("/host/listings");
+  await page.locator("tr", { hasText: "Lancaster County Farmhouse" }).getByRole("link", { name: "Edit" }).click();
+  await page.getByLabel(/room inside one of your whole-home listings/).selectOption({ label: "Yes, a room in: Lake Harmony Lodge" });
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText("Saved. Changes are live on the site.")).toBeVisible();
+  await page.goto("/stays/lake-harmony-lodge");
+  await expect(page.getByRole("heading", { name: "Just need a room?" })).toBeVisible();
+  await page.goto("/stays/lancaster-county-farmhouse-suite");
+  await expect(page.getByText(/This is a private room in/)).toBeVisible();
+  // Marcus's listings aren't offered as homes to Dana.
+  await page.goto("/host/listings/new");
+  await expect(page.getByLabel(/room inside one of your whole-home listings/).locator("option", { hasText: "Rittenhouse" })).toHaveCount(0);
+  await signOut(page);
+});

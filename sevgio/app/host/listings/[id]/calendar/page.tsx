@@ -1,5 +1,6 @@
 import { requireManageable } from "@/lib/access.ts";
 import { q } from "@/lib/db.ts";
+import { RELATED } from "@/lib/bookings.ts";
 import { addDays, eachNight, fmtDate, todayLocal } from "@/lib/dates.ts";
 import { siteUrl } from "@/lib/email.ts";
 import { HostCalendar } from "@/components/HostCalendar.tsx";
@@ -11,12 +12,14 @@ export default async function CalendarPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const { p } = await requireManageable(id);
   const today = todayLocal(), until = addDays(today, 560);
-  const [bookings, blocks, feeds] = await Promise.all([
-    q<{ check_in: string; check_out: string }>("SELECT check_in, check_out FROM bookings WHERE property_id = $1 AND status IN ('pending','confirmed') AND check_out > $2", [p.id, today]),
+  const [bookings, linkedBlocks, blocks, feeds] = await Promise.all([
+    q<{ check_in: string; check_out: string }>(`SELECT check_in, check_out FROM bookings WHERE property_id IN ${RELATED("$1")} AND status IN ('pending','confirmed') AND check_out > $2`, [p.id, today]),
+    q<{ start_date: string; end_date: string }>(`SELECT start_date, end_date FROM blocks WHERE property_id IN ${RELATED("$1")} AND property_id <> $1 AND end_date > $2`, [p.id, today]),
     q<{ id: string; start_date: string; end_date: string; note: string; source: string }>("SELECT id, start_date, end_date, note, source FROM blocks WHERE property_id = $1 AND end_date > $2 ORDER BY start_date", [p.id, today]),
     q<{ id: string; name: string; url: string; last_synced_at: string | null; last_error: string | null }>("SELECT id, name, url, last_synced_at, last_error FROM ical_feeds WHERE property_id = $1 ORDER BY created_at", [p.id]),
   ]);
-  const booked = bookings.flatMap(b => eachNight(b.check_in, b.check_out < until ? b.check_out : until));
+  // Nights taken by the linked whole home or room count as booked here too.
+  const booked = [...bookings.map(b => [b.check_in, b.check_out]), ...linkedBlocks.map(b => [b.start_date, b.end_date])].flatMap(([a, z]) => eachNight(a, z < until ? z : until));
   const blocked = blocks.flatMap(b => eachNight(b.start_date, b.end_date < until ? b.end_date : until));
   const hostBlocks = blocks.filter(b => b.source === "host");
   const exportUrl = `${siteUrl()}/api/ical/${p.ical_token}`;

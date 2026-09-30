@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { propertyBySlug, photosFor, photoUrl } from "@/lib/queries.ts";
+import { propertyBySlug, photosFor, photoUrl, linkedListings } from "@/lib/queries.ts";
+import { PropertyCard } from "@/components/PropertyCard.tsx";
 import { unavailableNights } from "@/lib/bookings.ts";
 import { currentUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
@@ -44,12 +45,13 @@ export default async function StayPage({ params, searchParams }: Params) {
   const p = await load(slug);
   if (!p) notFound();
   const today = todayLocal();
-  const [photos, taken, settings, host, user] = await Promise.all([
+  const [photos, taken, settings, host, user, linked] = await Promise.all([
     photosFor(p.id),
     unavailableNights(p.id, today, addDays(today, 560)),
     getSettings(),
     one<{ name: string }>("SELECT name FROM users WHERE id = $1", [p.host_id]),
     currentUser(),
+    linkedListings(p),
   ]);
   const hostFirst = (host?.name || "your host").split(" ")[0];
   const bookable = p.status === "published";
@@ -86,6 +88,11 @@ export default async function StayPage({ params, searchParams }: Params) {
               <div className="fact"><b>{p.beds}</b><span>bed{p.beds === 1 ? "" : "s"}</span></div>
               <div className="fact"><b>{p.bathrooms}</b><span>bathroom{p.bathrooms === 1 ? "" : "s"}</span></div>
             </div>
+            {linked.parent && (
+              <div className="notice info">
+                <div>This is a private room in <Link href={`/stays/${linked.parent.slug}`}>{linked.parent.title}</Link>. Traveling with a bigger group? You can book the whole home instead.</div>
+              </div>
+            )}
             <section>
               <h2>About this {(PROPERTY_TYPES[p.property_type] || "home").toLowerCase()}</h2>
               <p className="prose">{p.description}</p>
@@ -98,6 +105,13 @@ export default async function StayPage({ params, searchParams }: Params) {
               </section>
             )}
             <AvailabilitySection />
+            {linked.rooms.length > 0 && (
+              <section>
+                <h2>Just need a room?</h2>
+                <p className="muted">You can also book individual rooms in this home. When a room is booked, the whole home isn't available for those dates.</p>
+                <div className="cards">{linked.rooms.map(r => <PropertyCard key={r.id} p={r} taxPercent={settings.tax_percent} ci={sp.ci} co={sp.co} guests={Number(sp.guests) || undefined} />)}</div>
+              </section>
+            )}
             <section>
               <h2>House rules</h2>
               <dl className="kv">

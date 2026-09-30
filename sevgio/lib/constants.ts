@@ -23,7 +23,7 @@ export const AMENITIES: Record<string, string> = {
 };
 
 export const PROPERTY_TYPES: Record<string, string> = {
-  house: "House", apartment: "Apartment", condo: "Condo", cabin: "Cabin", cottage: "Cottage", townhouse: "Townhouse", farmhouse: "Farmhouse", lodge: "Lodge", suite: "Private suite",
+  house: "House", apartment: "Apartment", condo: "Condo", cabin: "Cabin", cottage: "Cottage", townhouse: "Townhouse", farmhouse: "Farmhouse", lodge: "Lodge", suite: "Private suite", room: "Private room",
 };
 
 export const CANCELLATION: Record<string, { label: string; text: string }> = {

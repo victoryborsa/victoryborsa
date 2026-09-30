@@ -5,7 +5,7 @@ import type { ActionState } from "@/lib/validate.ts";
 
 const dollars = (c?: number) => (c === undefined ? "" : String(c / 100));
 
-export function ListingForm({ action, p, hosts, submitLabel }: { action: (s: ActionState, fd: FormData) => Promise<ActionState>; p?: Property; hosts?: { id: string; name: string }[]; submitLabel: string }) {
+export function ListingForm({ action, p, hosts, homes = [], submitLabel }: { action: (s: ActionState, fd: FormData) => Promise<ActionState>; p?: Property; hosts?: { id: string; name: string }[]; homes?: { id: string; title: string; host_name?: string }[]; submitLabel: string }) {
   return (
     <ActionForm action={action} className="stack" id="listing-form">
       {p && <input type="hidden" name="id" value={p.id} />}
@@ -30,6 +30,14 @@ export function ListingForm({ action, p, hosts, submitLabel }: { action: (s: Act
             {!p && <><input type="hidden" name="status" value="draft" /><span className="hint">Add photos next, then publish.</span></>}
           </label>
         </div>
+        <label className="field">
+          <span>Is this a room inside one of your whole-home listings?</span>
+          <select className="input" name="parent_id" defaultValue={p?.parent_id || ""}>
+            <option value="">No, this is a separate home (or the whole home)</option>
+            {homes.filter(h => h.id !== p?.id).map(h => <option key={h.id} value={h.id}>Yes, a room in: {h.title}{h.host_name ? ` (${h.host_name})` : ""}</option>)}
+          </select>
+          <span className="hint">Linked calendars: booking the whole home blocks all its rooms, and booking a room blocks the whole home for those dates. Other rooms stay bookable.</span>
+        </label>
         <div className="grid-2">
           <label className="field"><span>Town or city</span><input className="input" name="city" defaultValue={p?.city} placeholder="e.g. Jim Thorpe" required /></label>
           <label className="field"><span>Area or region <span className="muted" style={{ fontWeight: 400 }}>(shown to guests)</span></span><input className="input" name="area" defaultValue={p?.area} placeholder="e.g. Poconos" /></label>

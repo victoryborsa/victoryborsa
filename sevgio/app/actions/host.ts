@@ -25,6 +25,7 @@ function readListing(fd: FormData) {
     booking_mode: str(fd, "booking_mode"), cancellation_policy: str(fd, "cancellation_policy"), check_in_time: str(fd, "check_in_time", 30), check_out_time: str(fd, "check_out_time", 30),
     amenities: fd.getAll("amenities").map(String).filter(a => a in AMENITIES), house_rules: lines(str(fd, "house_rules", 5000)), arrival_instructions: str(fd, "arrival_instructions", 5000),
     status: str(fd, "status"),
+    parent_id: str(fd, "parent_id", 40) || null,
   };
   let error = "";
   if (!v.title) error = "Give the listing a title.";
@@ -44,6 +45,27 @@ function readListing(fd: FormData) {
   return { v, error };
 }
 
+/** Checks a "part of" link: the whole home must exist, belong to the same host, and not itself be part of another home. */
+async function parentProblem(parentId: string | null, hostId: string, selfId?: string): Promise<string | null> {
+  if (!parentId) return null;
+  if (parentId === selfId) return "A listing can't be part of itself.";
+  const parent = await one<{ host_id: string; parent_id: string | null }>("SELECT host_id, parent_id FROM properties WHERE id = $1", [parentId]);
+  if (!parent) return "Choose the whole-home listing this room belongs to.";
+  if (parent.host_id !== hostId) return "The whole-home listing must belong to the same host.";
+  if (parent.parent_id) return "That listing is itself a room. Choose the whole-home listing instead.";
+  if (selfId) {
+    const hasRooms = await one("SELECT 1 FROM properties WHERE parent_id = $1", [selfId]);
+    if (hasRooms) return "This listing has rooms linked to it, so it can't also be a room of another home.";
+    const clash = await one<{ a: string; b: string }>(
+      `SELECT a.code AS a, b.code AS b FROM bookings a JOIN bookings b ON b.property_id = $2
+       WHERE a.property_id = $1 AND a.status IN ('pending','confirmed') AND b.status IN ('pending','confirmed') AND a.check_in < b.check_out AND b.check_in < a.check_out LIMIT 1`,
+      [selfId, parentId],
+    );
+    if (clash) return `Bookings ${clash.a} and ${clash.b} overlap, so these listings can't be linked until one is changed or cancelled.`;
+  }
+  return null;
+}
+
 export async function createListingAction(_: ActionState, fd: FormData): Promise<ActionState> {
   const u = await requireUser(["host", "admin"]);
   const { v, error } = readListing(fd);
@@ -55,14 +77,16 @@ export async function createListingAction(_: ActionState, fd: FormData): Promise
     if (!h) return { error: "Choose a host for this listing." };
     hostId = h.id;
   }
+  const pErr = await parentProblem(v.parent_id, hostId);
+  if (pErr) return { error: pErr };
   let slug = slugify(`${v.title} ${v.city}`);
   if (await one("SELECT 1 FROM properties WHERE slug = $1", [slug])) slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
   const row = await one<{ id: string }>(
     `INSERT INTO properties (slug, host_id, title, property_type, city, area, address, description, max_guests, bedrooms, beds, bathrooms, nightly_price_cents, cleaning_fee_cents,
-       min_nights, max_nights, booking_mode, cancellation_policy, check_in_time, check_out_time, amenities, house_rules, arrival_instructions, status)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,'draft') RETURNING id`,
+       min_nights, max_nights, booking_mode, cancellation_policy, check_in_time, check_out_time, amenities, house_rules, arrival_instructions, status, parent_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,'draft',$24) RETURNING id`,
     [slug, hostId, v.title, v.property_type, v.city, v.area, v.address, v.description, v.max_guests, v.bedrooms, v.beds, v.bathrooms, v.nightly, v.cleaning,
-      v.min_nights, v.max_nights, v.booking_mode, v.cancellation_policy, v.check_in_time || "3:00 pm", v.check_out_time || "11:00 am", v.amenities, v.house_rules, v.arrival_instructions],
+      v.min_nights, v.max_nights, v.booking_mode, v.cancellation_policy, v.check_in_time || "3:00 pm", v.check_out_time || "11:00 am", v.amenities, v.house_rules, v.arrival_instructions, v.parent_id],
   );
   await logEvent("info", "Listings", `Listing created: ${v.title}`, {}, u.id);
   redirect(`/host/listings/${row!.id}/photos?created=1`);
@@ -72,6 +96,8 @@ export async function updateListingAction(_: ActionState, fd: FormData): Promise
   const { u, p } = await requireManageable(str(fd, "id", 40));
   const { v, error } = readListing(fd);
   if (error) return { error };
+  const pErr = v.parent_id !== p.parent_id ? await parentProblem(v.parent_id, p.host_id, p.id) : null;
+  if (pErr) return { error: pErr };
   if (v.status === "published") {
     const photos = await one<{ n: number }>("SELECT count(*) AS n FROM photos WHERE property_id = $1", [p.id]);
     if (!photos || photos.n === 0) return { error: "Add at least one photo before publishing." };
@@ -79,9 +105,9 @@ export async function updateListingAction(_: ActionState, fd: FormData): Promise
   await q(
     `UPDATE properties SET title=$2, property_type=$3, city=$4, area=$5, address=$6, description=$7, max_guests=$8, bedrooms=$9, beds=$10, bathrooms=$11, nightly_price_cents=$12,
        cleaning_fee_cents=$13, min_nights=$14, max_nights=$15, booking_mode=$16, cancellation_policy=$17, check_in_time=$18, check_out_time=$19, amenities=$20, house_rules=$21,
-       arrival_instructions=$22, status=$23, updated_at=now() WHERE id=$1`,
+       arrival_instructions=$22, status=$23, parent_id=$24, updated_at=now() WHERE id=$1`,
     [p.id, v.title, v.property_type, v.city, v.area, v.address, v.description, v.max_guests, v.bedrooms, v.beds, v.bathrooms, v.nightly, v.cleaning, v.min_nights, v.max_nights,
-      v.booking_mode, v.cancellation_policy, v.check_in_time, v.check_out_time, v.amenities, v.house_rules, v.arrival_instructions, v.status],
+      v.booking_mode, v.cancellation_policy, v.check_in_time, v.check_out_time, v.amenities, v.house_rules, v.arrival_instructions, v.status, v.parent_id],
   );
   if (v.nightly !== p.nightly_price_cents || v.status !== p.status) await logEvent("info", "Listings", `${v.title}: ${v.status !== p.status ? `status ${p.status} → ${v.status}` : ""} ${v.nightly !== p.nightly_price_cents ? `price ${p.nightly_price_cents / 100} → ${v.nightly! / 100}` : ""}`.trim(), { property: p.id }, u.id);
   revalidatePath(`/stays/${p.slug}`);

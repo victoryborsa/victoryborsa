@@ -91,3 +91,28 @@ test("iCal round trip, including Airbnb-style folded lines", () => {
   const airbnb = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20261201\r\nDTEND;VALUE=DATE:20261203\r\nSUMMARY:Reserved\r\nDESCRIPTION:Reservation URL: https://www.airbnb.com/hosting/\r\n reservations/details/ABC\r\nEND:VEVENT\r\nEND:VCALENDAR";
   assert.deepEqual(parseIcs(airbnb), [{ start: "2026-12-01", end: "2026-12-03", summary: "Reserved" }]);
 });
+
+test("whole home and its rooms share a calendar; rooms don't block each other", async () => {
+  const mk = async (slug: string, parent: string | null) => (await one<{ id: string }>(
+    `INSERT INTO properties (slug, host_id, title, city, max_guests, nightly_price_cents, min_nights, booking_mode, status, parent_id)
+     VALUES ($1, $2, $1, 'Erie', 6, 10000, 1, 'instant', 'published', $3) RETURNING id`, [slug, hostId, parent]))!.id;
+  const house = await mk("house", null), roomA = await mk("room-a", house), roomB = await mk("room-b", house);
+  const b = (propertyId: string, s: number, e: number) => createBooking({ ...base(), propertyId, ci: addDays(T, s), co: addDays(T, e) });
+
+  assert.equal((await b(roomA, 100, 103)).ok, true);
+  assert.equal((await b(roomB, 100, 103)).ok, true, "another room is still free");
+  assert.equal((await b(house, 102, 104)).ok, false, "whole home blocked by a room booking");
+  assert.equal((await b(house, 110, 112)).ok, true);
+  assert.equal((await b(roomA, 111, 112)).ok, false, "room blocked by a whole-home booking");
+  assert.deepEqual(await unavailableNights(house, addDays(T, 99), addDays(T, 104)), [addDays(T, 100), addDays(T, 101), addDays(T, 102)]);
+
+  // A block on the whole home blocks its rooms.
+  assert.deepEqual(await addBlock(house, addDays(T, 120), addDays(T, 121), "Owner"), { ok: true });
+  assert.equal((await b(roomB, 120, 121)).ok, false);
+  // A room can't be blocked over a whole-home booking.
+  assert.equal((await addBlock(roomB, addDays(T, 110), addDays(T, 111), "x")).ok, false);
+
+  // Simultaneous: whole home vs. a room for the same nights, many times over. Exactly one wins.
+  const results = await Promise.all([...Array(10)].flatMap(() => [b(house, 130, 132), b(roomA, 130, 132)]));
+  assert.equal(results.filter(r => r.ok).length, 1);
+});

@@ -10,6 +10,7 @@ export type Property = {
   max_guests: number; bedrooms: number; beds: number; bathrooms: number; nightly_price_cents: number; cleaning_fee_cents: number;
   min_nights: number; max_nights: number; booking_mode: "instant" | "request"; cancellation_policy: string; check_in_time: string; check_out_time: string;
   amenities: string[]; house_rules: string[]; arrival_instructions: string; status: "draft" | "published" | "hidden"; rating: number | null; review_count: number; ical_token: string;
+  parent_id: string | null;
 };
 
 export type Booking = {
@@ -20,9 +21,17 @@ export type Booking = {
 
 const ACTIVE = "('pending','confirmed')";
 
-/** Serialises every booking and block change for one property, so two requests can never both pass the availability check. */
+/**
+ * Listings whose bookings share nights with this one: itself, the whole home it belongs to, and the rooms inside it.
+ * Rooms of the same home don't block each other. Use as `property_id IN ${RELATED("$1")}`.
+ */
+export const RELATED = (param: string) =>
+  `(SELECT r.id FROM properties r, properties me WHERE me.id = ${param} AND (r.id = me.id OR r.parent_id = me.id OR r.id = me.parent_id))`;
+
+/** Serialises every booking and block change for a whole home and its rooms, so two requests can never both pass the availability check. */
 async function lockProperty(c: Db, propertyId: string) {
-  await c.query("SELECT pg_advisory_xact_lock(hashtext($1))", [propertyId]);
+  const root = await one<{ root: string }>("SELECT coalesce(parent_id, id)::text AS root FROM properties WHERE id = $1", [propertyId], c);
+  await c.query("SELECT pg_advisory_xact_lock(hashtext($1))", [root?.root ?? propertyId]);
 }
 
 /** Requests the host never answered expire, which releases the dates for other guests. */
@@ -39,10 +48,10 @@ export async function unavailableNights(propertyId: string, from: string, to: st
   const rows = await q<{ d: string }>(
     `SELECT DISTINCT d::date::text AS d FROM (
        SELECT generate_series(greatest(check_in, $2::date), least(check_out, $3::date) - 1, interval '1 day') AS d
-         FROM bookings WHERE property_id = $1 AND status IN ${ACTIVE} AND check_out > $2 AND check_in < $3
+         FROM bookings WHERE property_id IN ${RELATED("$1")} AND status IN ${ACTIVE} AND check_out > $2 AND check_in < $3
        UNION ALL
        SELECT generate_series(greatest(start_date, $2::date), least(end_date, $3::date) - 1, interval '1 day')
-         FROM blocks WHERE property_id = $1 AND end_date > $2 AND start_date < $3
+         FROM blocks WHERE property_id IN ${RELATED("$1")} AND end_date > $2 AND start_date < $3
      ) x ORDER BY 1`,
     [propertyId, from, to],
     db,
@@ -52,8 +61,8 @@ export async function unavailableNights(propertyId: string, from: string, to: st
 
 export async function isRangeFree(propertyId: string, ci: string, co: string, db?: Db): Promise<boolean> {
   const r = await one<{ n: number }>(
-    `SELECT (SELECT count(*) FROM bookings WHERE property_id = $1 AND status IN ${ACTIVE} AND check_in < $3 AND check_out > $2)
-          + (SELECT count(*) FROM blocks WHERE property_id = $1 AND start_date < $3 AND end_date > $2) AS n`,
+    `SELECT (SELECT count(*) FROM bookings WHERE property_id IN ${RELATED("$1")} AND status IN ${ACTIVE} AND check_in < $3 AND check_out > $2)
+          + (SELECT count(*) FROM blocks WHERE property_id IN ${RELATED("$1")} AND start_date < $3 AND end_date > $2) AS n`,
     [propertyId, ci, co],
     db,
   );
@@ -131,7 +140,7 @@ export async function addBlock(propertyId: string, start: string, end: string, n
   return tx(async c => {
     await lockProperty(c, propertyId);
     const clash = await one<{ code: string }>(
-      `SELECT code FROM bookings WHERE property_id = $1 AND status IN ${ACTIVE} AND check_in < $3 AND check_out > $2 LIMIT 1`,
+      `SELECT code FROM bookings WHERE property_id IN ${RELATED("$1")} AND status IN ${ACTIVE} AND check_in < $3 AND check_out > $2 LIMIT 1`,
       [propertyId, start, end],
       c,
     );
@@ -149,7 +158,7 @@ export async function replaceFeedBlocks(propertyId: string, source: string, rang
     const clashes: string[] = [];
     for (const r of ranges) {
       const clash = await one<{ code: string }>(
-        `SELECT code FROM bookings WHERE property_id = $1 AND status IN ${ACTIVE} AND check_in < $3 AND check_out > $2 LIMIT 1`,
+        `SELECT code FROM bookings WHERE property_id IN ${RELATED("$1")} AND status IN ${ACTIVE} AND check_in < $3 AND check_out > $2 LIMIT 1`,
         [propertyId, r.start, r.end],
         c,
       );
