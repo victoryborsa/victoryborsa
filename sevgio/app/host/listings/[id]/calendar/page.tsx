@@ -13,7 +13,7 @@ export default async function CalendarPage({ params }: { params: Promise<{ id: s
   const { p } = await requireManageable(id);
   const today = todayLocal(), until = addDays(today, 560);
   const [bookings, linkedBlocks, blocks, feeds] = await Promise.all([
-    q<{ check_in: string; check_out: string }>(`SELECT check_in, check_out FROM bookings WHERE property_id IN ${RELATED("$1")} AND status IN ('pending','confirmed') AND check_out > $2`, [p.id, today]),
+    q<{ check_in: string; check_out: string }>(`SELECT check_in, check_out FROM bookings WHERE property_id IN ${RELATED("$1")} AND status IN ('pending','awaiting_payment','confirmed') AND check_out > $2`, [p.id, today]),
     q<{ start_date: string; end_date: string }>(`SELECT start_date, end_date FROM blocks WHERE property_id IN ${RELATED("$1")} AND property_id <> $1 AND end_date > $2`, [p.id, today]),
     q<{ id: string; start_date: string; end_date: string; note: string; source: string }>("SELECT id, start_date, end_date, note, source FROM blocks WHERE property_id = $1 AND end_date > $2 ORDER BY start_date", [p.id, today]),
     q<{ id: string; name: string; url: string; last_synced_at: string | null; last_error: string | null }>("SELECT id, name, url, last_synced_at, last_error FROM ical_feeds WHERE property_id = $1 ORDER BY created_at", [p.id]),

@@ -31,7 +31,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
   const [res, blocks] = ids.length
     ? await Promise.all([
         q<Res>(`SELECT id, code, property_id, check_in, check_out, status, guest_name, guests, nights FROM bookings
-                WHERE property_id = ANY($1) AND status IN ('pending','confirmed') AND check_in < $3 AND check_out > $2`, [ids, start, end]),
+                WHERE property_id = ANY($1) AND status IN ('pending','awaiting_payment','confirmed') AND check_in < $3 AND check_out > $2`, [ids, start, end]),
         q<Blk>(`SELECT id, property_id, start_date, end_date, note, source FROM blocks WHERE property_id = ANY($1) AND start_date < $3 AND end_date > $2`, [ids, start, end]),
       ])
     : [[], []];

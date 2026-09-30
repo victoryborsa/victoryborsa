@@ -22,7 +22,7 @@ export default async function Trips() {
     [u.id],
   );
   const today = todayLocal();
-  const upcoming = rows.filter(r => r.check_out >= today && ["pending", "confirmed"].includes(r.status));
+  const upcoming = rows.filter(r => r.check_out >= today && ["pending", "awaiting_payment", "confirmed"].includes(r.status));
   const other = rows.filter(r => !upcoming.includes(r)).reverse();
   const card = (r: Row) => (
     <Link key={r.id} href={`/trips/${r.code}`} className="box" style={{ flexDirection: "row", flexWrap: "wrap", gap: 16, alignItems: "center", padding: 16, textDecoration: "none", color: "inherit" }}>

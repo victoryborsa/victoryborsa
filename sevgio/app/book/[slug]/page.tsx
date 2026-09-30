@@ -11,6 +11,8 @@ import { money } from "@/lib/money.ts";
 import { CANCELLATION } from "@/lib/constants.ts";
 import { partyFromParams, partyLabel } from "@/lib/party.ts";
 import { arrivalOptions } from "@/lib/arrival.ts";
+import { enabledMethods } from "@/lib/payments.ts";
+import { PaymentChoice } from "@/components/PaymentChoice.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { createBookingAction } from "@/app/actions/bookings.ts";
 import { resendCodeAction, verifyCodeAction } from "@/app/actions/auth.ts";
@@ -38,6 +40,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   if (!ci) redirect(back);
   const [settings, photos] = await Promise.all([getSettings(), photosFor(p.id)]);
   const pr = quote(p, ci, co, settings.tax_percent, party);
+  const methods = enabledMethods(settings);
   const instant = p.booking_mode === "instant";
 
   return (
@@ -90,10 +93,10 @@ export default async function BookPage({ params, searchParams }: { params: Promi
             <span>{instant ? <>Note for the host <span className="muted" style={{ fontWeight: 400 }}>(optional)</span></> : "Message to the host"}</span>
             <textarea className="input" name="message" placeholder={instant ? "Anything the host should know?" : "Say hello and tell the host a little about your trip."} />
           </label>
-          <div className="notice info">{settings.payment_note}</div>
+          {methods.length ? <PaymentChoice methods={methods} total={pr.total} s={settings} request={!instant} /> : <div className="notice info">{settings.payment_note}</div>}
           <p style={{ fontSize: 14 }}><b>Cancellation:</b> {CANCELLATION[p.cancellation_policy]?.text}</p>
           <label className="chk"><input type="checkbox" name="agree" /> I agree to the house rules and cancellation policy.</label>
-          <div><SubmitButton pendingText={instant ? "Booking…" : "Sending…"}>{instant ? `Confirm booking · ${money(pr.total)}` : "Send request"}</SubmitButton></div>
+          <div><SubmitButton pendingText={instant ? "Booking…" : "Sending…"}>{!instant ? "Send request" : methods.length ? "Book and pay" : `Confirm booking · ${money(pr.total)}`}</SubmitButton></div>
         </ActionForm>
         )}
 

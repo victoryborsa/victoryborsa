@@ -4,6 +4,7 @@ const MESSAGES: Record<string, { tone: "ok" | "warn"; text: string }> = {
   declined: { tone: "ok", text: "Request declined. The guest has been told and the dates are open again." },
   cancelled: { tone: "warn", text: "Booking cancelled and the guest has been emailed." },
   guestcancelled: { tone: "ok", text: "Booking cancelled. The host has been told." },
+  paid: { tone: "ok", text: "Payment recorded. The guest has been emailed." },
 };
 
 export function Flash({ msg }: { msg?: string }) {

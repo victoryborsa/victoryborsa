@@ -3,7 +3,11 @@ import { fmtShort } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
 import { StatusPill } from "./ui.tsx";
 import { ActionForm, SubmitButton } from "./forms.tsx";
-import { decideBookingAction } from "@/app/actions/host.ts";
+import { decideBookingAction, markPaidAction } from "@/app/actions/host.ts";
+
+const METHOD_SHORT: Record<string, string> = { card: "Card", ach: "Bank transfer", zelle: "Zelle", venmo: "Venmo", cash: "Cash + deposit" };
+const PAY_LABEL: Record<string, string> = { none: "—", pending: "Waiting", processing: "Processing", paid: "Paid", deposit_paid: "Deposit paid", failed: "Failed" };
+const PAY_TONE: Record<string, string> = { none: "neutral", pending: "warn", processing: "warn", paid: "ok", deposit_paid: "ok", failed: "danger" };
 import type { Booking } from "@/lib/bookings.ts";
 
 export type BookingRow = Booking & { title: string; guest_email: string };
@@ -14,10 +18,10 @@ export function BookingTable({ rows, today, back, showActions = true }: { rows: 
   return (
     <div className="tbl-wrap">
       <table className="tbl">
-        <thead><tr><th>Reference</th><th>Listing</th><th>Guest</th><th>Dates</th><th className="num">Guests</th><th className="num">Total</th><th>Status</th>{showActions && <th>Actions</th>}</tr></thead>
+        <thead><tr><th>Reference</th><th>Listing</th><th>Guest</th><th>Dates</th><th className="num">Guests</th><th className="num">Total</th><th>Payment</th><th>Status</th>{showActions && <th>Actions</th>}</tr></thead>
         <tbody>
           {rows.map(b => {
-            const active = ["pending", "confirmed"].includes(b.status) && b.check_out >= today;
+            const active = ["pending", "awaiting_payment", "confirmed"].includes(b.status) && b.check_out >= today;
             return (
               <tr key={b.id}>
                 <td className="mono"><Link href={`/trips/${b.code}`}>{b.code}</Link></td>
@@ -26,6 +30,28 @@ export function BookingTable({ rows, today, back, showActions = true }: { rows: 
                 <td style={{ whiteSpace: "nowrap" }}>{fmtShort(b.check_in)} – {fmtShort(b.check_out)}<div className="hint">{b.nights} night{b.nights === 1 ? "" : "s"}{b.arrival_time ? ` · arrives ${b.arrival_time}` : ""}</div></td>
                 <td className="num">{b.guests}</td>
                 <td className="num">{money(b.total_cents)}</td>
+                <td style={{ minWidth: 190 }}>
+                  {b.payment_method ? (
+                    <>
+                      <div style={{ fontSize: 13 }}>{METHOD_SHORT[b.payment_method]} · <span className={`pill ${PAY_TONE[b.payment_status]}`}>{PAY_LABEL[b.payment_status]}</span></div>
+                      {b.paid_cents > 0 && <div className="hint">Received {money(b.paid_cents)}{b.paid_cents < b.total_cents ? ` · ${money(b.total_cents - b.paid_cents)} to collect` : ""}</div>}
+                      {showActions && ["awaiting_payment", "confirmed"].includes(b.status) && b.paid_cents < b.total_cents && b.payment_status !== "processing" && !(b.status === "awaiting_payment" && (b.payment_method === "card" || b.payment_method === "ach")) && (
+                        <details>
+                          <summary className="linkbtn" style={{ cursor: "pointer", fontSize: 13 }}>Mark payment received</summary>
+                          <ActionForm action={markPaidAction} className="stack" confirmText="Record this payment and confirm the booking?">
+                            <input type="hidden" name="id" value={b.id} />
+                            <input type="hidden" name="back" value={back} />
+                            <input className="input mono" name="amount" aria-label="Amount received" defaultValue={((b.status === "awaiting_payment" ? b.due_now_cents - b.paid_cents : b.total_cents - b.paid_cents) / 100).toFixed(2)} style={{ minHeight: 34, padding: "4px 8px", marginTop: 6 }} />
+                            <select className="input" name="method" aria-label="Paid by" defaultValue={b.payment_method === "cash" && b.status === "awaiting_payment" ? "zelle" : b.payment_method} style={{ minHeight: 34, padding: "4px 8px" }}>
+                              <option value="zelle">Zelle</option><option value="venmo">Venmo</option><option value="cash">Cash</option><option value="card">Card</option><option value="ach">Bank transfer</option>
+                            </select>
+                            <SubmitButton className="btn btn-primary btn-sm">Record payment</SubmitButton>
+                          </ActionForm>
+                        </details>
+                      )}
+                    </>
+                  ) : <span className="muted" style={{ fontSize: 13 }}>Not collected online</span>}
+                </td>
                 <td><StatusPill status={b.status} /></td>
                 {showActions && (
                   <td style={{ minWidth: 240 }}>

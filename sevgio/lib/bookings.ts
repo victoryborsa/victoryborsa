@@ -3,6 +3,7 @@ import type pg from "pg";
 import { one, q, tx, type Db } from "./db.ts";
 import { addDays, isIsoDate, nightsBetween, todayLocal } from "./dates.ts";
 import { quote, type Party } from "./pricing.ts";
+import { dueNow, type PayMethod } from "./payment-rules.ts";
 import { REQUEST_EXPIRY_HOURS } from "./constants.ts";
 
 export type Property = {
@@ -21,9 +22,11 @@ export type Booking = {
   nightly_price_cents: number; cleaning_fee_cents: number; tax_cents: number; total_cents: number; guest_name: string; guest_phone: string;
   arrival_time: string; message: string; host_note: string; cancelled_by: string | null; created_at: string;
   adults: number; children: number; free_children: number; lodging_cents: number; discount_cents: number; management_fee_percent: number;
+  payment_method: PayMethod | null; card_fee_cents: number; due_now_cents: number; paid_cents: number;
+  payment_status: "none" | "pending" | "processing" | "paid" | "deposit_paid" | "failed"; payment_deadline: string | null;
 };
 
-const ACTIVE = "('pending','confirmed')";
+const ACTIVE = "('pending','awaiting_payment','confirmed')";
 
 /**
  * Listings whose bookings share nights with this one: itself, the whole home it belongs to, and the rooms inside it.
@@ -38,15 +41,16 @@ async function lockProperty(c: Db, propertyId: string) {
   await c.query("SELECT pg_advisory_xact_lock(hashtext($1))", [root?.root ?? propertyId]);
 }
 
-/** Requests the host never answered expire, which releases the dates for other guests. */
+/** Requests the host never answered, and bookings not paid by their deadline, expire and release the dates. */
 export async function expireStaleRequests() {
   return q<{ id: string }>(
     `UPDATE bookings SET status = 'expired', updated_at = now()
-     WHERE status = 'pending' AND created_at < now() - make_interval(hours => $1) RETURNING id`,
+     WHERE (status = 'pending' AND created_at < now() - make_interval(hours => $1))
+        OR (status = 'awaiting_payment' AND payment_deadline < now() AND payment_status IN ('pending', 'failed'))
+     RETURNING id`,
     [REQUEST_EXPIRY_HOURS],
   );
 }
-
 /** Nights (check-in dates) that can't be booked between `from` and `to`. */
 export async function unavailableNights(propertyId: string, from: string, to: string, db?: Db): Promise<string[]> {
   const rows = await q<{ d: string }>(
@@ -96,7 +100,9 @@ function newCode() {
   return "SV-" + Array.from(bytes, b => alphabet[b % alphabet.length]).join("");
 }
 
-export type NewBooking = { propertyId: string; guestId: string; ci: string; co: string; party: Party; name: string; phone: string; arrival: string; message: string; taxPercent: number };
+/** When payments are on: how the guest will pay, and how long the dates are held waiting for it. */
+export type PaymentChoice = { method: PayMethod; card_fee_percent: number; card_fee_fixed_cents: number; deposit_percent: number; holdMinutes: number };
+export type NewBooking = { propertyId: string; guestId: string; ci: string; co: string; party: Party; name: string; phone: string; arrival: string; message: string; taxPercent: number; pay: PaymentChoice | null };
 export type CreateResult = { ok: true; booking: Booking; property: Property } | { ok: false; error: string; reason: "invalid" | "unavailable" | "not_found" };
 
 export async function createBooking(b: NewBooking): Promise<CreateResult> {
@@ -110,15 +116,20 @@ export async function createBooking(b: NewBooking): Promise<CreateResult> {
       if (!(await isRangeFree(p.id, b.ci, b.co, c))) return { ok: false, error: "Some of these nights were just booked. Please choose different dates.", reason: "unavailable" } as const;
       const pr = quote(p, b.ci, b.co, b.taxPercent, b.party);
       const guests = b.party.adults + b.party.children + b.party.free_children;
-      const status = p.booking_mode === "instant" ? "confirmed" : "pending";
+      // Instant bookings wait for payment when payments are on; requests wait for the host first either way.
+      const status = p.booking_mode === "request" ? "pending" : b.pay ? "awaiting_payment" : "confirmed";
+      const due = b.pay ? dueNow(b.pay.method, pr.total, b.pay) : { fee: 0, now: 0 };
+      const deadline = status === "awaiting_payment" ? new Date(Date.now() + b.pay!.holdMinutes * 60_000).toISOString() : null;
       for (let attempt = 0; ; attempt++) {
         try {
           const booking = await one<Booking>(
             `INSERT INTO bookings (code, property_id, guest_id, check_in, check_out, guests, status, nights, nightly_price_cents, cleaning_fee_cents, tax_cents, total_cents, guest_name, guest_phone, arrival_time, message,
-               adults, children, free_children, lodging_cents, discount_cents, management_fee_percent)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *`,
+               adults, children, free_children, lodging_cents, discount_cents, management_fee_percent,
+               payment_method, card_fee_cents, due_now_cents, payment_status, payment_deadline)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING *`,
             [newCode(), p.id, b.guestId, b.ci, b.co, guests, status, pr.nights, pr.nightly, pr.cleaning, pr.tax, pr.total, b.name, b.phone, b.arrival, b.message,
-              b.party.adults, b.party.children, b.party.free_children, pr.base, pr.discount, p.management_fee_percent],
+              b.party.adults, b.party.children, b.party.free_children, pr.base, pr.discount, p.management_fee_percent,
+              b.pay?.method ?? null, due.fee, due.now, b.pay ? "pending" : "none", deadline],
             c,
           );
           return { ok: true, booking: booking!, property: p } as const;

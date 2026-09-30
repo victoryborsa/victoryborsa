@@ -19,6 +19,6 @@ export default defineConfig({
     url: `http://localhost:${PORT}/api/health`,
     reuseExistingServer: false,
     timeout: 60_000,
-    env: { DATABASE_URL, SITE_URL: `http://localhost:${PORT}`, CRON_SECRET: "e2e-secret", NODE_ENV: "production" },
+    env: { DATABASE_URL, SITE_URL: `http://localhost:${PORT}`, CRON_SECRET: "e2e-secret", NODE_ENV: "production", STRIPE_SECRET_KEY: "sk_test_e2e_dummy", STRIPE_WEBHOOK_SECRET: "whsec_e2e_test" },
   },
 });

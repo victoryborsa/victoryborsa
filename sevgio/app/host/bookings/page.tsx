@@ -8,7 +8,7 @@ import { Flash } from "@/components/Flash.tsx";
 import { BookingTable, type BookingRow } from "@/components/BookingTable.tsx";
 
 const VIEWS: Record<string, { label: string; where: string; order: string }> = {
-  upcoming: { label: "Upcoming", where: "b.status IN ('pending','confirmed') AND b.check_out >= $T", order: "b.check_in" },
+  upcoming: { label: "Upcoming", where: "b.status IN ('pending','awaiting_payment','confirmed') AND b.check_out >= $T", order: "b.check_in" },
   requests: { label: "Requests", where: "b.status = 'pending'", order: "b.created_at" },
   past: { label: "Past", where: "b.status = 'confirmed' AND b.check_out < $T", order: "b.check_in DESC" },
   cancelled: { label: "Cancelled & declined", where: "b.status IN ('cancelled','declined','expired')", order: "b.updated_at DESC" },

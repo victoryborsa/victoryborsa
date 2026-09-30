@@ -13,7 +13,7 @@ async function feed(tokenParam: string) {
   const p = await one<{ id: string; title: string }>("SELECT id, title FROM properties WHERE ical_token = $1", [token]);
   if (!p) return null;
   const from = addDays(todayLocal(), -30);
-  const bookings = await q<{ id: string; check_in: string; check_out: string }>(`SELECT id, check_in, check_out FROM bookings WHERE property_id IN ${RELATED("$1")} AND status IN ('pending','confirmed') AND check_out > $2`, [p.id, from]);
+  const bookings = await q<{ id: string; check_in: string; check_out: string }>(`SELECT id, check_in, check_out FROM bookings WHERE property_id IN ${RELATED("$1")} AND status IN ('pending','awaiting_payment','confirmed') AND check_out > $2`, [p.id, from]);
   // Blocks imported from other sites are left out, so calendars don't echo each other's bookings back.
   const blocks = await q<{ id: string; start_date: string; end_date: string }>(`SELECT id, start_date, end_date FROM blocks WHERE property_id IN ${RELATED("$1")} AND source = 'host' AND end_date > $2`, [p.id, from]);
   const events = [

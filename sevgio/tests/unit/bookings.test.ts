@@ -20,7 +20,7 @@ before(async () => {
 });
 after(async () => { await pool.end(); });
 
-const base = () => ({ propertyId: propId, guestId, party: { adults: 2, children: 0, free_children: 0 }, name: "Guest", phone: "555-0100", arrival: "", message: "", taxPercent: 6 });
+const base = () => ({ propertyId: propId, guestId, party: { adults: 2, children: 0, free_children: 0 }, name: "Guest", phone: "555-0100", arrival: "", message: "", taxPercent: 6, pay: null });
 
 test("20 simultaneous bookings for the same nights: exactly one succeeds", async () => {
   const ci = addDays(T, 10), co = addDays(T, 13);
@@ -145,4 +145,18 @@ test("arrival time options start at check-in and run to midnight", async () => {
   assert.equal(noon[noon.length - 2], "11:00 pm – 12:00 am");
   assert.equal(noon[noon.length - 1], "After midnight");
   assert.equal(arrivalOptions("3:00 pm")[0], "3:00 pm – 4:00 pm");
+});
+
+test("card fee is grossed up so the host receives the full price; cash takes a deposit", async () => {
+  const { cardFee, dueNow } = await import("../../lib/payment-rules.ts");
+  const fee = cardFee(10000, 2.9, 30);
+  // Stripe takes 2.9% + 30¢ of what the guest pays; the host must still get $100.
+  const gross = 10000 + fee;
+  assert.ok(gross - Math.round(gross * 0.029) - 30 >= 10000);
+  assert.ok(gross - Math.round(gross * 0.029) - 30 <= 10002);
+  assert.equal(cardFee(10000, 0, 0), 0);
+  const s = { card_fee_percent: 2.9, card_fee_fixed_cents: 30, deposit_percent: 30 };
+  assert.deepEqual(dueNow("cash", 20000, s), { fee: 0, now: 6000, later: 14000 });
+  assert.deepEqual(dueNow("zelle", 20000, s), { fee: 0, now: 20000, later: 0 });
+  assert.equal(dueNow("card", 20000, s).now, 20000 + cardFee(20000, 2.9, 30));
 });

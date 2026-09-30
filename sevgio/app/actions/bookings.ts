@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { one } from "@/lib/db.ts";
 import { requireUser } from "@/lib/auth.ts";
-import { createBooking, setBookingStatus, type Booking } from "@/lib/bookings.ts";
+import { createBooking, setBookingStatus, type Booking, type PaymentChoice } from "@/lib/bookings.ts";
+import { enabledMethods, isOnline } from "@/lib/payments.ts";
+import type { PayMethod } from "@/lib/payment-rules.ts";
+import { bookingInfo, notifyBooking, startCheckout } from "@/lib/payment-flow.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { str, type ActionState } from "@/lib/validate.ts";
 import { partyFromForm, partyLabel } from "@/lib/party.ts";
@@ -26,9 +29,17 @@ export async function createBookingAction(_: ActionState, fd: FormData): Promise
   if (fd.get("agree") !== "on") return { error: "Tick the box to agree to the house rules and cancellation policy." };
 
   const settings = await getSettings();
+  const methods = enabledMethods(settings);
+  let pay: PaymentChoice | null = null;
+  if (methods.length) {
+    const method = str(fd, "payment_method") as PayMethod;
+    if (!methods.includes(method)) return { error: "Choose how you'd like to pay." };
+    pay = { method, card_fee_percent: settings.card_fee_percent, card_fee_fixed_cents: settings.card_fee_fixed_cents, deposit_percent: settings.deposit_percent,
+      holdMinutes: isOnline(method) ? 45 : settings.manual_payment_hours * 60 };
+  }
   let result;
   try {
-    result = await createBooking({ propertyId: p.id, guestId: u.id, ci, co, party, name, phone, arrival, message, taxPercent: settings.tax_percent });
+    result = await createBooking({ propertyId: p.id, guestId: u.id, ci, co, party, name, phone, arrival, message, taxPercent: settings.tax_percent, pay });
   } catch (e) {
     await logEvent("error", "Booking", "Booking failed with an unexpected error", { slug, ci, co, error: String(e) }, u.id);
     return { error: "Something went wrong and your booking wasn't saved. Please try again, or contact us." };
@@ -37,24 +48,39 @@ export async function createBookingAction(_: ActionState, fd: FormData): Promise
     if (result.reason === "unavailable") await logEvent("info", "Double booking prevented", "Booking refused because the dates were taken", { slug, ci, co }, u.id);
     return { error: result.error };
   }
-  const { booking: b, property } = result;
+  const { booking: b } = result;
   if (phone !== u.phone && !u.phone) await one("UPDATE users SET phone = $2 WHERE id = $1", [u.id, phone]);
-  await notifyNewBooking(b, property.title, property.host_id, u.email);
+  const info = (await bookingInfo(b.id))!;
   revalidatePath(`/stays/${slug}`);
+  // Card / bank transfer: straight to Stripe's secure page. Emails go out once it's paid.
+  if (b.status === "awaiting_payment" && isOnline(b.payment_method)) {
+    let url: string;
+    try {
+      url = await startCheckout(info);
+    } catch (e) {
+      await logEvent("error", "Payment", `Could not start Stripe checkout for ${b.code}`, { error: String(e) }, u.id);
+      redirect(`/trips/${b.code}?new=1&payerror=1`);
+    }
+    redirect(url);
+  }
+  await notifyBooking(info);
   redirect(`/trips/${b.code}?new=1`);
 }
 
-async function notifyNewBooking(b: Booking, title: string, hostId: string, guestEmail: string) {
-  const host = await one<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = $1", [hostId]);
-  const dates = `${fmtDate(b.check_in)} – ${fmtDate(b.check_out)}`;
-  const link = `${siteUrl()}/trips/${b.code}`;
-  if (b.status === "confirmed") {
-    await sendEmail(guestEmail, `Booking confirmed: ${title}`, `Hi ${b.guest_name.split(" ")[0]},\n\nYour stay at ${title} is confirmed.\n\nReference: ${b.code}\nDates: ${dates}\nGuests: ${partyLabel(b)}\nTotal: ${money(b.total_cents)}\n\nView your booking: ${link}`);
-    if (host) await sendEmail(host.email, `New booking: ${title}, ${dates}`, `${b.guest_name} booked ${title} for ${dates} (${partyLabel(b)}).\nPhone: ${b.guest_phone}\n${b.message ? "\nMessage: " + b.message + "\n" : ""}\nDetails: ${siteUrl()}/host/bookings`);
-  } else {
-    await sendEmail(guestEmail, `Request sent: ${title}`, `Hi ${b.guest_name.split(" ")[0]},\n\nWe've sent your request to the host. Your dates are held while they decide, usually within a few hours. You'll get another email when they reply.\n\nReference: ${b.code}\nDates: ${dates}\n\nView your request: ${link}`);
-    if (host) await sendEmail(host.email, `Booking request: ${title}, ${dates}`, `${b.guest_name} would like to stay at ${title} for ${dates} (${partyLabel(b)}).\n\nMessage: ${b.message}\n\nAccept or decline within 48 hours: ${siteUrl()}/host/bookings`);
+export async function payNowAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const u = await requireUser();
+  const b = await bookingInfo(str(fd, "id", 40));
+  if (!b || b.guest_id !== u.id) return { error: "We couldn't find that booking on your account." };
+  if (b.status !== "awaiting_payment" || !isOnline(b.payment_method)) return { error: "This booking doesn't need an online payment." };
+  if (b.payment_deadline && new Date(b.payment_deadline) < new Date()) return { error: "The time to pay has passed and the dates were released. Please book again." };
+  let url: string;
+  try {
+    url = await startCheckout(b);
+  } catch (e) {
+    await logEvent("error", "Payment", `Could not start Stripe checkout for ${b.code}`, { error: String(e) }, u.id);
+    return { error: "We couldn't open the payment page. Please try again in a minute, or contact us." };
   }
+  redirect(url);
 }
 
 export async function guestCancelAction(_: ActionState, fd: FormData): Promise<ActionState> {
@@ -65,7 +91,7 @@ export async function guestCancelAction(_: ActionState, fd: FormData): Promise<A
     [id, u.id],
   );
   if (!b) return { error: "We couldn't find that booking on your account." };
-  const updated = await setBookingStatus(b.id, ["pending", "confirmed"], "cancelled", { cancelledBy: "guest" });
+  const updated = await setBookingStatus(b.id, ["pending", "awaiting_payment", "confirmed"], "cancelled", { cancelledBy: "guest" });
   if (!updated) return { error: "This booking can't be cancelled anymore." };
   await sendEmail(b.host_email, `Cancelled: ${b.title}, ${fmtDate(b.check_in)}`, `${b.guest_name} cancelled booking ${b.code} (${fmtDate(b.check_in)} – ${fmtDate(b.check_out)}). The dates are open again.`);
   await sendEmail(u.email, `You cancelled booking ${b.code}`, `Your booking at ${b.title} for ${fmtDate(b.check_in)} – ${fmtDate(b.check_out)} is cancelled.`);

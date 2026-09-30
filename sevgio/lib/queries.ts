@@ -30,7 +30,7 @@ export async function searchProperties(f: SearchFilters): Promise<CardProperty[]
   if (f.ci && f.co) {
     const ci = add(f.ci), co = add(f.co);
     where.push(`(${co}::date - ${ci}::date) BETWEEN p.min_nights AND p.max_nights`);
-    where.push(`NOT EXISTS (SELECT 1 FROM bookings b WHERE b.property_id IN (SELECT r.id FROM properties r WHERE r.id = p.id OR r.parent_id = p.id OR r.id = p.parent_id) AND b.status IN ('pending','confirmed') AND b.check_in < ${co} AND b.check_out > ${ci})`);
+    where.push(`NOT EXISTS (SELECT 1 FROM bookings b WHERE b.property_id IN (SELECT r.id FROM properties r WHERE r.id = p.id OR r.parent_id = p.id OR r.id = p.parent_id) AND b.status IN ('pending','awaiting_payment','confirmed') AND b.check_in < ${co} AND b.check_out > ${ci})`);
     where.push(`NOT EXISTS (SELECT 1 FROM blocks k WHERE k.property_id IN (SELECT r.id FROM properties r WHERE r.id = p.id OR r.parent_id = p.id OR r.id = p.parent_id) AND k.start_date < ${co} AND k.end_date > ${ci})`);
   }
   const order: Record<string, string> = {

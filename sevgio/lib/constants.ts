@@ -90,6 +90,7 @@ export type Role = (typeof ROLES)[number];
 
 export const BOOKING_STATUS: Record<string, { label: string; tone: "ok" | "warn" | "danger" | "neutral" }> = {
   pending: { label: "Awaiting host", tone: "warn" },
+  awaiting_payment: { label: "Awaiting payment", tone: "warn" },
   confirmed: { label: "Confirmed", tone: "ok" },
   declined: { label: "Declined", tone: "danger" },
   cancelled: { label: "Cancelled", tone: "danger" },

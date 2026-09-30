@@ -11,6 +11,9 @@ import { int, lines, slugify, str, type ActionState } from "@/lib/validate.ts";
 import { toCents } from "@/lib/money.ts";
 import { processPhoto } from "@/lib/photos.ts";
 import { syncFeed } from "@/lib/calendar-sync.ts";
+import { getSettings } from "@/lib/settings.ts";
+import { isOnline } from "@/lib/payments.ts";
+import { bookingInfo, notifyBooking, recordPayment } from "@/lib/payment-flow.ts";
 import { fetchPublic } from "@/lib/safe-fetch.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
@@ -101,7 +104,7 @@ async function parentProblem(parentId: string | null, hostId: string, selfId?: s
     if (hasRooms) return "This listing has rooms linked to it, so it can't also be a room of another home.";
     const clash = await one<{ a: string; b: string }>(
       `SELECT a.code AS a, b.code AS b FROM bookings a JOIN bookings b ON b.property_id = $2
-       WHERE a.property_id = $1 AND a.status IN ('pending','confirmed') AND b.status IN ('pending','confirmed') AND a.check_in < b.check_out AND b.check_in < a.check_out LIMIT 1`,
+       WHERE a.property_id = $1 AND a.status IN ('pending','awaiting_payment','confirmed') AND b.status IN ('pending','awaiting_payment','confirmed') AND a.check_in < b.check_out AND b.check_in < a.check_out LIMIT 1`,
       [selfId, parentId],
     );
     if (clash) return `Bookings ${clash.a} and ${clash.b} overlap, so these listings can't be linked until one is changed or cancelled.`;
@@ -380,9 +383,20 @@ export async function decideBookingAction(_: ActionState, fd: FormData): Promise
   const back = safeNext(str(fd, "back", 300), "/host/bookings");
   const dates = `${fmtDate(b.check_in)} – ${fmtDate(b.check_out)}`;
   if (decision === "accept") {
-    const r = await setBookingStatus(b.id, ["pending"], "confirmed", { hostNote: note || undefined });
+    // With payments on, an accepted request waits for the guest's payment; otherwise it's confirmed now.
+    const needsPay = !!b.payment_method;
+    const settings = await getSettings();
+    const hours = isOnline(b.payment_method) ? 24 : settings.manual_payment_hours;
+    const r = await one<Booking>(
+      `UPDATE bookings SET status = $2, host_note = coalesce($3, host_note), payment_deadline = $4, updated_at = now() WHERE id = $1 AND status = 'pending' RETURNING *`,
+      [b.id, needsPay ? "awaiting_payment" : "confirmed", note || null, needsPay ? new Date(Date.now() + hours * 3600_000).toISOString() : null],
+    );
     if (!r) return { error: "This request was already answered or has expired." };
-    await sendEmail(b.guest_email, `Confirmed: ${b.title}`, `Good news! Your request to stay at ${b.title} for ${dates} was accepted.\n${note ? "\nNote from the host: " + note + "\n" : ""}\nReference: ${b.code}\nSee your booking and arrival details: ${siteUrl()}/trips/${b.code}`);
+    const info = await bookingInfo(b.id);
+    if (info) {
+      if (note) await sendEmail(b.guest_email, `Your request was accepted: ${b.title}`, `Good news! Your request to stay at ${b.title} for ${dates} was accepted.\n\nNote from the host: ${note}`);
+      await notifyBooking(info);
+    }
     await logEvent("info", "Bookings", `Request ${b.code} accepted`, {}, u.id);
     redirect(withMsg(back, "accepted"));
   }
@@ -395,7 +409,7 @@ export async function decideBookingAction(_: ActionState, fd: FormData): Promise
   }
   if (decision === "cancel") {
     if (note.length < 5) return { error: "Add a short reason for the guest. It's included in the cancellation email." };
-    const r = await setBookingStatus(b.id, ["pending", "confirmed"], "cancelled", { cancelledBy: u.role === "admin" ? "admin" : "host", hostNote: note });
+    const r = await setBookingStatus(b.id, ["pending", "awaiting_payment", "confirmed"], "cancelled", { cancelledBy: u.role === "admin" ? "admin" : "host", hostNote: note });
     if (!r) return { error: "This booking is already cancelled or finished." };
     await sendEmail(b.guest_email, `Your booking was cancelled: ${b.title}`, `We're sorry. Your booking ${b.code} at ${b.title} for ${dates} has been cancelled.\n\nReason: ${note}\n\nPlease contact us if you have questions: ${siteUrl()}/contact`);
     await logEvent("warn", "Bookings", `Booking ${b.code} cancelled by ${u.role}`, { reason: note }, u.id);
@@ -413,4 +427,19 @@ export async function markMessageAction(fd: FormData) {
   else await q("UPDATE messages m SET handled = $3 FROM properties p WHERE m.id = $1 AND m.property_id = p.id AND p.host_id = $2", [id, u.id, handled]);
   revalidatePath("/host/messages");
   revalidatePath("/admin/messages");
+}
+
+/** Host or admin records money received by Zelle, Venmo or cash. Confirms the booking once the amount due now is in. */
+export async function markPaidAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const { u, b } = await manageableBooking(str(fd, "id", 40));
+  if (!b) return { error: "You can't manage this booking." };
+  const amount = toCents(str(fd, "amount"));
+  if (!amount || amount <= 0) return { error: "Enter the amount you received." };
+  if (!["awaiting_payment", "confirmed"].includes(b.status)) return { error: "This booking isn't active." };
+  const method = str(fd, "method") || b.payment_method || "zelle";
+  if (!["zelle", "venmo", "cash", "card", "ach"].includes(method)) return { error: "Choose how the money was paid." };
+  const r = await recordPayment(b.id, amount, { method, recordedBy: u.id, note: str(fd, "note", 200) });
+  if (!r.ok) return { error: r.reason === "taken" ? "The payment was recorded, but these dates were already taken by someone else. Please refund the guest." : "Booking not found." };
+  const back = safeNext(str(fd, "back", 300), "/host/bookings");
+  redirect(withMsg(back, "paid"));
 }

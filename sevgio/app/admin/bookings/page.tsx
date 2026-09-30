@@ -5,7 +5,7 @@ import { todayLocal } from "@/lib/dates.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { BookingTable, type BookingRow } from "@/components/BookingTable.tsx";
 
-const STATUSES = ["all", "pending", "confirmed", "cancelled", "declined", "expired"];
+const STATUSES = ["all", "pending", "awaiting_payment", "confirmed", "cancelled", "declined", "expired"];
 
 export default async function AdminBookings({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; msg?: string }> }) {
   await requireUser(["admin"], "/admin");

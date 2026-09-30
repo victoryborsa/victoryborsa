@@ -6,6 +6,7 @@ import { hashPassword, requireUser, sha256 } from "@/lib/auth.ts";
 import { ROLES } from "@/lib/constants.ts";
 import { saveSetting } from "@/lib/settings.ts";
 import { isEmail, str, type ActionState } from "@/lib/validate.ts";
+import { toCents } from "@/lib/money.ts";
 import { logEvent } from "@/lib/log.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 
@@ -109,6 +110,25 @@ export async function saveSettingsAction(_: ActionState, fd: FormData): Promise<
   await saveSetting("contact_phone", str(fd, "contact_phone", 40));
   await saveSetting("payment_note", str(fd, "payment_note", 300));
   await saveSetting("site_notice", str(fd, "site_notice", 300));
+  // Payments
+  const feePct = Number(str(fd, "card_fee_percent") || 0), feeFixed = toCents(str(fd, "card_fee_fixed") || "0");
+  const deposit = Number(str(fd, "deposit_percent") || 0), hours = Number(str(fd, "manual_payment_hours") || 24);
+  if (!(feePct >= 0 && feePct <= 4)) return { error: "Card fee must be between 0% and 4%." };
+  if (feeFixed === null || feeFixed > 100) return { error: "Card fixed fee must be between $0 and $1." };
+  if (!(deposit >= 0 && deposit <= 100)) return { error: "Deposit must be between 0% and 100%." };
+  if (!(Number.isInteger(hours) && hours >= 1 && hours <= 72)) return { error: "Time to pay by Zelle/Venmo must be 1 to 72 hours." };
+  const zelle = str(fd, "zelle_to", 120), venmo = str(fd, "venmo_handle", 60);
+  const on = (k: string) => fd.get(k) === "on";
+  if (on("pay_zelle") && !zelle) return { error: "Add the email or phone number guests should send Zelle payments to." };
+  if (on("pay_venmo") && !venmo) return { error: "Add your Venmo username (like @Sevgio-Stays)." };
+  if (on("pay_cash") && !zelle && !venmo) return { error: "Cash at arrival needs Zelle or Venmo for the deposit. Add at least one." };
+  for (const k of ["pay_card", "pay_ach", "pay_zelle", "pay_venmo", "pay_cash"] as const) await saveSetting(k, on(k));
+  await saveSetting("card_fee_percent", feePct);
+  await saveSetting("card_fee_fixed_cents", feeFixed);
+  await saveSetting("deposit_percent", deposit);
+  await saveSetting("manual_payment_hours", hours);
+  await saveSetting("zelle_to", zelle);
+  await saveSetting("venmo_handle", venmo);
   await logEvent("info", "Settings", "Site settings updated", { tax }, admin.id);
   revalidatePath("/", "layout");
   return { ok: "Settings saved. New prices apply to new bookings only." };

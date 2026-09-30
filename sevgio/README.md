@@ -116,9 +116,30 @@ Emails sent: booking confirmations and requests (to guest and host), accept/decl
 - **Management fee:** admins set a % per listing (Admin → Listings → Edit → Management). It's taken from rent after discounts, not from cleaning or tax, and is saved on each booking so later changes don't alter past statements.
 - **Statements:** Host dashboard or Admin → Finance. Pick a month and property to see the reservations statement (by check-in date), per-property occupancy and owner payouts, and a 12-month overview. "Download statement (CSV)" opens in Excel or Google Sheets.
 
-## Adding payments later
+## Payments
 
-The booking step is the only place that changes. The recommended path is Stripe Checkout: when a guest confirms, create a Checkout Session for `total_cents`, hold the dates as a `pending` booking, and confirm it from Stripe's webhook. Card details then never touch Sevgio's servers.
+Turn options on in **Admin → Settings → Payments**. When at least one is on, bookings wait in **Awaiting payment** (the dates are held) and are cancelled automatically if not paid in time.
+
+| Option | How it's confirmed | Fee |
+|---|---|---|
+| Card (Stripe Checkout) | Automatically, by Stripe's webhook | Card fee (default 2.9% + 30¢) is added to the guest's total |
+| Bank transfer / ACH (Stripe) | Automatically; shows "processing" until it clears (about 4 business days) | 0.8%, max $5, paid by you |
+| Zelle | You click "Mark payment received" in Bookings | Free |
+| Venmo | You click "Mark payment received" | Free on personal; Venmo Business 1.9% + 10¢ |
+| Cash at arrival | Deposit (default 30%) by Zelle/Venmo marked received; rest collected in cash | Free |
+
+Request-to-book homes ask for payment after the host accepts.
+
+### Setting up Stripe (for card and bank transfer)
+
+1. Create an account at stripe.com and complete the business details and payout bank account.
+2. **Developers → API keys**: copy the **Secret key** (`sk_live_…`, or `sk_test_…` to try it with test cards first).
+3. **Developers → Webhooks → Add endpoint**: URL `https://sevgio.com/api/stripe/webhook` (or your onrender.com address before the domain switch). Events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`. Copy the **Signing secret** (`whsec_…`).
+4. For bank transfers: **Settings → Payment methods → ACH Direct Debit → Turn on**.
+5. In Render → sevgio → Environment add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, then save and deploy.
+6. In Admin → Settings, tick Card and/or Bank transfer.
+
+Card surcharges: card-network rules cap surcharges at 3% and don't allow them on debit cards; keep the fee at or below your real cost and check with your accountant. Refunds are made in the Stripe dashboard.
 
 ## Moving data from the old site
 
