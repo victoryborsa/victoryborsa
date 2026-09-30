@@ -331,3 +331,36 @@ a.card { text-decoration: none; }
   .hero { padding-block: 24px 16px; }
 }
 @media (max-width: 759px) { .gallery button:not(.g0) { display: none; } }
+
+/* Multi-property calendar (planner board) */
+.mc-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.mc { display: grid; grid-auto-rows: minmax(52px, auto); position: relative; min-width: max-content; }
+.mc > * { min-width: 0; }
+.mc-corner, .mc-day { position: sticky; top: 0; z-index: 3; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.mc-corner { left: 0; z-index: 4; padding: 10px 12px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; align-items: flex-end; border-right: 1px solid var(--line); }
+.mc-day { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 6px 0; font-variant-numeric: tabular-nums; border-left: 1px solid var(--line); }
+.mc-day small { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.mc-day b { font-size: 13px; }
+.mc-day.we { background: color-mix(in srgb, var(--surface-2) 70%, var(--line)); }
+.mc-day.today b { background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 0 6px; }
+.mc-name { position: sticky; left: 0; z-index: 2; background: var(--surface); grid-column: 1; padding: 8px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; gap: 2px; font-size: 14px; }
+.mc-name a { font-weight: 600; color: var(--ink); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-name a:hover { text-decoration: underline; }
+.mc-name.room { padding-left: 22px; background: color-mix(in srgb, var(--surface) 92%, var(--surface-2)); }
+.mc-cell { border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.mc-cell.we { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+.mc-cell.today { background: color-mix(in srgb, var(--accent-soft) 70%, transparent); }
+.mc-bar { z-index: 1; align-self: center; margin: 0 3px; height: 32px; border-radius: 8px; display: flex; align-items: center; padding: 0 8px; font-size: 12px; font-weight: 600; text-decoration: none; overflow: hidden; white-space: nowrap; }
+.mc-bar span { overflow: hidden; text-overflow: ellipsis; }
+.mc-bar.ok { background: var(--ok); color: #fff; }
+.mc-bar.warn { background: var(--warn-soft); color: var(--warn); border: 1.5px dashed var(--warn); }
+.mc-bar.blk { background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, var(--line) 6px 9px); color: var(--muted); font-weight: 500; }
+.mc-bar.cut-l { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: 0; }
+.mc-bar.cut-r { border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: 0; }
+a.mc-bar:hover { filter: brightness(1.08); }
+.mc-key { display: inline-block; width: 14px; height: 10px; border-radius: 3px; vertical-align: 0; margin-right: 6px; }
+.mc-key.ok { background: var(--ok); }
+.mc-key.warn { background: var(--warn-soft); border: 1px dashed var(--warn); }
+.mc-key.blk { background: repeating-linear-gradient(135deg, var(--surface-2) 0 3px, var(--line) 3px 5px); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mc-bar.ok { color: #04201D; } }
+:root[data-theme="dark"] .mc-bar.ok { color: #04201D; }

@@ -271,3 +271,25 @@ test("listing details, per-guest pricing with children, and the owner statement"
   await signOut(page);
   expect((await page.request.get(`/api/finance/statement`)).status()).toBe(401);
 });
+
+test("calendar board shows every property's reservations, filterable by property", async ({ page }) => {
+  const [b] = await sql<{ code: string; guest_name: string; check_in: string }>(
+    "SELECT b.code, b.guest_name, b.check_in::text FROM bookings b JOIN properties p ON p.id = b.property_id WHERE p.slug = 'lake-harmony-lodge' AND b.status = 'confirmed' ORDER BY b.check_in LIMIT 1");
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto(`/admin/calendar?start=${b.check_in}&days=14`);
+  await expect(page.locator(".mc-name", { hasText: "Lake Harmony Lodge" })).toBeVisible();
+  await expect(page.locator(".mc-name", { hasText: "Rittenhouse Square Loft" })).toBeVisible();
+  await expect(page.locator(`a.mc-bar[href="/trips/${b.code}"]`)).toBeVisible();
+  // Choosing one property shows just that home (and its rooms).
+  await page.getByLabel("Property").selectOption({ label: "Rittenhouse Square Loft" });
+  await page.getByRole("button", { name: "Show" }).click();
+  await expect(page.locator(".mc-name")).toHaveCount(1);
+  await expect(page.locator(`a.mc-bar[href="/trips/${b.code}"]`)).toHaveCount(0);
+  await signOut(page);
+  // Hosts see only their own listings.
+  await signIn(page, "marcus@demo.sevgio.com", "demo-password-2026");
+  await page.goto(`/host/calendar?start=${b.check_in}&days=14`);
+  await expect(page.locator(".mc-name", { hasText: "Lake Harmony Lodge" })).toHaveCount(0);
+  await expect(page.locator(".mc-name", { hasText: "Rittenhouse Square Loft" })).toBeVisible();
+  await signOut(page);
+});
