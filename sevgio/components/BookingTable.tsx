@@ -23,7 +23,7 @@ export function BookingTable({ rows, today, back, showActions = true }: { rows: 
                 <td className="mono"><Link href={`/trips/${b.code}`}>{b.code}</Link></td>
                 <td>{b.title}</td>
                 <td>{b.guest_name}{active && <div className="muted" style={{ fontSize: 13 }}>{b.guest_phone} · {b.guest_email}</div>}{b.message && <div className="hint" style={{ maxWidth: 280 }}>“{b.message}”</div>}</td>
-                <td style={{ whiteSpace: "nowrap" }}>{fmtShort(b.check_in)} – {fmtShort(b.check_out)}<div className="hint">{b.nights} nights{b.arrival_time ? ` · arrives ${b.arrival_time}` : ""}</div></td>
+                <td style={{ whiteSpace: "nowrap" }}>{fmtShort(b.check_in)} – {fmtShort(b.check_out)}<div className="hint">{b.nights} night{b.nights === 1 ? "" : "s"}{b.arrival_time ? ` · arrives ${b.arrival_time}` : ""}</div></td>
                 <td className="num">{b.guests}</td>
                 <td className="num">{money(b.total_cents)}</td>
                 <td><StatusPill status={b.status} /></td>

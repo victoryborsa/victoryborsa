@@ -104,7 +104,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
                 ...res.filter(b => b.property_id === p.id).map(b => (
                   <Link key={b.id} href={`/trips/${b.code}`} className={`mc-bar ${b.status === "confirmed" ? "ok" : "warn"}${b.check_in < start ? " cut-l" : ""}${b.check_out > end ? " cut-r" : ""}`}
                     style={{ gridRow: r, gridColumn: `${col(b.check_in) + 1} / ${col(b.check_out) + 1}` }}
-                    title={`${b.code} · ${b.guest_name} · ${b.check_in} → ${b.check_out} · ${b.nights} nights · ${b.guests} guests${b.status === "pending" ? " · awaiting approval" : ""}`}>
+                    title={`${b.code} · ${b.guest_name} · ${b.check_in} → ${b.check_out} · ${b.nights} night${b.nights === 1 ? "" : "s"} · ${b.guests} guests${b.status === "pending" ? " · awaiting approval" : ""}`}>
                     <span>{b.guest_name}</span>
                   </Link>
                 )),

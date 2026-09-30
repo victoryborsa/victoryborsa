@@ -16,6 +16,7 @@ export async function createBookingAction(_: ActionState, fd: FormData): Promise
   const slug = str(fd, "slug", 100);
   const ci = str(fd, "ci", 10), co = str(fd, "co", 10), party = partyFromForm(fd);
   const u = await requireUser(undefined, `/book/${slug}?ci=${ci}&co=${co}&adults=${party.adults}&children=${party.children}&infants=${party.free_children}`);
+  if (!u.verified) return { error: "Please confirm your email address first. Enter the code we sent you above." };
   const name = str(fd, "name", 120), phone = str(fd, "phone", 40), arrival = str(fd, "arrival", 60), message = str(fd, "message", 2000);
   const p = await one<{ id: string; booking_mode: string }>("SELECT id, booking_mode FROM properties WHERE slug = $1", [slug]);
   if (!p) return { error: "This home no longer exists." };

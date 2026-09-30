@@ -39,6 +39,18 @@ test("guest books instantly: sign up mid-booking, confirmation, My trips", async
   await page.getByLabel("Password").fill("guest-password-1");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/book\/lake-harmony-lodge/);
+  // New accounts confirm their email with a code before booking. Plant a known code (the real one is emailed).
+  await expect(page.getByRole("heading", { name: "Confirm your email" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Confirm booking/ })).toHaveCount(0);
+  const crypto = await import("node:crypto");
+  const [nu] = await sql<{ id: string }>("SELECT id FROM users WHERE email = $1", [email]);
+  await sql("INSERT INTO email_codes (user_id, code_hash, expires_at) VALUES ($1, $2, now() + interval '15 minutes')", [nu.id, crypto.createHash("sha256").update(`${nu.id}:123456`).digest("hex")]);
+  await page.getByLabel("6-digit code").fill("000000");
+  await page.getByRole("button", { name: "Confirm email" }).click();
+  await expect(page.getByText(/That code isn't right/)).toBeVisible();
+  await page.getByLabel("6-digit code").fill("123456");
+  await page.getByRole("button", { name: "Confirm email" }).click();
+  await expect(page.getByRole("button", { name: /Confirm booking/ })).toBeVisible();
   await page.getByLabel("Mobile phone").fill("(570) 555-0199");
   await page.getByLabel(/Estimated arrival time/).selectOption("5:00 pm – 6:00 pm");
   await page.getByLabel(/I agree/).check();

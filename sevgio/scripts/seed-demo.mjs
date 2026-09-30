@@ -96,7 +96,7 @@ const users = {
 const ids = {};
 for (const [k, [name, email, role]] of Object.entries(users)) {
   const r = await client.query(
-    "INSERT INTO users (email, name, password_hash, role, phone) VALUES ($1, $2, $3, $4, '(570) 555-0100') ON CONFLICT ((lower(email))) DO UPDATE SET name = EXCLUDED.name RETURNING id",
+    "INSERT INTO users (email, name, password_hash, role, phone, email_verified_at) VALUES ($1, $2, $3, $4, '(570) 555-0100', now()) ON CONFLICT ((lower(email))) DO UPDATE SET name = EXCLUDED.name RETURNING id",
     [email, name, password, role],
   );
   ids[k] = r.rows[0].id;

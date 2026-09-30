@@ -12,8 +12,8 @@ const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 const hash = await bcrypt.hash(password, 12);
 const r = await client.query(
-  `INSERT INTO users (email, name, password_hash, role) VALUES (lower($1), $2, $3, 'admin')
-   ON CONFLICT ((lower(email))) DO UPDATE SET role = 'admin', password_hash = EXCLUDED.password_hash, name = EXCLUDED.name, disabled = false
+  `INSERT INTO users (email, name, password_hash, role, email_verified_at) VALUES (lower($1), $2, $3, 'admin', now())
+   ON CONFLICT ((lower(email))) DO UPDATE SET role = 'admin', password_hash = EXCLUDED.password_hash, name = EXCLUDED.name, disabled = false, email_verified_at = coalesce(users.email_verified_at, now())
    RETURNING id`,
   [email, name, hash],
 );

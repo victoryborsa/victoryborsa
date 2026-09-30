@@ -13,6 +13,7 @@ import { partyFromParams, partyLabel } from "@/lib/party.ts";
 import { arrivalOptions } from "@/lib/arrival.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { createBookingAction } from "@/app/actions/bookings.ts";
+import { resendCodeAction, verifyCodeAction } from "@/app/actions/auth.ts";
 
 export const metadata: Metadata = { title: "Confirm your booking", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -49,6 +50,22 @@ export default async function BookPage({ params, searchParams }: { params: Promi
         <li><span className="n">3</span>{instant ? "Confirmed" : "Host replies"}</li>
       </ol>
       <div className="checkout-grid" style={{ paddingTop: 0 }}>
+        {!u.verified ? (
+          <div className="box">
+            <h2>Confirm your email</h2>
+            <p>To keep bookings genuine, we sent a 6-digit code to <b>{u.email}</b>. Enter it below to continue. Your dates are saved.</p>
+            <ActionForm action={verifyCodeAction} className="stack">
+              <input type="hidden" name="next" value={`/book/${slug}?${qs}`} />
+              <label className="field" style={{ maxWidth: 220 }}><span>6-digit code</span><input className="input mono" name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={7} style={{ fontSize: 22, letterSpacing: ".2em" }} /></label>
+              <div><SubmitButton pendingText="Checking…">Confirm email</SubmitButton></div>
+            </ActionForm>
+            <ActionForm action={resendCodeAction} className="row">
+              <span className="hint">No email? Check your spam folder, or</span>
+              <SubmitButton className="linkbtn" pendingText="Sending…">send a new code</SubmitButton>
+            </ActionForm>
+            <p className="hint">Wrong email? <Link href="/account">Change it in your account</Link>.</p>
+          </div>
+        ) : (
         <ActionForm action={createBookingAction} className="box">
           <h2>Who's staying?</h2>
           <div className="notice ok">Signed in as <b>{u.email}</b>. We'll send your confirmation there.</div>
@@ -78,6 +95,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
           <label className="chk"><input type="checkbox" name="agree" /> I agree to the house rules and cancellation policy.</label>
           <div><SubmitButton pendingText={instant ? "Booking…" : "Sending…"}>{instant ? `Confirm booking · ${money(pr.total)}` : "Send request"}</SubmitButton></div>
         </ActionForm>
+        )}
 
         <aside className="box" style={{ alignSelf: "start" }}>
           <div className="mini">
@@ -91,7 +109,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
           </dl>
           <table className="breakdown">
             <tbody>
-              <tr><td>{money(pr.nightly)} × {pr.nights} nights</td><td>{money(pr.base)}</td></tr>
+              <tr><td>{money(pr.nightly)} × {pr.nights} night{pr.nights === 1 ? "" : "s"}</td><td>{money(pr.base)}</td></tr>
               {pr.discount > 0 && <tr><td>{pr.discountLabel}</td><td>−{money(pr.discount)}</td></tr>}
               {pr.cleaning > 0 && <tr><td>Cleaning fee</td><td>{money(pr.cleaning)}</td></tr>}
               {settings.tax_percent > 0 && <tr><td>Taxes ({settings.tax_percent}%)</td><td>{money(pr.tax)}</td></tr>}

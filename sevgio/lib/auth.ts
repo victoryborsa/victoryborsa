@@ -7,7 +7,7 @@ import { cache } from "react";
 import { one, q } from "./db.ts";
 import type { Role } from "./constants.ts";
 
-export type User = { id: string; email: string; name: string; phone: string; role: Role; created_at: string };
+export type User = { id: string; email: string; name: string; phone: string; role: Role; created_at: string; verified: boolean };
 
 const COOKIE = "sevgio_session";
 const SESSION_DAYS = 30;
@@ -44,7 +44,7 @@ export const currentUser = cache(async (): Promise<User | null> => {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   return one<User>(
-    `SELECT u.id, u.email, u.name, u.phone, u.role, u.created_at FROM sessions s JOIN users u ON u.id = s.user_id
+    `SELECT u.id, u.email, u.name, u.phone, u.role, u.created_at, u.email_verified_at IS NOT NULL AS verified FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.id = $1 AND s.expires_at > now() AND NOT u.disabled`,
     [sha256(token)],
   );

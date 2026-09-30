@@ -6,6 +6,7 @@ import { checkPassword, clientIp, createSession, destroySession, dummyHash, hash
 import { isEmail, str, type ActionState } from "@/lib/validate.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
+import { checkVerificationCode, sendVerificationCode } from "@/lib/verify.ts";
 
 const homeFor = (role: string) => (role === "admin" ? "/admin" : role === "host" ? "/host" : "/trips");
 
@@ -37,6 +38,7 @@ export async function signUpAction(_: ActionState, fd: FormData): Promise<Action
   if (exists) return { error: "An account with this email already exists. Sign in instead, or reset your password." };
   const u = await one<{ id: string }>("INSERT INTO users (email, name, phone, password_hash) VALUES ($1, $2, $3, $4) RETURNING id", [email, name, phone, await hashPassword(password)]);
   await createSession(u!.id);
+  await sendVerificationCode({ id: u!.id, email, name });
   redirect(safeNext(fd.get("next"), "/trips"));
 }
 
@@ -67,7 +69,7 @@ export async function resetPasswordAction(_: ActionState, fd: FormData): Promise
   if (password !== confirm) return { error: "The two passwords don't match." };
   const r = await one<{ user_id: string }>("UPDATE password_resets SET used_at = now() WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now() RETURNING user_id", [sha256(token)]);
   if (!r) return { error: "This reset link has expired or was already used. Request a new one." };
-  await q("UPDATE users SET password_hash = $2 WHERE id = $1", [r.user_id, await hashPassword(password)]);
+  await q("UPDATE users SET password_hash = $2, email_verified_at = coalesce(email_verified_at, now()) WHERE id = $1", [r.user_id, await hashPassword(password)]);
   await q("DELETE FROM sessions WHERE user_id = $1", [r.user_id]); // sign out everywhere
   await createSession(r.user_id);
   redirect("/account?reset=1");
@@ -80,7 +82,12 @@ export async function updateProfileAction(_: ActionState, fd: FormData): Promise
   if (!isEmail(email)) return { error: "Enter a valid email address." };
   const clash = await one("SELECT 1 FROM users WHERE lower(email) = $1 AND id <> $2", [email, u.id]);
   if (clash) return { error: "Another account already uses this email." };
-  await q("UPDATE users SET name = $2, phone = $3, email = $4 WHERE id = $1", [u.id, name, phone, email]);
+  const changed = email !== u.email.toLowerCase();
+  await q(`UPDATE users SET name = $2, phone = $3, email = $4${changed ? ", email_verified_at = NULL" : ""} WHERE id = $1`, [u.id, name, phone, email]);
+  if (changed) {
+    await sendVerificationCode({ id: u.id, email, name });
+    return { ok: "Profile saved. We sent a code to your new email. You'll be asked for it before your next booking." };
+  }
   return { ok: "Profile saved." };
 }
 
@@ -96,3 +103,20 @@ export async function changePasswordAction(_: ActionState, fd: FormData): Promis
   return { ok: "Password changed. You've been signed out on other devices." };
 }
 
+
+export async function resendCodeAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  void fd;
+  const u = await requireUser();
+  if (u.verified) return { ok: "Your email is already confirmed." };
+  const r = await sendVerificationCode(u);
+  return "error" in r ? { error: r.error } : { ok: `We sent a new code to ${u.email}.` };
+}
+
+export async function verifyCodeAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const u = await requireUser();
+  const code = str(fd, "code", 20);
+  if (!/^\d{6}$/.test(code.replace(/\s/g, ""))) return { error: "Enter the 6-digit code from the email." };
+  if (!(await checkVerificationCode(u.id, code))) return { error: "That code isn't right or has expired. Check the newest email, or send a new code." };
+  await logEvent("info", "Accounts", `Email confirmed: ${u.email}`, {}, u.id);
+  redirect(safeNext(fd.get("next"), "/trips"));
+}

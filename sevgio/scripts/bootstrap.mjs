@@ -19,7 +19,7 @@ try {
   if (admins === 0) {
     if (ADMIN_EMAIL && ADMIN_PASSWORD && ADMIN_PASSWORD.length >= 10) {
       await client.query(
-        `INSERT INTO users (email, name, password_hash, role) VALUES (lower($1), $2, $3, 'admin')
+        `INSERT INTO users (email, name, password_hash, role, email_verified_at) VALUES (lower($1), $2, $3, 'admin', now())
          ON CONFLICT ((lower(email))) DO UPDATE SET role = 'admin', password_hash = EXCLUDED.password_hash`,
         [ADMIN_EMAIL, ADMIN_NAME || "Sevgio Admin", await bcrypt.hash(ADMIN_PASSWORD, 12)],
       );

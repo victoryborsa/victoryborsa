@@ -61,7 +61,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
           <dl className="kv">
             <dt>Status</dt><dd><StatusPill status={b.status} /></dd>
             <dt>Home</dt><dd><Link href={`/stays/${b.slug}`}>{b.title}</Link>, {b.city}</dd>
-            <dt>Dates</dt><dd>{fmtDate(b.check_in)} – {fmtDate(b.check_out)} ({b.nights} nights)</dd>
+            <dt>Dates</dt><dd>{fmtDate(b.check_in)} – {fmtDate(b.check_out)} ({b.nights} night{b.nights === 1 ? "" : "s"})</dd>
             <dt>Guests</dt><dd>{partyLabel(b)}</dd>
             <dt>Lead guest</dt><dd>{b.guest_name}, {b.guest_phone}</dd>
           </dl>
@@ -88,7 +88,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
           <div style={{ borderRadius: "var(--r)", overflow: "hidden", aspectRatio: "4/3" }}>{b.cover_id ? <img src={photoUrl(b.cover_id, "thumb")} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div className="noph" />}</div>
           <table className="breakdown">
             <tbody>
-              <tr><td>{money(b.nightly_price_cents)} × {b.nights} nights</td><td>{money(b.lodging_cents)}</td></tr>
+              <tr><td>{money(b.nightly_price_cents)} × {b.nights} night{b.nights === 1 ? "" : "s"}</td><td>{money(b.lodging_cents)}</td></tr>
               {b.discount_cents > 0 && <tr><td>Length-of-stay discount</td><td>−{money(b.discount_cents)}</td></tr>}
               {b.cleaning_fee_cents > 0 && <tr><td>Cleaning fee</td><td>{money(b.cleaning_fee_cents)}</td></tr>}
               {b.tax_cents > 0 && <tr><td>Taxes</td><td>{money(b.tax_cents)}</td></tr>}
