@@ -14,6 +14,9 @@ function getTransport() {
   return transport;
 }
 
+/** True when real emails can go out (otherwise they are only printed to the server logs). */
+export const emailReady = () => Boolean(process.env.SMTP_HOST);
+
 export const siteUrl = () => (process.env.SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 
 /** Sends a plain-text email. Failures are logged for admins but never break the page. */

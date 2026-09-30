@@ -4,6 +4,7 @@ import { q } from "@/lib/db.ts";
 import { todayLocal } from "@/lib/dates.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { BookingTable, type BookingRow } from "@/components/BookingTable.tsx";
+import { markSeen } from "@/lib/alerts.ts";
 
 const STATUSES = ["all", "pending", "awaiting_payment", "confirmed", "cancelled", "declined", "expired"];
 
@@ -18,6 +19,7 @@ export default async function AdminBookings({ searchParams }: { searchParams: Pr
      ORDER BY b.check_in DESC LIMIT 300`,
     [status, term],
   );
+  const fresh = await markSeen(rows.filter(r => ["pending", "awaiting_payment", "confirmed"].includes(r.status)).map(r => r.id));
   return (
     <>
       <Flash msg={sp.msg} />
@@ -27,7 +29,8 @@ export default async function AdminBookings({ searchParams }: { searchParams: Pr
         <button className="btn btn-ghost">Filter</button>
         {(term || status !== "all") && <Link href="/admin/bookings">Clear</Link>}
       </form>
-      <BookingTable rows={rows} today={todayLocal()} back={`/admin/bookings?status=${status}`} />
+      {fresh.size > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}>{fresh.size} new booking{fresh.size === 1 ? "" : "s"} since you last looked, marked <b>New</b> below.</div>}
+      <BookingTable fresh={fresh} rows={rows} today={todayLocal()} back={`/admin/bookings?status=${status}`} />
     </>
   );
 }

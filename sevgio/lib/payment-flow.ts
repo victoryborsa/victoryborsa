@@ -41,6 +41,13 @@ export function manualInstructions(b: Booking, s: Settings): string {
 }
 
 /** Emails after a booking is created or accepted, depending on whether payment is still needed. */
+/** Admins get a copy of every host notice, so nothing is missed when the host is someone else. */
+async function toHostAndAdmins(b: Info, subject: string, text: string) {
+  await sendEmail(b.host_email, subject, text);
+  const admins = await q<{ email: string }>("SELECT email FROM users WHERE role = 'admin' AND lower(email) <> lower($1)", [b.host_email]);
+  for (const a of admins) await sendEmail(a.email, subject, text);
+}
+
 export async function notifyBooking(b: Info) {
   const s = await getSettings();
   const first = b.guest_name.split(" ")[0];
@@ -49,16 +56,16 @@ export async function notifyBooking(b: Info) {
     const paid = b.paid_cents > 0 ? `\nPaid: ${money(b.paid_cents)}${b.payment_status === "processing" ? " (bank transfer processing)" : ""}` : "";
     const balance = b.payment_method === "cash" ? `\nDue in cash at arrival: ${money(b.total_cents - b.paid_cents)}` : "";
     await sendEmail(b.guest_email, `Booking confirmed: ${b.title}`, `Hi ${first},\n\nYour stay at ${b.title} is confirmed.\n\nReference: ${b.code}\nDates: ${dates(b)}\nGuests: ${partyLabel(b)}\nTotal: ${money(b.total_cents + b.card_fee_cents)}${paid}${balance}\n\nView your booking and arrival details: ${link}`);
-    await sendEmail(b.host_email, `Confirmed booking: ${b.title}, ${dates(b)}`, `${b.guest_name} is booked at ${b.title} for ${dates(b)} (${partyLabel(b)}).\nPhone: ${b.guest_phone}\n${b.payment_method ? `Payment: ${METHOD_LABEL[b.payment_method]}, ${money(b.paid_cents)} received\n` : ""}${b.message ? "\nMessage: " + b.message + "\n" : ""}\nDetails: ${siteUrl()}/host/bookings`);
+    await toHostAndAdmins(b, `Confirmed booking: ${b.title}, ${dates(b)}`, `${b.guest_name} is booked at ${b.title} for ${dates(b)} (${partyLabel(b)}).\nPhone: ${b.guest_phone}\n${b.payment_method ? `Payment: ${METHOD_LABEL[b.payment_method]}, ${money(b.paid_cents)} received\n` : ""}${b.message ? "\nMessage: " + b.message + "\n" : ""}\nDetails: ${siteUrl()}/host/bookings`);
   } else if (b.status === "awaiting_payment") {
     const how = b.payment_method === "card" || b.payment_method === "ach"
       ? `Complete your payment here: ${link}\nPlease pay by ${deadlineText(b)}, or the dates are released.`
       : manualInstructions(b, s);
     await sendEmail(b.guest_email, `Complete your booking: ${b.title}`, `Hi ${first},\n\nYour dates at ${b.title} (${dates(b)}) are held for you. To confirm the booking:\n\n${how}\n\nReference: ${b.code}\nView your booking: ${link}`);
-    await sendEmail(b.host_email, `New booking awaiting payment: ${b.title}, ${dates(b)}`, `${b.guest_name} booked ${b.title} for ${dates(b)} and chose to pay by ${b.payment_method ? METHOD_LABEL[b.payment_method] : "—"}.\n${b.payment_method === "card" || b.payment_method === "ach" ? "It confirms automatically once paid." : `When you receive ${money(b.due_now_cents)}, click "Mark payment received" in ${siteUrl()}/host/bookings`}`);
+    await toHostAndAdmins(b, `New booking awaiting payment: ${b.title}, ${dates(b)}`, `${b.guest_name} booked ${b.title} for ${dates(b)} and chose to pay by ${b.payment_method ? METHOD_LABEL[b.payment_method] : "—"}.\n${b.payment_method === "card" || b.payment_method === "ach" ? "It confirms automatically once paid." : `When you receive ${money(b.due_now_cents)}, click "Mark payment received" in ${siteUrl()}/host/bookings`}`);
   } else if (b.status === "pending") {
     await sendEmail(b.guest_email, `Request sent: ${b.title}`, `Hi ${first},\n\nWe've sent your request to the host. Your dates are held while they decide, usually within a few hours. You'll get another email when they reply${b.payment_method ? ", with how to pay" : ""}.\n\nReference: ${b.code}\nDates: ${dates(b)}\n\nView your request: ${link}`);
-    await sendEmail(b.host_email, `Booking request: ${b.title}, ${dates(b)}`, `${b.guest_name} would like to stay at ${b.title} for ${dates(b)} (${partyLabel(b)}).\n\nMessage: ${b.message}\n\nAccept or decline within 48 hours: ${siteUrl()}/host/bookings`);
+    await toHostAndAdmins(b, `Booking request: ${b.title}, ${dates(b)}`, `${b.guest_name} would like to stay at ${b.title} for ${dates(b)} (${partyLabel(b)}).\n\nMessage: ${b.message}\n\nAccept or decline within 48 hours: ${siteUrl()}/host/bookings`);
   }
 }
 

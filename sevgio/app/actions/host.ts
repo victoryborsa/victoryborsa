@@ -274,6 +274,25 @@ export async function updateListingAction(_: ActionState, fd: FormData): Promise
   return { ok: v.status === "published" ? "Saved. Changes are live on the site." : "Saved. This listing is not visible to guests." };
 }
 
+/** Deletes a listing for good, with its photos and calendar. Listings with real reservations can't be deleted (they are kept for the money records); hide them instead. */
+export async function deleteListingAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const { u, p } = await requireManageable(str(fd, "id", 40));
+  if (str(fd, "confirm", 10) !== "yes") return { error: "Tick the box to confirm you want to delete this listing." };
+  const kept = await one<{ n: number }>("SELECT count(*)::int AS n FROM bookings WHERE property_id = $1 AND status IN ('pending','awaiting_payment','confirmed')", [p.id]);
+  if (kept && kept.n > 0)
+    return { error: `This listing has ${kept.n} reservation${kept.n === 1 ? "" : "s"} (upcoming or past), which are kept for your money records. Cancel any test bookings first, or set Status to “Hidden” so guests can't see it.` };
+  const rooms = await q<{ title: string }>("SELECT title FROM properties WHERE parent_id = $1", [p.id]);
+  await tx(async c => {
+    await c.query("DELETE FROM bookings WHERE property_id = $1", [p.id]); // only cancelled, declined or expired ones remain
+    await c.query("DELETE FROM properties WHERE id = $1", [p.id]);
+  });
+  await logEvent("info", "Listings", `Deleted listing ${p.title}${rooms.length ? ` (its rooms are now separate listings: ${rooms.map(r => r.title).join(", ")})` : ""}`, { property: p.id }, u.id);
+  revalidatePath("/host/listings");
+  revalidatePath("/admin/listings");
+  revalidatePath("/stays");
+  redirect(withMsg(u.role === "admin" ? "/admin/listings" : "/host/listings", "deleted"));
+}
+
 // ---------- Photos ----------
 
 export async function uploadPhotosAction(_: ActionState, fd: FormData): Promise<ActionState> {

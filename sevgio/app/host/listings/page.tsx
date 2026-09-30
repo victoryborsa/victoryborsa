@@ -1,3 +1,4 @@
+import { Flash } from "@/components/Flash.tsx";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
@@ -8,7 +9,7 @@ import { todayLocal } from "@/lib/dates.ts";
 
 type Row = { id: string; slug: string; title: string; city: string; status: string; booking_mode: string; nightly_price_cents: number; min_nights: number; cover_id: string | null; photo_count: number; host_name: string; next_in: string | null };
 
-export default async function Listings() {
+export default async function Listings({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
   const u = await requireUser(["host", "admin"], "/host/listings");
   const s = scopeSql(u);
   const rows = await q<Row>(
@@ -22,6 +23,7 @@ export default async function Listings() {
   const statusPill = (st: string) => <span className={`pill ${st === "published" ? "ok" : st === "draft" ? "warn" : "neutral"}`}>{st === "published" ? "Live" : st === "draft" ? "Draft" : "Hidden"}</span>;
   return (
     <>
+      <Flash msg={(await searchParams).msg} />
       <div className="row" style={{ marginBottom: 16 }}>
         <p className="muted" style={{ flex: 1 }}>{u.role === "admin" ? "All listings on Sevgio." : "Only listings you manage are shown here."}</p>
         <Link className="btn btn-ghost" href="/host/listings/import">Import from file</Link>
@@ -49,6 +51,7 @@ export default async function Listings() {
                     <div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
                       <Link className="btn btn-ghost btn-sm" href={`/host/listings/${r.id}`}>Edit</Link>
                       <Link className="btn btn-ghost btn-sm" href={`/host/listings/${r.id}/photos`}>Photos</Link>
+                      <Link className="btn btn-danger btn-sm" href={`/host/listings/${r.id}?delete=1#delete`}>Delete</Link>
                       <Link className="btn btn-ghost btn-sm" href={`/host/listings/${r.id}/calendar`}>Calendar</Link>
                       <Link className="btn btn-ghost btn-sm" href={`/stays/${r.slug}`}>View</Link>
                     </div>

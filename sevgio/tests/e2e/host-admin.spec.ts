@@ -337,3 +337,62 @@ test("calendar board colors bookings by the site they came from", async ({ page 
     await expect(page.locator(`.mc-bar.${cls}`, { hasText: label })).toBeVisible();
   await signOut(page);
 });
+
+test("calendar has day, week and month views, and a one-property month with prices", async ({ page }) => {
+  const [b] = await sql<{ code: string; guest_name: string; check_in: string; pid: string; title: string; price: number }>(
+    `SELECT b.code, b.guest_name, b.check_in::text, p.id AS pid, p.title, p.nightly_price_cents AS price FROM bookings b JOIN properties p ON p.id = b.property_id
+     WHERE p.slug = 'lake-harmony-lodge' AND b.status = 'confirmed' ORDER BY b.check_in LIMIT 1`);
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto(`/admin/calendar?view=week&start=${b.check_in}`);
+  await expect(page.locator(".mc-day")).toHaveCount(7);
+  await expect(page.locator(`a.mc-bar[href="/trips/${b.code}"]`)).toBeVisible();
+  await page.getByRole("link", { name: "Day", exact: true }).click();
+  await expect(page).toHaveURL(/view=day/);
+  await expect(page.locator(".mc-dayrow", { hasText: "Lake Harmony Lodge" }).getByText(`Arriving: ${b.guest_name}`)).toBeVisible();
+  await page.getByRole("link", { name: "Next day" }).click();
+  await expect(page.locator(".mc-dayrow", { hasText: "Lake Harmony Lodge" }).getByText(new RegExp(`(Staying|Leaving): ${b.guest_name}`))).toBeVisible();
+  // Tapping a property's photo opens its month like a wall calendar, with prices on free days.
+  await page.getByRole("link", { name: "Month", exact: true }).click();
+  await page.locator(".mc-rail").getByRole("link", { name: b.title }).click();
+  await expect(page.locator(`.mg a[href="/trips/${b.code}"]`).first()).toBeVisible();
+  await expect(page.locator(".mg-price").first()).toHaveText("$" + (b.price / 100).toLocaleString("en-US", { maximumFractionDigits: 0 }));
+  await signOut(page);
+});
+
+test("admin can delete a listing without reservations, but not one with reservations", async ({ page }) => {
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  page.on("dialog", d => d.accept());
+  // Lake Harmony has reservations: refused, with advice to hide it.
+  const [lh] = await sql<{ id: string }>("SELECT id FROM properties WHERE slug = 'lake-harmony-lodge'");
+  await page.goto(`/host/listings/${lh.id}?delete=1`);
+  await page.getByLabel(/Yes, delete/).check();
+  await page.getByRole("button", { name: "Delete listing" }).click();
+  await expect(page.getByText(/can't see it|kept for your money records/)).toBeVisible();
+  // A fresh draft with no bookings can be deleted from the listings page.
+  const [h] = await sql<{ id: string }>("SELECT id FROM users WHERE email = 'admin@demo.sevgio.com'");
+  await sql("INSERT INTO properties (host_id, slug, title, city, address, description, nightly_price_cents, max_guests, bedrooms, beds, bathrooms) VALUES ($1, 'delete-me-test', 'Delete Me Test', 'Erie', '1 Main St', 'x', 9900, 2, 1, 1, 1)", [h.id]);
+  await page.goto("/admin/listings");
+  await page.locator("tr", { hasText: "Delete Me Test" }).getByRole("link", { name: "Delete" }).click();
+  await page.getByLabel(/Yes, delete/).check();
+  await page.getByRole("button", { name: "Delete listing" }).click();
+  await expect(page.getByText("Listing deleted.")).toBeVisible();
+  await expect(page.locator("tr", { hasText: "Delete Me Test" })).toHaveCount(0);
+  expect(await sql("SELECT 1 FROM properties WHERE slug = 'delete-me-test'")).toHaveLength(0);
+  await signOut(page);
+});
+
+test("new bookings show an alert until the admin opens Bookings", async ({ page }) => {
+  const [b] = await sql<{ code: string }>("SELECT code FROM bookings WHERE status = 'confirmed' ORDER BY created_at DESC LIMIT 1");
+  await sql("UPDATE bookings SET seen_at = now()");
+  await sql("UPDATE bookings SET seen_at = NULL WHERE code = $1", [b.code]);
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin");
+  await expect(page.getByText("1 new booking.")).toBeVisible();
+  await expect(page.locator(".subnav .badge-new")).toHaveText("1");
+  await page.locator(".subnav").getByRole("link", { name: /Bookings/ }).click();
+  await expect(page.locator("tr.row-new", { hasText: b.code })).toBeVisible();
+  await page.reload();
+  await expect(page.locator("tr.row-new")).toHaveCount(0);
+  await expect(page.locator(".subnav .badge-new")).toHaveCount(0);
+  await signOut(page);
+});

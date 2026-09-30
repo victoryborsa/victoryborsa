@@ -5,10 +5,13 @@ import { expireStaleRequests } from "@/lib/bookings.ts";
 import { todayLocal } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
 import { EventTable, type Ev } from "@/components/EventTable.tsx";
+import { emailReady } from "@/lib/email.ts";
+import { unseenBookings } from "@/lib/alerts.ts";
 
 export default async function AdminHome() {
-  await requireUser(["admin"], "/admin");
+  const u = await requireUser(["admin"], "/admin");
   await expireStaleRequests();
+  const fresh = await unseenBookings(u);
   const today = todayLocal();
   const [s] = await q<Record<string, number>>(
     `SELECT (SELECT count(*) FROM users WHERE role = 'customer') AS customers,
@@ -25,6 +28,13 @@ export default async function AdminHome() {
   const recent = await q<Ev>("SELECT e.*, u.email FROM event_log e LEFT JOIN users u ON u.id = e.user_id WHERE e.level <> 'info' AND e.resolved_at IS NULL ORDER BY e.at DESC LIMIT 8");
   return (
     <>
+      {!emailReady() && (
+        <div className="notice warn" role="alert" style={{ marginBottom: 16 }}>
+          <b>Emails are not being sent yet.</b> Booking confirmations, new-booking alerts and verification codes only appear in Render → Logs until you add the email settings
+          (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM) in Render → Environment. See “Email” in the README.
+        </div>
+      )}
+      {fresh > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}><b>{fresh} new booking{fresh === 1 ? "" : "s"}.</b> <Link href="/admin/bookings">Open Bookings</Link> to see {fresh === 1 ? "it" : "them"}.</div>}
       <div className="stats">
         <div className="stat"><b>{s.customers}</b><span>Guests</span></div>
         <div className="stat"><b>{s.hosts}</b><span>Hosts</span></div>

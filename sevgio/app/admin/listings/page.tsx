@@ -3,11 +3,12 @@ import Link from "next/link";
 import { q } from "@/lib/db.ts";
 import { money } from "@/lib/money.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
+import { Flash } from "@/components/Flash.tsx";
 import { reassignListingAction, setListingStatusAction, setRatingAction } from "@/app/actions/admin.ts";
 
 type Row = { id: string; slug: string; title: string; city: string; status: string; host_id: string; nightly_price_cents: number; rating: number | null; review_count: number; photos: number; bookings: number };
 
-export default async function AdminListings() {
+export default async function AdminListings({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
   await requireUser(["admin"], "/admin");
   const [rows, hosts] = await Promise.all([
     q<Row>(`SELECT p.id, p.slug, p.title, p.city, p.status, p.host_id, p.nightly_price_cents, p.rating, p.review_count,
@@ -18,6 +19,7 @@ export default async function AdminListings() {
   ]);
   return (
     <>
+      <Flash msg={(await searchParams).msg} />
       <div className="row" style={{ marginBottom: 16 }}>
         <p className="muted" style={{ flex: 1 }}>Every listing on the site. Edit details, photos and calendars with the host tools.</p>
         <Link className="btn btn-ghost" href="/host/listings/import">Import from file</Link>
@@ -53,7 +55,7 @@ export default async function AdminListings() {
                     {r.status === "published" ? <SubmitButton className="btn btn-ghost btn-sm" name="status" value="hidden" pendingText="…">Hide</SubmitButton> : r.photos > 0 ? <SubmitButton className="btn btn-ghost btn-sm" name="status" value="published" pendingText="…">Publish</SubmitButton> : <span className="hint">Needs photos</span>}
                   </form>
                 </td>
-                <td><div className="row" style={{ gap: 6, flexWrap: "nowrap" }}><Link className="btn btn-ghost btn-sm" href={`/host/listings/${r.id}`}>Edit</Link><Link className="btn btn-ghost btn-sm" href={`/stays/${r.slug}`}>View</Link></div></td>
+                <td><div className="row" style={{ gap: 6, flexWrap: "nowrap" }}><Link className="btn btn-ghost btn-sm" href={`/host/listings/${r.id}`}>Edit</Link><Link className="btn btn-ghost btn-sm" href={`/stays/${r.slug}`}>View</Link><Link className="btn btn-danger btn-sm" href={`/host/listings/${r.id}?delete=1#delete`}>Delete</Link></div></td>
               </tr>
             ))}
           </tbody>
