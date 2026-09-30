@@ -10,6 +10,7 @@ import { quote } from "@/lib/pricing.ts";
 import { money } from "@/lib/money.ts";
 import { CANCELLATION } from "@/lib/constants.ts";
 import { partyFromParams, partyLabel } from "@/lib/party.ts";
+import { arrivalOptions } from "@/lib/arrival.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { createBookingAction } from "@/app/actions/bookings.ts";
 
@@ -61,7 +62,13 @@ export default async function BookPage({ params, searchParams }: { params: Promi
             <label className="field"><span>Lead guest's full name</span><input className="input" name="name" autoComplete="name" defaultValue={u.name} required /></label>
             <label className="field"><span>Mobile phone</span><input className="input" name="phone" type="tel" autoComplete="tel" defaultValue={u.phone} required /><span className="hint">For the host to reach you during your stay</span></label>
           </div>
-          <label className="field"><span>Estimated arrival time <span className="muted" style={{ fontWeight: 400 }}>(optional)</span></span><input className="input" name="arrival" placeholder="e.g. around 5 pm" /></label>
+          <label className="field"><span>Estimated arrival time <span className="muted" style={{ fontWeight: 400 }}>(optional)</span></span>
+            <select className="input" name="arrival" defaultValue="">
+              <option value="">I don't know yet</option>
+              {arrivalOptions(p.check_in_time).map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+            <span className="hint">Check-in is from {p.check_in_time}. Letting the host know helps them get ready for you.</span>
+          </label>
           <label className="field">
             <span>{instant ? <>Note for the host <span className="muted" style={{ fontWeight: 400 }}>(optional)</span></> : "Message to the host"}</span>
             <textarea className="input" name="message" placeholder={instant ? "Anything the host should know?" : "Say hello and tell the host a little about your trip."} />

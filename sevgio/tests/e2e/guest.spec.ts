@@ -40,9 +40,12 @@ test("guest books instantly: sign up mid-booking, confirmation, My trips", async
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/book\/lake-harmony-lodge/);
   await page.getByLabel("Mobile phone").fill("(570) 555-0199");
+  await page.getByLabel(/Estimated arrival time/).selectOption("5:00 pm – 6:00 pm");
   await page.getByLabel(/I agree/).check();
   await page.getByRole("button", { name: /Confirm booking/ }).click();
   await expect(page.getByText("You're booked!")).toBeVisible();
+  const [arr] = await sql<{ arrival_time: string }>("SELECT arrival_time FROM bookings ORDER BY created_at DESC LIMIT 1");
+  expect(arr.arrival_time).toBe("5:00 pm – 6:00 pm");
   await expect(page.getByText("Confirmed").first()).toBeVisible();
   await expect(page.getByText("Getting there")).toBeVisible();
   await page.getByRole("link", { name: "My trips" }).first().click();

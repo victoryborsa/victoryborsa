@@ -136,3 +136,13 @@ test("whole home and its rooms share a calendar; rooms don't block each other", 
   const results = await Promise.all([...Array(10)].flatMap(() => [b(house, 130, 132), b(roomA, 130, 132)]));
   assert.equal(results.filter(r => r.ok).length, 1);
 });
+
+test("arrival time options start at check-in and run to midnight", async () => {
+  const { arrivalOptions, parseHour } = await import("../../lib/arrival.ts");
+  assert.equal(parseHour("3:00 pm"), 15); assert.equal(parseHour("12:00 PM"), 12); assert.equal(parseHour("12:00 am"), 0); assert.equal(parseHour("16:00"), 16); assert.equal(parseHour("whenever"), 15);
+  const noon = arrivalOptions("12:00 pm");
+  assert.equal(noon[0], "12:00 pm – 1:00 pm");
+  assert.equal(noon[noon.length - 2], "11:00 pm – 12:00 am");
+  assert.equal(noon[noon.length - 1], "After midnight");
+  assert.equal(arrivalOptions("3:00 pm")[0], "3:00 pm – 4:00 pm");
+});
