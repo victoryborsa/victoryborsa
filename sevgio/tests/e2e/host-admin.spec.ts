@@ -77,7 +77,15 @@ test("host edits price, blocks dates, uploads a photo, and imports nothing unsaf
 
   // iCal export works and includes the block
   const token = (await sql<{ ical_token: string }>("SELECT ical_token FROM properties WHERE slug = 'jim-thorpe-mountain-cabin'"))[0].ical_token;
-  const ics = await (await page.request.get(`/api/ical/${token}`)).text();
+  const icsRes = await page.request.get(`/api/ical/${token}.ics`);
+  expect(icsRes.headers()["content-type"]).toContain("text/calendar");
+  const ics = await icsRes.text();
+  expect((await page.request.get(`/api/ical/${token}`)).status()).toBe(200);
+  expect((await page.request.head(`/api/ical/${token}.ics`)).status()).toBe(200);
+  const [empty] = await sql<{ ical_token: string }>("SELECT ical_token FROM properties WHERE slug = 'downtown-state-college-condo'");
+  const emptyIcs = await (await page.request.get(`/api/ical/${empty.ical_token}.ics`)).text();
+  expect(emptyIcs).toContain("BEGIN:VEVENT");
+  expect(emptyIcs).toContain("DTSTART;VALUE=DATE:20000101");
   expect(ics).toContain("BEGIN:VCALENDAR");
   expect(ics).toContain(iso(80).replace(/-/g, ""));
 

@@ -22,7 +22,7 @@ export default async function CalendarPage({ params }: { params: Promise<{ id: s
   const booked = [...bookings.map(b => [b.check_in, b.check_out]), ...linkedBlocks.map(b => [b.start_date, b.end_date])].flatMap(([a, z]) => eachNight(a, z < until ? z : until));
   const blocked = blocks.flatMap(b => eachNight(b.start_date, b.end_date < until ? b.end_date : until));
   const hostBlocks = blocks.filter(b => b.source === "host");
-  const exportUrl = `${siteUrl()}/api/ical/${p.ical_token}`;
+  const exportUrl = `${siteUrl()}/api/ical/${p.ical_token}.ics`;
 
   return (
     <div className="stack" style={{ gap: 20 }}>
