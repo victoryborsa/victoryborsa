@@ -396,3 +396,27 @@ test("new bookings show an alert until the admin opens Bookings", async ({ page 
   await expect(page.locator(".subnav .badge-new")).toHaveCount(0);
   await signOut(page);
 });
+
+test("host can upload many big phone photos at once (over the 25 MB request limit in total)", async ({ page }) => {
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/host/listings");
+  await page.locator("tr", { hasText: "Jim Thorpe" }).getByRole("link", { name: "Photos" }).click();
+  await expect(page.locator(".photo-tile").first()).toBeVisible();
+  const before = await page.locator(".photo-tile").count();
+  const sharp = (await import("sharp")).default;
+  const files: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    const f = path.join(process.cwd(), "test-results", `big-${i}.png`);
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    // Random noise barely compresses, so each file is about 12 MB, like a phone photo.
+    const raw = Buffer.alloc(2000 * 2000 * 3); for (let j = 0; j < raw.length; j++) raw[j] = (j * 2654435761 + i * 97) >>> 24;
+    await sharp(raw, { raw: { width: 2000, height: 2000, channels: 3 } }).png({ compressionLevel: 0 }).toFile(f);
+    files.push(f);
+  }
+  expect(files.reduce((n, f) => n + fs.statSync(f).size, 0)).toBeGreaterThan(25 * 1024 * 1024);
+  await page.locator('input[type="file"]').setInputFiles(files);
+  await page.getByRole("button", { name: "Upload" }).click();
+  await expect(page.getByText("3 photos added.")).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator(".photo-tile")).toHaveCount(before + 3);
+  await signOut(page);
+});

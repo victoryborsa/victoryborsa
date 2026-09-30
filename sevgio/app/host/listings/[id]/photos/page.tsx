@@ -1,6 +1,7 @@
 import { requireManageable } from "@/lib/access.ts";
 import { photosFor, photoUrl } from "@/lib/queries.ts";
-import { ActionForm, SubmitButton } from "@/components/forms.tsx";
+import { SubmitButton } from "@/components/forms.tsx";
+import { PhotoUploader } from "@/components/PhotoUploader.tsx";
 import { captionAction, photoCommandAction, uploadPhotosAction } from "@/app/actions/host.ts";
 
 export default async function Photos({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string }> }) {
@@ -11,13 +12,7 @@ export default async function Photos({ params, searchParams }: { params: Promise
   return (
     <div className="stack" style={{ gap: 20 }}>
       {created && <div className="notice ok">Listing saved as a draft. Add photos, then publish it from the Details tab.</div>}
-      <ActionForm action={uploadPhotosAction} className="box" resetOnOk>
-        <h3>Upload photos</h3>
-        <input type="hidden" name="id" value={p.id} />
-        <input className="input" type="file" name="photos" accept="image/*" multiple />
-        <p className="hint">JPG, PNG, WebP or HEIC, up to 20 MB each. Photos are resized automatically so pages load fast, and location data is removed. The first photo is the cover.</p>
-        <div><SubmitButton pendingText="Uploading… this can take a moment">Upload</SubmitButton></div>
-      </ActionForm>
+      <PhotoUploader id={p.id} action={uploadPhotosAction} />
       {photos.length === 0 ? <div className="empty"><p className="muted">No photos yet. Listings need at least one photo to be published.</p></div> : (
         <div className="photo-grid">
           {photos.map((ph, i) => (
