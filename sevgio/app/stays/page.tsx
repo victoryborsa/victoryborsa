@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { searchProperties, publishedCities } from "@/lib/queries.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { isIsoDate, fmtShort, todayLocal } from "@/lib/dates.ts";
-import { AMENITIES } from "@/lib/constants.ts";
+import { AMENITY_FILTERS } from "@/lib/constants.ts";
 import { PropertyCard } from "@/components/PropertyCard.tsx";
 import { SearchBar } from "@/components/SearchBar.tsx";
 import { FilterToggle } from "@/components/FilterToggle.tsx";
@@ -15,7 +15,6 @@ export const dynamic = "force-dynamic";
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || "";
 const num = (v: string | string[] | undefined) => { const n = parseInt(first(v), 10); return Number.isFinite(n) && n > 0 ? n : 0; };
-const FILTER_AMENITIES = ["hottub", "pool", "fireplace", "wifi", "kitchen", "parking", "washer", "workspace", "pets", "waterview", "lakeaccess", "ac"];
 
 export default async function Stays({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
@@ -30,7 +29,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
     if (dateError) { ci = ""; co = ""; }
   }
   const guests = Math.min(num(sp.guests) || 1, 50);
-  const amen = (Array.isArray(sp.amen) ? sp.amen : sp.amen ? [sp.amen] : []).filter(a => a in AMENITIES);
+  const amen = (Array.isArray(sp.amen) ? sp.amen : sp.amen ? [sp.amen] : []).filter(a => a in AMENITY_FILTERS);
   const f = { loc, ci, co, guests, maxPrice: num(sp.max), bedrooms: num(sp.beds), baths: num(sp.baths), amenities: amen, instant: first(sp.instant) === "1", privateBath: first(sp.pbath) === "1", sort: first(sp.sort) };
   const [list, cities, settings] = await Promise.all([searchProperties(f), publishedCities(), getSettings()]);
   const filtersOn = !!(f.maxPrice || f.bedrooms || f.baths || amen.length || f.instant || f.privateBath);
@@ -72,8 +71,8 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
           <label className="chk"><input type="checkbox" name="pbath" value="1" defaultChecked={f.privateBath} />Private bathroom only</label>
           <fieldset>
             <legend>Amenities</legend>
-            {FILTER_AMENITIES.map(a => (
-              <label className="chk" key={a}><input type="checkbox" name="amen" value={a} defaultChecked={amen.includes(a)} />{AMENITIES[a]}</label>
+            {Object.entries(AMENITY_FILTERS).map(([a, f]) => (
+              <label className="chk" key={a}><input type="checkbox" name="amen" value={a} defaultChecked={amen.includes(a)} />{f.label}</label>
             ))}
           </fieldset>
           <fieldset>

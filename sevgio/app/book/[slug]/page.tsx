@@ -9,6 +9,7 @@ import { fmtDate } from "@/lib/dates.ts";
 import { quote } from "@/lib/pricing.ts";
 import { money } from "@/lib/money.ts";
 import { CANCELLATION } from "@/lib/constants.ts";
+import { partyFromParams, partyLabel } from "@/lib/party.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { createBookingAction } from "@/app/actions/bookings.ts";
 
@@ -18,12 +19,13 @@ export const dynamic = "force-dynamic";
 export default async function BookPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { slug } = await params;
   const sp = await searchParams;
-  const ci = sp.ci || "", co = sp.co || "", guests = Number(sp.guests) || 1;
-  const back = `/stays/${slug}?` + new URLSearchParams({ ci, co, guests: String(guests) });
-  const u = await requireUser(undefined, `/book/${slug}?` + new URLSearchParams({ ci, co, guests: String(guests) }));
+  const ci = sp.ci || "", co = sp.co || "", party = partyFromParams(sp);
+  const qs = new URLSearchParams({ ci, co, adults: String(party.adults), children: String(party.children), infants: String(party.free_children) });
+  const back = `/stays/${slug}?${qs}`;
+  const u = await requireUser(undefined, `/book/${slug}?${qs}`);
   const p = await propertyBySlug(slug);
   if (!p || p.status !== "published") notFound();
-  const problem = stayProblem(p, ci, co, guests) || (!(await isRangeFree(p.id, ci, co)) ? "Some of these nights were just booked. Please choose different dates." : null);
+  const problem = stayProblem(p, ci, co, party) || (!(await isRangeFree(p.id, ci, co)) ? "Some of these nights were just booked. Please choose different dates." : null);
   if (problem) {
     return (
       <div className="wrap page-pad">
@@ -33,7 +35,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   }
   if (!ci) redirect(back);
   const [settings, photos] = await Promise.all([getSettings(), photosFor(p.id)]);
-  const pr = quote(p, ci, co, settings.tax_percent);
+  const pr = quote(p, ci, co, settings.tax_percent, party);
   const instant = p.booking_mode === "instant";
 
   return (
@@ -52,7 +54,9 @@ export default async function BookPage({ params, searchParams }: { params: Promi
           <input type="hidden" name="slug" value={slug} />
           <input type="hidden" name="ci" value={ci} />
           <input type="hidden" name="co" value={co} />
-          <input type="hidden" name="guests" value={guests} />
+          <input type="hidden" name="adults" value={party.adults} />
+          <input type="hidden" name="children" value={party.children} />
+          <input type="hidden" name="infants" value={party.free_children} />
           <div className="grid-2">
             <label className="field"><span>Lead guest's full name</span><input className="input" name="name" autoComplete="name" defaultValue={u.name} required /></label>
             <label className="field"><span>Mobile phone</span><input className="input" name="phone" type="tel" autoComplete="tel" defaultValue={u.phone} required /><span className="hint">For the host to reach you during your stay</span></label>
@@ -76,11 +80,12 @@ export default async function BookPage({ params, searchParams }: { params: Promi
           <dl className="kv">
             <dt>Check-in</dt><dd>{fmtDate(ci)}, after {p.check_in_time}</dd>
             <dt>Check-out</dt><dd>{fmtDate(co)}, before {p.check_out_time}</dd>
-            <dt>Guests</dt><dd>{guests}</dd>
+            <dt>Guests</dt><dd>{partyLabel(party)}</dd>
           </dl>
           <table className="breakdown">
             <tbody>
               <tr><td>{money(pr.nightly)} × {pr.nights} nights</td><td>{money(pr.base)}</td></tr>
+              {pr.discount > 0 && <tr><td>{pr.discountLabel}</td><td>−{money(pr.discount)}</td></tr>}
               {pr.cleaning > 0 && <tr><td>Cleaning fee</td><td>{money(pr.cleaning)}</td></tr>}
               {settings.tax_percent > 0 && <tr><td>Taxes ({settings.tax_percent}%)</td><td>{money(pr.tax)}</td></tr>}
               <tr className="total"><td>Total</td><td>{money(pr.total)}</td></tr>

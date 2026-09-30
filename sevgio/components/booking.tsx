@@ -2,23 +2,27 @@
 import Link from "next/link";
 import { createContext, useContext, useMemo, useState } from "react";
 import { Calendar, addDaysC } from "./Calendar.tsx";
-import { quote } from "@/lib/pricing.ts";
+import { quote, type Party, type PricingInput } from "@/lib/pricing.ts";
 import { money } from "@/lib/money.ts";
 
-type P = { slug: string; nightly_price_cents: number; cleaning_fee_cents: number; min_nights: number; max_nights: number; max_guests: number; booking_mode: "instant" | "request" };
-type Ctx = { p: P; today: string; taken: Set<string>; taxPercent: number; ci: string; co: string; guests: number; msg: string; pick: (d: string) => void; clear: () => void; setGuests: (n: number) => void; bookable: boolean };
+type P = PricingInput & { slug: string; min_nights: number; max_nights: number; booking_mode: "instant" | "request"; children_free_age: number };
+type Ctx = { p: P; today: string; taken: Set<string>; taxPercent: number; ci: string; co: string; party: Party; msg: string; pick: (d: string) => void; clear: () => void; setParty: (p: Party) => void; bookable: boolean };
 const BookingCtx = createContext<Ctx | null>(null);
 const use = () => useContext(BookingCtx)!;
 const nights = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
 const fmt = (s: string) => (s ? new Date(s + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }) : "Add date");
 
-export function BookingProvider({ p, today, unavailable, taxPercent, initial, bookable, children }: { p: P; today: string; unavailable: string[]; taxPercent: number; initial: { ci: string; co: string; guests: number }; bookable: boolean; children: React.ReactNode }) {
+export function BookingProvider({ p, today, unavailable, taxPercent, initial, bookable, children }: { p: P; today: string; unavailable: string[]; taxPercent: number; initial: { ci: string; co: string; party: Party }; bookable: boolean; children: React.ReactNode }) {
   const taken = useMemo(() => new Set(unavailable), [unavailable]);
   const rangeFree = (a: string, b: string) => { for (let d = a; d < b; d = addDaysC(d, 1)) if (taken.has(d)) return false; return true; };
   const validInitial = initial.ci && initial.co && initial.ci >= today && initial.co > initial.ci && rangeFree(initial.ci, initial.co);
   const [ci, setCi] = useState(validInitial ? initial.ci : "");
   const [co, setCo] = useState(validInitial ? initial.co : "");
-  const [guests, setGuests] = useState(Math.min(Math.max(1, initial.guests || 2), p.max_guests));
+  const [party, setParty] = useState<Party>(() => {
+    const adults = Math.min(Math.max(1, initial.party.adults || 2), p.max_guests);
+    const children = Math.min(initial.party.children, p.max_guests - adults);
+    return { adults, children, free_children: Math.min(initial.party.free_children, p.max_guests - adults - children) };
+  });
   const [msg, setMsg] = useState(initial.ci && !validInitial ? "The dates from your search aren't available here. Pick new dates below." : "");
 
   const pick = (d: string) => {
@@ -34,7 +38,7 @@ export function BookingProvider({ p, today, unavailable, taxPercent, initial, bo
     if (n > p.max_nights) return setMsg(`Stays here can be up to ${p.max_nights} nights.`);
     setCo(d);
   };
-  const value: Ctx = { p, today, taken, taxPercent, ci, co, guests, msg, pick, clear: () => { setCi(""); setCo(""); setMsg(""); }, setGuests, bookable };
+  const value: Ctx = { p, today, taken, taxPercent, ci, co, party, msg, pick, clear: () => { setCi(""); setCo(""); setMsg(""); }, setParty, bookable };
   return <BookingCtx.Provider value={value}>{children}</BookingCtx.Provider>;
 }
 
@@ -63,22 +67,48 @@ export function AvailabilitySection() {
 }
 
 function useQuote() {
-  const { p, ci, co, guests, taxPercent, taken } = use();
+  const { p, ci, co, party, taxPercent, taken } = use();
   if (!ci || !co) return { pr: null, problem: "" };
   let problem = "";
   const n = nights(ci, co);
   if (n < p.min_nights) problem = `This home has a ${p.min_nights}-night minimum stay.`;
-  else if (guests > p.max_guests) problem = `This home fits up to ${p.max_guests} guests.`;
+  else if (party.adults + party.children + party.free_children > p.max_guests) problem = `This home fits up to ${p.max_guests} guests, including children.`;
   else for (let d = ci; d < co; d = addDaysC(d, 1)) if (taken.has(d)) { problem = "Some of these nights are booked. Choose different dates."; break; }
-  return { pr: quote(p, ci, co, taxPercent), problem };
+  return { pr: quote(p, ci, co, taxPercent, party), problem };
 }
 
-function bookHref(slug: string, ci: string, co: string, guests: number) {
-  return `/book/${slug}?` + new URLSearchParams({ ci, co, guests: String(guests) });
+export function bookHref(slug: string, ci: string, co: string, party: Party) {
+  return `/book/${slug}?` + new URLSearchParams({ ci, co, adults: String(party.adults), children: String(party.children), infants: String(party.free_children) });
+}
+
+/** Adults / children / young children (free) pickers. Total can't exceed the listing's maximum. */
+function PartyPicker() {
+  const { p, party, setParty } = use();
+  const total = party.adults + party.children + party.free_children;
+  const room = p.max_guests - total;
+  const freeAge = p.children_free_age;
+  const row = (key: keyof Party, label: string, hint: string, min: number) => (
+    <div className="row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
+      <div><div style={{ fontWeight: 600, fontSize: 14 }}>{label}</div><div className="hint">{hint}</div></div>
+      <div className="stepper" style={{ minWidth: 132 }}>
+        <button type="button" aria-label={`Fewer ${label.toLowerCase()}`} disabled={party[key] <= min} onClick={() => setParty({ ...party, [key]: party[key] - 1 })}>−</button>
+        <output aria-label={label}>{party[key]}</output>
+        <button type="button" aria-label={`More ${label.toLowerCase()}`} disabled={room <= 0} onClick={() => setParty({ ...party, [key]: party[key] + 1 })}>+</button>
+      </div>
+    </div>
+  );
+  return (
+    <div className="stack" style={{ gap: 10 }}>
+      {row("adults", "Adults", "Age 18+", 1)}
+      {freeAge < 17 && row("children", "Children", `Ages ${freeAge + 1}–17`, 0)}
+      {row("free_children", freeAge === 0 ? "Infants" : "Young children", freeAge === 0 ? "Under 1 · stay free" : `Ages 0–${freeAge} · stay free`, 0)}
+      <span className="hint">Up to {p.max_guests} guests in total, including children.</span>
+    </div>
+  );
 }
 
 export function BookingPanel({ paymentNote }: { paymentNote: string }) {
-  const { p, ci, co, guests, setGuests, bookable, taxPercent } = use();
+  const { p, ci, co, party, bookable, taxPercent } = use();
   const { pr, problem } = useQuote();
   const ready = !!(ci && co && pr && !problem && bookable);
   return (
@@ -88,17 +118,12 @@ export function BookingPanel({ paymentNote }: { paymentNote: string }) {
         <div><small>Check-in</small>{fmt(ci)}</div>
         <div><small>Check-out</small>{fmt(co)}</div>
       </a>
-      <label className="field">
-        <span>Guests</span>
-        <select className="input" value={guests} onChange={e => setGuests(Number(e.target.value))}>
-          {Array.from({ length: p.max_guests }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n} guest{n > 1 ? "s" : ""}</option>)}
-        </select>
-        <span className="hint">Maximum {p.max_guests} guests</span>
-      </label>
+      <PartyPicker />
       {pr && !problem && (
         <table className="breakdown">
           <tbody>
-            <tr><td>{money(pr.nightly)} × {pr.nights} nights</td><td>{money(pr.base)}</td></tr>
+            <tr><td>{money(pr.nightly)} × {pr.nights} nights{pr.extraGuests > 0 ? <div className="hint">Includes {pr.extraGuests} extra guest{pr.extraGuests > 1 ? "s" : ""}</div> : pr.fewerGuests > 0 && pr.nightly < pr.baseNightly ? <div className="hint">Smaller-group price</div> : null}</td><td>{money(pr.base)}</td></tr>
+            {pr.discount > 0 && <tr><td>{pr.discountLabel}</td><td>−{money(pr.discount)}</td></tr>}
             {pr.cleaning > 0 && <tr><td>Cleaning fee</td><td>{money(pr.cleaning)}</td></tr>}
             {taxPercent > 0 && <tr><td>Taxes ({taxPercent}%)</td><td>{money(pr.tax)}</td></tr>}
             <tr className="total"><td>Total</td><td>{money(pr.total)}</td></tr>
@@ -108,7 +133,7 @@ export function BookingPanel({ paymentNote }: { paymentNote: string }) {
       {problem && <div className="notice warn" role="alert">{problem}</div>}
       {!bookable && <div className="notice info">This listing isn't published yet, so it can't be booked.</div>}
       {ready ? (
-        <Link className="btn btn-primary btn-block" href={bookHref(p.slug, ci, co, guests)}>{p.booking_mode === "instant" ? "Reserve" : "Request to book"}</Link>
+        <Link className="btn btn-primary btn-block" href={bookHref(p.slug, ci, co, party)}>{p.booking_mode === "instant" ? "Reserve" : "Request to book"}</Link>
       ) : (
         <button className="btn btn-primary btn-block" disabled>{p.booking_mode === "instant" ? "Reserve" : "Request to book"}</button>
       )}
@@ -120,7 +145,7 @@ export function BookingPanel({ paymentNote }: { paymentNote: string }) {
 }
 
 export function MobileBookBar() {
-  const { p, ci, co, guests, bookable } = use();
+  const { p, ci, co, party, bookable } = use();
   const { pr, problem } = useQuote();
   const ready = !!(pr && !problem && bookable);
   return (
@@ -128,7 +153,7 @@ export function MobileBookBar() {
       <div style={{ flex: 1, minWidth: 0 }}>
         {pr && !problem ? <><b className="mono">{money(pr.total)}</b> <span className="muted">· {pr.nights} nights</span></> : <><b className="mono">{money(p.nightly_price_cents)}</b> <span className="muted">/ night</span></>}
       </div>
-      {ready ? <Link className="btn btn-primary" href={bookHref(p.slug, ci, co, guests)}>{p.booking_mode === "instant" ? "Reserve" : "Request"}</Link> : <a className="btn btn-primary" href="#availability">Check dates</a>}
+      {ready ? <Link className="btn btn-primary" href={bookHref(p.slug, ci, co, party)}>{p.booking_mode === "instant" ? "Reserve" : "Request"}</Link> : <a className="btn btn-primary" href="#availability">Check dates</a>}
     </div>
   );
 }

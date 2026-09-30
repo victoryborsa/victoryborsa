@@ -5,7 +5,8 @@ import { one } from "@/lib/db.ts";
 import { requireUser } from "@/lib/auth.ts";
 import { createBooking, setBookingStatus, type Booking } from "@/lib/bookings.ts";
 import { getSettings } from "@/lib/settings.ts";
-import { str, int, type ActionState } from "@/lib/validate.ts";
+import { str, type ActionState } from "@/lib/validate.ts";
+import { partyFromForm, partyLabel } from "@/lib/party.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
 import { fmtDate } from "@/lib/dates.ts";
@@ -13,8 +14,8 @@ import { money } from "@/lib/money.ts";
 
 export async function createBookingAction(_: ActionState, fd: FormData): Promise<ActionState> {
   const slug = str(fd, "slug", 100);
-  const ci = str(fd, "ci", 10), co = str(fd, "co", 10), guests = int(fd, "guests");
-  const u = await requireUser(undefined, `/book/${slug}?ci=${ci}&co=${co}&guests=${guests}`);
+  const ci = str(fd, "ci", 10), co = str(fd, "co", 10), party = partyFromForm(fd);
+  const u = await requireUser(undefined, `/book/${slug}?ci=${ci}&co=${co}&adults=${party.adults}&children=${party.children}&infants=${party.free_children}`);
   const name = str(fd, "name", 120), phone = str(fd, "phone", 40), arrival = str(fd, "arrival", 60), message = str(fd, "message", 2000);
   const p = await one<{ id: string; booking_mode: string }>("SELECT id, booking_mode FROM properties WHERE slug = $1", [slug]);
   if (!p) return { error: "This home no longer exists." };
@@ -26,7 +27,7 @@ export async function createBookingAction(_: ActionState, fd: FormData): Promise
   const settings = await getSettings();
   let result;
   try {
-    result = await createBooking({ propertyId: p.id, guestId: u.id, ci, co, guests, name, phone, arrival, message, taxPercent: settings.tax_percent });
+    result = await createBooking({ propertyId: p.id, guestId: u.id, ci, co, party, name, phone, arrival, message, taxPercent: settings.tax_percent });
   } catch (e) {
     await logEvent("error", "Booking", "Booking failed with an unexpected error", { slug, ci, co, error: String(e) }, u.id);
     return { error: "Something went wrong and your booking wasn't saved. Please try again, or contact us." };
@@ -47,11 +48,11 @@ async function notifyNewBooking(b: Booking, title: string, hostId: string, guest
   const dates = `${fmtDate(b.check_in)} – ${fmtDate(b.check_out)}`;
   const link = `${siteUrl()}/trips/${b.code}`;
   if (b.status === "confirmed") {
-    await sendEmail(guestEmail, `Booking confirmed: ${title}`, `Hi ${b.guest_name.split(" ")[0]},\n\nYour stay at ${title} is confirmed.\n\nReference: ${b.code}\nDates: ${dates}\nGuests: ${b.guests}\nTotal: ${money(b.total_cents)}\n\nView your booking: ${link}`);
-    if (host) await sendEmail(host.email, `New booking: ${title}, ${dates}`, `${b.guest_name} booked ${title} for ${dates} (${b.guests} guests).\nPhone: ${b.guest_phone}\n${b.message ? "\nMessage: " + b.message + "\n" : ""}\nDetails: ${siteUrl()}/host/bookings`);
+    await sendEmail(guestEmail, `Booking confirmed: ${title}`, `Hi ${b.guest_name.split(" ")[0]},\n\nYour stay at ${title} is confirmed.\n\nReference: ${b.code}\nDates: ${dates}\nGuests: ${partyLabel(b)}\nTotal: ${money(b.total_cents)}\n\nView your booking: ${link}`);
+    if (host) await sendEmail(host.email, `New booking: ${title}, ${dates}`, `${b.guest_name} booked ${title} for ${dates} (${partyLabel(b)}).\nPhone: ${b.guest_phone}\n${b.message ? "\nMessage: " + b.message + "\n" : ""}\nDetails: ${siteUrl()}/host/bookings`);
   } else {
     await sendEmail(guestEmail, `Request sent: ${title}`, `Hi ${b.guest_name.split(" ")[0]},\n\nWe've sent your request to the host. Your dates are held while they decide, usually within a few hours. You'll get another email when they reply.\n\nReference: ${b.code}\nDates: ${dates}\n\nView your request: ${link}`);
-    if (host) await sendEmail(host.email, `Booking request: ${title}, ${dates}`, `${b.guest_name} would like to stay at ${title} for ${dates} (${b.guests} guests).\n\nMessage: ${b.message}\n\nAccept or decline within 48 hours: ${siteUrl()}/host/bookings`);
+    if (host) await sendEmail(host.email, `Booking request: ${title}, ${dates}`, `${b.guest_name} would like to stay at ${title} for ${dates} (${partyLabel(b)}).\n\nMessage: ${b.message}\n\nAccept or decline within 48 hours: ${siteUrl()}/host/bookings`);
   }
 }
 

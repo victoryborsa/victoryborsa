@@ -6,7 +6,7 @@ import { requireUser, safeNext } from "@/lib/auth.ts";
 import { withMsg } from "@/components/Flash.tsx";
 import { requireManageable } from "@/lib/access.ts";
 import { addBlock, setBookingStatus, type Booking } from "@/lib/bookings.ts";
-import { AMENITIES, CANCELLATION, PROPERTY_TYPES } from "@/lib/constants.ts";
+import { ACCESS, AMENITIES, CANCELLATION, PROPERTY_TYPES, parseBeds } from "@/lib/constants.ts";
 import { int, lines, slugify, str, type ActionState } from "@/lib/validate.ts";
 import { toCents } from "@/lib/money.ts";
 import { processPhoto } from "@/lib/photos.ts";
@@ -17,33 +17,74 @@ import { fmtDate, todayLocal } from "@/lib/dates.ts";
 
 // ---------- Listings ----------
 
+const pct = (fd: FormData, k: string) => { const n = Number(str(fd, k) || 0); return Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN; };
+
 function readListing(fd: FormData) {
+  const beds = parseBeds(str(fd, "beds_json", 5000));
+  const baseOcc = str(fd, "base_occupancy");
   const v = {
     title: str(fd, "title", 120), property_type: str(fd, "property_type", 30), city: str(fd, "city", 80), area: str(fd, "area", 80), address: str(fd, "address", 300),
-    description: str(fd, "description", 8000), max_guests: int(fd, "max_guests"), bedrooms: int(fd, "bedrooms"), beds: int(fd, "beds"), bathrooms: Number(str(fd, "bathrooms")),
+    description: str(fd, "description", 8000), max_guests: int(fd, "max_guests"), bedrooms: int(fd, "bedrooms"), bathrooms: int(fd, "bathrooms"), half_bathrooms: int(fd, "half_bathrooms"),
     nightly: toCents(str(fd, "nightly_price")), cleaning: toCents(str(fd, "cleaning_fee") || "0"), min_nights: int(fd, "min_nights"), max_nights: int(fd, "max_nights"),
     booking_mode: str(fd, "booking_mode"), cancellation_policy: str(fd, "cancellation_policy"), check_in_time: str(fd, "check_in_time", 30), check_out_time: str(fd, "check_out_time", 30),
     amenities: fd.getAll("amenities").map(String).filter(a => a in AMENITIES), house_rules: lines(str(fd, "house_rules", 5000)), arrival_instructions: str(fd, "arrival_instructions", 5000),
     status: str(fd, "status"),
     parent_id: str(fd, "listing_kind") === "room" ? str(fd, "parent_id", 40) || null : null,
     bathroom_type: str(fd, "bathroom_type") === "shared" ? "shared" : "private",
+    beds_detail: beds,
+    // Sleeping spots, not counting cribs.
+    beds: beds.filter(b => b.kind !== "crib").reduce((n, b) => n + b.count, 0),
+    kitchen_access: str(fd, "kitchen_access"), laundry_access: str(fd, "laundry_access"), stairs_info: str(fd, "stairs_info", 300),
+    has_exterior_cameras: fd.get("has_exterior_cameras") === "on", camera_locations: str(fd, "camera_locations", 300),
+    base_occupancy: baseOcc === "" ? null : Number(baseOcc), extra_guest_fee: toCents(str(fd, "extra_guest_fee") || "0"),
+    fewer_guest_discount_percent: pct(fd, "fewer_guest_discount_percent"), weekly_discount_percent: pct(fd, "weekly_discount_percent"), monthly_discount_percent: pct(fd, "monthly_discount_percent"),
+    children_free_age: int(fd, "children_free_age"),
+    management_fee_percent: fd.has("management_fee_percent") ? pct(fd, "management_fee_percent") : null,
   };
   let error = "";
   if (!v.title) error = "Give the listing a title.";
   else if (!v.city) error = "Add the town or city.";
   else if (!(v.property_type in PROPERTY_TYPES)) error = "Choose a property type.";
   else if (!(v.max_guests >= 1 && v.max_guests <= 50)) error = "Maximum guests must be between 1 and 50.";
-  else if (!(v.bedrooms >= 0 && v.beds >= 0)) error = "Bedrooms and beds can't be negative.";
-  else if (!(v.bathrooms >= 0 && v.bathrooms <= 20 && Number.isInteger(v.bathrooms * 2))) error = "Bathrooms should be a whole or half number, like 1 or 1.5.";
+  else if (!(v.bedrooms >= 0 && v.bedrooms <= 30)) error = "Bedrooms must be between 0 and 30.";
+  else if (!(v.bathrooms >= 0 && v.bathrooms <= 20)) error = "Full bathrooms must be a whole number between 0 and 20.";
+  else if (!(v.half_bathrooms >= 0 && v.half_bathrooms <= 10)) error = "Half bathrooms must be a whole number between 0 and 10.";
   else if (!v.nightly || v.nightly < 1000) error = "Nightly price must be at least $10.";
   else if (v.cleaning === null) error = "Cleaning fee must be a number (use 0 for none).";
   else if (!(v.min_nights >= 1 && v.min_nights <= 60)) error = "Minimum nights must be between 1 and 60.";
   else if (!(v.max_nights >= v.min_nights && v.max_nights <= 365)) error = "Maximum nights must be at least the minimum, and at most 365.";
   else if (!["instant", "request"].includes(v.booking_mode)) error = "Choose how guests book.";
   else if (!(v.cancellation_policy in CANCELLATION)) error = "Choose a cancellation policy.";
+  else if (!(v.kitchen_access in ACCESS) || !(v.laundry_access in ACCESS)) error = "Choose whether the kitchen and laundry are private, shared, or not available.";
+  else if (v.has_exterior_cameras && v.camera_locations.length < 3) error = "Say where the exterior cameras are. Guests must be told before they book.";
+  else if (v.base_occupancy !== null && !(Number.isInteger(v.base_occupancy) && v.base_occupancy >= 1 && v.base_occupancy <= v.max_guests)) error = "Base occupancy must be between 1 and the maximum guests.";
+  else if (v.extra_guest_fee === null) error = "Extra guest fee must be a number (use 0 for none).";
+  else if (!(v.fewer_guest_discount_percent >= 0 && v.fewer_guest_discount_percent <= 50)) error = "Smaller group discount must be between 0% and 50%.";
+  else if (!(v.weekly_discount_percent >= 0 && v.weekly_discount_percent <= 80 && v.monthly_discount_percent >= 0 && v.monthly_discount_percent <= 80)) error = "Weekly and monthly discounts must be between 0% and 80%.";
+  else if (!(v.children_free_age >= 0 && v.children_free_age <= 17)) error = "The free age for children must be between 0 and 17.";
+  else if (v.management_fee_percent !== null && !(v.management_fee_percent >= 0 && v.management_fee_percent <= 100)) error = "Management fee must be between 0% and 100%.";
   else if (!["draft", "published", "hidden"].includes(v.status)) error = "Choose whether the listing is visible.";
   else if (v.status === "published" && v.description.length < 40) error = "Add a description of at least a couple of sentences before publishing.";
   return { v, error };
+}
+
+type ListingValues = ReturnType<typeof readListing>["v"];
+/** Column → value for the listing fields the form edits. */
+function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unknown> {
+  const cols: Record<string, unknown> = {
+    title: v.title, property_type: v.property_type, city: v.city, area: v.area, address: v.address, description: v.description, max_guests: v.max_guests,
+    bedrooms: v.bedrooms, beds: v.beds, bathrooms: v.bathrooms, half_bathrooms: v.half_bathrooms, nightly_price_cents: v.nightly, cleaning_fee_cents: v.cleaning,
+    min_nights: v.min_nights, max_nights: v.max_nights, booking_mode: v.booking_mode, cancellation_policy: v.cancellation_policy,
+    check_in_time: v.check_in_time || "3:00 pm", check_out_time: v.check_out_time || "11:00 am", amenities: v.amenities, house_rules: v.house_rules,
+    arrival_instructions: v.arrival_instructions, parent_id: v.parent_id, bathroom_type: v.bathroom_type, beds_detail: JSON.stringify(v.beds_detail),
+    kitchen_access: v.kitchen_access, laundry_access: v.laundry_access, stairs_info: v.stairs_info, has_exterior_cameras: v.has_exterior_cameras,
+    camera_locations: v.has_exterior_cameras ? v.camera_locations : "", base_occupancy: v.base_occupancy, extra_guest_fee_cents: v.extra_guest_fee,
+    fewer_guest_discount_percent: v.fewer_guest_discount_percent, weekly_discount_percent: v.weekly_discount_percent, monthly_discount_percent: v.monthly_discount_percent,
+    children_free_age: v.children_free_age,
+  };
+  // Only admins set the management fee; hosts never see or change it.
+  if (isAdmin && v.management_fee_percent !== null) cols.management_fee_percent = v.management_fee_percent;
+  return cols;
 }
 
 /** Checks a "part of" link: the whole home must exist, belong to the same host, and not itself be part of another home. */
@@ -82,12 +123,11 @@ export async function createListingAction(_: ActionState, fd: FormData): Promise
   if (pErr) return { error: pErr };
   let slug = slugify(`${v.title} ${v.city}`);
   if (await one("SELECT 1 FROM properties WHERE slug = $1", [slug])) slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+  const cols = { ...listingColumns(v, u.role === "admin"), slug, host_id: hostId, status: "draft" };
+  const names = Object.keys(cols);
   const row = await one<{ id: string }>(
-    `INSERT INTO properties (slug, host_id, title, property_type, city, area, address, description, max_guests, bedrooms, beds, bathrooms, nightly_price_cents, cleaning_fee_cents,
-       min_nights, max_nights, booking_mode, cancellation_policy, check_in_time, check_out_time, amenities, house_rules, arrival_instructions, status, parent_id, bathroom_type)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,'draft',$24,$25) RETURNING id`,
-    [slug, hostId, v.title, v.property_type, v.city, v.area, v.address, v.description, v.max_guests, v.bedrooms, v.beds, v.bathrooms, v.nightly, v.cleaning,
-      v.min_nights, v.max_nights, v.booking_mode, v.cancellation_policy, v.check_in_time || "3:00 pm", v.check_out_time || "11:00 am", v.amenities, v.house_rules, v.arrival_instructions, v.parent_id, v.bathroom_type],
+    `INSERT INTO properties (${names.join(", ")}) VALUES (${names.map((_, i) => "$" + (i + 1)).join(", ")}) RETURNING id`,
+    Object.values(cols),
   );
   await logEvent("info", "Listings", `Listing created: ${v.title}`, {}, u.id);
   redirect(`/host/listings/${row!.id}/photos?created=1`);
@@ -103,13 +143,9 @@ export async function updateListingAction(_: ActionState, fd: FormData): Promise
     const photos = await one<{ n: number }>("SELECT count(*) AS n FROM photos WHERE property_id = $1", [p.id]);
     if (!photos || photos.n === 0) return { error: "Add at least one photo before publishing." };
   }
-  await q(
-    `UPDATE properties SET title=$2, property_type=$3, city=$4, area=$5, address=$6, description=$7, max_guests=$8, bedrooms=$9, beds=$10, bathrooms=$11, nightly_price_cents=$12,
-       cleaning_fee_cents=$13, min_nights=$14, max_nights=$15, booking_mode=$16, cancellation_policy=$17, check_in_time=$18, check_out_time=$19, amenities=$20, house_rules=$21,
-       arrival_instructions=$22, status=$23, parent_id=$24, bathroom_type=$25, updated_at=now() WHERE id=$1`,
-    [p.id, v.title, v.property_type, v.city, v.area, v.address, v.description, v.max_guests, v.bedrooms, v.beds, v.bathrooms, v.nightly, v.cleaning, v.min_nights, v.max_nights,
-      v.booking_mode, v.cancellation_policy, v.check_in_time, v.check_out_time, v.amenities, v.house_rules, v.arrival_instructions, v.status, v.parent_id, v.bathroom_type],
-  );
+  const cols = { ...listingColumns(v, u.role === "admin"), status: v.status };
+  const names = Object.keys(cols);
+  await q(`UPDATE properties SET ${names.map((n, i) => `${n} = $${i + 2}`).join(", ")}, updated_at = now() WHERE id = $1`, [p.id, ...Object.values(cols)]);
   if (v.nightly !== p.nightly_price_cents || v.status !== p.status) await logEvent("info", "Listings", `${v.title}: ${v.status !== p.status ? `status ${p.status} → ${v.status}` : ""} ${v.nightly !== p.nightly_price_cents ? `price ${p.nightly_price_cents / 100} → ${v.nightly! / 100}` : ""}`.trim(), { property: p.id }, u.id);
   revalidatePath(`/stays/${p.slug}`);
   return { ok: v.status === "published" ? "Saved. Changes are live on the site." : "Saved. This listing is not visible to guests." };

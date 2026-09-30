@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import type pg from "pg";
 import { one, q, tx, type Db } from "./db.ts";
 import { addDays, isIsoDate, nightsBetween, todayLocal } from "./dates.ts";
-import { quote } from "./pricing.ts";
+import { quote, type Party } from "./pricing.ts";
 import { REQUEST_EXPIRY_HOURS } from "./constants.ts";
 
 export type Property = {
@@ -11,12 +11,16 @@ export type Property = {
   min_nights: number; max_nights: number; booking_mode: "instant" | "request"; cancellation_policy: string; check_in_time: string; check_out_time: string;
   amenities: string[]; house_rules: string[]; arrival_instructions: string; status: "draft" | "published" | "hidden"; rating: number | null; review_count: number; ical_token: string;
   parent_id: string | null; bathroom_type: "private" | "shared";
+  beds_detail: unknown; half_bathrooms: number; kitchen_access: string; laundry_access: string; stairs_info: string; has_exterior_cameras: boolean; camera_locations: string;
+  base_occupancy: number | null; extra_guest_fee_cents: number; fewer_guest_discount_percent: number; weekly_discount_percent: number; monthly_discount_percent: number;
+  children_free_age: number; management_fee_percent: number;
 };
 
 export type Booking = {
   id: string; code: string; property_id: string; guest_id: string; check_in: string; check_out: string; guests: number; status: string; nights: number;
   nightly_price_cents: number; cleaning_fee_cents: number; tax_cents: number; total_cents: number; guest_name: string; guest_phone: string;
   arrival_time: string; message: string; host_note: string; cancelled_by: string | null; created_at: string;
+  adults: number; children: number; free_children: number; lodging_cents: number; discount_cents: number; management_fee_percent: number;
 };
 
 const ACTIVE = "('pending','confirmed')";
@@ -70,7 +74,8 @@ export async function isRangeFree(propertyId: string, ci: string, co: string, db
 }
 
 /** Checks a requested stay against the listing's rules. Returns an error message for the guest, or null. */
-export function stayProblem(p: Pick<Property, "min_nights" | "max_nights" | "max_guests">, ci: string, co: string, guests: number, today = todayLocal()): string | null {
+export function stayProblem(p: Pick<Property, "min_nights" | "max_nights" | "max_guests">, ci: string, co: string, party: Party | number, today = todayLocal()): string | null {
+  const pt: Party = typeof party === "number" ? { adults: party, children: 0, free_children: 0 } : party;
   if (!isIsoDate(ci) || !isIsoDate(co)) return "Choose your check-in and check-out dates.";
   if (ci < today) return "Check-in can't be in the past.";
   if (co <= ci) return "Check-out must be after check-in.";
@@ -78,8 +83,10 @@ export function stayProblem(p: Pick<Property, "min_nights" | "max_nights" | "max
   const n = nightsBetween(ci, co);
   if (n < p.min_nights) return `This home has a ${p.min_nights}-night minimum stay.`;
   if (n > p.max_nights) return `Stays at this home can be up to ${p.max_nights} nights. Contact us about longer stays.`;
-  if (!Number.isInteger(guests) || guests < 1) return "Add the number of guests.";
-  if (guests > p.max_guests) return `This home fits up to ${p.max_guests} guests.`;
+  const counts = [pt.adults, pt.children, pt.free_children];
+  if (!counts.every(c => Number.isInteger(c) && c >= 0) || pt.adults < 1) return "At least one adult must be on the booking.";
+  const total = pt.adults + pt.children + pt.free_children;
+  if (total > p.max_guests) return `This home fits up to ${p.max_guests} guests, including children.`;
   return null;
 }
 
@@ -89,7 +96,7 @@ function newCode() {
   return "SV-" + Array.from(bytes, b => alphabet[b % alphabet.length]).join("");
 }
 
-export type NewBooking = { propertyId: string; guestId: string; ci: string; co: string; guests: number; name: string; phone: string; arrival: string; message: string; taxPercent: number };
+export type NewBooking = { propertyId: string; guestId: string; ci: string; co: string; party: Party; name: string; phone: string; arrival: string; message: string; taxPercent: number };
 export type CreateResult = { ok: true; booking: Booking; property: Property } | { ok: false; error: string; reason: "invalid" | "unavailable" | "not_found" };
 
 export async function createBooking(b: NewBooking): Promise<CreateResult> {
@@ -98,17 +105,20 @@ export async function createBooking(b: NewBooking): Promise<CreateResult> {
       await lockProperty(c, b.propertyId);
       const p = await one<Property>("SELECT * FROM properties WHERE id = $1 AND status = 'published'", [b.propertyId], c);
       if (!p) return { ok: false, error: "This home isn't taking bookings right now.", reason: "not_found" } as const;
-      const problem = stayProblem(p, b.ci, b.co, b.guests);
+      const problem = stayProblem(p, b.ci, b.co, b.party);
       if (problem) return { ok: false, error: problem, reason: "invalid" } as const;
       if (!(await isRangeFree(p.id, b.ci, b.co, c))) return { ok: false, error: "Some of these nights were just booked. Please choose different dates.", reason: "unavailable" } as const;
-      const pr = quote(p, b.ci, b.co, b.taxPercent);
+      const pr = quote(p, b.ci, b.co, b.taxPercent, b.party);
+      const guests = b.party.adults + b.party.children + b.party.free_children;
       const status = p.booking_mode === "instant" ? "confirmed" : "pending";
       for (let attempt = 0; ; attempt++) {
         try {
           const booking = await one<Booking>(
-            `INSERT INTO bookings (code, property_id, guest_id, check_in, check_out, guests, status, nights, nightly_price_cents, cleaning_fee_cents, tax_cents, total_cents, guest_name, guest_phone, arrival_time, message)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
-            [newCode(), p.id, b.guestId, b.ci, b.co, b.guests, status, pr.nights, pr.nightly, pr.cleaning, pr.tax, pr.total, b.name, b.phone, b.arrival, b.message],
+            `INSERT INTO bookings (code, property_id, guest_id, check_in, check_out, guests, status, nights, nightly_price_cents, cleaning_fee_cents, tax_cents, total_cents, guest_name, guest_phone, arrival_time, message,
+               adults, children, free_children, lodging_cents, discount_cents, management_fee_percent)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *`,
+            [newCode(), p.id, b.guestId, b.ci, b.co, guests, status, pr.nights, pr.nightly, pr.cleaning, pr.tax, pr.total, b.name, b.phone, b.arrival, b.message,
+              b.party.adults, b.party.children, b.party.free_children, pr.base, pr.discount, p.management_fee_percent],
             c,
           );
           return { ok: true, booking: booking!, property: p } as const;

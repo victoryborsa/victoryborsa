@@ -13,7 +13,7 @@ export default async function NewListing() {
     <>
       <div className="crumbs" style={{ paddingTop: 0 }}><Link href="/host/listings">← Listings</Link></div>
       <h2 style={{ marginBottom: 16 }}>Add a listing</h2>
-      <div style={{ maxWidth: 820 }}><ListingForm action={createListingAction} hosts={hosts} homes={homes} submitLabel="Save and add photos" /></div>
+      <div style={{ maxWidth: 820 }}><ListingForm action={createListingAction} hosts={hosts} homes={homes} isAdmin={u.role === "admin"} submitLabel="Save and add photos" /></div>
     </>
   );
 }

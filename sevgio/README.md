@@ -111,6 +111,10 @@ Emails sent: booking confirmations and requests (to guest and host), accept/decl
 - **Answer requests:** Host dashboard → Overview. Unanswered requests expire after 48 hours and release the dates.
 - **Check for problems:** Admin → Errors & activity. Failed emails, calendar imports, refused bookings and server errors appear here.
 - **Taxes and notices:** Admin → Settings.
+- **Whole house and rooms:** add the whole house first ("The whole place"), then each room ("A private room" → pick the house). Their calendars block each other automatically; rooms don't block each other.
+- **Pricing per guest:** in each listing, set the base occupancy, extra guest fee, smaller-group discount, the age up to which children stay free, and weekly/monthly discounts.
+- **Management fee:** admins set a % per listing (Admin → Listings → Edit → Management). It's taken from rent after discounts, not from cleaning or tax, and is saved on each booking so later changes don't alter past statements.
+- **Statements:** Host dashboard or Admin → Finance. Pick a month and property to see the reservations statement (by check-in date), per-property occupancy and owner payouts, and a 12-month overview. "Download statement (CSV)" opens in Excel or Google Sheets.
 
 ## Adding payments later
 

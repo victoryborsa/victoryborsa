@@ -1,6 +1,7 @@
 import "server-only";
 import { q, one } from "./db.ts";
 import type { Property } from "./bookings.ts";
+import { AMENITY_FILTERS } from "./constants.ts";
 
 export type Photo = { id: string; property_id: string; position: number; caption: string; width: number; height: number };
 export type CardProperty = Property & { cover_id: string | null };
@@ -22,7 +23,8 @@ export async function searchProperties(f: SearchFilters): Promise<CardProperty[]
   if (f.maxPrice) where.push(`p.nightly_price_cents <= ${add(f.maxPrice * 100)}`);
   if (f.bedrooms) where.push(`p.bedrooms >= ${add(f.bedrooms)}`);
   if (f.baths) where.push(`p.bathrooms >= ${add(f.baths)}`);
-  if (f.amenities?.length) where.push(`p.amenities @> ${add(f.amenities)}::text[]`);
+  // Each chosen filter matches any of its amenity keys (e.g. "Free parking" = street, driveway or garage).
+  for (const key of f.amenities || []) if (AMENITY_FILTERS[key]) where.push(`p.amenities && ${add(AMENITY_FILTERS[key].keys)}::text[]`);
   if (f.instant) where.push(`p.booking_mode = 'instant'`);
   if (f.privateBath) where.push(`p.bathroom_type = 'private'`);
   if (f.ci && f.co) {

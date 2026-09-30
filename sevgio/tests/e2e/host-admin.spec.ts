@@ -178,7 +178,7 @@ test("host marks a bathroom as shared; guests see it and can filter it out", asy
   await signIn(page, "marcus@demo.sevgio.com", "demo-password-2026");
   await page.goto("/host/listings");
   await page.locator("tr", { hasText: "Rittenhouse" }).getByRole("link", { name: "Edit" }).click();
-  await page.getByLabel("Shared with other guests").check();
+  await page.getByRole("radio", { name: "Shared with other guests" }).check();
   await page.getByRole("button", { name: "Save listing" }).click();
   await expect(page.getByText("Saved. Changes are live on the site.")).toBeVisible();
   await page.goto("/stays/rittenhouse-square-loft");
@@ -189,4 +189,85 @@ test("host marks a bathroom as shared; guests see it and can filter it out", asy
   await expect(page).toHaveURL(/pbath=1/);
   await expect(page.getByRole("heading", { name: "No stays match your search" })).toBeVisible();
   await signOut(page);
+});
+
+test("listing details, per-guest pricing with children, and the owner statement", async ({ page }) => {
+  // Admin sets a 20% management fee on Jim Thorpe Mountain Cabin.
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin/listings");
+  await page.locator("tr", { hasText: "Jim Thorpe" }).getByRole("link", { name: "Edit" }).click();
+  await page.getByLabel("Management fee (%)").fill("20");
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/Saved\./)).toBeVisible();
+  await signOut(page);
+
+  // Host fills in details and per-guest pricing. The management fee isn't shown to hosts.
+  await signIn(page, "dana@demo.sevgio.com", "demo-password-2026");
+  await page.goto("/host/listings");
+  await page.locator("tr", { hasText: "Jim Thorpe" }).getByRole("link", { name: "Edit" }).click();
+  await expect(page.getByLabel("Management fee (%)")).toHaveCount(0);
+  await page.getByLabel("Maximum guests (including children)").fill("6");
+  await page.getByLabel("Half bathrooms").fill("1");
+  await page.getByLabel("Type (row 1)").selectOption("bed");
+  await page.getByLabel("Mattress size (row 1)").selectOption("queen");
+  await page.getByRole("button", { name: "+ Add another bed" }).click();
+  await page.getByLabel("Type (row 2)").selectOption("sofa_bed");
+  await page.getByLabel("Mattress size (row 2)").selectOption("full");
+  await page.getByLabel("Stairs").fill("Bedrooms are upstairs, one flight of stairs.");
+  await page.getByLabel("There are exterior security cameras").check();
+  await page.getByLabel(/Where are they/).fill("Front door and driveway");
+  await page.getByLabel(/Base occupancy/).fill("2");
+  await page.getByLabel(/Extra guest fee/).fill("25");
+  await page.getByLabel(/Children stay free up to age/).fill("5");
+  await page.getByLabel(/Weekly discount/).fill("10");
+  await page.getByLabel("Smoke alarm").check();
+  await page.getByLabel("Keypad (door code)").check();
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText("Saved. Changes are live on the site.")).toBeVisible();
+  await signOut(page);
+
+  // Guest sees the details and the price changes with the group.
+  await signIn(page, "guest@demo.sevgio.com", "demo-password-2026");
+  await page.goto(`/stays/jim-thorpe-mountain-cabin?ci=${iso(150)}&co=${iso(157)}&adults=2`);
+  await expect(page.getByRole("heading", { name: "Where you'll sleep" })).toBeVisible();
+  await expect(page.getByText("1 Queen bed")).toBeVisible();
+  await expect(page.getByText("1 sofa bed (Full)")).toBeVisible();
+  await expect(page.getByText(/Exterior cameras: Front door and driveway/)).toBeVisible();
+  await expect(page.getByText("Bedrooms are upstairs, one flight of stairs.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Home safety" })).toBeVisible();
+  const panel = page.locator("#book");
+  await expect(panel.locator("table.breakdown")).toContainText("Weekly discount (10%)");
+  await panel.getByRole("button", { name: "More children" }).click();
+  await expect(panel.locator("table.breakdown")).toContainText("Includes 1 extra guest");
+  await panel.getByRole("button", { name: "More young children" }).click();
+  await expect(panel.locator("table.breakdown")).toContainText("Includes 1 extra guest");
+  await panel.getByRole("link", { name: "Reserve" }).click();
+  await page.getByLabel("Mobile phone").fill("(570) 555-0100");
+  await page.getByLabel(/I agree/).check();
+  await page.getByRole("button", { name: /Confirm booking/ }).click();
+  await expect(page.getByText("You're booked!")).toBeVisible();
+  await expect(page.getByText("2 adults, 1 child, 1 young child (free)")).toBeVisible();
+  const code = (await page.locator(".code").textContent())!.trim();
+  await signOut(page);
+
+  // Nightly $172 (set in an earlier test) + $25 extra guest = $197 × 7 = $1,379, minus 10% ($137.90) = $1,241.10 rent. 20% fee = $248.22.
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto(`/admin/finance?month=${iso(150).slice(0, 7)}`);
+  const row = page.locator("tr", { hasText: code });
+  await expect(row).toContainText("$1,241.10");
+  await expect(row).toContainText("$248.22");
+  const csv = await (await page.request.get(`/api/finance/statement?month=${iso(150).slice(0, 7)}`)).text();
+  expect(csv).toContain(code);
+  expect(csv).toContain("1241.10");
+  expect(csv).toContain("248.22");
+  await signOut(page);
+
+  // Hosts only see their own listings in finance.
+  await signIn(page, "marcus@demo.sevgio.com", "demo-password-2026");
+  await page.goto(`/host/finance?month=${iso(150).slice(0, 7)}`);
+  await expect(page.locator("tr", { hasText: code })).toHaveCount(0);
+  const marcusCsv = await (await page.request.get(`/api/finance/statement?month=${iso(150).slice(0, 7)}`)).text();
+  expect(marcusCsv).not.toContain(code);
+  await signOut(page);
+  expect((await page.request.get(`/api/finance/statement`)).status()).toBe(401);
 });

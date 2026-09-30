@@ -7,5 +7,5 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const { u, p } = await requireManageable(id);
   const homes = await homesFor(u, p.host_id);
-  return <div style={{ maxWidth: 820 }}><ListingForm action={updateListingAction} p={p} homes={homes} submitLabel="Save listing" /></div>;
+  return <div style={{ maxWidth: 820 }}><ListingForm action={updateListingAction} p={p} homes={homes} isAdmin={u.role === "admin"} submitLabel="Save listing" /></div>;
 }

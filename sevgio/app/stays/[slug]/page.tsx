@@ -8,7 +8,8 @@ import { currentUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { one } from "@/lib/db.ts";
 import { addDays, todayLocal } from "@/lib/dates.ts";
-import { AMENITIES, CANCELLATION, PROPERTY_TYPES } from "@/lib/constants.ts";
+import { ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, bedLabel, parseBeds } from "@/lib/constants.ts";
+import { partyFromParams } from "@/lib/party.ts";
 import { Gallery } from "@/components/Gallery.tsx";
 import { AvailabilitySection, BookingPanel, BookingProvider, MobileBookBar } from "@/components/booking.tsx";
 import { Check, Rating } from "@/components/ui.tsx";
@@ -55,6 +56,7 @@ export default async function StayPage({ params, searchParams }: Params) {
   ]);
   const hostFirst = (host?.name || "your host").split(" ")[0];
   const bookable = p.status === "published";
+  const beds = parseBeds(p.beds_detail);
 
   return (
     <div className="wrap has-mobile-book">
@@ -73,11 +75,12 @@ export default async function StayPage({ params, searchParams }: Params) {
       <Gallery photos={photos.map(ph => ({ id: ph.id, caption: ph.caption }))} title={p.title} />
 
       <BookingProvider
-        p={{ slug: p.slug, nightly_price_cents: p.nightly_price_cents, cleaning_fee_cents: p.cleaning_fee_cents, min_nights: p.min_nights, max_nights: p.max_nights, max_guests: p.max_guests, booking_mode: p.booking_mode }}
+        p={{ slug: p.slug, nightly_price_cents: p.nightly_price_cents, cleaning_fee_cents: p.cleaning_fee_cents, min_nights: p.min_nights, max_nights: p.max_nights, max_guests: p.max_guests, booking_mode: p.booking_mode,
+          base_occupancy: p.base_occupancy, extra_guest_fee_cents: p.extra_guest_fee_cents, fewer_guest_discount_percent: Number(p.fewer_guest_discount_percent), weekly_discount_percent: Number(p.weekly_discount_percent), monthly_discount_percent: Number(p.monthly_discount_percent), children_free_age: p.children_free_age }}
         today={today}
         unavailable={taken}
         taxPercent={settings.tax_percent}
-        initial={{ ci: sp.ci || "", co: sp.co || "", guests: Number(sp.guests) || 2 }}
+        initial={{ ci: sp.ci || "", co: sp.co || "", party: partyFromParams(sp) }}
         bookable={bookable}
       >
         <div className="detail-grid">
@@ -86,7 +89,7 @@ export default async function StayPage({ params, searchParams }: Params) {
               <div className="fact"><b>{p.max_guests}</b><span>guests</span></div>
               <div className="fact"><b>{p.bedrooms}</b><span>bedroom{p.bedrooms === 1 ? "" : "s"}</span></div>
               <div className="fact"><b>{p.beds}</b><span>bed{p.beds === 1 ? "" : "s"}</span></div>
-              <div className="fact"><b>{p.bathrooms}</b><span>{p.bathroom_type === "shared" ? "shared" : "private"} bathroom{p.bathrooms === 1 ? "" : "s"}</span></div>
+              <div className="fact"><b>{p.bathrooms}{p.half_bathrooms ? ` + ${p.half_bathrooms} half` : ""}</b><span>{p.bathroom_type === "shared" ? "shared" : "private"} bathroom{p.bathrooms + p.half_bathrooms === 1 ? "" : "s"}</span></div>
             </div>
             {linked.parent && (
               <div className="notice info">
@@ -98,10 +101,35 @@ export default async function StayPage({ params, searchParams }: Params) {
               <p className="prose">{p.description}</p>
               <p className="muted">Hosted by {host?.name}. {p.city}{p.area ? `, ${p.area}` : ""}, PA. The exact address is shared once your booking is confirmed.</p>
             </section>
+            {beds.length > 0 && (
+              <section>
+                <h2>Where you'll sleep</h2>
+                <ul className="amen">{beds.map((b, i) => <li key={i}><Check />{bedLabel(b)}</li>)}</ul>
+              </section>
+            )}
+            <section>
+              <h2>Good to know</h2>
+              <dl className="kv">
+                <dt>Bathroom</dt><dd>{p.bathroom_type === "shared" ? "Shared with other guests" : "Private"}{p.half_bathrooms ? ` · plus ${p.half_bathrooms} half bath${p.half_bathrooms > 1 ? "s" : ""}` : ""}</dd>
+                <dt>Kitchen</dt><dd>{ACCESS[p.kitchen_access]}</dd>
+                <dt>Laundry</dt><dd>{ACCESS[p.laundry_access]}</dd>
+                {p.stairs_info && <><dt>Stairs</dt><dd style={{ fontWeight: 400 }}>{p.stairs_info}</dd></>}
+                <dt>Security cameras</dt><dd style={{ fontWeight: 400 }}>{p.has_exterior_cameras ? `Exterior cameras: ${p.camera_locations || "see host for locations"}. No cameras inside.` : "No security cameras on the property."}</dd>
+                <dt>Children</dt><dd style={{ fontWeight: 400 }}>{p.children_free_age > 0 ? `Children aged ${p.children_free_age} and under stay free.` : "Infants under 1 stay free."}</dd>
+              </dl>
+            </section>
             {p.amenities.length > 0 && (
               <section>
                 <h2>Amenities</h2>
-                <ul className="amen">{p.amenities.filter(a => AMENITIES[a]).map(a => <li key={a}><Check />{AMENITIES[a]}</li>)}</ul>
+                {AMENITY_GROUPS.map(g => {
+                  const have = Object.keys(g.items).filter(k => p.amenities.includes(k));
+                  return have.length ? (
+                    <div key={g.name} className="stack" style={{ gap: 8, marginBottom: 8 }}>
+                      <h3 style={{ fontSize: 15 }}>{g.name}</h3>
+                      <ul className="amen">{have.map(a => <li key={a}><Check />{g.items[a]}</li>)}</ul>
+                    </div>
+                  ) : null;
+                })}
               </section>
             )}
             <AvailabilitySection />

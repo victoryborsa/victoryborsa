@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { pool, q, one } from "../../lib/db.ts";
 import { createBooking, addBlock, stayProblem, unavailableNights, replaceFeedBlocks } from "../../lib/bookings.ts";
 import { addDays, todayLocal } from "../../lib/dates.ts";
-import { quote } from "../../lib/pricing.ts";
+import { quote, payout } from "../../lib/pricing.ts";
 import { parseIcs, buildIcs } from "../../lib/ical.ts";
 
 let hostId = "", guestId = "", propId = "";
@@ -20,7 +20,7 @@ before(async () => {
 });
 after(async () => { await pool.end(); });
 
-const base = () => ({ propertyId: propId, guestId, guests: 2, name: "Guest", phone: "555-0100", arrival: "", message: "", taxPercent: 6 });
+const base = () => ({ propertyId: propId, guestId, party: { adults: 2, children: 0, free_children: 0 }, name: "Guest", phone: "555-0100", arrival: "", message: "", taxPercent: 6 });
 
 test("20 simultaneous bookings for the same nights: exactly one succeeds", async () => {
   const ci = addDays(T, 10), co = addDays(T, 13);
@@ -38,8 +38,8 @@ test("overlapping but not identical dates are refused; back-to-back stays are al
 
 test("the database constraint alone blocks overlaps, even if application checks are skipped", async () => {
   await assert.rejects(
-    q(`INSERT INTO bookings (code, property_id, guest_id, check_in, check_out, guests, status, nights, nightly_price_cents, cleaning_fee_cents, tax_cents, total_cents, guest_name, guest_phone)
-       VALUES ('SV-RAW', $1, $2, $3, $4, 1, 'confirmed', 1, 1, 0, 0, 1, 'x', 'x')`, [propId, guestId, addDays(T, 11), addDays(T, 12)]),
+    q(`INSERT INTO bookings (code, property_id, guest_id, check_in, check_out, guests, adults, lodging_cents, status, nights, nightly_price_cents, cleaning_fee_cents, tax_cents, total_cents, guest_name, guest_phone)
+       VALUES ('SV-RAW', $1, $2, $3, $4, 1, 1, 1, 'confirmed', 1, 1, 0, 0, 1, 'x', 'x')`, [propId, guestId, addDays(T, 11), addDays(T, 12)]),
     (e: { code?: string }) => e.code === "23P01",
   );
 });
@@ -77,12 +77,32 @@ test("stay rules", () => {
   assert.match(stayProblem(p, addDays(T, 1), addDays(T, 4), 5)!, /up to 4 guests/);
   assert.match(stayProblem(p, addDays(T, 1), addDays(T, 20), 2)!, /up to 14 nights/);
   assert.equal(stayProblem(p, addDays(T, 1), addDays(T, 4), 4), null);
+  assert.match(stayProblem(p, addDays(T, 1), addDays(T, 4), { adults: 2, children: 1, free_children: 2 })!, /including children/);
+  assert.match(stayProblem(p, addDays(T, 1), addDays(T, 4), { adults: 0, children: 2, free_children: 0 })!, /adult/);
   assert.ok(stayProblem(p, "2026-02-30", "2026-03-02", 2));
 });
 
 test("price quote", () => {
-  const qd = quote({ nightly_price_cents: 15000, cleaning_fee_cents: 5000 }, "2026-11-01", "2026-11-04", 6);
-  assert.deepEqual(qd, { nights: 3, nightly: 15000, base: 45000, cleaning: 5000, tax: 3000, total: 53000 });
+  const p = { nightly_price_cents: 15000, cleaning_fee_cents: 5000, max_guests: 4 };
+  const qd = quote(p, "2026-11-01", "2026-11-04", 6);
+  assert.equal(qd.base, 45000); assert.equal(qd.tax, 3000); assert.equal(qd.total, 53000);
+});
+
+test("per-guest pricing, children and length-of-stay discounts", () => {
+  const p = { nightly_price_cents: 10000, cleaning_fee_cents: 0, max_guests: 6, base_occupancy: 2, extra_guest_fee_cents: 2000, fewer_guest_discount_percent: 10, weekly_discount_percent: 10, monthly_discount_percent: 25 };
+  const two = quote(p, "2026-11-01", "2026-11-03", 0, { adults: 2, children: 0, free_children: 0 });
+  assert.equal(two.nightly, 10000);
+  const one = quote(p, "2026-11-01", "2026-11-03", 0, { adults: 1, children: 0, free_children: 0 });
+  assert.equal(one.nightly, 9000, "1 guest gets 10% off");
+  const four = quote(p, "2026-11-01", "2026-11-03", 0, { adults: 2, children: 2, free_children: 0 });
+  assert.equal(four.nightly, 14000, "2 extra guests at $20");
+  const toddlers = quote(p, "2026-11-01", "2026-11-03", 0, { adults: 2, children: 0, free_children: 2 });
+  assert.equal(toddlers.nightly, 10000, "free-age children don't change the price");
+  const week = quote(p, "2026-11-01", "2026-11-08", 0, { adults: 2, children: 0, free_children: 0 });
+  assert.equal(week.discount, 7000); assert.match(week.discountLabel, /Weekly/);
+  const month = quote(p, "2026-11-01", "2026-11-29", 0, { adults: 2, children: 0, free_children: 0 });
+  assert.equal(month.discount, 70000); assert.match(month.discountLabel, /Monthly/);
+  assert.deepEqual(payout({ lodging_cents: 70000, discount_cents: 7000, cleaning_fee_cents: 5000, management_fee_percent: 20 }), { rent: 63000, fee: 12600, owner: 55400 });
 });
 
 test("iCal round trip, including Airbnb-style folded lines", () => {
