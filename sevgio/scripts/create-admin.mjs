@@ -3,7 +3,7 @@
 import pg from "pg";
 import bcrypt from "bcryptjs";
 
-const [name, email, password] = process.argv.slice(2);
+const [name, email, password] = process.argv.slice(2).map(a => (a || "").trim());
 if (!name || !email || !password || password.length < 10) {
   console.error('Usage: npm run create-admin -- "Full Name" email@example.com "password (10+ characters)"');
   process.exit(1);

@@ -11,7 +11,10 @@ import crypto from "node:crypto";
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 try {
-  const { ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME } = process.env;
+  // Trim like the sign-in form does, so a stray space pasted into the host's settings can't lock the admin out.
+  const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "").trim();
+  const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || "").trim();
+  const ADMIN_NAME = (process.env.ADMIN_NAME || "").trim();
   const admins = (await client.query("SELECT count(*)::int AS n FROM users WHERE role = 'admin'")).rows[0].n;
   if (admins === 0) {
     if (ADMIN_EMAIL && ADMIN_PASSWORD && ADMIN_PASSWORD.length >= 10) {
