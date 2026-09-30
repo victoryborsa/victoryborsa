@@ -109,6 +109,15 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
         </div>
       </div>
 
+      <div className="box">
+        <h2>Owner's payment accounts (optional)</h2>
+        <p className="muted">If this home's owner wants guests to pay them directly, add their Zelle and/or Venmo. Guests of this listing then see these instead of Sevgio's accounts. Leave empty to use the accounts in Admin → Settings.</p>
+        <div className="grid-2">
+          <label className="field"><span>Owner's Zelle (email or phone)</span><input className="input" name="owner_zelle" defaultValue={p?.owner_zelle ?? ""} placeholder="owner@example.com" autoComplete="off" /></label>
+          <label className="field"><span>Owner's Venmo username</span><input className="input" name="owner_venmo" defaultValue={p?.owner_venmo ?? ""} placeholder="@Owner-Name" autoComplete="off" /></label>
+        </div>
+      </div>
+
       {isAdmin && (
         <div className="box">
           <h2>Management (admin only)</h2>

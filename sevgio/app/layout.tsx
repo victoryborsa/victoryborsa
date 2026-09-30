@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { Logo } from "@/components/Logo.tsx";
 import { Bricolage_Grotesque, Figtree, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { currentUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { signOutAction } from "./actions/auth.ts";
+import { getT, LANGS } from "@/lib/i18n.ts";
+import { LangMenu } from "@/components/LangMenu.tsx";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-display", display: "swap" });
 const body = Figtree({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-body", display: "swap" });
@@ -12,40 +15,42 @@ const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variabl
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL || "http://localhost:3000"),
-  title: { default: "Sevgio · Vacation rentals across Pennsylvania", template: "%s · Sevgio" },
-  description: "Book lake houses, city lofts, farm stays and mountain cabins across Pennsylvania directly with Sevgio.",
+  title: { default: "Sevgio · Yinz Are Home · Stays in Pittsburgh", template: "%s · Sevgio" },
+  description: "Cozy private rooms and whole houses in Pittsburgh, booked direct with your hosts.",
   openGraph: { siteName: "Sevgio", type: "website" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#0A6B66" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [user, settings] = await Promise.all([currentUser(), getSettings()]);
+  const [user, settings, { lang, t }] = await Promise.all([currentUser(), getSettings(), getT()]);
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    <html lang={lang} className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body>
         <a className="skip" href="#main">Skip to content</a>
         {settings.site_notice && <div className="site-notice"><div className="wrap">{settings.site_notice}</div></div>}
         <header className="site">
           <div className="wrap">
-            <Link className="logo" href="/" aria-label="Sevgio home">sevgio<span className="dot" /></Link>
+            <Link className="logo logo-badge" href="/" aria-label="Sevgio home"><Logo size={46} title="Sevgio" /><span>sevgio<span className="dot" /></span></Link>
             <nav className="main" aria-label="Main">
-              <Link className="navlink" href="/stays">Stays</Link>
-              <Link className="navlink" href="/contact">Contact</Link>
-              {user?.role === "host" && <Link className="navlink" href="/host">Host dashboard</Link>}
-              {user?.role === "admin" && <Link className="navlink" href="/admin">Admin</Link>}
+              <Link className="navlink" href="/stays">{t("nav.stays")}</Link>
+              <Link className="navlink" href="/pittsburgh">{t("nav.guide")}</Link>
+              <Link className="navlink" href="/contact">{t("nav.contact")}</Link>
+              {user?.role === "host" && <Link className="navlink" href="/host">{t("nav.host")}</Link>}
+              {user?.role === "admin" && <Link className="navlink" href="/admin">{t("nav.admin")}</Link>}
               {user ? (
                 <>
-                  <Link className="navlink" href="/trips">My trips</Link>
-                  <Link className="navlink" href="/account">Account</Link>
-                  <form action={signOutAction} className="inline-form"><button className="btn btn-ghost btn-sm" type="submit">Sign out</button></form>
+                  <Link className="navlink" href="/trips">{t("nav.trips")}</Link>
+                  <Link className="navlink" href="/account">{t("nav.account")}</Link>
+                  <form action={signOutAction} className="inline-form"><button className="btn btn-ghost btn-sm" type="submit">{t("nav.signout")}</button></form>
                 </>
               ) : (
                 <>
-                  <Link className="navlink" href="/signin">Sign in</Link>
-                  <Link className="btn btn-primary btn-sm" href="/signup">Create account</Link>
+                  <Link className="navlink" href="/signin">{t("nav.signin")}</Link>
+                  <Link className="btn btn-primary btn-sm" href="/signup">{t("nav.signup")}</Link>
                 </>
               )}
             </nav>
+            <LangMenu current={lang} label={t("nav.language")} langs={LANGS.map(l => ({ code: l.code, name: l.name }))} />
           </div>
         </header>
         <main id="main">{children}</main>
@@ -53,22 +58,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className="wrap">
             <div className="stack" style={{ gap: 6 }}>
               <strong style={{ fontFamily: "var(--f-display)", fontSize: 18 }}>sevgio</strong>
-              <span className="muted">Vacation rentals across Pennsylvania, booked direct.</span>
+              <span className="muted">{t("foot.tagline")}</span>
             </div>
             <div className="stack" style={{ gap: 6 }}>
-              <span className="eyebrow">Guests</span>
-              <Link href="/stays">Find a stay</Link>
-              <Link href="/trips">My trips</Link>
+              <span className="eyebrow">{t("foot.guests")}</span>
+              <Link href="/stays">{t("foot.find")}</Link>
+              <Link href="/pittsburgh">{t("nav.guide")}</Link>
+              <Link href="/trips">{t("nav.trips")}</Link>
             </div>
             <div className="stack" style={{ gap: 6 }}>
-              <span className="eyebrow">Help</span>
-              <Link href="/contact">Contact us</Link>
+              <span className="eyebrow">{t("foot.help")}</span>
+              <Link href="/contact">{t("foot.contact")}</Link>
               {settings.contact_email && <span className="muted">{settings.contact_email}</span>}
               {settings.contact_phone && <span className="muted">{settings.contact_phone}</span>}
             </div>
             <div className="stack" style={{ gap: 6 }}>
-              <span className="eyebrow">Hosts</span>
-              <Link href="/host">Host sign in</Link>
+              <span className="eyebrow">{t("foot.hosts")}</span>
+              <Link href="/host">{t("foot.hostSignin")}</Link>
             </div>
           </div>
         </footer>

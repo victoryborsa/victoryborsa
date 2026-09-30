@@ -9,6 +9,7 @@ import { money } from "@/lib/money.ts";
 import { CANCELLATION } from "@/lib/constants.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { getSettings } from "@/lib/settings.ts";
+import { forListing } from "@/lib/payments.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { StatusPill } from "@/components/ui.tsx";
 import { partyLabel } from "@/lib/party.ts";
@@ -18,7 +19,7 @@ import { guestCancelAction, payNowAction } from "@/app/actions/bookings.ts";
 export const metadata: Metadata = { title: "Your booking", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
-type Row = Booking & { title: string; slug: string; city: string; area: string; address: string; arrival_instructions: string; check_in_time: string; check_out_time: string; cancellation_policy: string; host_id: string; host_name: string; host_email: string; host_phone: string; cover_id: string | null };
+type Row = Booking & { title: string; slug: string; city: string; area: string; address: string; arrival_instructions: string; check_in_time: string; check_out_time: string; cancellation_policy: string; host_id: string; host_name: string; host_email: string; host_phone: string; cover_id: string | null; owner_zelle: string; owner_venmo: string };
 
 export default async function TripPage({ params, searchParams }: { params: Promise<{ code: string }>; searchParams: Promise<{ new?: string; msg?: string; paid?: string; payerror?: string }> }) {
   const { code } = await params;
@@ -27,7 +28,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
   const u = await requireUser(undefined, `/trips/${code}`);
   await expireStaleRequests();
   const b = await one<Row>(
-    `SELECT b.*, p.title, p.slug, p.city, p.area, p.address, p.arrival_instructions, p.check_in_time, p.check_out_time, p.cancellation_policy, p.host_id,
+    `SELECT b.*, p.title, p.slug, p.city, p.area, p.address, p.arrival_instructions, p.check_in_time, p.check_out_time, p.cancellation_policy, p.host_id, p.owner_zelle, p.owner_venmo,
             h.name AS host_name, h.email AS host_email, h.phone AS host_phone,
             (SELECT id FROM photos ph WHERE ph.property_id = p.id ORDER BY position LIMIT 1) AS cover_id
      FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users h ON h.id = p.host_id WHERE b.code = $1`,
@@ -35,7 +36,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
   );
   // Only the guest, the listing's host, or an admin may see a booking.
   if (!b || !(b.guest_id === u.id || b.host_id === u.id || u.role === "admin")) notFound();
-  const settings = await getSettings();
+  const settings = forListing(await getSettings(), b);
   const confirmed = b.status === "confirmed";
   const today = todayLocal();
   const canCancel = b.guest_id === u.id && ["pending", "awaiting_payment", "confirmed"].includes(b.status) && b.check_in >= today;

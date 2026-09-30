@@ -11,6 +11,7 @@ import { addDays, todayLocal } from "@/lib/dates.ts";
 import { ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, bedLabel, parseBeds } from "@/lib/constants.ts";
 import { partyFromParams } from "@/lib/party.ts";
 import { Gallery } from "@/components/Gallery.tsx";
+import { StayChooser } from "@/components/StayChooser.tsx";
 import { AvailabilitySection, BookingPanel, BookingProvider, MobileBookBar } from "@/components/booking.tsx";
 import { Check, Rating } from "@/components/ui.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
@@ -72,6 +73,7 @@ export default async function StayPage({ params, searchParams }: Params) {
           </div>
         </div>
       </div>
+      <StayChooser current={p} house={linked.parent ?? p} rooms={linked.parent ? [...linked.siblings, p].sort((a, b) => a.nightly_price_cents - b.nightly_price_cents) : linked.rooms} sp={sp} />
       <Gallery photos={photos.map(ph => ({ id: ph.id, caption: ph.caption }))} title={p.title} />
 
       <BookingProvider

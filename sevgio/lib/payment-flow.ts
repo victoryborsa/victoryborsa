@@ -4,18 +4,18 @@ import { one, q, tx } from "./db.ts";
 import type { Booking } from "./bookings.ts";
 import { getSettings, type Settings } from "./settings.ts";
 import { METHOD_LABEL } from "./payment-rules.ts";
-import { stripe } from "./payments.ts";
+import { forListing, stripe } from "./payments.ts";
 import { sendEmail, siteUrl } from "./email.ts";
 import { logEvent } from "./log.ts";
 import { fmtDate } from "./dates.ts";
 import { money } from "./money.ts";
 import { partyLabel } from "./party.ts";
 
-type Info = Booking & { title: string; host_id: string; host_email: string; guest_email: string };
+type Info = Booking & { title: string; host_id: string; host_email: string; guest_email: string; owner_zelle: string; owner_venmo: string };
 
 export async function bookingInfo(id: string) {
   return one<Info>(
-    `SELECT b.*, p.title, p.host_id, h.email AS host_email, g.email AS guest_email
+    `SELECT b.*, p.title, p.host_id, p.owner_zelle, p.owner_venmo, h.email AS host_email, g.email AS guest_email
      FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users h ON h.id = p.host_id JOIN users g ON g.id = b.guest_id WHERE b.id = $1`,
     [id],
   );
@@ -49,7 +49,7 @@ async function toHostAndAdmins(b: Info, subject: string, text: string) {
 }
 
 export async function notifyBooking(b: Info) {
-  const s = await getSettings();
+  const s = forListing(await getSettings(), b);
   const first = b.guest_name.split(" ")[0];
   const link = `${siteUrl()}/trips/${b.code}`;
   if (b.status === "confirmed") {

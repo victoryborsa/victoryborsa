@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { one } from "@/lib/db.ts";
 import { requireUser } from "@/lib/auth.ts";
 import { createBooking, setBookingStatus, type Booking, type PaymentChoice } from "@/lib/bookings.ts";
-import { enabledMethods, isOnline } from "@/lib/payments.ts";
+import { enabledMethods, forListing, isOnline } from "@/lib/payments.ts";
 import type { PayMethod } from "@/lib/payment-rules.ts";
 import { bookingInfo, notifyBooking, startCheckout } from "@/lib/payment-flow.ts";
 import { getSettings } from "@/lib/settings.ts";
@@ -21,14 +21,14 @@ export async function createBookingAction(_: ActionState, fd: FormData): Promise
   const u = await requireUser(undefined, `/book/${slug}?ci=${ci}&co=${co}&adults=${party.adults}&children=${party.children}&infants=${party.free_children}`);
   if (!u.verified) return { error: "Please confirm your email address first. Enter the code we sent you above." };
   const name = str(fd, "name", 120), phone = str(fd, "phone", 40), arrival = str(fd, "arrival", 60), message = str(fd, "message", 2000);
-  const p = await one<{ id: string; booking_mode: string }>("SELECT id, booking_mode FROM properties WHERE slug = $1", [slug]);
+  const p = await one<{ id: string; booking_mode: string; owner_zelle: string; owner_venmo: string }>("SELECT id, booking_mode, owner_zelle, owner_venmo FROM properties WHERE slug = $1", [slug]);
   if (!p) return { error: "This home no longer exists." };
   if (!name) return { error: "Add the name of the lead guest." };
   if (phone.replace(/\D/g, "").length < 7) return { error: "Add a phone number the host can reach you on during your stay." };
   if (p.booking_mode === "request" && message.length < 10) return { error: "Write a short message to the host. It helps them accept your request." };
   if (fd.get("agree") !== "on") return { error: "Tick the box to agree to the house rules and cancellation policy." };
 
-  const settings = await getSettings();
+  const settings = forListing(await getSettings(), p);
   const methods = enabledMethods(settings);
   let pay: PaymentChoice | null = null;
   if (methods.length) {

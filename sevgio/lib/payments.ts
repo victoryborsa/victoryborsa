@@ -22,4 +22,12 @@ export function enabledMethods(s: Settings): PayMethod[] {
   return out;
 }
 
+/** Site payment settings as they apply to one listing: the owner's own Zelle / Venmo, when set, replace the site-wide accounts. */
+export function forListing(s: Settings, p: { owner_zelle?: string | null; owner_venmo?: string | null }): Settings {
+  const out = { ...s };
+  if (p.owner_zelle) { out.zelle_to = p.owner_zelle; out.pay_zelle = true; }
+  if (p.owner_venmo) { out.venmo_handle = p.owner_venmo; out.pay_venmo = true; }
+  return out;
+}
+
 export const isOnline = (m: string | null) => m === "card" || m === "ach";

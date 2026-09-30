@@ -2,13 +2,17 @@ import { requireUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { stripeReady } from "@/lib/payments.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
-import { saveSettingsAction } from "@/app/actions/admin.ts";
+import { saveSettingsAction, slideCommandAction, uploadSlideAction } from "@/app/actions/admin.ts";
+import { PhotoUploader } from "@/components/PhotoUploader.tsx";
+import { q } from "@/lib/db.ts";
 
 export default async function Settings() {
   await requireUser(["admin"], "/admin");
   const s = await getSettings();
   const stripe = stripeReady();
+  const slides = await q<{ id: string; caption: string }>("SELECT id, caption FROM site_photos ORDER BY position, created_at");
   return (
+    <div className="stack" style={{ gap: 24 }}>
     <ActionForm action={saveSettingsAction} className="box" id="settings">
       <h2>Site settings</h2>
       <label className="field" style={{ maxWidth: 260 }}>
@@ -44,5 +48,32 @@ export default async function Settings() {
       </div>
       <div><SubmitButton pendingText="Saving…">Save settings</SubmitButton></div>
     </ActionForm>
+
+    <section className="stack" id="slideshow" style={{ gap: 14 }}>
+      <h2>Home page slideshow</h2>
+      <p className="muted">Pittsburgh photos shown at the top of the home page. Wide (landscape) photos look best. Until you add some, drawn Pittsburgh scenes are shown. Only use photos you took or have the right to use, for example free photos from unsplash.com or pexels.com.</p>
+      <PhotoUploader id="slideshow" action={uploadSlideAction} />
+      {slides.length === 0 ? <div className="empty"><p className="muted">No slideshow photos yet.</p></div> : (
+        <div className="photo-grid">
+          {slides.map((ph, i) => (
+            <div className="photo-tile" key={ph.id}>
+              <div className="thumb"><img src={`/api/site-photos/${ph.id}?s=thumb`} alt={ph.caption || `Slide ${i + 1}`} loading="lazy" /></div>
+              <form action={slideCommandAction} className="tools">
+                <input type="hidden" name="photo" value={ph.id} /><input type="hidden" name="cmd" value="caption" />
+                <input className="input" name="caption" defaultValue={ph.caption} placeholder="Caption, e.g. Duquesne Incline" style={{ minHeight: 34, padding: "4px 8px", fontSize: 13 }} aria-label={`Caption for slide ${i + 1}`} />
+                <button className="btn btn-ghost btn-sm" type="submit">Save caption</button>
+              </form>
+              <form action={slideCommandAction} className="tools">
+                <input type="hidden" name="photo" value={ph.id} />
+                <SubmitButton className="btn btn-ghost btn-sm" name="cmd" value="up" disabled={i === 0} aria-label="Move earlier" pendingText="…">←</SubmitButton>
+                <SubmitButton className="btn btn-ghost btn-sm" name="cmd" value="down" disabled={i === slides.length - 1} aria-label="Move later" pendingText="…">→</SubmitButton>
+                <SubmitButton className="btn btn-danger btn-sm" name="cmd" value="delete" pendingText="…">Delete</SubmitButton>
+              </form>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+    </div>
   );
 }

@@ -74,5 +74,7 @@ export async function publishedCities() {
 export async function linkedListings(p: Property) {
   const parent = p.parent_id ? await one<CardProperty>(`SELECT p.*, ${COVER} FROM properties p WHERE p.id = $1 AND p.status = 'published'`, [p.parent_id]) : null;
   const rooms = await q<CardProperty>(`SELECT p.*, ${COVER} FROM properties p WHERE p.parent_id = $1 AND p.status = 'published' ORDER BY p.nightly_price_cents`, [p.id]);
-  return { parent, rooms };
+  // Other rooms in the same house, when this listing is a room.
+  const siblings = parent ? await q<CardProperty>(`SELECT p.*, ${COVER} FROM properties p WHERE p.parent_id = $1 AND p.id <> $2 AND p.status = 'published' ORDER BY p.nightly_price_cents`, [parent.id, p.id]) : [];
+  return { parent, rooms, siblings };
 }

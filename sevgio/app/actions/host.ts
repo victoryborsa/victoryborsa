@@ -44,6 +44,7 @@ function readListing(fd: FormData) {
     fewer_guest_discount_percent: pct(fd, "fewer_guest_discount_percent"), weekly_discount_percent: pct(fd, "weekly_discount_percent"), monthly_discount_percent: pct(fd, "monthly_discount_percent"),
     children_free_age: int(fd, "children_free_age"),
     management_fee_percent: fd.has("management_fee_percent") ? pct(fd, "management_fee_percent") : null,
+    owner_zelle: str(fd, "owner_zelle", 120), owner_venmo: str(fd, "owner_venmo", 60),
   };
   let error = "";
   if (!v.title) error = "Give the listing a title.";
@@ -84,7 +85,7 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     kitchen_access: v.kitchen_access, laundry_access: v.laundry_access, stairs_info: v.stairs_info, shared_spaces: v.shared_spaces, has_exterior_cameras: v.has_exterior_cameras,
     camera_locations: v.has_exterior_cameras ? v.camera_locations : "", base_occupancy: v.base_occupancy, extra_guest_fee_cents: v.extra_guest_fee,
     fewer_guest_discount_percent: v.fewer_guest_discount_percent, weekly_discount_percent: v.weekly_discount_percent, monthly_discount_percent: v.monthly_discount_percent,
-    children_free_age: v.children_free_age,
+    children_free_age: v.children_free_age, owner_zelle: v.owner_zelle, owner_venmo: v.owner_venmo,
   };
   // Only admins set the management fee; hosts never see or change it.
   if (isAdmin && v.management_fee_percent !== null) cols.management_fee_percent = v.management_fee_percent;
@@ -159,7 +160,7 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
   const plain = ["title", "property_type", "city", "area", "address", "description", "max_guests", "bedrooms", "bathrooms", "half_bathrooms", "bathroom_type",
     "kitchen_access", "laundry_access", "stairs_info", "shared_spaces", "camera_locations", "min_nights", "max_nights", "booking_mode", "cancellation_policy", "check_in_time",
     "check_out_time", "arrival_instructions", "base_occupancy", "fewer_guest_discount_percent", "weekly_discount_percent", "monthly_discount_percent",
-    "children_free_age", "management_fee_percent", ...Object.keys(IMPORT_FIELDS)];
+    "children_free_age", "management_fee_percent", "owner_zelle", "owner_venmo", ...Object.keys(IMPORT_FIELDS)];
   for (const k of plain) set(IMPORT_FIELDS[k] || k, item[k]);
   const isRoom = item.listing_kind === "room" || item.property_type === "room";
   fd.set("listing_kind", isRoom ? "room" : "home");

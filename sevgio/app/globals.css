@@ -107,7 +107,7 @@ textarea.input { min-height: 96px; resize: vertical; }
 
 /* Hero */
 .hero { padding-block: 40px 28px; }
-.hero-grid { display: grid; gap: 28px; align-items: flex-end; grid-template-columns: 1fr; }
+.hero-grid { display: grid; gap: 28px; align-items: center; grid-template-columns: 1fr; }
 @media (min-width: 900px) { .hero-grid { grid-template-columns: 1.1fr .9fr; } }
 .hero p.lede { font-size: 18px; color: var(--muted); max-width: 52ch; margin-top: 14px; }
 .hero-art { border-radius: var(--r-lg); overflow: hidden; aspect-ratio: 16 / 9; max-width: 100%; }
@@ -469,13 +469,13 @@ tr.row-new td { background: color-mix(in srgb, var(--accent-soft) 55%, transpare
 /* Welcome hero: the world flies in to Pittsburgh */
 .hero-welcome h1 { max-width: 20ch; }
 .hello { display: flex; flex-wrap: wrap; gap: 6px 8px; margin-top: 16px; }
-.hello span { font-size: 13px; padding: 3px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); }
-.hello span:last-child { background: #FFB612; border-color: #FFB612; color: #101820; font-weight: 700; }
+
+
 .worldmap-wrap { margin-top: 22px; border-radius: var(--r-lg); overflow: hidden; background: var(--accent-soft); border: 1px solid var(--line); }
 .worldmap { display: block; width: 100%; height: auto; }
 .wm-grid { stroke: var(--accent); stroke-opacity: .10; stroke-width: .3; }
 .wm-land { fill: var(--surface); stroke: var(--accent); stroke-opacity: .25; stroke-width: .35; stroke-linejoin: round; }
-.wm-route { fill: none; stroke: var(--accent); stroke-width: .8; stroke-linecap: round; stroke-dasharray: 3 2.2; animation: wm-fly 2.4s linear infinite; }
+.wm-route { fill: none; stroke: var(--accent); stroke-width: .6; stroke-linecap: round; stroke-dasharray: 3 2.2; animation: wm-fly 2.4s linear infinite; }
 .wm-arrowhead { fill: var(--accent); }
 .wm-city { fill: var(--accent); }
 .wm-label { font-size: 3.6px; fill: var(--ink); font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: 1px; }
@@ -487,3 +487,78 @@ tr.row-new td { background: color-mix(in srgb, var(--accent-soft) 55%, transpare
 @keyframes wm-pulse { from { transform: scale(.6); opacity: .55; } to { transform: scale(2); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .wm-route, .wm-pulse { animation: none; } }
 @media (max-width: 640px) { .worldmap { width: 170%; margin-left: -12%; } .hello span { font-size: 12px; } }
+
+/* Whole house or a room */
+.chooser { margin-bottom: 20px; }
+.chooser h2 { font-size: 20px; }
+.chooser-grid { display: grid; gap: 10px; margin-top: 10px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.chooser-opt { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: var(--r-lg); background: var(--surface); color: var(--ink); text-decoration: none; }
+.chooser-opt:hover { border-color: var(--ink); }
+.chooser-opt.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.chooser-opt.dim { opacity: .6; }
+.chooser-kind { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.chooser-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; font-size: 14px; }
+
+/* Home page slideshow */
+.slides { position: relative; border-radius: var(--r-lg); overflow: hidden; aspect-ratio: 16 / 10; background: #101820; }
+.slide { position: absolute; inset: 0; opacity: 0; transition: opacity .9s ease; }
+.slide.on { opacity: 1; }
+.slide img, .slide svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.slide-cap { position: absolute; left: 12px; bottom: 12px; margin: 0; max-width: calc(100% - 110px); padding: 5px 11px; border-radius: 999px; background: rgba(16, 24, 32, .72); color: #fff; font-size: 13px; font-weight: 600; }
+.slide-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 999px; border: 0; background: rgba(255, 255, 255, .85); color: #101820; font-size: 22px; line-height: 1; cursor: pointer; }
+.slide-nav.prev { left: 10px; } .slide-nav.next { right: 10px; }
+.slide-dots { position: absolute; right: 12px; bottom: 16px; display: flex; gap: 6px; }
+.slide-dots button { width: 8px; height: 8px; padding: 0; border-radius: 999px; border: 0; background: rgba(255, 255, 255, .5); cursor: pointer; }
+.slide-dots button.on { background: #FFB612; width: 20px; }
+@media (prefers-reduced-motion: reduce) { .slide { transition: none; } }
+
+/* Logo: the river flows under the bridge */
+.sevgio-logo { display: block; flex: none; }
+.sevgio-logo.live .logo-wave { animation: logo-flow 2.6s linear infinite; }
+.sevgio-logo.live .logo-wave.w2 { animation-duration: 3.4s; animation-direction: reverse; }
+@keyframes logo-flow { from { transform: translateX(0); } to { transform: translateX(40px); } }
+@media (prefers-reduced-motion: reduce) { .sevgio-logo.live .logo-wave { animation: none; } }
+.logo-badge { display: flex; align-items: center; gap: 10px; }
+.hero-logo { display: none; }
+@media (min-width: 900px) { .hero-logo { display: block; } }
+.wm-sea { fill: var(--accent-soft); stroke: var(--accent); stroke-opacity: .25; stroke-width: .35; }
+.wm-label { font-size: 3.1px; }
+
+/* Pittsburgh guide */
+.guide-hero { padding-block: 40px 8px; }
+.guide-hero .lede { font-size: 18px; color: var(--muted); max-width: 60ch; margin-top: 12px; }
+.guide-toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.guide-toc a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; font-size: 14px; font-weight: 600; }
+.guide-toc a:hover { border-color: var(--ink); }
+.guide h2 { margin-bottom: 8px; }
+.guide section[id] { scroll-margin-top: 90px; }
+.guide-grid { display: grid; gap: 14px; margin-top: 14px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+.guide-card { display: flex; flex-direction: column; gap: 6px; padding: 16px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.guide-card h3 { font-size: 17px; }
+.guide-area { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.guide-map { margin-top: auto; font-size: 14px; font-weight: 600; }
+.yinzer { display: grid; gap: 10px; margin-top: 14px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.yinzer div { padding: 12px 14px; border-radius: var(--r-lg); background: #101820; color: #fff; }
+.yinzer dt { color: #FFB612; font-weight: 800; font-size: 18px; }
+.yinzer dd { margin: 4px 0 0; font-size: 14px; opacity: .9; }
+
+/* Language switch */
+.hello a { font-size: 13px; padding: 3px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); text-decoration: none; }
+.hello a:hover { border-color: var(--ink); color: var(--ink); }
+.hello a.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.hello a:last-child:not(.on) { background: #FFB612; border-color: #FFB612; color: #101820; font-weight: 700; }
+.lang-menu { position: relative; }
+.lang-menu summary { list-style: none; cursor: pointer; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; font-weight: 700; background: var(--surface); white-space: nowrap; }
+.lang-menu summary::-webkit-details-marker { display: none; }
+.lang-menu ul { position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; list-style: none; margin: 0; padding: 6px; min-width: 160px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+.lang-menu li a { display: block; padding: 7px 10px; border-radius: 8px; color: var(--ink); text-decoration: none; font-size: 14px; }
+.lang-menu li a:hover, .lang-menu li a[aria-current] { background: var(--surface-2); }
+.lang-menu li a[aria-current] { font-weight: 700; }
+.guide-promo { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 22px 24px; border-radius: var(--r-lg); background: #101820; color: #fff; }
+.guide-promo h3 { color: #FFB612; }
+.guide-promo p { margin: 0; opacity: .9; }
+.guide-promo .btn { background: #FFB612; color: #101820; border-color: #FFB612; font-weight: 700; }
+@media (max-width: 640px) {
+  header.site .lang-menu { order: 1; margin-left: auto; }
+  header.site nav.main { order: 2; }
+}

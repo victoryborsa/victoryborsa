@@ -9,6 +9,7 @@ import { isEmail, str, type ActionState } from "@/lib/validate.ts";
 import { toCents } from "@/lib/money.ts";
 import { logEvent } from "@/lib/log.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
+import { processPhoto } from "@/lib/photos.ts";
 
 export async function setRoleAction(_: ActionState, fd: FormData): Promise<ActionState> {
   const admin = await requireUser(["admin"]);
@@ -132,4 +133,40 @@ export async function saveSettingsAction(_: ActionState, fd: FormData): Promise<
   await logEvent("info", "Settings", "Site settings updated", { tax }, admin.id);
   revalidatePath("/", "layout");
   return { ok: "Settings saved. New prices apply to new bookings only." };
+}
+
+// ---------- Home page slideshow ----------
+
+export async function uploadSlideAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  await requireUser(["admin"]);
+  const files = fd.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
+  if (!files.length) return { error: "Choose a photo to upload." };
+  const errors: string[] = [];
+  let added = 0;
+  for (const f of files.slice(0, 30)) {
+    const r = await processPhoto(f);
+    if ("error" in r) { errors.push(r.error); continue; }
+    await q("INSERT INTO site_photos (position, large, thumb, width, height) VALUES ((SELECT coalesce(max(position), -1) + 1 FROM site_photos), $1, $2, $3, $4)", [r.large, r.thumb, r.width, r.height]);
+    added++;
+  }
+  revalidatePath("/admin/settings");
+  revalidatePath("/");
+  if (errors.length) return { error: `${added} photo${added === 1 ? "" : "s"} added. ${errors.join(" ")}` };
+  return { ok: `${added} photo${added === 1 ? "" : "s"} added.` };
+}
+
+export async function slideCommandAction(fd: FormData) {
+  await requireUser(["admin"]);
+  const id = str(fd, "photo", 40), cmd = str(fd, "cmd", 20);
+  const rows = await q<{ id: string }>("SELECT id FROM site_photos ORDER BY position, created_at");
+  const i = rows.findIndex(r => r.id === id);
+  if (i < 0) return;
+  if (cmd === "caption") await q("UPDATE site_photos SET caption = $2 WHERE id = $1", [id, str(fd, "caption", 120)]);
+  const order = rows.map(r => r.id);
+  if (cmd === "delete") { order.splice(i, 1); await q("DELETE FROM site_photos WHERE id = $1", [id]); }
+  if (cmd === "up" && i > 0) [order[i - 1], order[i]] = [order[i], order[i - 1]];
+  if (cmd === "down" && i < order.length - 1) [order[i + 1], order[i]] = [order[i], order[i + 1]];
+  for (const [n, pid] of order.entries()) await q("UPDATE site_photos SET position = $2 WHERE id = $1", [pid, n]);
+  revalidatePath("/admin/settings");
+  revalidatePath("/");
 }

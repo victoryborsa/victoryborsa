@@ -123,3 +123,18 @@ test("Stripe webhook confirms card payments once, and bank transfers when they c
   // Turn payments back off for anything that runs later.
   await setPayments(page, {});
 });
+
+test("a listing with the owner's own Zelle shows the owner's account to guests", async ({ page }) => {
+  await setPayments(page, { zelle: true, venmo: true, cash: true });
+  await sql("UPDATE properties SET owner_zelle = 'owner@rittenhouse.test' WHERE slug = 'rittenhouse-square-loft'");
+  try {
+    await signIn(page, "guest@demo.sevgio.com", "demo-password-2026");
+    await book(page, "rittenhouse-square-loft", 240, 242, /^Zelle/);
+    await expect(page.getByRole("heading", { name: "Payment needed to confirm" })).toBeVisible();
+    await expect(page.getByText("owner@rittenhouse.test")).toBeVisible();
+    await expect(page.getByText("pay@sevgio.test")).toHaveCount(0);
+    await signOut(page);
+  } finally {
+    await sql("UPDATE properties SET owner_zelle = '' WHERE slug = 'rittenhouse-square-loft'");
+  }
+});

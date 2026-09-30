@@ -148,3 +148,52 @@ test("phone layout has no sideways scrolling", async ({ page }) => {
     expect(overflow, path).toBeLessThanOrEqual(0);
   }
 });
+
+test("tapping a greeting switches the site language, and back", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".hello").getByRole("link", { name: "Hoş geldiniz" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Dünyanın her yerinden");
+  await expect(page.locator("html")).toHaveAttribute("lang", "tr");
+  await expect(page.getByRole("link", { name: "Pittsburgh rehberi" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Konaklama ara" })).toBeVisible();
+  // The header menu switches too, and remembers the page you were on.
+  await page.goto("/pittsburgh");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Pittsburgh rehberiniz");
+  await page.locator(".lang-menu summary").click();
+  await page.locator(".lang-menu").getByRole("link", { name: "Deutsch" }).click();
+  await expect(page).toHaveURL(/\/pittsburgh$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ihr Pittsburgh-Guide");
+  await page.goto("/");
+  await page.locator(".hello").getByRole("link", { name: "Yinz are welcome!" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("a home in Pittsburgh");
+  // Only site paths are allowed as the return address.
+  const r = await page.request.get("/lang/fr?next=//evil.example", { maxRedirects: 0 });
+  expect(r.headers()["location"]).toBe("/");
+});
+
+test("Pittsburgh guide lists places with map links", async ({ page }) => {
+  await page.goto("/pittsburgh");
+  await expect(page.getByRole("heading", { name: "Must-see & historic Pittsburgh" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Primanti Bros." })).toBeVisible();
+  await expect(page.locator("a.guide-map").first()).toHaveAttribute("href", /google\.com\/maps/);
+  await expect(page.getByText("Yinz", { exact: true })).toBeVisible();
+});
+
+test("a house with rooms lets guests choose the whole house or a room", async ({ page }) => {
+  const [h] = await sql<{ id: string }>("SELECT id FROM properties WHERE slug = 'mount-washington-view-house'");
+  const [r] = await sql<{ id: string; parent_id: string | null }>("SELECT id, parent_id FROM properties WHERE slug = 'lancaster-county-farmhouse-suite'");
+  await sql("UPDATE properties SET parent_id = $1 WHERE id = $2", [h.id, r.id]);
+  try {
+    await page.goto(`/stays/lancaster-county-farmhouse-suite?ci=${iso(300)}&co=${iso(302)}&guests=2`);
+    const chooser = page.locator(".chooser");
+    await expect(chooser.getByRole("heading", { name: "How would you like to stay?" })).toBeVisible();
+    await expect(chooser.locator(".chooser-opt")).toHaveCount(2);
+    await expect(chooser.locator(".chooser-opt.on")).toContainText("Private room");
+    await expect(chooser.locator(".chooser-opt", { hasText: "Whole house" })).toContainText("Available");
+    await chooser.locator(".chooser-opt", { hasText: "Whole house" }).click();
+    await expect(page).toHaveURL(/\/stays\/mount-washington-view-house\?ci=/);
+    await expect(page.locator(".chooser-opt.on")).toContainText("Whole house");
+  } finally {
+    await sql("UPDATE properties SET parent_id = $1 WHERE id = $2", [r.parent_id, r.id]);
+  }
+});

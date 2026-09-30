@@ -11,7 +11,7 @@ import { money } from "@/lib/money.ts";
 import { CANCELLATION } from "@/lib/constants.ts";
 import { partyFromParams, partyLabel } from "@/lib/party.ts";
 import { arrivalOptions } from "@/lib/arrival.ts";
-import { enabledMethods } from "@/lib/payments.ts";
+import { enabledMethods, forListing } from "@/lib/payments.ts";
 import { PaymentChoice } from "@/components/PaymentChoice.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { createBookingAction } from "@/app/actions/bookings.ts";
@@ -38,7 +38,8 @@ export default async function BookPage({ params, searchParams }: { params: Promi
     );
   }
   if (!ci) redirect(back);
-  const [settings, photos] = await Promise.all([getSettings(), photosFor(p.id)]);
+  const [site, photos] = await Promise.all([getSettings(), photosFor(p.id)]);
+  const settings = forListing(site, p);
   const pr = quote(p, ci, co, settings.tax_percent, party);
   const methods = enabledMethods(settings);
   const instant = p.booking_mode === "instant";

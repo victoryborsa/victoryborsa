@@ -4,20 +4,35 @@ import { getSettings } from "@/lib/settings.ts";
 import { PropertyCard } from "@/components/PropertyCard.tsx";
 import { SearchBar } from "@/components/SearchBar.tsx";
 import { WorldMap } from "@/components/WorldMap.tsx";
+import { Slideshow } from "@/components/Slideshow.tsx";
+import { Logo } from "@/components/Logo.tsx";
+import { q } from "@/lib/db.ts";
+import { getT, LANGS } from "@/lib/i18n.ts";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [props, cities, settings] = await Promise.all([allPublished(), publishedCities(), getSettings()]);
+  const [{ lang, t }, props, cities, settings, slides] = await Promise.all([getT(), allPublished(), publishedCities(), getSettings(), q<{ id: string; caption: string }>("SELECT id, caption FROM site_photos ORDER BY position, created_at LIMIT 20")]);
   return (
     <div className="wrap">
       <section className="hero hero-welcome">
-        <p className="eyebrow">Welcome, yinz!</p>
-        <h1 style={{ marginTop: 10 }}>From anywhere in the world to a home in Pittsburgh.</h1>
-        <p className="lede">Whether yinz are flying in from Istanbul, London or Tokyo, or just coming up the Parkway, we have cozy private rooms and whole houses waiting for you. Book direct with your hosts, see real-time availability and the full price before you book.</p>
-        <p className="hello" aria-label="Welcome in many languages">
-          {["Welcome", "Hoş geldiniz", "Bienvenidos", "Bienvenue", "Willkommen", "Benvenuti", "Bem-vindos", "ようこそ", "欢迎", "स्वागत है", "Yinz are welcome!"].map(w => <span key={w} lang={w === "Hoş geldiniz" ? "tr" : undefined}>{w}</span>)}
-        </p>
+        <div className="hero-grid">
+          <div>
+        <div className="row" style={{ gap: 18, alignItems: "center", flexWrap: "nowrap" }}>
+          <div className="hero-logo"><Logo size={120} /></div>
+          <p className="eyebrow">{t("home.eyebrow")}</p>
+        </div>
+        <h1 style={{ marginTop: 10 }}>{t("home.h1")}</h1>
+        <p className="lede">{t("home.lede")}</p>
+        <nav className="hello" aria-label={t("home.pickLang")}>
+          {[...LANGS.slice(1), LANGS[0]].map(l => (
+            <a key={l.code} href={`/lang/${l.code}?next=/`} lang={l.code} hrefLang={l.code} className={l.code === lang ? "on" : undefined} aria-current={l.code === lang ? "true" : undefined} title={l.name}>{l.hello}</a>
+          ))}
+        </nav>
+        <p className="hint" style={{ marginTop: 6 }}>{t("home.pickLang")}</p>
+          </div>
+          <Slideshow photos={slides.map(s => ({ src: `/api/site-photos/${s.id}`, caption: s.caption }))} />
+        </div>
         <div className="worldmap-wrap"><WorldMap /></div>
         <SearchBar cities={cities} />
       </section>
@@ -25,11 +40,11 @@ export default async function Home() {
       <section className="block">
         <div className="section-head">
           <div>
-            <h2>All our stays</h2>
-            <p className="muted" style={{ marginTop: 4 }}>{props.length} place{props.length === 1 ? "" : "s"} to stay in Pittsburgh, n'at. Rent a whole house, or a private room in one.</p>
+            <h2>{t("home.allStays")}</h2>
+            <p className="muted" style={{ marginTop: 4 }}>{t("home.count", { n: props.length })}</p>
           </div>
           <span className="spacer" />
-          <Link className="btn btn-ghost" href="/stays">Search by dates</Link>
+          <Link className="btn btn-ghost" href="/stays">{t("home.searchDates")}</Link>
         </div>
         {props.length ? (
           <div className="cards">{props.map((p, i) => <PropertyCard key={p.id} p={p} taxPercent={settings.tax_percent} eager={i < 4} />)}</div>
@@ -38,13 +53,23 @@ export default async function Home() {
         )}
       </section>
 
+      <section className="block">
+        <div className="guide-promo">
+          <div className="stack" style={{ flex: 1, minWidth: 240 }}>
+            <h3>{t("home.guideTitle")}</h3>
+            <p>{t("home.guideText")}</p>
+          </div>
+          <Link className="btn" href="/pittsburgh">{t("home.guideBtn")} →</Link>
+        </div>
+      </section>
+
       <section className="block" style={{ paddingBottom: 56 }}>
         <div className="box" style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 20 }}>
           <div className="stack" style={{ flex: 1, minWidth: 240 }}>
-            <h3>Questions before you book?</h3>
-            <p className="muted">We answer within a few hours, every day of the week. Ask about parking, early check-in, cribs or anything else.</p>
+            <h3>{t("home.questions")}</h3>
+            <p className="muted">{t("home.questionsText")}</p>
           </div>
-          <Link className="btn btn-primary" href="/contact">Contact us</Link>
+          <Link className="btn btn-primary" href="/contact">{t("home.contactUs")}</Link>
         </div>
       </section>
     </div>
