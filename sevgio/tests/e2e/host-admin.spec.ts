@@ -310,5 +310,8 @@ test("admin imports a house and its room from a file as drafts", async ({ page }
   expect(rows[0]).toMatchObject({ status: "draft", parent: null, host: "dana@demo.sevgio.com", fee: 15, half_bathrooms: 1 });
   expect(rows[0].amenities).toContain("smoke_alarm");
   expect(rows[1]).toMatchObject({ status: "draft", parent: "Import Test House", host: "dana@demo.sevgio.com" });
+  const [room] = await sql<{ slug: string }>("SELECT slug FROM properties WHERE title = 'Import Test House – King Room'");
+  await page.goto(`/stays/${room.slug}`);
+  await expect(page.getByText("Kitchen, living room and laundry are shared with other guests")).toBeVisible();
   await signOut(page);
 });

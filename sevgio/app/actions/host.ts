@@ -35,7 +35,7 @@ function readListing(fd: FormData) {
     beds_detail: beds,
     // Sleeping spots, not counting cribs.
     beds: beds.filter(b => b.kind !== "crib").reduce((n, b) => n + b.count, 0),
-    kitchen_access: str(fd, "kitchen_access"), laundry_access: str(fd, "laundry_access"), stairs_info: str(fd, "stairs_info", 300),
+    kitchen_access: str(fd, "kitchen_access"), laundry_access: str(fd, "laundry_access"), stairs_info: str(fd, "stairs_info", 300), shared_spaces: str(fd, "shared_spaces", 400),
     has_exterior_cameras: fd.get("has_exterior_cameras") === "on", camera_locations: str(fd, "camera_locations", 300),
     base_occupancy: baseOcc === "" ? null : Number(baseOcc), extra_guest_fee: toCents(str(fd, "extra_guest_fee") || "0"),
     fewer_guest_discount_percent: pct(fd, "fewer_guest_discount_percent"), weekly_discount_percent: pct(fd, "weekly_discount_percent"), monthly_discount_percent: pct(fd, "monthly_discount_percent"),
@@ -78,7 +78,7 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     min_nights: v.min_nights, max_nights: v.max_nights, booking_mode: v.booking_mode, cancellation_policy: v.cancellation_policy,
     check_in_time: v.check_in_time || "3:00 pm", check_out_time: v.check_out_time || "11:00 am", amenities: v.amenities, house_rules: v.house_rules,
     arrival_instructions: v.arrival_instructions, parent_id: v.parent_id, bathroom_type: v.bathroom_type, beds_detail: JSON.stringify(v.beds_detail),
-    kitchen_access: v.kitchen_access, laundry_access: v.laundry_access, stairs_info: v.stairs_info, has_exterior_cameras: v.has_exterior_cameras,
+    kitchen_access: v.kitchen_access, laundry_access: v.laundry_access, stairs_info: v.stairs_info, shared_spaces: v.shared_spaces, has_exterior_cameras: v.has_exterior_cameras,
     camera_locations: v.has_exterior_cameras ? v.camera_locations : "", base_occupancy: v.base_occupancy, extra_guest_fee_cents: v.extra_guest_fee,
     fewer_guest_discount_percent: v.fewer_guest_discount_percent, weekly_discount_percent: v.weekly_discount_percent, monthly_discount_percent: v.monthly_discount_percent,
     children_free_age: v.children_free_age,
@@ -154,7 +154,7 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
   const fd = new FormData();
   const set = (k: string, v: unknown) => { if (v !== undefined && v !== null) fd.set(k, String(v)); };
   const plain = ["title", "property_type", "city", "area", "address", "description", "max_guests", "bedrooms", "bathrooms", "half_bathrooms", "bathroom_type",
-    "kitchen_access", "laundry_access", "stairs_info", "camera_locations", "min_nights", "max_nights", "booking_mode", "cancellation_policy", "check_in_time",
+    "kitchen_access", "laundry_access", "stairs_info", "shared_spaces", "camera_locations", "min_nights", "max_nights", "booking_mode", "cancellation_policy", "check_in_time",
     "check_out_time", "arrival_instructions", "base_occupancy", "fewer_guest_discount_percent", "weekly_discount_percent", "monthly_discount_percent",
     "children_free_age", "management_fee_percent", ...Object.keys(IMPORT_FIELDS)];
   for (const k of plain) set(IMPORT_FIELDS[k] || k, item[k]);

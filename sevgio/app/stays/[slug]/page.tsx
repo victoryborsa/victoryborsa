@@ -110,6 +110,7 @@ export default async function StayPage({ params, searchParams }: Params) {
             <section>
               <h2>Good to know</h2>
               <dl className="kv">
+                {p.shared_spaces && <><dt>Shared spaces</dt><dd style={{ fontWeight: 400 }}>{p.shared_spaces}</dd></>}
                 <dt>Bathroom</dt><dd>{p.bathroom_type === "shared" ? "Shared with other guests" : "Private"}{p.half_bathrooms ? ` · plus ${p.half_bathrooms} half bath${p.half_bathrooms > 1 ? "s" : ""}` : ""}</dd>
                 <dt>Kitchen</dt><dd>{ACCESS[p.kitchen_access]}</dd>
                 <dt>Laundry</dt><dd>{ACCESS[p.laundry_access]}</dd>
