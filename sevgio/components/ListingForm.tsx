@@ -1,4 +1,5 @@
-import { AMENITIES, CANCELLATION, PROPERTY_TYPES } from "@/lib/constants.ts";
+import { AMENITIES, CANCELLATION } from "@/lib/constants.ts";
+import { ListingKind } from "./ListingKind.tsx";
 import type { Property } from "@/lib/bookings.ts";
 import { ActionForm, SubmitButton } from "./forms.tsx";
 import type { ActionState } from "@/lib/validate.ts";
@@ -16,11 +17,9 @@ export function ListingForm({ action, p, hosts, homes = [], submitLabel }: { act
             <select className="input" name="host_id" defaultValue="">{[<option key="" value="">Choose a host…</option>, ...hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)]}</select>
           </label>
         )}
+        <ListingKind propertyType={p?.property_type} parentId={p?.parent_id} homes={homes.filter(h => h.id !== p?.id)} />
         <label className="field"><span>Listing title</span><input className="input" name="title" defaultValue={p?.title} maxLength={120} placeholder="e.g. Lakeside Lodge with Hot Tub" required /></label>
         <div className="grid-2">
-          <label className="field"><span>Property type</span>
-            <select className="input" name="property_type" defaultValue={p?.property_type || "house"}>{Object.entries(PROPERTY_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-          </label>
           <label className="field"><span>Visibility</span>
             <select className="input" name="status" defaultValue={p?.status || "draft"} disabled={!p}>
               <option value="draft">Draft (not visible)</option>
@@ -30,14 +29,6 @@ export function ListingForm({ action, p, hosts, homes = [], submitLabel }: { act
             {!p && <><input type="hidden" name="status" value="draft" /><span className="hint">Add photos next, then publish.</span></>}
           </label>
         </div>
-        <label className="field">
-          <span>Is this a room inside one of your whole-home listings?</span>
-          <select className="input" name="parent_id" defaultValue={p?.parent_id || ""}>
-            <option value="">No, this is a separate home (or the whole home)</option>
-            {homes.filter(h => h.id !== p?.id).map(h => <option key={h.id} value={h.id}>Yes, a room in: {h.title}{h.host_name ? ` (${h.host_name})` : ""}</option>)}
-          </select>
-          <span className="hint">Linked calendars: booking the whole home blocks all its rooms, and booking a room blocks the whole home for those dates. Other rooms stay bookable.</span>
-        </label>
         <div className="grid-2">
           <label className="field"><span>Town or city</span><input className="input" name="city" defaultValue={p?.city} placeholder="e.g. Jim Thorpe" required /></label>
           <label className="field"><span>Area or region <span className="muted" style={{ fontWeight: 400 }}>(shown to guests)</span></span><input className="input" name="area" defaultValue={p?.area} placeholder="e.g. Poconos" /></label>

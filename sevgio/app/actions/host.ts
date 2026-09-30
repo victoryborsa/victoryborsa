@@ -25,7 +25,7 @@ function readListing(fd: FormData) {
     booking_mode: str(fd, "booking_mode"), cancellation_policy: str(fd, "cancellation_policy"), check_in_time: str(fd, "check_in_time", 30), check_out_time: str(fd, "check_out_time", 30),
     amenities: fd.getAll("amenities").map(String).filter(a => a in AMENITIES), house_rules: lines(str(fd, "house_rules", 5000)), arrival_instructions: str(fd, "arrival_instructions", 5000),
     status: str(fd, "status"),
-    parent_id: str(fd, "parent_id", 40) || null,
+    parent_id: str(fd, "listing_kind") === "room" ? str(fd, "parent_id", 40) || null : null,
     bathroom_type: str(fd, "bathroom_type") === "shared" ? "shared" : "private",
   };
   let error = "";
