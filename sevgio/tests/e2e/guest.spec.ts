@@ -6,7 +6,7 @@ const email = `guest-${Date.now()}@example.com`;
 
 test("homepage shows search and property cards", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Poconos to Pittsburgh");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("a home in Pittsburgh");
   await expect(page.getByRole("search")).toBeVisible();
   await expect(page.locator("a.card")).toHaveCount(6);
   await expect(page.locator("a.card").first().locator("img")).toBeVisible();

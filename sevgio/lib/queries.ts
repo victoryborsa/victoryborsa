@@ -43,6 +43,12 @@ export async function searchProperties(f: SearchFilters): Promise<CardProperty[]
   return q<CardProperty>(`SELECT p.*, ${COVER} FROM properties p WHERE ${where.join(" AND ")} ORDER BY ${order[f.sort || ""] || order.recommended} LIMIT 120`, params);
 }
 
+/** Every published listing for the home page: whole homes first, each followed by its rooms. */
+export async function allPublished() {
+  return q<CardProperty>(`SELECT p.*, ${COVER} FROM properties p WHERE p.status = 'published'
+    ORDER BY coalesce((SELECT h.title FROM properties h WHERE h.id = p.parent_id), p.title), p.parent_id IS NOT NULL, p.title`);
+}
+
 export async function featuredProperties(limit = 6) {
   return q<CardProperty>(`SELECT p.*, ${COVER} FROM properties p WHERE p.status = 'published' ORDER BY coalesce(p.rating, 4.6) * ln(p.review_count + 2) DESC, p.created_at DESC LIMIT $1`, [limit]);
 }

@@ -462,3 +462,28 @@ tr.row-new td { background: color-mix(in srgb, var(--accent-soft) 55%, transpare
   .mc-date { flex: 1; min-width: 0; }
 }
 @media (max-width: 640px) { .mc-corner .nav-txt { display: none; } }
+/* Keep all photos on the board in one straight column; rooms are marked with ↳ only. */
+.mc-name.mc-name-ph.room { padding-left: 12px; }
+@media (max-width: 640px) { .mc-name.mc-name-ph.room { padding-left: 6px; } }
+
+/* Welcome hero: the world flies in to Pittsburgh */
+.hero-welcome h1 { max-width: 20ch; }
+.hello { display: flex; flex-wrap: wrap; gap: 6px 8px; margin-top: 16px; }
+.hello span { font-size: 13px; padding: 3px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); }
+.hello span:last-child { background: #FFB612; border-color: #FFB612; color: #101820; font-weight: 700; }
+.worldmap-wrap { margin-top: 22px; border-radius: var(--r-lg); overflow: hidden; background: var(--accent-soft); border: 1px solid var(--line); }
+.worldmap { display: block; width: 100%; height: auto; }
+.wm-grid { stroke: var(--accent); stroke-opacity: .10; stroke-width: .3; }
+.wm-land { fill: var(--surface); stroke: var(--accent); stroke-opacity: .25; stroke-width: .35; stroke-linejoin: round; }
+.wm-route { fill: none; stroke: var(--accent); stroke-width: .8; stroke-linecap: round; stroke-dasharray: 3 2.2; animation: wm-fly 2.4s linear infinite; }
+.wm-arrowhead { fill: var(--accent); }
+.wm-city { fill: var(--accent); }
+.wm-label { font-size: 3.6px; fill: var(--ink); font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: 1px; }
+.wm-home { fill: #FFB612; stroke: #101820; stroke-width: .8; }
+.wm-pulse { fill: #FFB612; opacity: .35; transform-box: fill-box; transform-origin: center; animation: wm-pulse 2s ease-out infinite; }
+.wm-tag { fill: #101820; }
+.wm-tag-text { fill: #FFB612; font-size: 4.4px; font-weight: 700; }
+@keyframes wm-fly { to { stroke-dashoffset: -10.4; } }
+@keyframes wm-pulse { from { transform: scale(.6); opacity: .55; } to { transform: scale(2); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .wm-route, .wm-pulse { animation: none; } }
+@media (max-width: 640px) { .worldmap { width: 170%; margin-left: -12%; } .hello span { font-size: 12px; } }
