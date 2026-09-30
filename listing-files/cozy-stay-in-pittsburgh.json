@@ -47,7 +47,12 @@
       "smoke_alarm",
       "extinguisher",
       "luggage_dropoff",
-      "cleaning_during"
+      "cleaning_during",
+      "coffee_maker",
+      "kettle",
+      "fridge",
+      "desk",
+      "portable_fan"
     ],
     "house_rules": [
       "Only your bedroom is private. The kitchen, bathrooms, living room, dining area and terrace are shared with other guests and the hosts. Please keep them clean and tidy after use.",
@@ -63,7 +68,7 @@
       "Available for an extra charge: breakfast, airport shuttle, daily housekeeping, laundry, ironing and babysitting."
     ],
     "title": "Cozy Stay in Pittsburgh – Family Room",
-    "description": "Please note: the bedroom is yours alone. Everything else in the house is shared with other guests and your hosts, including the kitchen, both bathrooms, the living room/lounge, the dining area and the terrace.\n\nA spacious family room with a king bed and a queen bed. It sleeps up to 4 adults plus 2 children, so it's a great fit for families. The house has 2 full bathrooms, shared between the guest rooms.\n\nCozy Stay in Pittsburgh is a family-friendly homestay in Swissvale, a very safe and peaceful borough 9 miles east of downtown Pittsburgh. Your hosts, Ilkay & Hilton, live in the house and are happy to share tips for making the most of your trip. We speak English and Turkish.\n\nGuests share the kitchen, the lounge and a business area, and there's a terrace to relax on. The house has air conditioning, free Wi-Fi, streaming services and free private parking on site. Breakfast and airport transportation are available on request for an extra charge.\n\nGetting around: 10 minutes to Shadyside, 5 minutes to Squirrel Hill and about 20 minutes to Pittsburgh International Airport. Nearly everywhere you'll want to go is within 15 minutes. Chatham University is 3.1 mi away and Carnegie Mellon University 3.7 mi. Frick Park is 1.9 mi, Schenley Park 3.4 mi, Phipps Conservatory 4.1 mi, the Carnegie Museums 4.2 mi, the Pittsburgh Zoo & PPG Aquarium 5 mi and the Andy Warhol Museum 7 mi.\n\nAlso available: bidet, free toiletries, hairdryer, bathtub and shower, drying rack, iron, city views, a shared lounge/TV area, baggage storage, a business center with fax and photocopying, a safe, a security alarm and 24-hour security.",
+    "description": "Please note: the bedroom is yours alone. Everything else in the house is shared with other guests and your hosts, including the kitchen, both bathrooms, the living room/lounge, the dining area and the terrace.\n\nA spacious 192 sq ft family room with a king bed and a queen bed, with garden and city views. It sleeps up to 4 adults plus 2 children. The room has air conditioning, a fan and an air purifier, a flat-screen TV with streaming services (like Netflix), a coffee machine, an electric kettle, a refrigerator, a desk, a wardrobe and clothes rack, a drying rack, an alarm clock, and a high chair for little ones. A fold-up bed is available. Guests say the beds are comfy: rated 9.3 from 24 reviews. The shared bathroom has a bath, shower and bidet, with free toiletries, bathrobes, towels and a hairdryer. The house has 2 full bathrooms, shared between the guest rooms.\n\nCozy Stay in Pittsburgh is a family-friendly homestay in Swissvale, a very safe and peaceful borough 9 miles east of downtown Pittsburgh. Your hosts, Ilkay & Hilton, live in the house and are happy to share tips for making the most of your trip. We speak English and Turkish.\n\nGuests share the kitchen, the lounge and a business area, and there's a terrace to relax on. The house has air conditioning, free Wi-Fi, streaming services and free private parking on site. Breakfast and airport transportation are available on request for an extra charge.\n\nGetting around: 10 minutes to Shadyside, 5 minutes to Squirrel Hill and about 20 minutes to Pittsburgh International Airport. Nearly everywhere you'll want to go is within 15 minutes. Chatham University is 3.1 mi away and Carnegie Mellon University 3.7 mi. Frick Park is 1.9 mi, Schenley Park 3.4 mi, Phipps Conservatory 4.1 mi, the Carnegie Museums 4.2 mi, the Pittsburgh Zoo & PPG Aquarium 5 mi and the Andy Warhol Museum 7 mi.\n\nAlso available: bidet, free toiletries, hairdryer, bathtub and shower, drying rack, iron, city views, a shared lounge/TV area, baggage storage, a business center with fax and photocopying, a safe, a security alarm and 24-hour security.",
     "max_guests": 6,
     "base_occupancy": 4,
     "beds": [
