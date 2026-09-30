@@ -5,7 +5,17 @@ import { addDays, isIsoDate, nightsBetween, todayLocal } from "@/lib/dates.ts";
 
 type Prop = { id: string; title: string; city: string; parent_id: string | null; status: string };
 type Res = { id: string; code: string; property_id: string; check_in: string; check_out: string; status: string; guest_name: string; guests: number; nights: number };
-type Blk = { id: string; property_id: string; start_date: string; end_date: string; note: string; source: string };
+type Blk = { id: string; property_id: string; start_date: string; end_date: string; note: string; source: string; feed_name: string | null };
+
+/** Which booking site an imported block came from, by the calendar link's name. */
+export function channelOf(feedName: string | null): { key: string; label: string } {
+  const n = (feedName || "").toLowerCase();
+  if (n.includes("airbnb")) return { key: "airbnb", label: "Airbnb" };
+  if (n.includes("booking")) return { key: "bookingcom", label: "Booking.com" };
+  if (n.includes("vrbo") || n.includes("homeaway")) return { key: "vrbo", label: "Vrbo" };
+  if (n.includes("furnished")) return { key: "furnished", label: "Furnished Finder" };
+  return { key: "other", label: feedName || "Other site" };
+}
 
 const LENGTHS = [14, 30, 60];
 const dayLabel = (d: string) => new Date(d + "T12:00:00Z");
@@ -32,7 +42,9 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
     ? await Promise.all([
         q<Res>(`SELECT id, code, property_id, check_in, check_out, status, guest_name, guests, nights FROM bookings
                 WHERE property_id = ANY($1) AND status IN ('pending','awaiting_payment','confirmed') AND check_in < $3 AND check_out > $2`, [ids, start, end]),
-        q<Blk>(`SELECT id, property_id, start_date, end_date, note, source FROM blocks WHERE property_id = ANY($1) AND start_date < $3 AND end_date > $2`, [ids, start, end]),
+        q<Blk>(`SELECT k.id, k.property_id, k.start_date, k.end_date, k.note, k.source, f.name AS feed_name FROM blocks k
+                LEFT JOIN ical_feeds f ON k.source = 'ical:' || f.id::text
+                WHERE k.property_id = ANY($1) AND k.start_date < $3 AND k.end_date > $2`, [ids, start, end]),
       ])
     : [[], []];
 
@@ -66,9 +78,13 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
         <span><b>{inHouse}</b> <span className="muted">stays in progress</span></span>
         <span className="spacer" />
         <span className="legend" style={{ margin: 0 }}>
-          <span><i className="mc-key ok" />Confirmed</span>
-          <span><i className="mc-key warn" />Awaiting approval</span>
-          <span><i className="mc-key blk" />Blocked / other site</span>
+          <span><i className="mc-key ok" />Sevgio</span>
+          <span><i className="mc-key ch-airbnb" />Airbnb</span>
+          <span><i className="mc-key ch-bookingcom" />Booking.com</span>
+          <span><i className="mc-key ch-vrbo" />Vrbo</span>
+          <span><i className="mc-key ch-furnished" />Furnished Finder</span>
+          <span><i className="mc-key warn" />Awaiting approval / payment</span>
+          <span><i className="mc-key blk" />Blocked by you</span>
         </span>
       </div>
 
@@ -96,15 +112,19 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
                   const dow = dayLabel(d).getUTCDay();
                   return <div key={p.id + d} className={`mc-cell${dow === 0 || dow === 6 ? " we" : ""}${d === today ? " today" : ""}`} style={{ gridRow: r, gridColumn: ci + 2 }} />;
                 }),
-                ...blocks.filter(b => b.property_id === p.id).map(b => (
-                  <div key={b.id} className="mc-bar blk" style={{ gridRow: r, gridColumn: `${col(b.start_date) + 1} / ${col(b.end_date) + 1}` }} title={`${b.note || "Blocked"}: ${b.start_date} → ${b.end_date}`}>
-                    <span>{b.source.startsWith("ical") ? b.note.split(":")[0] : b.note || "Blocked"}</span>
-                  </div>
-                )),
+                ...blocks.filter(b => b.property_id === p.id).map(b => {
+                  const ch = b.source.startsWith("ical") ? channelOf(b.feed_name || b.note.split(":")[0]) : null;
+                  return (
+                    <div key={b.id} className={`mc-bar ${ch ? `ch-${ch.key}` : "blk"}${b.start_date < start ? " cut-l" : ""}${b.end_date > end ? " cut-r" : ""}`} style={{ gridRow: r, gridColumn: `${col(b.start_date) + 1} / ${col(b.end_date) + 1}` }}
+                      title={`${ch ? `Booked on ${ch.label}` : b.note || "Blocked"}: ${b.start_date} → ${b.end_date}${ch && b.note.includes(":") ? ` · ${b.note.split(":").slice(1).join(":").trim()}` : ""}`}>
+                      <span>{ch ? ch.label : b.note || "Blocked"}</span>
+                    </div>
+                  );
+                }),
                 ...res.filter(b => b.property_id === p.id).map(b => (
                   <Link key={b.id} href={`/trips/${b.code}`} className={`mc-bar ${b.status === "confirmed" ? "ok" : "warn"}${b.check_in < start ? " cut-l" : ""}${b.check_out > end ? " cut-r" : ""}`}
                     style={{ gridRow: r, gridColumn: `${col(b.check_in) + 1} / ${col(b.check_out) + 1}` }}
-                    title={`${b.code} · ${b.guest_name} · ${b.check_in} → ${b.check_out} · ${b.nights} night${b.nights === 1 ? "" : "s"} · ${b.guests} guests${b.status === "pending" ? " · awaiting approval" : ""}`}>
+                    title={`Sevgio · ${b.code} · ${b.guest_name} · ${b.check_in} → ${b.check_out} · ${b.nights} night${b.nights === 1 ? "" : "s"} · ${b.guests} guests${b.status === "pending" ? " · awaiting approval" : b.status === "awaiting_payment" ? " · awaiting payment" : ""}`}>
                     <span>{b.guest_name}</span>
                   </Link>
                 )),

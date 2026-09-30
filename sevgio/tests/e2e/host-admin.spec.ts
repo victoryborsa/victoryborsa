@@ -323,3 +323,17 @@ test("admin imports a house and its room from a file as drafts", async ({ page }
   await expect(page.getByText("Kitchen, living room and laundry are shared with other guests")).toBeVisible();
   await signOut(page);
 });
+
+test("calendar board colors bookings by the site they came from", async ({ page }) => {
+  const [p] = await sql<{ id: string }>("SELECT id FROM properties WHERE slug = 'mount-washington-view-house'");
+  const start = iso(400);
+  for (const [i, name] of ["Airbnb", "Booking.com", "Vrbo", "Furnished Finder"].entries()) {
+    const [f] = await sql<{ id: string }>("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, $2, 'https://example.com/x.ics') RETURNING id", [p.id, name]);
+    await sql("INSERT INTO blocks (property_id, start_date, end_date, note, source) VALUES ($1, $2, $3, $4, $5)", [p.id, iso(400 + i * 3), iso(402 + i * 3), `${name}: Reserved`, "ical:" + f.id]);
+  }
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto(`/admin/calendar?start=${start}&days=14`);
+  for (const [cls, label] of [["ch-airbnb", "Airbnb"], ["ch-bookingcom", "Booking.com"], ["ch-vrbo", "Vrbo"], ["ch-furnished", "Furnished Finder"]])
+    await expect(page.locator(`.mc-bar.${cls}`, { hasText: label })).toBeVisible();
+  await signOut(page);
+});

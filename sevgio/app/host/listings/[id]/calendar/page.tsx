@@ -68,7 +68,7 @@ export default async function CalendarPage({ params }: { params: Promise<{ id: s
           <ActionForm action={addFeedAction} className="stack" resetOnOk>
             <input type="hidden" name="id" value={p.id} />
             <div className="grid-2">
-              <label className="field"><span>Site</span><select className="input" name="name"><option>Airbnb</option><option>Vrbo</option><option>Booking.com</option><option>Other calendar</option></select></label>
+              <label className="field"><span>Site</span><select className="input" name="name"><option>Airbnb</option><option>Booking.com</option><option>Vrbo</option><option>Furnished Finder</option><option>Other calendar</option></select></label>
               <label className="field"><span>Calendar link (.ics)</span><input className="input" name="url" type="url" placeholder="https://www.airbnb.com/calendar/ical/…" /></label>
             </div>
             <div><SubmitButton className="btn btn-ghost" pendingText="Importing…">Add and import</SubmitButton></div>

@@ -364,3 +364,10 @@ a.mc-bar:hover { filter: brightness(1.08); }
 .mc-key.blk { background: repeating-linear-gradient(135deg, var(--surface-2) 0 3px, var(--line) 3px 5px); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mc-bar.ok { color: #04201D; } }
 :root[data-theme="dark"] .mc-bar.ok { color: #04201D; }
+
+/* Booking-site colors on the calendar board */
+.mc-bar.ch-airbnb, .mc-key.ch-airbnb { background: #E0484E; color: #fff; }
+.mc-bar.ch-bookingcom, .mc-key.ch-bookingcom { background: #003B95; color: #fff; }
+.mc-bar.ch-vrbo, .mc-key.ch-vrbo { background: #3D8BE8; color: #fff; }
+.mc-bar.ch-furnished, .mc-key.ch-furnished { background: #E8891A; color: #fff; }
+.mc-bar.ch-other, .mc-key.ch-other { background: #6B7280; color: #fff; }
