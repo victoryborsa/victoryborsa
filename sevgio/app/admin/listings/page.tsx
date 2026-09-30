@@ -20,6 +20,7 @@ export default async function AdminListings() {
     <>
       <div className="row" style={{ marginBottom: 16 }}>
         <p className="muted" style={{ flex: 1 }}>Every listing on the site. Edit details, photos and calendars with the host tools.</p>
+        <Link className="btn btn-ghost" href="/host/listings/import">Import from file</Link>
         <Link className="btn btn-primary" href="/host/listings/new">Add a listing</Link>
       </div>
       <div className="tbl-wrap">

@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { one, q, tx } from "@/lib/db.ts";
-import { requireUser, safeNext } from "@/lib/auth.ts";
+import { requireUser, safeNext, type User } from "@/lib/auth.ts";
 import { withMsg } from "@/components/Flash.tsx";
 import { requireManageable } from "@/lib/access.ts";
 import { addBlock, setBookingStatus, type Booking } from "@/lib/bookings.ts";
@@ -11,6 +11,7 @@ import { int, lines, slugify, str, type ActionState } from "@/lib/validate.ts";
 import { toCents } from "@/lib/money.ts";
 import { processPhoto } from "@/lib/photos.ts";
 import { syncFeed } from "@/lib/calendar-sync.ts";
+import { fetchPublic } from "@/lib/safe-fetch.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
 import { fmtDate, todayLocal } from "@/lib/dates.ts";
@@ -108,8 +109,8 @@ async function parentProblem(parentId: string | null, hostId: string, selfId?: s
   return null;
 }
 
-export async function createListingAction(_: ActionState, fd: FormData): Promise<ActionState> {
-  const u = await requireUser(["host", "admin"]);
+/** Creates a draft listing from form fields. Not exported: callers must check the user first. */
+async function createListingCore(u: User, fd: FormData): Promise<{ id: string } | { error: string }> {
   const { v, error } = readListing(fd);
   if (error) return { error };
   // Admins can create a listing on behalf of a host.
@@ -130,7 +131,126 @@ export async function createListingAction(_: ActionState, fd: FormData): Promise
     Object.values(cols),
   );
   await logEvent("info", "Listings", `Listing created: ${v.title}`, {}, u.id);
-  redirect(`/host/listings/${row!.id}/photos?created=1`);
+  return { id: row!.id };
+}
+
+export async function createListingAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const u = await requireUser(["host", "admin"]);
+  const r = await createListingCore(u, fd);
+  if ("error" in r) return { error: r.error };
+  redirect(`/host/listings/${r.id}/photos?created=1`);
+}
+
+// ---------- Import ----------
+
+type ImportItem = Record<string, unknown>;
+const IMPORT_FIELDS: Record<string, string> = {
+  // import key → form field name (the rest share the same name)
+  nightly_price: "nightly_price", cleaning_fee: "cleaning_fee", extra_guest_fee: "extra_guest_fee",
+};
+
+/** Turns one imported listing into the same form fields the listing editor sends, so it goes through the same checks. */
+function importToForm(item: ImportItem, parentId: string | null, hostId: string): FormData {
+  const fd = new FormData();
+  const set = (k: string, v: unknown) => { if (v !== undefined && v !== null) fd.set(k, String(v)); };
+  const plain = ["title", "property_type", "city", "area", "address", "description", "max_guests", "bedrooms", "bathrooms", "half_bathrooms", "bathroom_type",
+    "kitchen_access", "laundry_access", "stairs_info", "camera_locations", "min_nights", "max_nights", "booking_mode", "cancellation_policy", "check_in_time",
+    "check_out_time", "arrival_instructions", "base_occupancy", "fewer_guest_discount_percent", "weekly_discount_percent", "monthly_discount_percent",
+    "children_free_age", "management_fee_percent", ...Object.keys(IMPORT_FIELDS)];
+  for (const k of plain) set(IMPORT_FIELDS[k] || k, item[k]);
+  const isRoom = item.listing_kind === "room" || item.property_type === "room";
+  fd.set("listing_kind", isRoom ? "room" : "home");
+  if (isRoom) fd.set("property_type", "room");
+  if (parentId) fd.set("parent_id", parentId);
+  fd.set("status", "draft");
+  fd.set("host_id", hostId);
+  // Defaults for anything the file leaves out.
+  for (const [k, v] of Object.entries({ bedrooms: 1, bathrooms: 1, half_bathrooms: 0, bathroom_type: "private", kitchen_access: "private", laundry_access: "none",
+    min_nights: 1, max_nights: 30, booking_mode: "instant", cancellation_policy: "moderate", check_in_time: "3:00 pm", check_out_time: "11:00 am",
+    cleaning_fee: 0, extra_guest_fee: 0, fewer_guest_discount_percent: 0, weekly_discount_percent: 0, monthly_discount_percent: 0, children_free_age: 2 }))
+    if (!fd.has(k)) fd.set(k, String(v));
+  if (item.has_exterior_cameras) fd.set("has_exterior_cameras", "on");
+  if (Array.isArray(item.beds)) fd.set("beds_json", JSON.stringify(item.beds));
+  for (const a of Array.isArray(item.amenities) ? item.amenities : []) fd.append("amenities", String(a));
+  const rules = Array.isArray(item.house_rules) ? item.house_rules.join("\n") : String(item.house_rules ?? "");
+  fd.set("house_rules", rules);
+  return fd;
+}
+
+async function importPhotos(propertyId: string, urls: string[]): Promise<{ added: number; failed: number }> {
+  let added = 0, failed = 0;
+  for (const [i, url] of urls.slice(0, 40).entries()) {
+    try {
+      const res = await fetchPublic(url, 20_000);
+      if (!res.ok) throw new Error(String(res.status));
+      const buf = await res.arrayBuffer();
+      const r = await processPhoto(new File([buf], `photo-${i + 1}.jpg`, { type: res.headers.get("content-type") || "image/jpeg" }));
+      if ("error" in r) throw new Error(r.error);
+      await q("INSERT INTO photos (property_id, position, large, thumb, width, height) VALUES ($1, $2, $3, $4, $5, $6)", [propertyId, added, r.large, r.thumb, r.width, r.height]);
+      added++;
+    } catch {
+      failed++;
+    }
+  }
+  return { added, failed };
+}
+
+/**
+ * Imports one or more listings from a JSON file as drafts. A house and its rooms can come in one file:
+ * rooms name their house with "part_of" (the house's title, from this file or an existing listing).
+ */
+export async function importListingsAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const u = await requireUser(["host", "admin"]);
+  let text = str(fd, "json", 500_000);
+  const file = fd.get("file");
+  if (file instanceof File && file.size > 0) {
+    if (file.size > 500_000) return { error: "That file is too big for a listing import." };
+    text = await file.text();
+  }
+  if (!text) return { error: "Choose the listing file (.json) to import, or paste its contents." };
+  let items: ImportItem[];
+  try {
+    const parsed = JSON.parse(text);
+    items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.listings) ? parsed.listings : [parsed];
+  } catch {
+    return { error: "That file isn't a listing file. It should be the .json file Claude made for you." };
+  }
+  if (!items.length || items.length > 30) return { error: "A file can hold between 1 and 30 listings." };
+
+  let hostId = u.id;
+  if (u.role === "admin" && str(fd, "host_id")) {
+    const h = await one<{ id: string }>("SELECT id FROM users WHERE id = $1 AND role IN ('host','admin')", [str(fd, "host_id")]);
+    if (!h) return { error: "Choose a host for these listings." };
+    hostId = h.id;
+  }
+  // Whole homes first, so rooms can link to them.
+  const ordered = [...items].sort((a, b) => Number(!!a.part_of) - Number(!!b.part_of));
+  const created: { title: string; id: string }[] = [];
+  const problems: string[] = [];
+  let photos = 0, photoFails = 0;
+  for (const item of ordered) {
+    const title = String(item.title || "Untitled");
+    let parentId: string | null = null;
+    if (item.part_of) {
+      const name = String(item.part_of);
+      parentId = created.find(c => c.title === name)?.id
+        ?? (await one<{ id: string }>("SELECT id FROM properties WHERE host_id = $1 AND parent_id IS NULL AND lower(title) = lower($2) ORDER BY created_at LIMIT 1", [hostId, name]))?.id
+        ?? null;
+      if (!parentId) { problems.push(`${title}: couldn't find the house "${name}"`); continue; }
+    }
+    const r = await createListingCore(u, importToForm(item, parentId, hostId));
+    if ("error" in r) { problems.push(`${title}: ${r.error}`); continue; }
+    created.push({ title, id: r.id });
+    const urls = (Array.isArray(item.photo_urls) ? item.photo_urls : []).map(String).filter(x => x.startsWith("https://"));
+    if (urls.length) { const p = await importPhotos(r.id, urls); photos += p.added; photoFails += p.failed; }
+  }
+  revalidatePath("/host/listings");
+  revalidatePath("/admin/listings");
+  const msg = `Imported ${created.length} listing${created.length === 1 ? "" : "s"} as drafts: ${created.map(c => c.title).join(", ") || "none"}.` +
+    (photos || photoFails ? ` Photos added: ${photos}${photoFails ? `, ${photoFails} couldn't be downloaded` : ""}.` : "") +
+    " Check each one, add photos, then set Visibility to Published.";
+  if (problems.length) return { error: `${msg} Not imported: ${problems.join("; ")}.` };
+  return { ok: msg };
 }
 
 export async function updateListingAction(_: ActionState, fd: FormData): Promise<ActionState> {

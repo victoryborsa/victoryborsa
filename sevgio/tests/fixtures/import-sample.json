@@ -1,0 +1,10 @@
+[
+  { "title": "Import Test House", "listing_kind": "home", "property_type": "house", "city": "Erie", "area": "Lake Erie",
+    "description": "A test house imported from a file, with three bedrooms and a big porch.", "max_guests": 8, "bedrooms": 3, "bathrooms": 2, "half_bathrooms": 1,
+    "beds": [{ "kind": "bed", "size": "king", "count": 1 }, { "kind": "bed", "size": "queen", "count": 2 }], "nightly_price": 250, "cleaning_fee": 90,
+    "amenities": ["wifi", "kitchen", "smoke_alarm", "free_driveway"], "house_rules": ["No parties", "No smoking"], "management_fee_percent": 15 },
+  { "title": "Import Test House – King Room", "listing_kind": "room", "part_of": "Import Test House", "city": "Erie", "area": "Lake Erie",
+    "description": "A king room inside the test house, with its own bathroom.", "max_guests": 2, "bedrooms": 1, "bathrooms": 1, "bathroom_type": "private",
+    "beds": [{ "kind": "bed", "size": "king", "count": 1 }], "nightly_price": 95, "kitchen_access": "shared" },
+  { "title": "Broken Listing", "city": "", "nightly_price": 5 }
+]

@@ -293,3 +293,22 @@ test("calendar board shows every property's reservations, filterable by property
   await expect(page.locator(".mc-name", { hasText: "Rittenhouse Square Loft" })).toBeVisible();
   await signOut(page);
 });
+
+test("admin imports a house and its room from a file as drafts", async ({ page }) => {
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin/listings");
+  await page.getByRole("link", { name: "Import from file" }).click();
+  await page.getByLabel("Host for these listings").selectOption({ label: "Dana Brooks" });
+  await page.getByLabel("Listing file").setInputFiles(path.join(process.cwd(), "tests/fixtures/import-sample.json"));
+  await page.getByRole("button", { name: "Import as drafts" }).click();
+  await expect(page.getByText(/Imported 2 listings as drafts: Import Test House, Import Test House – King Room/)).toBeVisible();
+  await expect(page.getByText(/Broken Listing: Add the town or city/)).toBeVisible();
+  const rows = await sql<{ title: string; status: string; parent: string | null; host: string; fee: number; amenities: string[]; half_bathrooms: number }>(
+    `SELECT p.title, p.status, par.title AS parent, u.email AS host, p.management_fee_percent::float AS fee, p.amenities, p.half_bathrooms
+     FROM properties p LEFT JOIN properties par ON par.id = p.parent_id JOIN users u ON u.id = p.host_id WHERE p.title LIKE 'Import Test House%' ORDER BY p.title`);
+  expect(rows).toHaveLength(2);
+  expect(rows[0]).toMatchObject({ status: "draft", parent: null, host: "dana@demo.sevgio.com", fee: 15, half_bathrooms: 1 });
+  expect(rows[0].amenities).toContain("smoke_alarm");
+  expect(rows[1]).toMatchObject({ status: "draft", parent: "Import Test House", host: "dana@demo.sevgio.com" });
+  await signOut(page);
+});
