@@ -31,16 +31,16 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
   }
   const guests = Math.min(num(sp.guests) || 1, 50);
   const amen = (Array.isArray(sp.amen) ? sp.amen : sp.amen ? [sp.amen] : []).filter(a => a in AMENITIES);
-  const f = { loc, ci, co, guests, maxPrice: num(sp.max), bedrooms: num(sp.beds), baths: num(sp.baths), amenities: amen, instant: first(sp.instant) === "1", sort: first(sp.sort) };
+  const f = { loc, ci, co, guests, maxPrice: num(sp.max), bedrooms: num(sp.beds), baths: num(sp.baths), amenities: amen, instant: first(sp.instant) === "1", privateBath: first(sp.pbath) === "1", sort: first(sp.sort) };
   const [list, cities, settings] = await Promise.all([searchProperties(f), publishedCities(), getSettings()]);
-  const filtersOn = !!(f.maxPrice || f.bedrooms || f.baths || amen.length || f.instant);
+  const filtersOn = !!(f.maxPrice || f.bedrooms || f.baths || amen.length || f.instant || f.privateBath);
   const clearHref = "/stays?" + new URLSearchParams({ ...(loc && { loc }), ...(ci && { ci, co }), guests: String(guests) });
 
   return (
     <div className="wrap" style={{ paddingTop: 22 }}>
       <SearchBar loc={loc} ci={ci} co={co} guests={guests} cities={cities} compact />
       <div className="results-layout">
-        <FilterToggle active={(f.maxPrice ? 1 : 0) + (f.bedrooms ? 1 : 0) + (f.baths ? 1 : 0) + amen.length + (f.instant ? 1 : 0)}>
+        <FilterToggle active={(f.maxPrice ? 1 : 0) + (f.bedrooms ? 1 : 0) + (f.baths ? 1 : 0) + amen.length + (f.instant ? 1 : 0) + (f.privateBath ? 1 : 0)}>
         <form className="filters" action="/stays" method="get" aria-label="Filters">
           <AutoSubmit />
           <input type="hidden" name="loc" value={loc} />
@@ -69,6 +69,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
               </select>
             </label>
           </div>
+          <label className="chk"><input type="checkbox" name="pbath" value="1" defaultChecked={f.privateBath} />Private bathroom only</label>
           <fieldset>
             <legend>Amenities</legend>
             {FILTER_AMENITIES.map(a => (

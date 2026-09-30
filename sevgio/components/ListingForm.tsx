@@ -54,6 +54,13 @@ export function ListingForm({ action, p, hosts, homes = [], submitLabel }: { act
           <label className="field"><span>Beds</span><input className="input mono" name="beds" type="number" min={0} max={50} defaultValue={p?.beds ?? 2} /></label>
           <label className="field"><span>Bathrooms</span><input className="input mono" name="bathrooms" type="number" min={0} max={20} step={0.5} defaultValue={p?.bathrooms ?? 1} /></label>
         </div>
+        <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+          <legend style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Bathroom</legend>
+          <div className="row">
+            <label className="chk"><input type="radio" name="bathroom_type" value="private" defaultChecked={(p?.bathroom_type || "private") === "private"} />Private (only these guests use it)</label>
+            <label className="chk"><input type="radio" name="bathroom_type" value="shared" defaultChecked={p?.bathroom_type === "shared"} />Shared with other guests</label>
+          </div>
+        </fieldset>
       </div>
 
       <div className="box">

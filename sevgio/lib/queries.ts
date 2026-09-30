@@ -10,7 +10,7 @@ export const photoUrl = (id: string, size: "thumb" | "large" = "large") => `/api
 const COVER = `(SELECT id FROM photos ph WHERE ph.property_id = p.id ORDER BY position, created_at LIMIT 1) AS cover_id`;
 
 export type SearchFilters = {
-  loc?: string; ci?: string; co?: string; guests?: number; maxPrice?: number; bedrooms?: number; baths?: number; amenities?: string[]; instant?: boolean; sort?: string;
+  loc?: string; ci?: string; co?: string; guests?: number; maxPrice?: number; bedrooms?: number; baths?: number; amenities?: string[]; instant?: boolean; privateBath?: boolean; sort?: string;
 };
 
 export async function searchProperties(f: SearchFilters): Promise<CardProperty[]> {
@@ -24,6 +24,7 @@ export async function searchProperties(f: SearchFilters): Promise<CardProperty[]
   if (f.baths) where.push(`p.bathrooms >= ${add(f.baths)}`);
   if (f.amenities?.length) where.push(`p.amenities @> ${add(f.amenities)}::text[]`);
   if (f.instant) where.push(`p.booking_mode = 'instant'`);
+  if (f.privateBath) where.push(`p.bathroom_type = 'private'`);
   if (f.ci && f.co) {
     const ci = add(f.ci), co = add(f.co);
     where.push(`(${co}::date - ${ci}::date) BETWEEN p.min_nights AND p.max_nights`);

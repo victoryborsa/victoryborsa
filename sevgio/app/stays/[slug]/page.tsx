@@ -86,7 +86,7 @@ export default async function StayPage({ params, searchParams }: Params) {
               <div className="fact"><b>{p.max_guests}</b><span>guests</span></div>
               <div className="fact"><b>{p.bedrooms}</b><span>bedroom{p.bedrooms === 1 ? "" : "s"}</span></div>
               <div className="fact"><b>{p.beds}</b><span>bed{p.beds === 1 ? "" : "s"}</span></div>
-              <div className="fact"><b>{p.bathrooms}</b><span>bathroom{p.bathrooms === 1 ? "" : "s"}</span></div>
+              <div className="fact"><b>{p.bathrooms}</b><span>{p.bathroom_type === "shared" ? "shared" : "private"} bathroom{p.bathrooms === 1 ? "" : "s"}</span></div>
             </div>
             {linked.parent && (
               <div className="notice info">

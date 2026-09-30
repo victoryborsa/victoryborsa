@@ -31,7 +31,7 @@ export function PropertyCard({ p, ci, co, guests, taxPercent, eager }: { p: Card
         <span className="specs">
           <span>{p.max_guests} guests</span>
           <span>{p.bedrooms} bedroom{p.bedrooms === 1 ? "" : "s"}</span>
-          <span>{p.bathrooms} bath{p.bathrooms === 1 ? "" : "s"}</span>
+          <span>{p.bathrooms} {p.bathroom_type === "shared" ? "shared" : "private"} bath{p.bathrooms === 1 ? "" : "s"}</span>
         </span>
         <span className="price">
           {pr ? (

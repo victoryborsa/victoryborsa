@@ -170,3 +170,20 @@ test("host links a room to a whole home; each page points to the other", async (
   await expect(page.getByLabel(/room inside one of your whole-home listings/).locator("option", { hasText: "Rittenhouse" })).toHaveCount(0);
   await signOut(page);
 });
+
+test("host marks a bathroom as shared; guests see it and can filter it out", async ({ page }) => {
+  await signIn(page, "marcus@demo.sevgio.com", "demo-password-2026");
+  await page.goto("/host/listings");
+  await page.locator("tr", { hasText: "Rittenhouse" }).getByRole("link", { name: "Edit" }).click();
+  await page.getByLabel("Shared with other guests").check();
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText("Saved. Changes are live on the site.")).toBeVisible();
+  await page.goto("/stays/rittenhouse-square-loft");
+  await expect(page.locator(".facts")).toContainText("shared bathroom");
+  await page.goto("/stays?loc=Philadelphia");
+  await expect(page.locator("a.card")).toContainText("1 shared bath");
+  await page.getByLabel("Private bathroom only").check();
+  await expect(page).toHaveURL(/pbath=1/);
+  await expect(page.getByRole("heading", { name: "No stays match your search" })).toBeVisible();
+  await signOut(page);
+});

@@ -26,6 +26,7 @@ function readListing(fd: FormData) {
     amenities: fd.getAll("amenities").map(String).filter(a => a in AMENITIES), house_rules: lines(str(fd, "house_rules", 5000)), arrival_instructions: str(fd, "arrival_instructions", 5000),
     status: str(fd, "status"),
     parent_id: str(fd, "parent_id", 40) || null,
+    bathroom_type: str(fd, "bathroom_type") === "shared" ? "shared" : "private",
   };
   let error = "";
   if (!v.title) error = "Give the listing a title.";
@@ -83,10 +84,10 @@ export async function createListingAction(_: ActionState, fd: FormData): Promise
   if (await one("SELECT 1 FROM properties WHERE slug = $1", [slug])) slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
   const row = await one<{ id: string }>(
     `INSERT INTO properties (slug, host_id, title, property_type, city, area, address, description, max_guests, bedrooms, beds, bathrooms, nightly_price_cents, cleaning_fee_cents,
-       min_nights, max_nights, booking_mode, cancellation_policy, check_in_time, check_out_time, amenities, house_rules, arrival_instructions, status, parent_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,'draft',$24) RETURNING id`,
+       min_nights, max_nights, booking_mode, cancellation_policy, check_in_time, check_out_time, amenities, house_rules, arrival_instructions, status, parent_id, bathroom_type)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,'draft',$24,$25) RETURNING id`,
     [slug, hostId, v.title, v.property_type, v.city, v.area, v.address, v.description, v.max_guests, v.bedrooms, v.beds, v.bathrooms, v.nightly, v.cleaning,
-      v.min_nights, v.max_nights, v.booking_mode, v.cancellation_policy, v.check_in_time || "3:00 pm", v.check_out_time || "11:00 am", v.amenities, v.house_rules, v.arrival_instructions, v.parent_id],
+      v.min_nights, v.max_nights, v.booking_mode, v.cancellation_policy, v.check_in_time || "3:00 pm", v.check_out_time || "11:00 am", v.amenities, v.house_rules, v.arrival_instructions, v.parent_id, v.bathroom_type],
   );
   await logEvent("info", "Listings", `Listing created: ${v.title}`, {}, u.id);
   redirect(`/host/listings/${row!.id}/photos?created=1`);
@@ -105,9 +106,9 @@ export async function updateListingAction(_: ActionState, fd: FormData): Promise
   await q(
     `UPDATE properties SET title=$2, property_type=$3, city=$4, area=$5, address=$6, description=$7, max_guests=$8, bedrooms=$9, beds=$10, bathrooms=$11, nightly_price_cents=$12,
        cleaning_fee_cents=$13, min_nights=$14, max_nights=$15, booking_mode=$16, cancellation_policy=$17, check_in_time=$18, check_out_time=$19, amenities=$20, house_rules=$21,
-       arrival_instructions=$22, status=$23, parent_id=$24, updated_at=now() WHERE id=$1`,
+       arrival_instructions=$22, status=$23, parent_id=$24, bathroom_type=$25, updated_at=now() WHERE id=$1`,
     [p.id, v.title, v.property_type, v.city, v.area, v.address, v.description, v.max_guests, v.bedrooms, v.beds, v.bathrooms, v.nightly, v.cleaning, v.min_nights, v.max_nights,
-      v.booking_mode, v.cancellation_policy, v.check_in_time, v.check_out_time, v.amenities, v.house_rules, v.arrival_instructions, v.status, v.parent_id],
+      v.booking_mode, v.cancellation_policy, v.check_in_time, v.check_out_time, v.amenities, v.house_rules, v.arrival_instructions, v.status, v.parent_id, v.bathroom_type],
   );
   if (v.nightly !== p.nightly_price_cents || v.status !== p.status) await logEvent("info", "Listings", `${v.title}: ${v.status !== p.status ? `status ${p.status} → ${v.status}` : ""} ${v.nightly !== p.nightly_price_cents ? `price ${p.nightly_price_cents / 100} → ${v.nightly! / 100}` : ""}`.trim(), { property: p.id }, u.id);
   revalidatePath(`/stays/${p.slug}`);

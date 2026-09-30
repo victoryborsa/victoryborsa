@@ -10,7 +10,7 @@ export type Property = {
   max_guests: number; bedrooms: number; beds: number; bathrooms: number; nightly_price_cents: number; cleaning_fee_cents: number;
   min_nights: number; max_nights: number; booking_mode: "instant" | "request"; cancellation_policy: string; check_in_time: string; check_out_time: string;
   amenities: string[]; house_rules: string[]; arrival_instructions: string; status: "draft" | "published" | "hidden"; rating: number | null; review_count: number; ical_token: string;
-  parent_id: string | null;
+  parent_id: string | null; bathroom_type: "private" | "shared";
 };
 
 export type Booking = {
