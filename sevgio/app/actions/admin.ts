@@ -66,8 +66,11 @@ export async function reassignListingAction(_: ActionState, fd: FormData): Promi
   const id = str(fd, "id", 40), hostId = str(fd, "host_id", 40);
   const h = await one<{ name: string }>("SELECT name FROM users WHERE id = $1 AND role IN ('host','admin') AND NOT disabled", [hostId]);
   if (!h) return { error: "Choose an active host." };
+  const cur = await one<{ parent_id: string | null }>("SELECT parent_id FROM properties WHERE id = $1", [id]);
+  if (cur?.parent_id) return { error: "This room belongs to a whole house. Change the host on the house instead; its rooms move with it." };
   const p = await one<{ title: string }>("UPDATE properties SET host_id = $2, updated_at = now() WHERE id = $1 RETURNING title", [id, hostId]);
   if (!p) return { error: "Listing not found." };
+  await q("UPDATE properties SET host_id = $2, updated_at = now() WHERE parent_id = $1", [id, hostId]); // its rooms come along
   await logEvent("info", "Listings", `${p.title} reassigned to ${h.name}`, {}, admin.id);
   revalidatePath("/admin/listings");
   return { ok: `${p.title} is now managed by ${h.name}.` };

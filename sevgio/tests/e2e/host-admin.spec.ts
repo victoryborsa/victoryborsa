@@ -607,3 +607,23 @@ test("admin adds a property owner without emailing them and puts a listing under
   await expect(page.locator("tr", { hasText: "Mount Washington View House" })).toContainText("Owner Olivia");
   await signOut(page);
 });
+
+test("admin changes a listing's host from the listing editor; a house's rooms move with it", async ({ page }) => {
+  const [house] = await sql<{ id: string }>("SELECT id FROM properties WHERE parent_id IS NULL AND EXISTS (SELECT 1 FROM properties r WHERE r.parent_id = properties.id) LIMIT 1");
+  const [dana] = await sql<{ id: string }>("SELECT id FROM users WHERE email = 'dana@demo.sevgio.com'");
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto(`/host/listings/${house.id}`);
+  await page.getByLabel("Host (owner)").selectOption(dana.id);
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/^Saved\./)).toBeVisible();
+  const rows = await sql<{ host_id: string }>("SELECT host_id FROM properties WHERE id = $1 OR parent_id = $1", [house.id]);
+  expect(rows.length).toBeGreaterThan(1);
+  expect(rows.every(r => r.host_id === dana.id)).toBe(true);
+  // A room on its own can't be moved away from its house.
+  const [room] = await sql<{ id: string }>("SELECT id FROM properties WHERE parent_id = $1 LIMIT 1", [house.id]);
+  await page.goto(`/host/listings/${room.id}`);
+  await page.getByLabel("Host (owner)").selectOption({ label: "Test Admin" });
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/Change the host on the house instead/)).toBeVisible();
+  await signOut(page);
+});

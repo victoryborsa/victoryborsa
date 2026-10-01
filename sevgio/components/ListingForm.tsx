@@ -18,8 +18,9 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
       <div className="box">
         <h2>Basics</h2>
         {hosts && (
-          <label className="field"><span>Host</span>
-            <select className="input" name="host_id" defaultValue="">{[<option key="" value="">Choose a host…</option>, ...hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)]}</select>
+          <label className="field"><span>Host (owner)</span>
+            <select className="input" name="host_id" defaultValue={p?.host_id ?? ""}>{[<option key="" value="">Choose a host…</option>, ...hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)]}</select>
+            {p && <span className="hint">Only admins see this. Changing the host of a whole house also moves its rooms.</span>}
           </label>
         )}
         <ListingKind propertyType={p?.property_type} parentId={p?.parent_id} homes={homes.filter(h => h.id !== p?.id)} />

@@ -276,15 +276,29 @@ export async function updateListingAction(_: ActionState, fd: FormData): Promise
   const { u, p } = await requireManageable(str(fd, "id", 40));
   const { v, error } = readListing(fd);
   if (error) return { error };
-  const pErr = v.parent_id !== p.parent_id ? await parentProblem(v.parent_id, p.host_id, p.id) : null;
+  // Admins can move a listing to another host (owner). A house takes its rooms along so they stay linked.
+  const newHost = u.role === "admin" ? str(fd, "host_id", 40) : "";
+  let hostId = p.host_id;
+  if (newHost && newHost !== p.host_id) {
+    const h = await one<{ id: string; name: string }>("SELECT id, name FROM users WHERE id = $1 AND role IN ('host','admin') AND NOT disabled", [newHost]);
+    if (!h) return { error: "Choose an active host." };
+    if (v.parent_id) return { error: "This room belongs to a whole house. Change the host on the house instead; its rooms move with it." };
+    hostId = h.id;
+  }
+  const pErr = v.parent_id !== p.parent_id ? await parentProblem(v.parent_id, hostId, p.id) : null;
   if (pErr) return { error: pErr };
   if (v.status === "published") {
     const photos = await one<{ n: number }>("SELECT count(*) AS n FROM photos WHERE property_id = $1", [p.id]);
     if (!photos || photos.n === 0) return { error: "Add at least one photo before publishing." };
   }
-  const cols = { ...listingColumns(v, u.role === "admin"), status: v.status };
+  const cols = { ...listingColumns(v, u.role === "admin"), status: v.status, host_id: hostId };
   const names = Object.keys(cols);
   await q(`UPDATE properties SET ${names.map((n, i) => `${n} = $${i + 2}`).join(", ")}, updated_at = now() WHERE id = $1`, [p.id, ...Object.values(cols)]);
+  if (hostId !== p.host_id) {
+    const rooms = await q<{ title: string }>("UPDATE properties SET host_id = $2, updated_at = now() WHERE parent_id = $1 RETURNING title", [p.id, hostId]);
+    await logEvent("info", "Listings", `${v.title}${rooms.length ? ` and its ${rooms.length} room${rooms.length === 1 ? "" : "s"}` : ""} moved to another host`, { property: p.id, host: hostId }, u.id);
+    revalidatePath("/admin/listings");
+  }
   if (v.nightly !== p.nightly_price_cents || v.status !== p.status) await logEvent("info", "Listings", `${v.title}: ${v.status !== p.status ? `status ${p.status} → ${v.status}` : ""} ${v.nightly !== p.nightly_price_cents ? `price ${p.nightly_price_cents / 100} → ${v.nightly! / 100}` : ""}`.trim(), { property: p.id }, u.id);
   revalidatePath(`/stays/${p.slug}`);
   return { ok: v.status === "published" ? "Saved. Changes are live on the site." : "Saved. This listing is not visible to guests." };
