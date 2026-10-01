@@ -16,21 +16,24 @@ export default async function Home() {
   return (
     <div className="wrap">
       <section className="hero hero-welcome">
-        <Slideshow className="slides-hero" photos={slides.map(s => ({ src: `/api/site-photos/${s.id}`, caption: s.caption }))}>
-          <div className="row" style={{ gap: 14, alignItems: "center", flexWrap: "nowrap" }}>
-            <div className="hero-logo"><Logo size={84} /></div>
-            <p className="eyebrow">{t("home.eyebrow")}</p>
-          </div>
-          <h1>{t("home.h1")}</h1>
-        </Slideshow>
-        <div className="worldmap-wrap"><WorldMap /></div>
-        <p className="lede hero-lede">{t("home.lede")}</p>
-        <nav className="hello hello-line" aria-label={t("home.pickLang")}>
+        <div className="hero-grid">
+          <div>
+        <div className="row" style={{ gap: 18, alignItems: "center", flexWrap: "nowrap" }}>
+          <div className="hero-logo"><Logo size={120} /></div>
+          <p className="eyebrow">{t("home.eyebrow")}</p>
+        </div>
+        <h1 style={{ marginTop: 10 }}>{t("home.h1")}</h1>
+        <p className="lede">{t("home.lede")}</p>
+        <nav className="hello" aria-label={t("home.pickLang")}>
           {[...LANGS.slice(1), LANGS[0]].map(l => (
             <a key={l.code} href={`/lang/${l.code}?next=/`} lang={l.code} hrefLang={l.code} className={l.code === lang ? "on" : undefined} aria-current={l.code === lang ? "true" : undefined} title={l.name}>{l.hello}</a>
           ))}
         </nav>
         <p className="hint" style={{ marginTop: 6 }}>{t("home.pickLang")}</p>
+          </div>
+          <Slideshow photos={slides.map(s => ({ src: `/api/site-photos/${s.id}`, caption: s.caption }))} />
+        </div>
+        <div className="worldmap-wrap"><WorldMap /></div>
         <SearchBar cities={cities} />
       </section>
 
