@@ -26,6 +26,9 @@ export default async function Settings() {
       </div>
       <label className="field"><span>Payment note (shown when guests book)</span><textarea className="input" name="payment_note" defaultValue={s.payment_note} style={{ minHeight: 70 }} /><span className="hint">Online payment isn't switched on. This tells guests how they'll pay.</span></label>
       <label className="field"><span>Site-wide notice (optional banner at the top of every page)</span><input className="input" name="site_notice" defaultValue={s.site_notice} placeholder="e.g. Winter weekends are booking fast. Reserve early!" /></label>
+      <h2 style={{ marginTop: 12 }}>Host listing fee</h2>
+      <label className="chk"><input type="checkbox" name="listing_fee_enabled" defaultChecked={s.listing_fee_enabled} />Charge hosts a yearly fee for each listing</label>
+      <label className="field" style={{ maxWidth: 260 }}><span>Fee per listing, per year (USD)</span><input className="input mono" name="listing_fee" inputMode="decimal" defaultValue={(s.listing_fee_cents / 100).toFixed(0)} /><span className="hint">Hosts pay you by Zelle or Venmo (below). Mark it paid or waive it in Admin → Listings. Your own listings never pay.</span></label>
       <h2 style={{ marginTop: 12 }}>Payments</h2>
       <p className="muted">Choose how guests can pay. When at least one option is on, bookings wait for payment before they're confirmed, and unpaid bookings are cancelled automatically.</p>
       {!stripe && <div className="notice warn">Card and bank transfer need a Stripe account. Add STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in Render → Environment, then they can be switched on.</div>}

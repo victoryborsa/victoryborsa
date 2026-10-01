@@ -137,6 +137,10 @@ export async function saveSettingsAction(_: ActionState, fd: FormData): Promise<
   await saveSetting("manual_payment_hours", hours);
   await saveSetting("zelle_to", zelle);
   await saveSetting("venmo_handle", venmo);
+  const listingFee = toCents(str(fd, "listing_fee") || "0");
+  if (listingFee === null || listingFee < 0 || listingFee > 1_000_000) return { error: "Enter the yearly listing fee in dollars, e.g. 100." };
+  await saveSetting("listing_fee_enabled", on("listing_fee_enabled"));
+  await saveSetting("listing_fee_cents", listingFee);
   await logEvent("info", "Settings", "Site settings updated", { tax }, admin.id);
   revalidatePath("/", "layout");
   return { ok: "Settings saved. New prices apply to new bookings only." };
@@ -242,4 +246,20 @@ export async function approveHostAction(fd: FormData) {
   }
   revalidatePath("/admin/users");
   revalidatePath("/admin");
+}
+
+/** Listing fee: mark a year paid, waive it, or start charging it again. */
+export async function listingFeeAction(fd: FormData) {
+  const admin = await requireUser(["admin"]);
+  const id = str(fd, "id", 40), cmd = str(fd, "cmd", 10);
+  const p = cmd === "paid"
+    ? await one<{ title: string; until: string }>(`UPDATE properties SET listing_fee_waived = false, listing_fee_reminded_at = NULL,
+        listing_paid_until = (greatest(coalesce(listing_paid_until, CURRENT_DATE), CURRENT_DATE) + interval '1 year')::date
+        WHERE id = $1 RETURNING title, listing_paid_until::text AS until`, [id])
+    : cmd === "waive" ? await one<{ title: string; until: string }>("UPDATE properties SET listing_fee_waived = true WHERE id = $1 RETURNING title, '' AS until", [id])
+    : cmd === "charge" ? await one<{ title: string; until: string }>("UPDATE properties SET listing_fee_waived = false WHERE id = $1 RETURNING title, '' AS until", [id])
+    : null;
+  if (p) await logEvent("info", "Listing fees", `${p.title}: ${cmd === "paid" ? `fee paid until ${p.until}` : cmd === "waive" ? "fee waived" : "fee charged again"}`, { property: id }, admin.id);
+  revalidatePath("/admin/listings");
+  revalidatePath("/host/listings");
 }

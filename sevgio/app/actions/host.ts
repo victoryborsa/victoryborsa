@@ -16,6 +16,7 @@ import { isOnline } from "@/lib/payments.ts";
 import { bookingInfo, notifyBooking, recordPayment } from "@/lib/payment-flow.ts";
 import { fetchPublic } from "@/lib/safe-fetch.ts";
 import { moveListingFamily } from "@/lib/homes.ts";
+import { feePayText, feeState, type FeeRow } from "@/lib/listing-fee.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
 import { fmtDate, todayLocal } from "@/lib/dates.ts";
@@ -290,6 +291,11 @@ export async function updateListingAction(_: ActionState, fd: FormData): Promise
   if (v.status === "published") {
     const photos = await one<{ n: number }>("SELECT count(*) AS n FROM photos WHERE property_id = $1", [p.id]);
     if (!photos || photos.n === 0) return { error: "Add at least one photo before publishing." };
+  }
+  if (v.status === "published" && p.status !== "published" && u.role !== "admin") {
+    const f = await one<FeeRow>("SELECT p.listing_paid_until::text, p.listing_fee_waived, h.role AS host_role FROM properties p JOIN users h ON h.id = p.host_id WHERE p.id = $1", [p.id]);
+    const fee = await feePayText();
+    if (f && feeState(f, fee.enabled) === "due") return { error: `Your yearly listing fee (${fee.amount}) needs to be paid before this listing can go live. ${fee.how} We'll switch it on once it arrives.` };
   }
   const cols = { ...listingColumns(v, u.role === "admin"), status: v.status, host_id: hostId };
   const names = Object.keys(cols);

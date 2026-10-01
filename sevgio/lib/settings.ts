@@ -5,6 +5,7 @@ export type Settings = {
   pay_card: boolean; pay_ach: boolean; pay_zelle: boolean; pay_venmo: boolean; pay_cash: boolean;
   card_fee_percent: number; card_fee_fixed_cents: number; zelle_to: string; venmo_handle: string;
   deposit_percent: number; manual_payment_hours: number;
+  listing_fee_enabled: boolean; listing_fee_cents: number;
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -21,6 +22,7 @@ export async function getSettings(): Promise<Settings> {
     card_fee_percent: num("card_fee_percent", 2.9), card_fee_fixed_cents: num("card_fee_fixed_cents", 30),
     zelle_to: String(m.zelle_to ?? ""), venmo_handle: String(m.venmo_handle ?? ""),
     deposit_percent: num("deposit_percent", 30), manual_payment_hours: num("manual_payment_hours", 24),
+    listing_fee_enabled: m.listing_fee_enabled !== false, listing_fee_cents: num("listing_fee_cents", 10000),
   };
 }
 

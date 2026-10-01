@@ -4,18 +4,23 @@ import { q } from "@/lib/db.ts";
 import { money } from "@/lib/money.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { Flash } from "@/components/Flash.tsx";
-import { reassignListingAction, setListingStatusAction, setRatingAction } from "@/app/actions/admin.ts";
+import { listingFeeAction, reassignListingAction, setListingStatusAction, setRatingAction } from "@/app/actions/admin.ts";
+import { feeState } from "@/lib/listing-fee.ts";
+import { getSettings } from "@/lib/settings.ts";
+import { fmtDate } from "@/lib/dates.ts";
 
-type Row = { id: string; slug: string; title: string; city: string; status: string; host_id: string; nightly_price_cents: number; rating: number | null; review_count: number; photos: number; bookings: number };
+type Row = { id: string; slug: string; title: string; city: string; status: string; host_id: string; nightly_price_cents: number; rating: number | null; review_count: number; photos: number; bookings: number; listing_paid_until: string | null; listing_fee_waived: boolean; host_role: string };
 
 export default async function AdminListings({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
   await requireUser(["admin"], "/admin");
-  const [rows, hosts] = await Promise.all([
+  const [rows, hosts, settings] = await Promise.all([
     q<Row>(`SELECT p.id, p.slug, p.title, p.city, p.status, p.host_id, p.nightly_price_cents, p.rating, p.review_count,
+              p.listing_paid_until::text, p.listing_fee_waived, (SELECT role FROM users h WHERE h.id = p.host_id) AS host_role,
               (SELECT count(*) FROM photos ph WHERE ph.property_id = p.id) AS photos,
               (SELECT count(*) FROM bookings b WHERE b.property_id = p.id AND b.status = 'confirmed') AS bookings
             FROM properties p ORDER BY p.title`),
     q<{ id: string; name: string }>("SELECT id, name FROM users WHERE role IN ('host','admin') AND NOT disabled ORDER BY name"),
+    getSettings(),
   ]);
   return (
     <>
@@ -27,7 +32,7 @@ export default async function AdminListings({ searchParams }: { searchParams: Pr
       </div>
       <div className="tbl-wrap">
         <table className="tbl">
-          <thead><tr><th>Listing</th><th>Owner (host)</th><th className="num">Price</th><th>Rating (from other sites)</th><th>Status</th><th /></tr></thead>
+          <thead><tr><th>Listing</th><th>Owner (host)</th><th className="num">Price</th><th>Rating (from other sites)</th>{settings.listing_fee_enabled && <th>Listing fee</th>}<th>Status</th><th /></tr></thead>
           <tbody>
             {rows.map(r => (
               <tr key={r.id}>
@@ -48,6 +53,23 @@ export default async function AdminListings({ searchParams }: { searchParams: Pr
                     <SubmitButton className="btn btn-ghost btn-sm" pendingText="…">Save</SubmitButton>
                   </ActionForm>
                 </td>
+                {settings.listing_fee_enabled && (() => {
+                  const st = feeState(r, true);
+                  const btn = (cmd: string, label: string) => <form action={listingFeeAction}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="cmd" value={cmd} /><button className="btn btn-ghost btn-sm" type="submit">{label}</button></form>;
+                  return (
+                    <td style={{ minWidth: 190 }}>
+                      {st === "admin" ? <span className="hint">Your listing, no fee</span> : (
+                        <div className="stack" style={{ gap: 6 }}>
+                          <span className={`pill ${st === "paid" ? "ok" : st === "waived" ? "neutral" : "warn"}`}>{st === "paid" ? `Paid until ${fmtDate(r.listing_paid_until!, { month: "short", day: "numeric", year: "numeric" })}` : st === "waived" ? "Waived" : "Not paid"}</span>
+                          <div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
+                            {btn("paid", st === "paid" ? "+1 year paid" : "Mark paid (1 year)")}
+                            {st === "waived" ? btn("charge", "Charge fee") : btn("waive", "Waive")}
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                  );
+                })()}
                 <td>
                   <form action={setListingStatusAction} className="row" style={{ flexWrap: "nowrap" }}>
                     <input type="hidden" name="id" value={r.id} />

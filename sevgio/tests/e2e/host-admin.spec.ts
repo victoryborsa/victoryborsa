@@ -630,3 +630,49 @@ test("admin changes a listing's host from the listing editor; a house's rooms mo
   expect(again.every(r => r.host_id === admin.id)).toBe(true);
   await signOut(page);
 });
+
+test("yearly listing fee: a host can't publish until paid; admin marks paid or waives it", async ({ page }) => {
+  const [l] = await sql<{ id: string; title: string }>(`SELECT p.id, p.title FROM properties p JOIN users u ON u.id = p.host_id
+    WHERE u.email = 'marcus@demo.sevgio.com' AND p.parent_id IS NULL AND EXISTS (SELECT 1 FROM photos ph WHERE ph.property_id = p.id) ORDER BY p.title LIMIT 1`);
+  const [before] = await sql<{ status: string }>("SELECT status FROM properties WHERE id = $1", [l.id]);
+  await sql("UPDATE properties SET status = 'draft', listing_paid_until = NULL, listing_fee_waived = false WHERE id = $1", [l.id]);
+
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin/settings");
+  await expect(page.getByLabel("Charge hosts a yearly fee for each listing")).toBeChecked();
+  await expect(page.getByLabel(/Fee per listing, per year/)).toHaveValue("100");
+  await signOut(page);
+
+  await signIn(page, "marcus@demo.sevgio.com", "demo-password-2026");
+  await page.goto("/host/listings");
+  await expect(page.getByText(/Yearly listing fee: \$100/)).toBeVisible();
+  await page.goto(`/host/listings/${l.id}`);
+  await page.getByLabel("Visibility").selectOption("published");
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/needs to be paid before this listing can go live/)).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin/listings");
+  const row = page.getByRole("row").filter({ hasText: l.title }).first();
+  await expect(row.getByText("Not paid")).toBeVisible();
+  await row.getByRole("button", { name: "Mark paid (1 year)" }).click();
+  await expect(row.getByText(/^Paid until/)).toBeVisible();
+  const [paid] = await sql<{ days: number }>("SELECT (listing_paid_until - CURRENT_DATE) AS days FROM properties WHERE id = $1", [l.id]);
+  expect(paid.days).toBeGreaterThanOrEqual(364);
+  expect(paid.days).toBeLessThanOrEqual(366);
+  await row.getByRole("button", { name: "Waive" }).click();
+  await expect(row.getByText("Waived")).toBeVisible();
+  await expect(row.getByRole("button", { name: "Charge fee" })).toBeVisible();
+  const [mine] = await sql<{ title: string }>("SELECT p.title FROM properties p JOIN users u ON u.id = p.host_id WHERE u.role = 'admin' ORDER BY p.title LIMIT 1");
+  if (mine) await expect(page.getByRole("row").filter({ hasText: mine.title }).first().getByText("Your listing, no fee")).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, "marcus@demo.sevgio.com", "demo-password-2026");
+  await page.goto(`/host/listings/${l.id}`);
+  await page.getByLabel("Visibility").selectOption("published");
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/^Saved\./)).toBeVisible();
+  await signOut(page);
+  await sql("UPDATE properties SET status = $2 WHERE id = $1", [l.id, before.status]);
+});
