@@ -619,11 +619,14 @@ test("admin changes a listing's host from the listing editor; a house's rooms mo
   const rows = await sql<{ host_id: string }>("SELECT host_id FROM properties WHERE id = $1 OR parent_id = $1", [house.id]);
   expect(rows.length).toBeGreaterThan(1);
   expect(rows.every(r => r.host_id === dana.id)).toBe(true);
-  // A room on its own can't be moved away from its house.
+  // Changing the host on one room moves the whole house and its rooms back together.
   const [room] = await sql<{ id: string }>("SELECT id FROM properties WHERE parent_id = $1 LIMIT 1", [house.id]);
   await page.goto(`/host/listings/${room.id}`);
   await page.getByLabel("Host (owner)").selectOption({ label: "Test Admin" });
   await page.getByRole("button", { name: "Save listing" }).click();
-  await expect(page.getByText(/Change the host on the house instead/)).toBeVisible();
+  await expect(page.getByText(/moved to the new host together/)).toBeVisible();
+  const [admin] = await sql<{ id: string }>("SELECT id FROM users WHERE email = 'admin@demo.sevgio.com'");
+  const again = await sql<{ host_id: string }>("SELECT host_id FROM properties WHERE id = $1 OR parent_id = $1", [house.id]);
+  expect(again.every(r => r.host_id === admin.id)).toBe(true);
   await signOut(page);
 });

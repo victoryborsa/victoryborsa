@@ -10,6 +10,7 @@ import { toCents } from "@/lib/money.ts";
 import { logEvent } from "@/lib/log.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { processPhoto } from "@/lib/photos.ts";
+import { moveListingFamily } from "@/lib/homes.ts";
 import { SECTIONS, slugOf } from "@/lib/guide.ts";
 
 const GUIDE_SLUGS = new Set(SECTIONS.flatMap(s => s.places.map(p => slugOf(p.name))));
@@ -66,14 +67,12 @@ export async function reassignListingAction(_: ActionState, fd: FormData): Promi
   const id = str(fd, "id", 40), hostId = str(fd, "host_id", 40);
   const h = await one<{ name: string }>("SELECT name FROM users WHERE id = $1 AND role IN ('host','admin') AND NOT disabled", [hostId]);
   if (!h) return { error: "Choose an active host." };
-  const cur = await one<{ parent_id: string | null }>("SELECT parent_id FROM properties WHERE id = $1", [id]);
-  if (cur?.parent_id) return { error: "This room belongs to a whole house. Change the host on the house instead; its rooms move with it." };
-  const p = await one<{ title: string }>("UPDATE properties SET host_id = $2, updated_at = now() WHERE id = $1 RETURNING title", [id, hostId]);
-  if (!p) return { error: "Listing not found." };
-  await q("UPDATE properties SET host_id = $2, updated_at = now() WHERE parent_id = $1", [id, hostId]); // its rooms come along
-  await logEvent("info", "Listings", `${p.title} reassigned to ${h.name}`, {}, admin.id);
+  // A house and its rooms share one host, so the whole linked family moves together.
+  const moved = await moveListingFamily(id, hostId);
+  if (!moved.length) return { error: "Listing not found." };
+  await logEvent("info", "Listings", `${moved.join(", ")} reassigned to ${h.name}`, {}, admin.id);
   revalidatePath("/admin/listings");
-  return { ok: `${p.title} is now managed by ${h.name}.` };
+  return { ok: moved.length === 1 ? `${moved[0]} is now managed by ${h.name}.` : `Moved to ${h.name}: ${moved.join(", ")} (the house and its rooms stay together).` };
 }
 
 export async function setListingStatusAction(fd: FormData) {

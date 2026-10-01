@@ -15,6 +15,7 @@ import { getSettings } from "@/lib/settings.ts";
 import { isOnline } from "@/lib/payments.ts";
 import { bookingInfo, notifyBooking, recordPayment } from "@/lib/payment-flow.ts";
 import { fetchPublic } from "@/lib/safe-fetch.ts";
+import { moveListingFamily } from "@/lib/homes.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
 import { fmtDate, todayLocal } from "@/lib/dates.ts";
@@ -282,7 +283,6 @@ export async function updateListingAction(_: ActionState, fd: FormData): Promise
   if (newHost && newHost !== p.host_id) {
     const h = await one<{ id: string; name: string }>("SELECT id, name FROM users WHERE id = $1 AND role IN ('host','admin') AND NOT disabled", [newHost]);
     if (!h) return { error: "Choose an active host." };
-    if (v.parent_id) return { error: "This room belongs to a whole house. Change the host on the house instead; its rooms move with it." };
     hostId = h.id;
   }
   const pErr = v.parent_id !== p.parent_id ? await parentProblem(v.parent_id, hostId, p.id) : null;
@@ -294,14 +294,17 @@ export async function updateListingAction(_: ActionState, fd: FormData): Promise
   const cols = { ...listingColumns(v, u.role === "admin"), status: v.status, host_id: hostId };
   const names = Object.keys(cols);
   await q(`UPDATE properties SET ${names.map((n, i) => `${n} = $${i + 2}`).join(", ")}, updated_at = now() WHERE id = $1`, [p.id, ...Object.values(cols)]);
+  let movedNote = "";
   if (hostId !== p.host_id) {
-    const rooms = await q<{ title: string }>("UPDATE properties SET host_id = $2, updated_at = now() WHERE parent_id = $1 RETURNING title", [p.id, hostId]);
-    await logEvent("info", "Listings", `${v.title}${rooms.length ? ` and its ${rooms.length} room${rooms.length === 1 ? "" : "s"}` : ""} moved to another host`, { property: p.id, host: hostId }, u.id);
+    // A house and its rooms share one host, so the whole linked family moves together.
+    const moved = await moveListingFamily(p.id, hostId);
+    await logEvent("info", "Listings", `${moved.join(", ")} moved to another host`, { property: p.id, host: hostId }, u.id);
+    if (moved.length > 1) movedNote = ` The house and its rooms moved to the new host together (${moved.length} listings).`;
     revalidatePath("/admin/listings");
   }
   if (v.nightly !== p.nightly_price_cents || v.status !== p.status) await logEvent("info", "Listings", `${v.title}: ${v.status !== p.status ? `status ${p.status} → ${v.status}` : ""} ${v.nightly !== p.nightly_price_cents ? `price ${p.nightly_price_cents / 100} → ${v.nightly! / 100}` : ""}`.trim(), { property: p.id }, u.id);
   revalidatePath(`/stays/${p.slug}`);
-  return { ok: v.status === "published" ? "Saved. Changes are live on the site." : "Saved. This listing is not visible to guests." };
+  return { ok: (v.status === "published" ? "Saved. Changes are live on the site." : "Saved. This listing is not visible to guests.") + movedNote };
 }
 
 /** Deletes a listing for good, with its photos and calendar. Listings with real reservations can't be deleted (they are kept for the money records); hide them instead. */
