@@ -33,6 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Link className="logo logo-badge" href="/" aria-label="Sevgio home"><Logo size={46} title="Sevgio" /><span>sevgio<span className="dot" /></span></Link>
             <nav className="main" aria-label="Main">
               <Link className="navlink" href="/stays">{t("nav.stays")}</Link>
+              <Link className="navlink" href="/events">{t("nav.events")}</Link>
               <Link className="navlink" href="/pittsburgh">{t("nav.guide")}</Link>
               <Link className="navlink" href="/contact">{t("nav.contact")}</Link>
               {user?.role === "host" && <Link className="navlink" href="/host">{t("nav.host")}</Link>}
@@ -63,6 +64,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="stack" style={{ gap: 6 }}>
               <span className="eyebrow">{t("foot.guests")}</span>
               <Link href="/stays">{t("foot.find")}</Link>
+              <Link href="/events">{t("nav.events")}</Link>
               <Link href="/pittsburgh">{t("nav.guide")}</Link>
               <Link href="/trips">{t("nav.trips")}</Link>
             </div>

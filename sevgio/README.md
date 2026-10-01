@@ -154,3 +154,11 @@ Card surcharges: card-network rules cap surcharges at 3% and don't allow them on
 ## Moving data from the old site
 
 When the old site's data is available (a database export or CSV of listings, guests and upcoming bookings), write a one-time import script into `scripts/` that inserts into the same tables. The database constraints will refuse any overlapping bookings, which also catches problems in the old data. Check the counts against the old system before switching the domain.
+
+## Events page
+
+`/events` shows Pittsburgh events by day, week or month, with filters for the Steelers, Pirates, Penguins and event types.
+
+- **Ticketmaster** (games, concerts, shows): create a free account at developer.ticketmaster.com, open My Apps and copy the **Consumer Key**. Add it in Render → Environment as `TICKETMASTER_API_KEY`. Events within 25 miles of downtown for the next 4 months are pulled every 3 hours by the scheduled job (or with "Update events now" in Admin → Events).
+- **Calendar links**: in Admin → Events, paste any public `.ics`/`webcal://` calendar (team schedules, venues).
+- **Your own events**: add festivals and local events with a flyer in Admin → Events. Any event can be featured or hidden there.
