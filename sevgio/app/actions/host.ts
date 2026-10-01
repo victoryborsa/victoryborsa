@@ -45,9 +45,13 @@ function readListing(fd: FormData) {
     children_free_age: int(fd, "children_free_age"),
     management_fee_percent: fd.has("management_fee_percent") ? pct(fd, "management_fee_percent") : null,
     owner_zelle: str(fd, "owner_zelle", 120), owner_venmo: str(fd, "owner_venmo", 60),
+    pet_fee: fd.getAll("amenities").includes("pets") && str(fd, "pet_fee_mode") === "fee" ? toCents(str(fd, "pet_fee") || "0") : 0,
+    pet_fee_per: str(fd, "pet_fee_per") || "stay",
   };
   let error = "";
   if (!v.title) error = "Give the listing a title.";
+  else if (fd.getAll("amenities").includes("pets") && str(fd, "pet_fee_mode") === "fee" && !(Number.isFinite(v.pet_fee) && (v.pet_fee as number) > 0)) error = "Add the pet fee amount, or choose Free.";
+  else if (!["stay", "night", "pet_stay", "pet_night"].includes(v.pet_fee_per)) error = "Choose how the pet fee is charged.";
   else if (!v.city) error = "Add the town or city.";
   else if (!(v.property_type in PROPERTY_TYPES)) error = "Choose a property type.";
   else if (!(v.max_guests >= 1 && v.max_guests <= 50)) error = "Maximum guests must be between 1 and 50.";
@@ -86,6 +90,7 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     camera_locations: v.has_exterior_cameras ? v.camera_locations : "", base_occupancy: v.base_occupancy, extra_guest_fee_cents: v.extra_guest_fee,
     fewer_guest_discount_percent: v.fewer_guest_discount_percent, weekly_discount_percent: v.weekly_discount_percent, monthly_discount_percent: v.monthly_discount_percent,
     children_free_age: v.children_free_age, owner_zelle: v.owner_zelle, owner_venmo: v.owner_venmo,
+    pet_fee_cents: v.pet_fee || 0, pet_fee_per: v.pet_fee_per,
   };
   // Only admins set the management fee; hosts never see or change it.
   if (isAdmin && v.management_fee_percent !== null) cols.management_fee_percent = v.management_fee_percent;
@@ -160,7 +165,7 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
   const plain = ["title", "property_type", "city", "area", "address", "description", "max_guests", "bedrooms", "bathrooms", "half_bathrooms", "bathroom_type",
     "kitchen_access", "laundry_access", "stairs_info", "shared_spaces", "camera_locations", "min_nights", "max_nights", "booking_mode", "cancellation_policy", "check_in_time",
     "check_out_time", "arrival_instructions", "base_occupancy", "fewer_guest_discount_percent", "weekly_discount_percent", "monthly_discount_percent",
-    "children_free_age", "management_fee_percent", "owner_zelle", "owner_venmo", ...Object.keys(IMPORT_FIELDS)];
+    "children_free_age", "management_fee_percent", "owner_zelle", "owner_venmo", "pet_fee_per", ...Object.keys(IMPORT_FIELDS)];
   for (const k of plain) set(IMPORT_FIELDS[k] || k, item[k]);
   const isRoom = item.listing_kind === "room" || item.property_type === "room";
   fd.set("listing_kind", isRoom ? "room" : "home");
@@ -174,6 +179,7 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
     cleaning_fee: 0, extra_guest_fee: 0, fewer_guest_discount_percent: 0, weekly_discount_percent: 0, monthly_discount_percent: 0, children_free_age: 2 }))
     if (!fd.has(k)) fd.set(k, String(v));
   if (item.has_exterior_cameras) fd.set("has_exterior_cameras", "on");
+  if (Number(item.pet_fee) > 0) { fd.set("pet_fee_mode", "fee"); fd.set("pet_fee", String(item.pet_fee)); }
   if (Array.isArray(item.beds)) fd.set("beds_json", JSON.stringify(item.beds));
   for (const a of Array.isArray(item.amenities) ? item.amenities : []) fd.append("amenities", String(a));
   const rules = Array.isArray(item.house_rules) ? item.house_rules.join("\n") : String(item.house_rules ?? "");

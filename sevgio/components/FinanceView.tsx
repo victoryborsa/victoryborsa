@@ -41,19 +41,19 @@ export async function FinanceView({ u, basePath, sp }: { u: User; basePath: stri
           <div className="stat"><b>{t.bookings}</b><span>Bookings (by check-in)</span></div>
           <div className="stat"><b>{t.nights}</b><span>Nights booked · {occupancy}% occupancy</span></div>
           <div className="stat"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(t.rent)}</b><span>Rent (after discounts)</span></div>
-          <div className="stat"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(t.cleaning)}</b><span>Cleaning fees</span></div>
+          <div className="stat"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(t.cleaning)}</b><span>Cleaning & pet fees</span></div>
           <div className="stat"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(t.fee)}</b><span>Management fees</span></div>
           <div className="stat"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(t.owner)}</b><span>Owner payout</span></div>
           <div className="stat"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(t.tax)}</b><span>Lodging tax collected (to remit)</span></div>
         </div>
-        <p className="hint">Owner payout = rent after discounts + cleaning fees − management fee. Lodging tax is collected from guests and paid to the tax office separately.</p>
+        <p className="hint">Owner payout = rent after discounts + cleaning and pet fees − management fee. Lodging tax is collected from guests and paid to the tax office separately.</p>
       </div>
 
       <div>
         <h3 style={{ marginBottom: 12 }}>By property</h3>
         <div className="tbl-wrap">
           <table className="tbl">
-            <thead><tr><th>Property</th><th className="num">Bookings</th><th className="num">Nights</th><th className="num">Occupancy</th><th className="num">Rent</th><th className="num">Cleaning</th><th className="num">Mgmt fee</th><th className="num">Owner payout</th></tr></thead>
+            <thead><tr><th>Property</th><th className="num">Bookings</th><th className="num">Nights</th><th className="num">Occupancy</th><th className="num">Rent</th><th className="num">Cleaning &amp; pets</th><th className="num">Mgmt fee</th><th className="num">Owner payout</th></tr></thead>
             <tbody>
               {summary.map(s => (
                 <tr key={s.id}>
@@ -72,7 +72,7 @@ export async function FinanceView({ u, basePath, sp }: { u: User; basePath: stri
         {rows.length === 0 ? <div className="empty"><p className="muted">No confirmed check-ins in {monthName(month)}.</p></div> : (
           <div className="tbl-wrap">
             <table className="tbl">
-              <thead><tr><th>Reference</th><th>Listing</th><th>Guest</th><th>Dates</th><th className="num">Nights</th><th className="num">Rent</th><th className="num">Cleaning</th><th className="num">Tax</th><th className="num">Guest paid</th><th className="num">Mgmt fee</th><th className="num">Owner payout</th></tr></thead>
+              <thead><tr><th>Reference</th><th>Listing</th><th>Guest</th><th>Dates</th><th className="num">Nights</th><th className="num">Rent</th><th className="num">Cleaning &amp; pets</th><th className="num">Tax</th><th className="num">Guest paid</th><th className="num">Mgmt fee</th><th className="num">Owner payout</th></tr></thead>
               <tbody>
                 {rows.map(r => (
                   <tr key={r.id}>

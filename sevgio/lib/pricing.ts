@@ -3,9 +3,10 @@ import { nightsBetween } from "./dates.ts";
 export type PricingInput = {
   nightly_price_cents: number; cleaning_fee_cents: number; max_guests: number; base_occupancy?: number | null;
   extra_guest_fee_cents?: number; fewer_guest_discount_percent?: number; weekly_discount_percent?: number; monthly_discount_percent?: number;
+  pets_allowed?: boolean; amenities?: string[]; pet_fee_cents?: number; pet_fee_per?: string;
 };
 /** Who is staying. Children at or under the listing's free age are `free_children` and don't change the price. */
-export type Party = { adults: number; children: number; free_children: number };
+export type Party = { adults: number; children: number; free_children: number; pets?: number };
 
 export type Quote = {
   nights: number;
@@ -17,6 +18,8 @@ export type Quote = {
   discount: number;        // weekly / monthly discount
   discountLabel: string;
   cleaning: number;
+  pets: number;
+  petFee: number;          // pet fee for this stay (0 when free or no pets)
   tax: number;
   total: number;
 };
@@ -36,8 +39,20 @@ export function quote(p: PricingInput, ci: string, co: string, taxPercent: numbe
   const discountLabel = pct ? `${nights >= 28 && monthly > 0 ? "Monthly" : "Weekly"} discount (${pct}%)` : "";
   const discount = Math.round((base * pct) / 100);
   const cleaning = p.cleaning_fee_cents;
-  const tax = Math.round(((base - discount + cleaning) * taxPercent) / 100);
-  return { nights, baseNightly: p.nightly_price_cents, nightly, extraGuests, fewerGuests, base, discount, discountLabel, cleaning, tax, total: base - discount + cleaning + tax };
+  const pets = (p.pets_allowed ?? p.amenities?.includes("pets")) ? Math.max(0, party?.pets || 0) : 0;
+  const petFee = petFeeFor(p, pets, nights);
+  const tax = Math.round(((base - discount + cleaning + petFee) * taxPercent) / 100);
+  return { nights, baseNightly: p.nightly_price_cents, nightly, extraGuests, fewerGuests, base, discount, discountLabel, cleaning, pets, petFee, tax, total: base - discount + cleaning + petFee + tax };
+}
+
+export const PET_FEE_PER: Record<string, string> = { stay: "per stay", night: "per night", pet_stay: "per pet, per stay", pet_night: "per pet, per night" };
+
+/** The pet fee for a stay: flat per stay, per night, per pet, or per pet per night. */
+export function petFeeFor(p: { pet_fee_cents?: number; pet_fee_per?: string }, pets: number, nights: number): number {
+  const fee = p.pet_fee_cents || 0;
+  if (!pets || !fee) return 0;
+  const per = p.pet_fee_per || "stay";
+  return fee * (per === "night" ? nights : per === "pet_stay" ? pets : per === "pet_night" ? pets * nights : 1);
 }
 
 /** Management fee and owner payout for a booking. Fee applies to lodging after discounts (not cleaning or tax). */

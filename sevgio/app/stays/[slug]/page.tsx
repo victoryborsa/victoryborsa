@@ -12,6 +12,8 @@ import { ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, bedLabel, parseBe
 import { partyFromParams } from "@/lib/party.ts";
 import { Gallery } from "@/components/Gallery.tsx";
 import { StayChooser } from "@/components/StayChooser.tsx";
+import { PET_FEE_PER } from "@/lib/pricing.ts";
+import { money } from "@/lib/money.ts";
 import { AvailabilitySection, BookingPanel, BookingProvider, MobileBookBar } from "@/components/booking.tsx";
 import { Check, Rating } from "@/components/ui.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
@@ -78,7 +80,8 @@ export default async function StayPage({ params, searchParams }: Params) {
 
       <BookingProvider
         p={{ slug: p.slug, nightly_price_cents: p.nightly_price_cents, cleaning_fee_cents: p.cleaning_fee_cents, min_nights: p.min_nights, max_nights: p.max_nights, max_guests: p.max_guests, booking_mode: p.booking_mode,
-          base_occupancy: p.base_occupancy, extra_guest_fee_cents: p.extra_guest_fee_cents, fewer_guest_discount_percent: Number(p.fewer_guest_discount_percent), weekly_discount_percent: Number(p.weekly_discount_percent), monthly_discount_percent: Number(p.monthly_discount_percent), children_free_age: p.children_free_age }}
+          base_occupancy: p.base_occupancy, extra_guest_fee_cents: p.extra_guest_fee_cents, fewer_guest_discount_percent: Number(p.fewer_guest_discount_percent), weekly_discount_percent: Number(p.weekly_discount_percent), monthly_discount_percent: Number(p.monthly_discount_percent), children_free_age: p.children_free_age,
+          pets_allowed: p.amenities.includes("pets"), pet_fee_cents: p.pet_fee_cents, pet_fee_per: p.pet_fee_per }}
         today={today}
         unavailable={taken}
         taxPercent={settings.tax_percent}
@@ -150,6 +153,7 @@ export default async function StayPage({ params, searchParams }: Params) {
                 <dt>Check-out</dt><dd>Before {p.check_out_time}</dd>
                 <dt>Minimum stay</dt><dd>{p.min_nights} night{p.min_nights > 1 ? "s" : ""}</dd>
                 <dt>Maximum guests</dt><dd>{p.max_guests}</dd>
+                <dt>Pets</dt><dd>{!p.amenities.includes("pets") ? "Not allowed" : p.pet_fee_cents ? `Allowed · ${money(p.pet_fee_cents)} ${PET_FEE_PER[p.pet_fee_per]}` : "Allowed · free"}</dd>
               </dl>
               {p.house_rules.length > 0 && <ul className="rules">{p.house_rules.map((r, i) => <li key={i}>{r}</li>)}</ul>}
             </section>

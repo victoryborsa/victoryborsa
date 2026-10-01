@@ -126,11 +126,9 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
         <MonthGrid p={selected} res={res} blocks={blocks} start={start} end={end} today={today} />
       ) : view === "month" ? (
         <AllMonthGrid rows={rows} res={res} blocks={blocks} start={start} end={end} today={today} dayHref={d => link(d, "day")} />
-      ) : view === "day" ? (
-        <DayList rows={rows} res={res} blocks={blocks} day={start} />
       ) : (
         <div className="mc-wrap">
-          <div className={`mc mc-${view}`} style={{ gridTemplateColumns: `var(--mc-name-w) repeat(${days}, minmax(${view === "week" ? 34 : days > 30 ? 26 : 30}px, 1fr))` }}>
+          <div className={`mc mc-v-${view}`} style={{ gridTemplateColumns: view === "day" ? "minmax(150px, 55%) minmax(110px, 1fr)" : `var(--mc-name-w) repeat(${days}, minmax(${view === "week" ? 34 : days > 30 ? 26 : 30}px, 1fr))` }}>
             <div className="mc-corner"><span className="nav-txt">Property</span></div>
             {dates.map(d => {
               const dt = dayLabel(d), dow = dt.getUTCDay();
@@ -160,7 +158,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
                   return (
                     <div key={b.id} className={`mc-bar ${ch ? `ch-${ch.key}` : "blk"}${b.start_date < start ? " cut-l" : ""}${b.end_date > end ? " cut-r" : ""}`} style={{ gridRow: r, gridColumn: `${col(b.start_date) + 1} / ${col(b.end_date) + 1}` }}
                       title={`${ch ? `Booked on ${ch.label}` : b.note || "Blocked"}: ${b.start_date} → ${b.end_date}${ch && b.note.includes(":") ? ` · ${b.note.split(":").slice(1).join(":").trim()}` : ""}`}>
-                      <span>{ch ? ch.label : b.note || "Blocked"}</span>
+                      <span>{view === "day" && ch ? `${b.start_date === start ? "Arriving" : "Staying"}: ${ch.label}` : ch ? ch.label : b.note || "Blocked"}</span>
                     </div>
                   );
                 }),
@@ -168,9 +166,13 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
                   <Link key={b.id} href={`/trips/${b.code}`} className={`mc-bar ${b.status === "confirmed" ? "ok" : "warn"}${b.check_in < start ? " cut-l" : ""}${b.check_out > end ? " cut-r" : ""}`}
                     style={{ gridRow: r, gridColumn: `${col(b.check_in) + 1} / ${col(b.check_out) + 1}` }}
                     title={`Sevgio · ${b.code} · ${b.guest_name} · ${b.check_in} → ${b.check_out} · ${b.nights} night${b.nights === 1 ? "" : "s"} · ${b.guests} guests${b.status === "pending" ? " · awaiting approval" : b.status === "awaiting_payment" ? " · awaiting payment" : ""}`}>
-                    <span>{b.guest_name}</span>
+                    <span>{view === "day" ? `${b.check_in === start ? "Arriving" : "Staying"}: ${b.guest_name}` : b.guest_name}</span>
                   </Link>
                 )),
+                // On the day view, guests checking out that morning are listed too.
+                ...(view === "day" ? res.filter(b => b.property_id === p.id && b.check_out === start).map(b => (
+                  <Link key={b.id + "out"} href={`/trips/${b.code}`} className="mc-leave" style={{ gridRow: r, gridColumn: 2 }}>Leaving: {b.guest_name}</Link>
+                )) : []),
               ];
             })}
           </div>
@@ -193,47 +195,6 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
       </div>
       <p className="hint">{view === "day" ? "Tap a guest to open the reservation, or a property name to block dates." : <>Bars run from check-in day to check-out day. Click a reservation to open it, or a property name to block dates. Tap a photo to see that property's month with prices. Rooms are listed under their house; booking the house blocks its rooms. On a phone, swipe the board sideways to see more days.</>}</p>
     </div>
-  );
-}
-
-/** One day at a glance: for each listing, who arrives, leaves or stays, or that it's free. */
-function DayList({ rows, res, blocks, day }: { rows: Prop[]; res: Res[]; blocks: Blk[]; day: string }) {
-  return (
-    <ul className="mc-daylist">
-      {rows.map(p => {
-        const items: { key: string; kind: string; cls: string; label: string; detail: string; href?: string }[] = [];
-        for (const b of res.filter(r => r.property_id === p.id)) {
-          const kind = b.check_in === day ? "Arriving" : b.check_out === day ? "Leaving" : "Staying";
-          const n = nightsBetween(b.check_in, day) + 1;
-          items.push({ key: b.id, kind, cls: b.status === "confirmed" ? "ok" : "warn", label: b.guest_name, href: `/trips/${b.code}`,
-            detail: `${fmtShort(b.check_in)} → ${fmtShort(b.check_out)} · ${b.guests} guest${b.guests === 1 ? "" : "s"}${kind === "Staying" ? ` · night ${n} of ${b.nights}` : ""}${b.status === "pending" ? " · awaiting approval" : b.status === "awaiting_payment" ? " · awaiting payment" : ""}` });
-        }
-        for (const b of blocks.filter(k => k.property_id === p.id)) {
-          const ch = b.source.startsWith("ical") ? channelOf(b.feed_name || b.note.split(":")[0]) : null;
-          const kind = b.start_date === day ? (ch ? "Arriving" : "Blocked from") : b.end_date === day ? (ch ? "Leaving" : "Block ends") : ch ? "Staying" : "Blocked";
-          items.push({ key: b.id, kind, cls: ch ? `ch-${ch.key}` : "blk", label: ch ? `Booked on ${ch.label}` : b.note || "Blocked",
-            detail: `${fmtShort(b.start_date)} → ${fmtShort(b.end_date)}` });
-        }
-        const order = ["Leaving", "Block ends", "Arriving", "Blocked from", "Staying", "Blocked"];
-        items.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
-        const busy = items.some(i => i.kind !== "Leaving" && i.kind !== "Block ends");
-        return (
-          <li key={p.id} className={`mc-dayrow${p.parent_id ? " room" : ""}`}>
-            <div className="mc-name">
-              <Link href={`/host/listings/${p.id}/calendar`}>{p.parent_id ? "↳ " : ""}{p.title}</Link>
-              <span className="hint">{p.city}{p.status !== "published" ? ` · ${p.status}` : ""}</span>
-            </div>
-            <div className="mc-dayitems">
-              {items.map(i => {
-                const body = <><i className={`mc-key ${i.cls}`} /><b>{i.kind}:</b> {i.label} <span className="hint">{i.detail}</span></>;
-                return i.href ? <Link key={i.key} className="mc-item" href={i.href}>{body}</Link> : <span key={i.key} className="mc-item">{body}</span>;
-              })}
-              {!busy && <span className="mc-item mc-free">Free tonight</span>}
-            </div>
-          </li>
-        );
-      })}
-    </ul>
   );
 }
 

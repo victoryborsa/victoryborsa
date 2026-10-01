@@ -348,9 +348,10 @@ test("calendar has day, week and month views, and a one-property month with pric
   await expect(page.locator(`a.mc-bar[href="/trips/${b.code}"]`)).toBeVisible();
   await page.getByRole("link", { name: "Day", exact: true }).click();
   await expect(page).toHaveURL(/view=day/);
-  await expect(page.locator(".mc-dayrow", { hasText: "Lake Harmony Lodge" }).getByText(`Arriving: ${b.guest_name}`)).toBeVisible();
+  await expect(page.locator(".mc-day")).toHaveCount(1);
+  await expect(page.locator(`a.mc-bar[href="/trips/${b.code}"]`)).toHaveText(`Arriving: ${b.guest_name}`);
   await page.getByRole("link", { name: "Next day" }).click();
-  await expect(page.locator(".mc-dayrow", { hasText: "Lake Harmony Lodge" }).getByText(new RegExp(`(Staying|Leaving): ${b.guest_name}`))).toBeVisible();
+  await expect(page.locator(`a[href="/trips/${b.code}"]`).first()).toHaveText(new RegExp(`(Staying|Leaving): ${b.guest_name}`));
   // Tapping a property's photo opens its month like a wall calendar, with prices on free days.
   await page.getByRole("link", { name: "Month", exact: true }).click();
   await page.locator(".mc-rail").getByRole("link", { name: b.title }).click();
@@ -475,5 +476,39 @@ test("calendar: week starts today and month is a whole wall calendar", async ({ 
   await expect(page.locator(".mg-all .mg-num.today")).toHaveCount(0);
   await page.getByRole("link", { name: "Today" }).click();
   await expect(page.locator(".mg-all .mg-num.today")).toHaveCount(1);
+  await signOut(page);
+});
+
+test("pets: host sets a pet fee, guests add pets and pay it", async ({ page }) => {
+  const [p] = await sql<{ id: string }>("SELECT id FROM properties WHERE slug = 'mount-washington-view-house'");
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto(`/host/listings/${p.id}`);
+  const pets = page.getByLabel("Pets allowed");
+  if (!(await pets.isChecked())) await pets.check();
+  await page.getByLabel("Charge a pet fee").check();
+  await page.getByLabel("Pet fee (USD)").fill("25");
+  await page.getByLabel("How the pet fee is charged").selectOption("stay");
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/^Saved\./)).toBeVisible();
+  const [row] = await sql<{ pet_fee_cents: number; pet_fee_per: string }>("SELECT pet_fee_cents, pet_fee_per FROM properties WHERE id = $1", [p.id]);
+  expect(row).toEqual({ pet_fee_cents: 2500, pet_fee_per: "stay" });
+
+  // The listing page shows the fee, and the pets picker adds it to the price.
+  await page.goto(`/stays/mount-washington-view-house?ci=${iso(330)}&co=${iso(332)}`);
+  await expect(page.getByText("Allowed · $25 per stay")).toBeVisible();
+  await page.getByRole("button", { name: "More pets" }).click();
+  await expect(page.locator("#book table.breakdown")).toContainText("Pet fee (1 pet)");
+  await page.locator("#book").getByRole("link", { name: /Reserve|Request to book/ }).click();
+  await expect(page).toHaveURL(/pets=1/);
+  await expect(page.locator("table.breakdown")).toContainText("Pet fee (1 pet)");
+  await expect(page.locator("table.breakdown")).toContainText("$25");
+
+  // Choosing Free removes the fee.
+  await page.goto(`/host/listings/${p.id}`);
+  await page.getByLabel("Free", { exact: true }).check();
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/^Saved\./)).toBeVisible();
+  const [free] = await sql<{ pet_fee_cents: number }>("SELECT pet_fee_cents FROM properties WHERE id = $1", [p.id]);
+  expect(free.pet_fee_cents).toBe(0);
   await signOut(page);
 });

@@ -2,6 +2,7 @@ import { ACCESS, AMENITY_GROUPS, CANCELLATION, parseBeds } from "@/lib/constants
 import { BedsEditor } from "./BedsEditor.tsx";
 import { CameraField } from "./CameraField.tsx";
 import { ListingKind } from "./ListingKind.tsx";
+import { PetsAmenity } from "./PetsAmenity.tsx";
 import type { Property } from "@/lib/bookings.ts";
 import { ActionForm, SubmitButton } from "./forms.tsx";
 import type { ActionState } from "@/lib/validate.ts";
@@ -132,7 +133,9 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
           <fieldset key={g.name} style={{ border: 0, padding: 0, margin: 0 }}>
             <legend style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{g.name}</legend>
             <div className="check-grid">
-              {Object.entries(g.items).map(([k, v]) => <label className="chk" key={k}><input type="checkbox" name="amenities" value={k} defaultChecked={p?.amenities.includes(k)} />{v}</label>)}
+              {Object.entries(g.items).map(([k, v]) => k === "pets"
+                ? <PetsAmenity key={k} label={v} checked={!!p?.amenities.includes(k)} fee={p?.pet_fee_cents ? (p.pet_fee_cents / 100).toFixed(2).replace(/\.00$/, "") : ""} per={p?.pet_fee_per || "stay"} />
+                : <label className="chk" key={k}><input type="checkbox" name="amenities" value={k} defaultChecked={p?.amenities.includes(k)} />{v}</label>)}
             </div>
           </fieldset>
         ))}

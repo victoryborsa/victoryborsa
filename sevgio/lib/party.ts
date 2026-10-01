@@ -9,16 +9,17 @@ const n = (v: unknown, fallback: number) => {
 export function partyFromParams(sp: Record<string, string | string[] | undefined>): Party {
   const get = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : (sp[k] as string | undefined));
   const guests = n(get("guests"), 2);
-  return { adults: Math.max(1, n(get("adults"), guests)), children: n(get("children"), 0), free_children: n(get("infants"), 0) };
+  return { adults: Math.max(1, n(get("adults"), guests)), children: n(get("children"), 0), free_children: n(get("infants"), 0), pets: Math.min(n(get("pets"), 0), 5) };
 }
 
 export function partyFromForm(fd: FormData): Party {
-  return { adults: n(fd.get("adults"), 0), children: n(fd.get("children"), 0), free_children: n(fd.get("infants"), 0) };
+  return { adults: n(fd.get("adults"), 0), children: n(fd.get("children"), 0), free_children: n(fd.get("infants"), 0), pets: Math.min(n(fd.get("pets"), 0), 5) };
 }
 
-export function partyLabel(p: { adults: number; children: number; free_children: number }): string {
+export function partyLabel(p: { adults: number; children: number; free_children: number; pets?: number }): string {
   const parts = [`${p.adults} adult${p.adults === 1 ? "" : "s"}`];
   if (p.children) parts.push(`${p.children} child${p.children === 1 ? "" : "ren"}`);
   if (p.free_children) parts.push(`${p.free_children} young child${p.free_children === 1 ? "" : "ren"} (free)`);
+  if (p.pets) parts.push(`${p.pets} pet${p.pets === 1 ? "" : "s"}`);
   return parts.join(", ");
 }

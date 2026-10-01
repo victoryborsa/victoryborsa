@@ -2,13 +2,14 @@
 import Link from "next/link";
 import { createContext, useContext, useMemo, useState } from "react";
 import { Calendar, addDaysC } from "./Calendar.tsx";
-import { quote, type Party, type PricingInput } from "@/lib/pricing.ts";
+import { PET_FEE_PER, quote, type Party, type PricingInput } from "@/lib/pricing.ts";
 import { money } from "@/lib/money.ts";
 
 type P = PricingInput & { slug: string; min_nights: number; max_nights: number; booking_mode: "instant" | "request"; children_free_age: number };
 type Ctx = { p: P; today: string; taken: Set<string>; taxPercent: number; ci: string; co: string; party: Party; msg: string; pick: (d: string) => void; clear: () => void; setParty: (p: Party) => void; bookable: boolean };
 const BookingCtx = createContext<Ctx | null>(null);
 const use = () => useContext(BookingCtx)!;
+const MAX_PETS = 3;
 const nights = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
 const fmt = (s: string) => (s ? new Date(s + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }) : "Add date");
 
@@ -21,7 +22,7 @@ export function BookingProvider({ p, today, unavailable, taxPercent, initial, bo
   const [party, setParty] = useState<Party>(() => {
     const adults = Math.min(Math.max(1, initial.party.adults || 2), p.max_guests);
     const children = Math.min(initial.party.children, p.max_guests - adults);
-    return { adults, children, free_children: Math.min(initial.party.free_children, p.max_guests - adults - children) };
+    return { adults, children, free_children: Math.min(initial.party.free_children, p.max_guests - adults - children), pets: p.pets_allowed ? Math.min(initial.party.pets || 0, MAX_PETS) : 0 };
   });
   const [msg, setMsg] = useState(initial.ci && !validInitial ? "The dates from your search aren't available here. Pick new dates below." : "");
 
@@ -78,7 +79,7 @@ function useQuote() {
 }
 
 export function bookHref(slug: string, ci: string, co: string, party: Party) {
-  return `/book/${slug}?` + new URLSearchParams({ ci, co, adults: String(party.adults), children: String(party.children), infants: String(party.free_children) });
+  return `/book/${slug}?` + new URLSearchParams({ ci, co, adults: String(party.adults), children: String(party.children), infants: String(party.free_children), ...(party.pets ? { pets: String(party.pets) } : {}) });
 }
 
 /** Adults / children / young children (free) pickers. Total can't exceed the listing's maximum. */
@@ -87,7 +88,7 @@ function PartyPicker() {
   const total = party.adults + party.children + party.free_children;
   const room = p.max_guests - total;
   const freeAge = p.children_free_age;
-  const row = (key: keyof Party, label: string, hint: string, min: number) => (
+  const row = (key: "adults" | "children" | "free_children", label: string, hint: string, min: number) => (
     <div className="row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
       <div><div style={{ fontWeight: 600, fontSize: 14 }}>{label}</div><div className="hint">{hint}</div></div>
       <div className="stepper" style={{ minWidth: 132 }}>
@@ -103,6 +104,16 @@ function PartyPicker() {
       {freeAge < 17 && row("children", "Children", `Ages ${freeAge + 1}–17`, 0)}
       {row("free_children", freeAge === 0 ? "Infants" : "Young children", freeAge === 0 ? "Under 1 · stay free" : `Ages 0–${freeAge} · stay free`, 0)}
       <span className="hint">Up to {p.max_guests} guests in total, including children.</span>
+      {p.pets_allowed && (
+        <div className="row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
+          <div><div style={{ fontWeight: 600, fontSize: 14 }}>Pets</div><div className="hint">{p.pet_fee_cents ? `${money(p.pet_fee_cents)} ${PET_FEE_PER[p.pet_fee_per || "stay"]}` : "Pets stay free"}</div></div>
+          <div className="stepper" style={{ minWidth: 132 }}>
+            <button type="button" aria-label="Fewer pets" disabled={!party.pets} onClick={() => setParty({ ...party, pets: (party.pets || 0) - 1 })}>−</button>
+            <output aria-label="Pets">{party.pets || 0}</output>
+            <button type="button" aria-label="More pets" disabled={(party.pets || 0) >= MAX_PETS} onClick={() => setParty({ ...party, pets: (party.pets || 0) + 1 })}>+</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -125,6 +136,7 @@ export function BookingPanel({ paymentNote }: { paymentNote: string }) {
             <tr><td>{money(pr.nightly)} × {pr.nights} night{pr.nights === 1 ? "" : "s"}{pr.extraGuests > 0 ? <div className="hint">Includes {pr.extraGuests} extra guest{pr.extraGuests > 1 ? "s" : ""}</div> : pr.fewerGuests > 0 && pr.nightly < pr.baseNightly ? <div className="hint">Smaller-group price</div> : null}</td><td>{money(pr.base)}</td></tr>
             {pr.discount > 0 && <tr><td>{pr.discountLabel}</td><td>−{money(pr.discount)}</td></tr>}
             {pr.cleaning > 0 && <tr><td>Cleaning fee</td><td>{money(pr.cleaning)}</td></tr>}
+            {pr.petFee > 0 && <tr><td>Pet fee ({pr.pets} pet{pr.pets === 1 ? "" : "s"})</td><td>{money(pr.petFee)}</td></tr>}
             {taxPercent > 0 && <tr><td>Taxes ({taxPercent}%)</td><td>{money(pr.tax)}</td></tr>}
             <tr className="total"><td>Total</td><td>{money(pr.total)}</td></tr>
           </tbody>
