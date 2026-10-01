@@ -53,10 +53,12 @@ export async function inviteUserAction(_: ActionState, fd: FormData): Promise<Ac
   const u = await one<{ id: string }>("INSERT INTO users (email, name, role, password_hash) VALUES ($1, $2, $3, $4) RETURNING id", [email, name, role, await hashPassword(nodeCrypto.randomBytes(32).toString("hex"))]);
   const token = nodeCrypto.randomBytes(32).toString("base64url");
   await q("INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '7 days')", [sha256(token), u!.id]);
-  await sendEmail(email, "You're invited to Sevgio Stays", `Hi ${name.split(" ")[0]},\n\n${admin.name} has created a Sevgio Stays ${role} account for you. Choose your password here (the link works for 7 days):\n${siteUrl()}/reset/${token}`);
-  await logEvent("info", "Access", `Invited ${email} as ${role}`, {}, admin.id);
+  const notify = fd.get("notify") === "on";
+  if (notify) await sendEmail(email, "You're invited to Sevgio Stays", `Hi ${name.split(" ")[0]},\n\n${admin.name} has created a Sevgio Stays ${role} account for you. Choose your password here (the link works for 7 days):\n${siteUrl()}/reset/${token}`);
+  await logEvent("info", "Access", `${notify ? "Invited" : "Added"} ${email} as ${role}`, {}, admin.id);
   revalidatePath("/admin/users");
-  return { ok: `Invitation sent to ${email}.` };
+  revalidatePath("/admin/listings");
+  return { ok: notify ? `Invitation sent to ${email}.` : `Added ${name}. No email was sent; they can use "Forgot your password?" later to sign in.` };
 }
 
 export async function reassignListingAction(_: ActionState, fd: FormData): Promise<ActionState> {

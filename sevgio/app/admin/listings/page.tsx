@@ -27,7 +27,7 @@ export default async function AdminListings({ searchParams }: { searchParams: Pr
       </div>
       <div className="tbl-wrap">
         <table className="tbl">
-          <thead><tr><th>Listing</th><th>Host</th><th className="num">Price</th><th>Rating (from other sites)</th><th>Status</th><th /></tr></thead>
+          <thead><tr><th>Listing</th><th>Owner (host)</th><th className="num">Price</th><th>Rating (from other sites)</th><th>Status</th><th /></tr></thead>
           <tbody>
             {rows.map(r => (
               <tr key={r.id}>

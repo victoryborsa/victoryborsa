@@ -583,3 +583,27 @@ test("extra services and security deposit: host offers them, guest adds pickup a
   await expect(page.getByText(/Refundable security deposit/)).toBeVisible();
   await signOut(page);
 });
+
+test("admin adds a property owner without emailing them and puts a listing under their name", async ({ page }) => {
+  const ownerEmail = `owner-${Date.now()}@example.com`;
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin/users");
+  const form = page.locator("form", { hasText: "Add a host, owner or admin" });
+  await form.getByLabel("Name").fill("Owner Olivia");
+  await form.getByLabel("Email", { exact: true }).fill(ownerEmail);
+  await form.getByLabel("Role").selectOption("host");
+  await form.getByLabel(/Send them an invitation email/).uncheck();
+  await form.getByRole("button", { name: "Add person" }).click();
+  await expect(page.getByText(/Added Owner Olivia\. No email was sent/)).toBeVisible();
+  await page.goto("/admin/listings");
+  const row = page.locator("tr", { hasText: "Mount Washington View House" });
+  await row.getByLabel("Host for Mount Washington View House").selectOption({ label: "Owner Olivia" });
+  await row.locator("form").filter({ has: page.getByLabel("Host for Mount Washington View House") }).getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Mount Washington View House is now managed by Owner Olivia.")).toBeVisible();
+  const [p] = await sql<{ email: string }>("SELECT u.email FROM properties p JOIN users u ON u.id = p.host_id WHERE p.slug = 'mount-washington-view-house'");
+  expect(p.email).toBe(ownerEmail);
+  // The admin still manages it.
+  await page.goto("/host/listings");
+  await expect(page.locator("tr", { hasText: "Mount Washington View House" })).toContainText("Owner Olivia");
+  await signOut(page);
+});

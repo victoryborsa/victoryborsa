@@ -63,14 +63,16 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
       </div>
       <p className="hint">Changing someone's role signs them out so the new access applies immediately. Turned-off accounts can't sign in.</p>
       <ActionForm action={inviteUserAction} className="box" resetOnOk>
-        <h3>Invite a host or admin</h3>
-        <p className="muted">They'll get an email with a link to choose their password.</p>
+        <h3>Add a host, owner or admin</h3>
+        <p className="muted">Owners and hosts can see only their own listings, bookings and statements. You still see and manage everything.</p>
         <div className="grid-2">
           <label className="field"><span>Name</span><input className="input" name="name" /></label>
           <label className="field"><span>Email</span><input className="input" name="email" type="email" /></label>
         </div>
         <label className="field" style={{ maxWidth: 280 }}><span>Role</span><select className="input" name="role" defaultValue="host"><option value="host">Host</option><option value="admin">Admin</option><option value="customer">Guest</option></select></label>
-        <div><SubmitButton pendingText="Sending…">Send invitation</SubmitButton></div>
+        <label className="chk"><input type="checkbox" name="notify" defaultChecked />Send them an invitation email to set a password</label>
+        <p className="hint">Adding a property owner just for your records? Untick the box. You keep managing their listings as admin, and they can still sign in later with “Forgot your password?”.</p>
+        <div><SubmitButton pendingText="Saving…">Add person</SubmitButton></div>
       </ActionForm>
     </div>
   );
