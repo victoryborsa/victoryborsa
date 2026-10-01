@@ -26,6 +26,13 @@ const dayLabel = (d: string) => new Date(d + "T12:00:00Z");
 const monthStart = (d: string) => d.slice(0, 8) + "01";
 const nextMonth = (d: string) => addDays(monthStart(d), 32).slice(0, 8) + "01";
 const prevMonth = (d: string) => addDays(monthStart(d), -1).slice(0, 8) + "01";
+/** The same day one month later (or earlier), e.g. Oct 15 → Nov 15; Jan 31 → Feb 28. */
+function addMonths(d: string, n: number) {
+  const [y, m, day] = d.split("-").map(Number);
+  const first = new Date(Date.UTC(y, m - 1 + n, 1));
+  const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);
+}
 
 /** Planner board: one row per listing, one column per day, reservations as bars. Day view lists each listing's day. */
 export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: string; sp: { start?: string; days?: string; property?: string; view?: string } }) {
@@ -38,11 +45,15 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
   if (view === "day") {
     start = anchor || today; days = 1; prev = addDays(start, -1); next = addDays(start, 1); todayStart = today;
   } else if (view === "week") {
-    start = anchor || addDays(today, -1); days = 7; prev = addDays(start, -7); next = addDays(start, 7); todayStart = addDays(today, -1);
-  } else if (view === "month") {
+    start = anchor || today; days = 7; prev = addDays(start, -7); next = addDays(start, 7); todayStart = today;
+  } else if (view === "month" && sp.property) {
+    // One property's month is a wall calendar, so it always shows the whole calendar month.
     start = monthStart(anchor || today); days = nightsBetween(start, nextMonth(start)); prev = prevMonth(start); next = nextMonth(start); todayStart = monthStart(today);
+  } else if (view === "month") {
+    // The board starts today; earlier days only show after tapping "Previous".
+    start = anchor || today; next = addMonths(start, 1); days = nightsBetween(start, next); prev = addMonths(start, -1); todayStart = today;
   } else {
-    days = Number(sp.days); start = anchor || addDays(today, -2); prev = addDays(start, -days); next = addDays(start, days); todayStart = addDays(today, -2);
+    days = Number(sp.days); start = anchor || today; prev = addDays(start, -days); next = addDays(start, days); todayStart = today;
   }
   const end = addDays(start, days);
 
@@ -73,7 +84,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
   const link = (s: string, v: View = view) =>
     `${basePath}?` + new URLSearchParams({ view: v, start: s, ...(v === "range" ? { days: String(days) } : {}), ...(selected ? { property: selected.id } : {}) });
   const period = view === "day" ? fmtDate(start, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
-    : view === "month" ? fmtDate(start, { month: "long", year: "numeric" })
+    : view === "month" && start.endsWith("-01") && end === nextMonth(start) ? fmtDate(start, { month: "long", year: "numeric" })
     : `${fmtShort(start)} – ${fmtDate(addDays(end, -1), { month: "short", day: "numeric", year: "numeric" })}`;
   const unit = view === "day" ? "day" : view === "week" ? "week" : view === "month" ? "month" : "";
   // On the board, bars only include stays that touch a night in view (not ones that just left on day one).

@@ -453,3 +453,22 @@ test("admin adds a real photo to a place in the Pittsburgh guide", async ({ page
   await expect(card.locator(".guide-icon")).toBeVisible();
   await signOut(page);
 });
+
+test("calendar opens on today; earlier days only after tapping Previous", async ({ page }) => {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
+  const dayNum = String(Number(today.slice(8)));
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  for (const view of ["month", "week"]) {
+    await page.goto(`/admin/calendar?view=${view}`);
+    await expect(page.locator(".mc-day").first()).toHaveClass(/today/);
+    await expect(page.locator(".mc-day").first().locator("b")).toHaveText(dayNum);
+  }
+  await page.goto("/admin/calendar");
+  await expect(page.locator(".mc-day").first()).toHaveClass(/today/);
+  await page.getByRole("link", { name: "Previous month" }).click();
+  await expect(page.locator(".mc-day.today")).toHaveCount(1);
+  await expect(page.locator(".mc-day").first()).not.toHaveClass(/today/);
+  await page.getByRole("link", { name: "Today" }).click();
+  await expect(page.locator(".mc-day").first()).toHaveClass(/today/);
+  await signOut(page);
+});
