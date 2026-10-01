@@ -152,8 +152,8 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
       </div>
 
       <div className="box">
-        <h2>Extra services (paid)</h2>
-        <p className="muted">Offer airport pickup, a private city tour, rides and more. Guests choose them when they book, and the price is added to their total. You'll see what they chose on the booking.</p>
+        <h2>Extra services</h2>
+        <p className="muted">Offer airport pickup and drop-off, a private city tour, early check-in and more, paid or free. Guests choose them when they book, and any price is added to their total. You'll see what they chose on the booking.</p>
         <ServicesEditor initial={parseServices(p?.services)} />
       </div>
 

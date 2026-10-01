@@ -114,7 +114,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
               {b.discount_cents > 0 && <tr><td>Length-of-stay discount</td><td>−{money(b.discount_cents)}</td></tr>}
               {b.cleaning_fee_cents > 0 && <tr><td>Cleaning fee</td><td>{money(b.cleaning_fee_cents)}</td></tr>}
               {b.pet_fee_cents > 0 && <tr><td>Pet fee ({b.pets} pet{b.pets === 1 ? "" : "s"})</td><td>{money(b.pet_fee_cents)}</td></tr>}
-              {extrasOf(b).map(x => <tr key={x.key}><td>{x.name}{x.qty > 1 ? ` × ${x.qty}` : ""}</td><td>{money(x.total)}</td></tr>)}
+              {extrasOf(b).map(x => <tr key={x.key}><td>{x.name}{x.qty > 1 && x.total ? ` × ${x.qty}` : ""}{x.details && <div className="hint">{x.details}</div>}</td><td>{x.total ? money(x.total) : "Free"}</td></tr>)}
               {b.tax_cents > 0 && <tr><td>Taxes</td><td>{money(b.tax_cents)}</td></tr>}
               {b.card_fee_cents > 0 && <tr><td>Card processing fee</td><td>{money(b.card_fee_cents)}</td></tr>}
               <tr className="total"><td>Total</td><td>{money(b.total_cents + b.card_fee_cents)}</td></tr>

@@ -641,6 +641,10 @@ a.room-card:hover { border-color: var(--gold); }
 .extras { border: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 8px; margin: 0; }
 .extras legend { font-weight: 700; font-size: 14px; padding: 0 4px; color: var(--gold); }
 .extra-item { align-items: flex-start; font-size: 14px; }
+.flight-box { border: 1px solid var(--gold); border-radius: var(--r); padding: 10px 14px 14px; margin: 0; }
+.flight-box legend { font-weight: 700; color: var(--gold); padding: 0 4px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 640px) { .grid-3 { grid-template-columns: 1fr; } }
 .extras-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
 .extras-list li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
 .extras-list li .hint { flex-basis: 100%; }

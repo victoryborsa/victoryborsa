@@ -103,8 +103,26 @@ export function parseRooms(raw: unknown): RoomDetail[] {
 /** Paid extras a listing can offer. Keys are stored, so never rename one. */
 export const SERVICE_PRESETS: Record<string, string> = {
   airport_pickup: "Airport pickup", airport_dropoff: "Airport drop-off", city_tour: "Private city tour", shuttle: "Shuttle service",
-  ride: "Uber / Lyft ride booked for you", early_checkin: "Early check-in", late_checkout: "Late check-out", grocery: "Groceries stocked before you arrive",
+  early_checkin: "Early check-in", late_checkout: "Late check-out",
 };
+/** What a ready-made service starts with when the host ticks it. A price of 0 means it's free. */
+export const SERVICE_DEFAULTS: Record<string, { price_cents: number; per: string; note: string }> = {
+  airport_pickup: { price_cents: 0, per: "trip", note: "" },
+  airport_dropoff: { price_cents: 0, per: "trip", note: "" },
+  city_tour: { price_cents: 15000, per: "trip", note: "2 hours" },
+  shuttle: { price_cents: 0, per: "trip", note: "" },
+  early_checkin: { price_cents: 0, per: "stay", note: "Subject to availability" },
+  late_checkout: { price_cents: 0, per: "stay", note: "Subject to availability" },
+};
+/** Services where the guest tells us their flight and a time when they book. */
+export const FLIGHT_SERVICES: Record<string, { when: "ci" | "co"; timeLabel: string; detail: string; label: string }> = {
+  airport_pickup: { when: "ci", timeLabel: "Your flight lands at", detail: "Flight lands", label: "airport pickup" },
+  airport_dropoff: { when: "co", timeLabel: "Pick me up for the airport at", detail: "Pick up from the home", label: "airport drop-off" },
+};
+/** "$45 per trip", or "Free" when there's no charge. */
+export function servicePrice(x: { price_cents: number; per: string }, money: (c: number) => string): string {
+  return x.price_cents ? `${money(x.price_cents)} ${SERVICE_PER[x.per] ?? ""}`.trim() : "Free";
+}
 export const SERVICE_PER: Record<string, string> = { trip: "per trip", person: "per person", night: "per night", stay: "per stay" };
 export type Service = { key: string; name: string; price_cents: number; per: string; note: string };
 export function parseServices(raw: unknown): Service[] {

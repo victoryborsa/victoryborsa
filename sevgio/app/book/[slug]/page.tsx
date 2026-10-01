@@ -8,7 +8,7 @@ import { getSettings } from "@/lib/settings.ts";
 import { fmtDate } from "@/lib/dates.ts";
 import { quote } from "@/lib/pricing.ts";
 import { money } from "@/lib/money.ts";
-import { CANCELLATION } from "@/lib/constants.ts";
+import { CANCELLATION, FLIGHT_SERVICES } from "@/lib/constants.ts";
 import { partyFromParams, partyLabel } from "@/lib/party.ts";
 import { arrivalOptions } from "@/lib/arrival.ts";
 import { enabledMethods, forListing } from "@/lib/payments.ts";
@@ -93,6 +93,16 @@ export default async function BookPage({ params, searchParams }: { params: Promi
             </select>
             <span className="hint">Check-in is from {p.check_in_time}. Letting the host know helps them get ready for you.</span>
           </label>
+          {pr.extras.filter(x => x.key in FLIGHT_SERVICES).map(x => (
+            <fieldset key={x.key} className="flight-box">
+              <legend>{x.name}: your flight</legend>
+              <div className="grid-3">
+                <label className="field"><span>Date</span><input className="input" type="date" name={`fl_${x.key}_date`} defaultValue={FLIGHT_SERVICES[x.key].when === "ci" ? ci : co} required /></label>
+                <label className="field"><span>{FLIGHT_SERVICES[x.key].timeLabel}</span><input className="input" type="time" name={`fl_${x.key}_time`} required /></label>
+                <label className="field"><span>Airline and flight number</span><input className="input" name={`fl_${x.key}_flight`} placeholder="Delta DL 1234" maxLength={60} required /></label>
+              </div>
+            </fieldset>
+          ))}
           <label className="field">
             <span>{instant ? <>Note for the host <span className="muted" style={{ fontWeight: 400 }}>(optional)</span></> : "Message to the host"}</span>
             <textarea className="input" name="message" placeholder={instant ? "Anything the host should know?" : "Say hello and tell the host a little about your trip."} />
@@ -120,7 +130,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
               {pr.discount > 0 && <tr><td>{pr.discountLabel}</td><td>−{money(pr.discount)}</td></tr>}
               {pr.cleaning > 0 && <tr><td>Cleaning fee</td><td>{money(pr.cleaning)}</td></tr>}
               {pr.petFee > 0 && <tr><td>Pet fee ({pr.pets} pet{pr.pets === 1 ? "" : "s"})</td><td>{money(pr.petFee)}</td></tr>}
-              {pr.extras.map(x => <tr key={x.key}><td>{x.name}{x.qty > 1 ? ` × ${x.qty}` : ""}</td><td>{money(x.total)}</td></tr>)}
+              {pr.extras.map(x => <tr key={x.key}><td>{x.name}{x.qty > 1 && x.total ? ` × ${x.qty}` : ""}</td><td>{x.total ? money(x.total) : "Free"}</td></tr>)}
               {settings.tax_percent > 0 && <tr><td>Taxes ({settings.tax_percent}%)</td><td>{money(pr.tax)}</td></tr>}
               <tr className="total"><td>Total</td><td>{money(pr.total)}</td></tr>
             </tbody>

@@ -8,7 +8,7 @@ import { currentUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { one } from "@/lib/db.ts";
 import { addDays, todayLocal } from "@/lib/dates.ts";
-import { ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, SERVICE_PER, bedLabelLong, parseBeds, parseRooms, parseServices } from "@/lib/constants.ts";
+import { ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, bedLabelLong, parseBeds, parseRooms, parseServices, servicePrice } from "@/lib/constants.ts";
 import { partyFromParams } from "@/lib/party.ts";
 import { Gallery } from "@/components/Gallery.tsx";
 import { StayChooser } from "@/components/StayChooser.tsx";
@@ -178,7 +178,7 @@ export default async function StayPage({ params, searchParams }: Params) {
                 <h2>Extra services</h2>
                 <p className="muted">Add any of these when you book. Your host arranges them for you.</p>
                 <ul className="extras-list">
-                  {parseServices(p.services).map(x => <li key={x.key}><b>{x.name}</b><span className="mono">{money(x.price_cents)} {SERVICE_PER[x.per]}</span>{x.note && <span className="hint">{x.note}</span>}</li>)}
+                  {parseServices(p.services).map(x => <li key={x.key}><b>{x.name}</b><span className="mono">{servicePrice(x, money)}</span>{x.note && <span className="hint">{x.note}</span>}</li>)}
                 </ul>
               </section>
             )}

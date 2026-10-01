@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createContext, useContext, useMemo, useState } from "react";
 import { Calendar, addDaysC } from "./Calendar.tsx";
 import { PET_FEE_PER, quote, type Party, type PricingInput } from "@/lib/pricing.ts";
-import { SERVICE_PER, parseServices } from "@/lib/constants.ts";
+import { parseServices, servicePrice } from "@/lib/constants.ts";
 import { money } from "@/lib/money.ts";
 
 type P = PricingInput & { security_deposit_cents?: number; slug: string; min_nights: number; max_nights: number; booking_mode: "instant" | "request"; children_free_age: number };
@@ -119,7 +119,7 @@ function PartyPicker() {
   );
 }
 
-/** Paid extras the listing offers (airport pickup, city tour, …): ticking one adds it to the price. */
+/** Extras the listing offers (airport pickup, city tour, …): ticking one adds it to the price. */
 function ExtrasPicker() {
   const { p, party, setParty } = use();
   const list = parseServices(p.services);
@@ -132,7 +132,7 @@ function ExtrasPicker() {
       {list.map(x => (
         <label key={x.key} className="chk extra-item">
           <input type="checkbox" checked={on.has(x.key)} onChange={() => flip(x.key)} />
-          <span><b>{x.name}</b> <span className="muted">{money(x.price_cents)} {SERVICE_PER[x.per]}</span>{x.note && <span className="hint" style={{ display: "block" }}>{x.note}</span>}</span>
+          <span><b>{x.name}</b> <span className="muted">{servicePrice(x, money)}</span>{x.note && <span className="hint" style={{ display: "block" }}>{x.note}</span>}</span>
         </label>
       ))}
     </fieldset>
@@ -159,7 +159,7 @@ export function BookingPanel({ paymentNote }: { paymentNote: string }) {
             {pr.discount > 0 && <tr><td>{pr.discountLabel}</td><td>−{money(pr.discount)}</td></tr>}
             {pr.cleaning > 0 && <tr><td>Cleaning fee</td><td>{money(pr.cleaning)}</td></tr>}
             {pr.petFee > 0 && <tr><td>Pet fee ({pr.pets} pet{pr.pets === 1 ? "" : "s"})</td><td>{money(pr.petFee)}</td></tr>}
-            {pr.extras.map(x => <tr key={x.key}><td>{x.name}{x.qty > 1 ? ` × ${x.qty}` : ""}</td><td>{money(x.total)}</td></tr>)}
+            {pr.extras.map(x => <tr key={x.key}><td>{x.name}{x.qty > 1 && x.total ? ` × ${x.qty}` : ""}</td><td>{x.total ? money(x.total) : "Free"}</td></tr>)}
             {taxPercent > 0 && <tr><td>Taxes ({taxPercent}%)</td><td>{money(pr.tax)}</td></tr>}
             <tr className="total"><td>Total</td><td>{money(pr.total)}</td></tr>
           </tbody>

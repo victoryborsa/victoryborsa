@@ -50,7 +50,7 @@ async function toHostAndAdmins(b: Info, subject: string, text: string) {
 
 export async function notifyBooking(b: Info) {
   const s = forListing(await getSettings(), b);
-  const extras = extrasOf(b).length ? `\nExtras: ${extrasOf(b).map(x => `${x.name}${x.qty > 1 ? ` × ${x.qty}` : ""} (${money(x.total)})`).join(", ")}` : "";
+  const extras = extrasOf(b).length ? `\nExtras: ${extrasOf(b).map(x => `${x.name}${x.qty > 1 && x.total ? ` × ${x.qty}` : ""} (${x.total ? money(x.total) : "free"})${x.details ? ` — ${x.details}` : ""}`).join(", ")}` : "";
   const deposit = b.security_deposit_cents > 0 ? `\nRefundable security deposit: ${money(b.security_deposit_cents)} (collected separately by your host, returned after check-out)` : "";
   const first = b.guest_name.split(" ")[0];
   const link = `${siteUrl()}/trips/${b.code}`;

@@ -27,7 +27,7 @@ export function partyLabel(p: { adults: number; children: number; free_children:
 }
 
 /** The paid extras saved on a booking (name, quantity and total at booking time). */
-export function extrasOf(b: { services?: unknown }): { key: string; name: string; qty: number; total: number }[] {
+export function extrasOf(b: { services?: unknown }): { key: string; name: string; qty: number; total: number; details: string }[] {
   const arr = Array.isArray(b.services) ? b.services : [];
-  return arr.filter(x => x && typeof x.name === "string").map(x => ({ key: String(x.key), name: String(x.name), qty: Number(x.qty) || 1, total: Number(x.total) || 0 }));
+  return arr.filter(x => x && typeof x.name === "string").map(x => ({ key: String(x.key), name: String(x.name), qty: Number(x.qty) || 1, total: Number(x.total) || 0, details: typeof x.details === "string" ? x.details : "" }));
 }

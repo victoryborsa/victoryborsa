@@ -13,7 +13,10 @@ import { partyFromForm, partyLabel } from "@/lib/party.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { verificationRequired } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
-import { fmtDate } from "@/lib/dates.ts";
+import { fmtDate, isIsoDate } from "@/lib/dates.ts";
+import { FLIGHT_SERVICES } from "@/lib/constants.ts";
+
+const time12 = (t: string) => { const [h, m] = t.split(":").map(Number); return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
 import { money } from "@/lib/money.ts";
 
 export async function createBookingAction(_: ActionState, fd: FormData): Promise<ActionState> {
@@ -27,6 +30,16 @@ export async function createBookingAction(_: ActionState, fd: FormData): Promise
   if (!name) return { error: "Add the name of the lead guest." };
   if (phone.replace(/\D/g, "").length < 7) return { error: "Add a phone number the host can reach you on during your stay." };
   if (p.booking_mode === "request" && message.length < 10) return { error: "Write a short message to the host. It helps them accept your request." };
+  const serviceDetails: Record<string, string> = {};
+  for (const key of party.services || []) {
+    const f = FLIGHT_SERVICES[key];
+    if (!f) continue;
+    const date = str(fd, `fl_${key}_date`, 10), time = str(fd, `fl_${key}_time`, 5), flight = str(fd, `fl_${key}_flight`, 60);
+    const label = f.label;
+    if (!isIsoDate(date) || !/^\d{2}:\d{2}$/.test(time)) return { error: `Add the date and time for your ${label}.` };
+    if (flight.length < 2) return { error: `Add your airline and flight number for the ${label}.` };
+    serviceDetails[key] = `${f.detail} ${fmtDate(date, { weekday: "short", month: "short", day: "numeric" })}, ${time12(time)} · ${flight}`;
+  }
   if (fd.get("agree") !== "on") return { error: "Tick the box to agree to the house rules and cancellation policy." };
 
   const settings = forListing(await getSettings(), p);
@@ -40,7 +53,7 @@ export async function createBookingAction(_: ActionState, fd: FormData): Promise
   }
   let result;
   try {
-    result = await createBooking({ propertyId: p.id, guestId: u.id, ci, co, party, name, phone, arrival, message, taxPercent: settings.tax_percent, pay });
+    result = await createBooking({ propertyId: p.id, guestId: u.id, ci, co, party, name, phone, arrival, message, taxPercent: settings.tax_percent, pay, serviceDetails });
   } catch (e) {
     await logEvent("error", "Booking", "Booking failed with an unexpected error", { slug, ci, co, error: String(e) }, u.id);
     return { error: "Something went wrong and your booking wasn't saved. Please try again, or contact us." };

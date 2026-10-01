@@ -58,7 +58,6 @@ function readListing(fd: FormData) {
   else if (fd.getAll("amenities").includes("pets") && str(fd, "pet_fee_mode") === "fee" && !(Number.isFinite(v.pet_fee) && (v.pet_fee as number) > 0)) error = "Add the pet fee amount, or choose Free.";
   else if (!["stay", "night", "pet_stay", "pet_night"].includes(v.pet_fee_per)) error = "Choose how the pet fee is charged.";
   else if (!(Number.isFinite(v.deposit) && (v.deposit as number) >= 0)) error = "Enter the security deposit as a number, or 0.";
-  else if (v.services.some(x => !x.price_cents)) error = `Add a price for "${v.services.find(x => !x.price_cents)!.name}", or untick it.`;
   else if (!v.city) error = "Add the town or city.";
   else if (!(v.property_type in PROPERTY_TYPES)) error = "Choose a property type.";
   else if (!(v.max_guests >= 1 && v.max_guests <= 50)) error = "Maximum guests must be between 1 and 50.";
