@@ -1,3 +1,4 @@
+import { mailUrl, telUrl } from "@/lib/links.ts";
 import { extrasOf } from "@/lib/party.ts";
 import Link from "next/link";
 import { fmtShort } from "@/lib/dates.ts";
@@ -27,7 +28,7 @@ export function BookingTable({ rows, today, back, showActions = true, fresh }: {
               <tr key={b.id} className={fresh?.has(b.id) ? "row-new" : undefined}>
                 <td className="mono"><Link href={`/trips/${b.code}`}>{b.code}</Link>{fresh?.has(b.id) && <span className="badge-new">New</span>}</td>
                 <td>{b.title}</td>
-                <td>{b.guest_name}{active && <div className="muted" style={{ fontSize: 13 }}>{b.guest_phone} · {b.guest_email}</div>}{b.message && <div className="hint" style={{ maxWidth: 280 }}>“{b.message}”</div>}</td>
+                <td>{b.guest_name}{active && <div className="muted" style={{ fontSize: 13 }}><a href={telUrl(b.guest_phone)}>{b.guest_phone}</a> · <a href={mailUrl(b.guest_email)}>{b.guest_email}</a></div>}{b.message && <div className="hint" style={{ maxWidth: 280 }}>“{b.message}”</div>}</td>
                 <td style={{ whiteSpace: "nowrap" }}>{fmtShort(b.check_in)} – {fmtShort(b.check_out)}<div className="hint">{b.nights} night{b.nights === 1 ? "" : "s"}{b.arrival_time ? ` · arrives ${b.arrival_time}` : ""}</div></td>
                 <td className="num">{b.guests}</td>
                 <td className="num">{money(b.total_cents)}{extrasOf(b).length > 0 && <div className="hint" style={{ textAlign: "left" }}>Extras: {extrasOf(b).map(x => x.name).join(", ")}</div>}{b.security_deposit_cents > 0 && <div className="hint">+ {money(b.security_deposit_cents)} deposit to collect</div>}</td>

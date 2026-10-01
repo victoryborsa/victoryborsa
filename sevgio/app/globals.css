@@ -662,3 +662,9 @@ a.room-card:hover { border-color: var(--gold); }
 .guide-banner-text .lede { color: #E8ECEF; font-size: 18px; margin-top: 10px; text-shadow: 0 1px 8px rgba(0,0,0,.5); }
 .guide-banner + .guide-hero { padding-top: 16px; }
 @media (max-width: 640px) { .guide-banner { min-height: 300px; } .guide-banner-text { padding: 18px; } .guide-banner-text .lede { font-size: 15px; } }
+
+/* Clickable places and tips */
+.near-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.near-list a { font-weight: 600; text-decoration: none; }
+.near-list a:hover { text-decoration: underline; }
+.tip-link { display: inline-block; margin: 2px 8px 2px 0; font-weight: 600; white-space: nowrap; }

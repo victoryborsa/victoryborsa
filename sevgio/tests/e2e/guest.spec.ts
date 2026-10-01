@@ -180,7 +180,10 @@ test("Pittsburgh guide lists places with map links", async ({ page }) => {
   await page.goto("/pittsburgh");
   await expect(page.getByRole("heading", { name: "Must-see & historic Pittsburgh" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Primanti Bros." })).toBeVisible();
-  await expect(page.locator("a.guide-map").first()).toHaveAttribute("href", /google\.com\/maps/);
+  await expect(page.locator("a.guide-map").first()).toHaveAttribute("href", /google\.com\/maps\/dir\/\?api=1&destination=/);
+  // Every place near our homes, and the getting-around tips, open directions or schedules.
+  await expect(page.locator(".near-list a", { hasText: "Mayfly Market" })).toHaveAttribute("href", /maps\/dir\/.*Mayfly%20Market/);
+  await expect(page.getByRole("link", { name: /Directions to the airport/ })).toHaveAttribute("href", /Pittsburgh%20International%20Airport/);
   await expect(page.getByText("Yinz", { exact: true })).toBeVisible();
 });
 

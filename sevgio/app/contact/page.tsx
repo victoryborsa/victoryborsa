@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { mailUrl, telUrl } from "@/lib/links.ts";
 import { currentUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
@@ -25,7 +26,7 @@ export default async function Contact() {
         <label className="field"><span>Message</span><textarea className="input" name="body" required /></label>
         <div style={{ position: "absolute", left: -9999 }} aria-hidden="true"><label>Leave empty<input name="website" tabIndex={-1} autoComplete="off" /></label></div>
         <div><SubmitButton pendingText="Sending…">Send message</SubmitButton></div>
-        {(s.contact_email || s.contact_phone) && <p className="hint">Or reach us at {[s.contact_email, s.contact_phone].filter(Boolean).join(" · ")}</p>}
+        {(s.contact_email || s.contact_phone) && <p className="hint">Or reach us at {s.contact_email && <a href={mailUrl(s.contact_email)}>✉️ {s.contact_email}</a>}{s.contact_email && s.contact_phone && " · "}{s.contact_phone && <a href={telUrl(s.contact_phone)}>📞 {s.contact_phone}</a>}</p>}
       </ActionForm>
     </div>
   );

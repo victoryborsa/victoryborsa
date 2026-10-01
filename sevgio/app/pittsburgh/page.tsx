@@ -81,9 +81,13 @@ export default async function PittsburghGuide() {
         <div className="guide-grid">
           {NEAR.map(n => (
             <article key={n.home} className="guide-card">
-              <p className="guide-area">{n.area}</p>
-              <h3>{n.home}</h3>
-              <p className="muted">{n.items}</p>
+              <div className="guide-body">
+                <p className="guide-area">{n.area}</p>
+                <h3>{n.home}</h3>
+                <ul className="near-list">
+                  {n.places.map(pl => <li key={pl.name}><a href={mapLink(pl)} target="_blank" rel="noopener noreferrer">📍 {pl.name}</a>{pl.dist && <span className="hint"> · {pl.dist}</span>}</li>)}
+                </ul>
+              </div>
             </article>
           ))}
         </div>
@@ -93,7 +97,11 @@ export default async function PittsburghGuide() {
       <section id="tips" className="block">
         <h2>{t("guide.tips")}</h2>
         <ul className="rules">
-          {(["guide.tip1", "guide.tip2", "guide.tip3", "guide.tip4", "guide.tip5"] as const).map(k => <li key={k}>{t(k)}</li>)}
+          <li>{t("guide.tip1")} <a className="tip-link" href={mapLink({ name: "Pittsburgh International Airport", q: "Pittsburgh International Airport (PIT)" })} target="_blank" rel="noopener noreferrer">✈️ Directions to the airport ↗</a></li>
+          <li>{t("guide.tip2")} <a className="tip-link" href="https://www.rideprt.org/" target="_blank" rel="noopener noreferrer">🚇 T and bus schedules (PRT) ↗</a></li>
+          <li>{t("guide.tip3")} <a className="tip-link" href="https://www.google.com/maps/dir/?api=1&travelmode=transit" target="_blank" rel="noopener noreferrer">🚌 Plan a trip in Google Maps ↗</a> <a className="tip-link" href="https://transitapp.com/" target="_blank" rel="noopener noreferrer">📱 Transit app ↗</a></li>
+          <li>{t("guide.tip4")}</li>
+          <li>{t("guide.tip5")}</li>
         </ul>
         <div className="box" style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 16, marginTop: 20 }}>
           <div className="stack" style={{ flex: 1, minWidth: 240 }}><h3>{t("guide.ready")}</h3><p className="muted">{t("guide.readyText")}</p></div>

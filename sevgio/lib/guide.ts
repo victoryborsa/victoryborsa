@@ -3,7 +3,8 @@ export type Place = { name: string; area: string; text: string; icon: string; q?
 export type Section = { id: "see" | "museums" | "eat" | "drink" | "do"; tone: string; places: Place[] };
 
 export const slugOf = (name: string) => name.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-export const mapLink = (p: Place) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.q || p.name) + ", Pittsburgh, PA")}`;
+/** Directions in Google Maps (starts navigation on phones). */
+export const mapLink = (p: { name: string; q?: string }) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent((p.q || p.name) + ", Pittsburgh, PA")}`;
 
 export const SECTIONS: Section[] = [
   { id: "see", tone: "#0B2A5B", places: [
@@ -56,10 +57,21 @@ export const SECTIONS: Section[] = [
   ] },
 ];
 
-export const NEAR: { home: string; area: string; items: string }[] = [
-  { home: "North Shore Nest", area: "North Side / North Shore", items: "Mayfly Market (500 ft), The Lunch Box (1,250 ft), Monterey Pub (1,450 ft), National Aviary, Children's Museum, Andy Warhol Museum (1 mi), PNC Park and Acrisure Stadium, North Side T station (0.9 mi)." },
-  { home: "Cozy Stay in Pittsburgh", area: "Swissvale", items: "Frick Park (1.9 mi), Regent Square's cafés and shops, Squirrel Hill's restaurants (about 5 minutes), Shadyside (about 10 minutes), Carnegie Mellon and Chatham universities." },
-  { home: "Cozy 3BR House with Garage", area: "East Hills", items: "Royal Caribbean Takeout & Delivery (0.9 mi), Nobleman Cigar Lounge (1.1 mi), Chopstick House (1.2 mi), Frick Park (3.4 mi), Edgewood Town Center, Phipps Conservatory and the Carnegie Museums (about 5 mi)." },
+export type NearPlace = { name: string; dist?: string; q?: string };
+export const NEAR: { home: string; area: string; places: NearPlace[] }[] = [
+  { home: "North Shore Nest", area: "North Side / North Shore", places: [
+    { name: "Mayfly Market", dist: "500 ft" }, { name: "The Lunch Box", dist: "1,250 ft" }, { name: "Monterey Pub", dist: "1,450 ft" },
+    { name: "National Aviary" }, { name: "Children's Museum of Pittsburgh", q: "Children's Museum of Pittsburgh" }, { name: "Andy Warhol Museum", dist: "1 mi" },
+    { name: "PNC Park" }, { name: "Acrisure Stadium" }, { name: "North Side T station", dist: "0.9 mi", q: "North Side Station, Pittsburgh" },
+  ] },
+  { home: "Cozy Stay in Pittsburgh", area: "Swissvale", places: [
+    { name: "Frick Park", dist: "1.9 mi" }, { name: "Regent Square cafés and shops", q: "Regent Square, Pittsburgh" }, { name: "Squirrel Hill restaurants", dist: "about 5 min", q: "Squirrel Hill, Pittsburgh" },
+    { name: "Shadyside", dist: "about 10 min", q: "Walnut Street, Shadyside, Pittsburgh" }, { name: "Carnegie Mellon University" }, { name: "Chatham University" },
+  ] },
+  { home: "Cozy 3BR House with Garage", area: "East Hills", places: [
+    { name: "Royal Caribbean Takeout & Delivery", dist: "0.9 mi" }, { name: "Nobleman Cigar Lounge", dist: "1.1 mi" }, { name: "Chopstick House", dist: "1.2 mi" },
+    { name: "Frick Park", dist: "3.4 mi" }, { name: "Edgewood Town Center" }, { name: "Phipps Conservatory", dist: "about 5 mi" }, { name: "Carnegie Museums", dist: "about 5 mi", q: "Carnegie Museum of Natural History" },
+  ] },
 ];
 
 export const YINZER: [string, string][] = [

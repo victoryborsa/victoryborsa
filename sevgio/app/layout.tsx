@@ -3,6 +3,7 @@ import Link from "next/link";
 import { after } from "next/server";
 import { maybeRunScheduledJobs } from "@/lib/scheduled.ts";
 import { Logo } from "@/components/Logo.tsx";
+import { mailUrl, telUrl } from "@/lib/links.ts";
 import { Bricolage_Grotesque, Figtree, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { currentUser } from "@/lib/auth.ts";
@@ -75,8 +76,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="stack" style={{ gap: 6 }}>
               <span className="eyebrow">{t("foot.help")}</span>
               <Link href="/contact">{t("foot.contact")}</Link>
-              {settings.contact_email && <span className="muted">{settings.contact_email}</span>}
-              {settings.contact_phone && <span className="muted">{settings.contact_phone}</span>}
+              {settings.contact_email && <a className="muted" href={mailUrl(settings.contact_email)}>✉️ {settings.contact_email}</a>}
+              {settings.contact_phone && <a className="muted" href={telUrl(settings.contact_phone)}>📞 {settings.contact_phone}</a>}
             </div>
             <div className="stack" style={{ gap: 6 }}>
               <span className="eyebrow">{t("foot.hosts")}</span>
