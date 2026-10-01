@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth.ts";
+import { verificationRequired } from "@/lib/email.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { changePasswordAction, resendCodeAction, updateProfileAction, verifyCodeAction } from "@/app/actions/auth.ts";
 
@@ -18,7 +19,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
         {u.role === "admin" ? <>You're an administrator. <Link href="/admin">Open the admin dashboard</Link>.</> : u.role === "host" ? <>You're a host. <Link href="/host">Open your host dashboard</Link>.</> : <>See your bookings in <Link href="/trips">My trips</Link>.</>}
       </p>
       {reset && <div className="notice ok" style={{ marginBottom: 16 }}>Your password has been changed and you're signed in.</div>}
-      {!u.verified && (
+      {!u.verified && verificationRequired() && (
         <div className="box" style={{ marginBottom: 20 }}>
           <h2>Confirm your email</h2>
           <p>Enter the 6-digit code we sent to <b>{u.email}</b>. You need it before you can book.</p>

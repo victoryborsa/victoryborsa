@@ -16,6 +16,7 @@ import { PaymentChoice } from "@/components/PaymentChoice.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { createBookingAction } from "@/app/actions/bookings.ts";
 import { resendCodeAction, verifyCodeAction } from "@/app/actions/auth.ts";
+import { verificationRequired } from "@/lib/email.ts";
 
 export const metadata: Metadata = { title: "Confirm your booking", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -54,7 +55,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
         <li><span className="n">3</span>{instant ? "Confirmed" : "Host replies"}</li>
       </ol>
       <div className="checkout-grid" style={{ paddingTop: 0 }}>
-        {!u.verified ? (
+        {!u.verified && verificationRequired() ? (
           <div className="box">
             <h2>Confirm your email</h2>
             <p>To keep bookings genuine, we sent a 6-digit code to <b>{u.email}</b>. Enter it below to continue. Your dates are saved.</p>

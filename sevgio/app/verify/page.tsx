@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { requireUser, safeNext } from "@/lib/auth.ts";
+import { verificationRequired } from "@/lib/email.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { resendCodeAction, startOverAction, verifyCodeAction } from "@/app/actions/auth.ts";
 import { signOutAction } from "@/app/actions/auth.ts";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function Verify({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const next = safeNext((await searchParams).next, "/trips");
   const u = await requireUser(undefined, "/verify?next=" + encodeURIComponent(next), { allowUnverified: true });
-  if (u.verified) redirect(next);
+  if (u.verified || !verificationRequired()) redirect(next);
   return (
     <div className="wrap">
       <div className="auth box">

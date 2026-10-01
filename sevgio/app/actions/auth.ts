@@ -6,6 +6,7 @@ import { checkPassword, clientIp, createSession, destroySession, dummyHash, hash
 import { isEmail, str, type ActionState } from "@/lib/validate.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
+import { verificationRequired } from "@/lib/email.ts";
 import { checkVerificationCode, sendVerificationCode } from "@/lib/verify.ts";
 
 const homeFor = (role: string) => (role === "admin" ? "/admin" : role === "host" ? "/host" : "/trips");
@@ -29,7 +30,7 @@ export async function signInAction(_: ActionState, fd: FormData): Promise<Action
   const next = safeNext(fd.get("next"), homeFor(u.role));
   // Guests who never confirmed their email get a fresh code and must confirm before using the account.
   const unverified = await one("SELECT 1 FROM users WHERE id = $1 AND role = 'customer' AND email_verified_at IS NULL", [u.id]);
-  if (unverified) {
+  if (unverified && verificationRequired()) {
     const full = await one<{ id: string; email: string; name: string }>("SELECT id, email, name FROM users WHERE id = $1", [u.id]);
     await sendVerificationCode(full!);
     redirect("/verify?next=" + encodeURIComponent(next));
@@ -47,8 +48,10 @@ export async function signUpAction(_: ActionState, fd: FormData): Promise<Action
   const u = await one<{ id: string }>("INSERT INTO users (email, name, phone, password_hash) VALUES ($1, $2, $3, $4) RETURNING id", [email, name, phone, await hashPassword(password)]);
   await createSession(u!.id);
   await sendVerificationCode({ id: u!.id, email, name });
+  const next = safeNext(fd.get("next"), "/trips");
+  if (!verificationRequired()) redirect(next);
   await logEvent("info", "Accounts", `New account waiting for email confirmation: ${email}`, {}, u!.id);
-  redirect("/verify?next=" + encodeURIComponent(safeNext(fd.get("next"), "/trips")));
+  redirect("/verify?next=" + encodeURIComponent(next));
 }
 
 export async function signOutAction() {

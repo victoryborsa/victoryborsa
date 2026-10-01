@@ -11,6 +11,7 @@ import { getSettings } from "@/lib/settings.ts";
 import { str, type ActionState } from "@/lib/validate.ts";
 import { partyFromForm, partyLabel } from "@/lib/party.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
+import { verificationRequired } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
 import { fmtDate } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
@@ -19,7 +20,7 @@ export async function createBookingAction(_: ActionState, fd: FormData): Promise
   const slug = str(fd, "slug", 100);
   const ci = str(fd, "ci", 10), co = str(fd, "co", 10), party = partyFromForm(fd);
   const u = await requireUser(undefined, `/book/${slug}?ci=${ci}&co=${co}&adults=${party.adults}&children=${party.children}&infants=${party.free_children}`);
-  if (!u.verified) return { error: "Please confirm your email address first. Enter the code we sent you above." };
+  if (!u.verified && verificationRequired()) return { error: "Please confirm your email address first. Enter the code we sent you above." };
   const name = str(fd, "name", 120), phone = str(fd, "phone", 40), arrival = str(fd, "arrival", 60), message = str(fd, "message", 2000);
   const p = await one<{ id: string; booking_mode: string; owner_zelle: string; owner_venmo: string }>("SELECT id, booking_mode, owner_zelle, owner_venmo FROM properties WHERE slug = $1", [slug]);
   if (!p) return { error: "This home no longer exists." };

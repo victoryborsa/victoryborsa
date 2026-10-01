@@ -1,6 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
+import { verificationRequired } from "./email.ts";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
@@ -55,7 +56,7 @@ export const currentUser = cache(async (): Promise<User | null> => {
 export async function requireUser(roles?: Role[], next?: string, opts: { allowUnverified?: boolean } = {}): Promise<User> {
   const u = await currentUser();
   if (!u) redirect("/signin" + (next ? "?next=" + encodeURIComponent(next) : ""));
-  if (!u.verified && u.role === "customer" && !opts.allowUnverified) redirect("/verify" + (next ? "?next=" + encodeURIComponent(next) : ""));
+  if (!u.verified && u.role === "customer" && !opts.allowUnverified && verificationRequired()) redirect("/verify" + (next ? "?next=" + encodeURIComponent(next) : ""));
   if (roles && !roles.includes(u.role)) redirect("/no-access");
   return u;
 }
