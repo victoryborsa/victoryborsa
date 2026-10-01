@@ -14,6 +14,8 @@ function getTransport() {
     host: env("SMTP_HOST"),
     port: Number(env("SMTP_PORT") || 587),
     secure: Number(env("SMTP_PORT")) === 465,
+    // Give up quickly if the mail server can't be reached, so pages never hang waiting for email.
+    connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 20_000,
     auth: smtpUser() ? { user: smtpUser(), pass: env("SMTP_PASS").replace(/\s+/g, "") } : undefined,
   });
   return transport;
@@ -34,12 +36,17 @@ export const verificationRequired = () => env("REQUIRE_EMAIL_VERIFICATION") === 
 export const siteUrl = () => (process.env.SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 
 /** Sends a plain-text email. Failures are logged for admins but never break the page. */
-export async function sendEmail(to: string, subject: string, text: string): Promise<{ ok: boolean; error?: string }> {
+export async function sendEmail(to: string, subject: string, text: string, opts: { force?: boolean } = {}): Promise<{ ok: boolean; error?: string }> {
   const t = getTransport();
   const body = text + "\n\n— Sevgio\n" + siteUrl();
   if (!t) {
     console.log(`\n[email not configured] To: ${to}\nSubject: ${subject}\n${body}\n`);
     return { ok: false, error: "not-configured" };
+  }
+  // After a failure, don't make every page wait on a broken mail server; retry after 30 minutes (the admin test always tries).
+  if (failingNow() && !opts.force) {
+    console.log(`\n[email skipped: sending is failing] To: ${to}\nSubject: ${subject}\n${body}\n`);
+    return { ok: false, error: "failing" };
   }
   try {
     await t.sendMail({ from: fromAddress(), to, subject, text: body });

@@ -179,10 +179,11 @@ export async function slideCommandAction(fd: FormData) {
 /** Sends a test email to the signed-in admin and explains any problem in plain words. */
 export async function testEmailAction(_: ActionState, _fd: FormData): Promise<ActionState> {
   const u = await requireUser(["admin"]);
-  const r = await sendEmail(u.email, "Sevgio test email", "It works! Your website can send emails: verification codes, booking confirmations and new-booking alerts.");
+  const r = await sendEmail(u.email, "Sevgio test email", "It works! Your website can send emails: verification codes, booking confirmations and new-booking alerts.", { force: true });
   if (r.ok) return { ok: `Test email sent to ${u.email}. Check your inbox (and the Spam folder).` };
   if (r.error === "not-configured") return { error: "Email isn't set up yet. Add SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS in Render → Environment (see the steps in the README), then try again." };
   if (/535|Username and Password not accepted|Invalid login|BadCredentials/i.test(r.error || "")) return { error: "Gmail refused the login. Check SMTP_USER is your full Gmail address and SMTP_PASS is the 16-letter App Password (not your normal Gmail password)." };
+  if (/timeout|ETIMEDOUT|ECONNREFUSED|ENETUNREACH/i.test(r.error || "")) return { error: "The website couldn't reach Gmail (connection timeout). Render's free plan blocks sending email. Change the sevgio web service's Instance Type to Starter in Render → sevgio → Settings, then try again." };
   return { error: `The email couldn't be sent: ${(r.error || "").slice(0, 200)}` };
 }
 
