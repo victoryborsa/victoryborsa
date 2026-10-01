@@ -14,6 +14,14 @@ const VIEWS = [["day", "Day"], ["week", "Week"], ["month", "Month"]] as const;
 type View = (typeof VIEWS)[number][0];
 const ICON: Record<string, string> = { steelers: "🏈", pirates: "⚾", penguins: "🏒", Sports: "🏟️", Music: "🎵", "Arts & Theatre": "🎭", Family: "🎈", Festivals: "🎪", "Food & Drink": "🍻", Other: "📅" };
 const TONE: Record<string, string> = { steelers: "#101820", pirates: "#27251F", penguins: "#FCB514", Sports: "#0B2A5B", Music: "#7A3E9D", "Arts & Theatre": "#B3262B", Family: "#0A6B66", Festivals: "#C47A00", "Food & Drink": "#8A4B12", Other: "#29353F" };
+const OFFICIAL = [
+  { icon: "🏈", name: "Steelers schedule", text: "Home games at Acrisure Stadium, North Shore.", url: "https://www.steelers.com/schedule/" },
+  { icon: "⚾", name: "Pirates schedule", text: "Home games at PNC Park, North Shore.", url: "https://www.mlb.com/pirates/schedule" },
+  { icon: "🏒", name: "Penguins schedule", text: "Home games at PPG Paints Arena, Uptown.", url: "https://www.nhl.com/penguins/schedule" },
+  { icon: "🎪", name: "Downtown Pittsburgh events", text: "Festivals, markets and happenings downtown.", url: "https://downtownpittsburgh.com/events/" },
+  { icon: "🎟️", name: "Concerts & shows on Ticketmaster", text: "Music, comedy and theatre around Pittsburgh.", url: "https://www.ticketmaster.com/discover/pittsburgh" },
+  { icon: "🌆", name: "VisitPittsburgh events", text: "The city's official visitor calendar.", url: "https://www.visitpittsburgh.com/events-festivals/" },
+];
 const monthStart = (d: string) => d.slice(0, 8) + "01";
 const nextMonth = (d: string) => addDays(monthStart(d), 32).slice(0, 8) + "01";
 const prevMonth = (d: string) => addDays(monthStart(d), -1).slice(0, 8) + "01";
@@ -67,13 +75,23 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
       <h2 className="mc-period" style={{ marginTop: 18 }}>{period}</h2>
 
       {groups.size === 0 ? (
-        <div className="empty" style={{ marginTop: 16 }}><h3>No events found</h3><p className="muted">Try another {unit}, or show all events.</p></div>
+        <div className="empty" style={{ marginTop: 16 }}><h3>No events listed for this {unit} yet</h3><p className="muted">Try another {unit}, or check the official schedules below.</p></div>
       ) : [...groups.entries()].map(([day, list]) => (
         <section key={day} className="block" style={{ paddingTop: 18 }}>
           {view !== "day" && <h3 className="events-day">{fmtDate(day, { weekday: "long", month: "long", day: "numeric" })}{day === today ? " · Today" : ""}</h3>}
           <div className="events-grid">{list.map(e => <EventCard key={e.id + day} e={e} />)}</div>
         </section>
       ))}
+      <section className="block" style={{ paddingTop: 28 }}>
+        <h2>Official schedules & calendars</h2>
+        <div className="guide-grid">
+          {OFFICIAL.map(o => (
+            <a key={o.url} className="guide-card official" href={o.url} target="_blank" rel="noopener noreferrer">
+              <div className="guide-body"><span className="official-icon" aria-hidden>{o.icon}</span><h3>{o.name}</h3><p className="muted">{o.text}</p><span className="guide-map">Open ↗</span></div>
+            </a>
+          ))}
+        </div>
+      </section>
       <p className="hint" style={{ marginTop: 24 }}>Event times and details can change. Always check with the venue or ticket seller before you go. Sports and concert listings are provided by Ticketmaster.</p>
     </div>
   );

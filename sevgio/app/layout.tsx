@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { after } from "next/server";
+import { maybeRunScheduledJobs } from "@/lib/scheduled.ts";
 import { Logo } from "@/components/Logo.tsx";
 import { Bricolage_Grotesque, Figtree, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
@@ -23,6 +25,8 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, view
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [user, settings, { lang, t }] = await Promise.all([currentUser(), getSettings(), getT()]);
+  // Hourly housekeeping (calendar sync, events, expiring requests) runs after the page is sent, never slowing it down.
+  after(maybeRunScheduledJobs);
   return (
     <html lang={lang} className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body>
