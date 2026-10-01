@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { q } from "@/lib/db.ts";
+import { SkylineArt } from "@/components/PittsburghArt.tsx";
 import { NEAR, SECTIONS, YINZER, mapLink, slugOf, type Section } from "@/lib/guide.ts";
 import { getT } from "@/lib/i18n.ts";
 import type { T } from "@/lib/i18n.ts";
@@ -40,16 +41,33 @@ export default async function PittsburghGuide() {
   const rows = await q<{ id: string; slot: string }>("SELECT id, slot FROM site_photos WHERE slot IS NOT NULL");
   const photos = new Map(rows.map(r => [r.slot, r.id]));
   const sec = (id: Section["id"]) => SECTIONS.find(s => s.id === id)!;
+  // Banner: the chosen banner photo, else the Duquesne Incline photo, else the drawn skyline.
+  const banner = photos.get("guide-banner") ?? photos.get(slugOf(SECTIONS[0].places[0].name));
   return (
     <div className="wrap guide" style={{ paddingBottom: 56 }}>
+      <section className="guide-banner">
+        <div className="guide-banner-pic" aria-hidden="true">
+          {banner ? <img src={`/api/site-photos/${banner}`} alt="" fetchPriority="high" /> : <SkylineArt />}
+        </div>
+        <div className="guide-banner-text">
+          <p className="eyebrow">{t("guide.eyebrow")}</p>
+          <h1>{t("guide.title")}</h1>
+          <p className="lede">{t("guide.intro")}</p>
+          {lang !== "en" && <p className="hint">{t("guide.englishNote")}</p>}
+        </div>
+      </section>
       <section className="guide-hero">
-        <p className="eyebrow">{t("guide.eyebrow")}</p>
-        <h1>{t("guide.title")}</h1>
-        <p className="lede">{t("guide.intro")}</p>
-        {lang !== "en" && <p className="hint">{t("guide.englishNote")}</p>}
         <nav className="guide-toc" aria-label="Guide sections">
-          {([["see", t("guide.see")], ["museums", t("guide.museums")], ["eat", t("guide.eat")], ["drink", t("guide.drink")], ["do", t("guide.do")], ["near", t("guide.near")], ["yinzer", t("guide.yinzer")], ["tips", t("guide.tips")]] as const).map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
+          {([["yinzer", t("guide.yinzer")], ["see", t("guide.see")], ["museums", t("guide.museums")], ["eat", t("guide.eat")], ["drink", t("guide.drink")], ["do", t("guide.do")], ["near", t("guide.near")], ["tips", t("guide.tips")]] as const).map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
         </nav>
+      </section>
+
+      <section id="yinzer" className="block">
+        <h2>{t("guide.yinzer")}</h2>
+        <p className="muted">{t("guide.yinzerIntro")}</p>
+        <dl className="yinzer">
+          {YINZER.map(([w, m]) => <div key={w}><dt>{w}</dt><dd>{m}</dd></div>)}
+        </dl>
       </section>
 
       <section id="see" className="block"><h2>{t("guide.see")}</h2><Grid section={sec("see")} photos={photos} t={t} /></section>
@@ -71,13 +89,6 @@ export default async function PittsburghGuide() {
         </div>
       </section>
 
-      <section id="yinzer" className="block">
-        <h2>{t("guide.yinzer")}</h2>
-        <p className="muted">{t("guide.yinzerIntro")}</p>
-        <dl className="yinzer">
-          {YINZER.map(([w, m]) => <div key={w}><dt>{w}</dt><dd>{m}</dd></div>)}
-        </dl>
-      </section>
 
       <section id="tips" className="block">
         <h2>{t("guide.tips")}</h2>

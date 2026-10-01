@@ -19,6 +19,22 @@ export default async function GuidePhotos() {
         <h2>Pittsburgh guide photos</h2>
         <p className="muted">{photos.size} of {total} places have a photo. Add one for each place and it replaces the picture icon on the <Link href="/pittsburgh">Pittsburgh guide</Link>. Wide (landscape) photos look best. Use photos you took, or free ones from unsplash.com or pexels.com.</p>
       </div>
+      <section className="stack" style={{ gap: 12 }}>
+        <h3>Page banner (top of the guide)</h3>
+        <div className="guide-admin">
+          <div className="guide-admin-row">
+            <div className="guide-pic small" style={{ "--tone": "#0B2A5B" } as React.CSSProperties}>
+              {photos.get("guide-banner") ? <img src={`/api/site-photos/${photos.get("guide-banner")}?s=thumb`} alt="" /> : <span className="guide-icon" aria-hidden>🌆</span>}
+            </div>
+            <div className="stack" style={{ gap: 6, flex: 1, minWidth: 220 }}>
+              <b>Big picture behind “Your Pittsburgh guide”</b>
+              <span className="hint">A wide skyline photo works best. Without one, the Duquesne Incline photo is used.</span>
+              <PhotoUploader id="guide-banner" action={uploadGuidePhotoAction} compact label={photos.get("guide-banner") ? "Replace photo" : "Add photo"} />
+              {photos.get("guide-banner") && <form action={removeGuidePhotoAction}><input type="hidden" name="slot" value="guide-banner" /><button className="linkbtn" type="submit">Remove photo</button></form>}
+            </div>
+          </div>
+        </div>
+      </section>
       {SECTIONS.map(sec => (
         <section key={sec.id} className="stack" style={{ gap: 12 }}>
           <h3>{TITLES[sec.id]}</h3>

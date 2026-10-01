@@ -13,7 +13,7 @@ import { processPhoto } from "@/lib/photos.ts";
 import { moveListingFamily } from "@/lib/homes.ts";
 import { SECTIONS, slugOf } from "@/lib/guide.ts";
 
-const GUIDE_SLUGS = new Set(SECTIONS.flatMap(s => s.places.map(p => slugOf(p.name))));
+const GUIDE_SLUGS = new Set(["guide-banner", ...SECTIONS.flatMap(s => s.places.map(p => slugOf(p.name)))]);
 
 export async function setRoleAction(_: ActionState, fd: FormData): Promise<ActionState> {
   const admin = await requireUser(["admin"]);
