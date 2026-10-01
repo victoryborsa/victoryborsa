@@ -1,7 +1,8 @@
-import { nightsBetween } from "./dates.ts";
+import { eachNight, nightsBetween, todayLocal } from "./dates.ts";
+import { nightPrice, type SmartListing } from "./smart-pricing.ts";
 import { parseServices } from "./constants.ts";
 
-export type PricingInput = {
+export type PricingInput = SmartListing & {
   nightly_price_cents: number; cleaning_fee_cents: number; max_guests: number; base_occupancy?: number | null;
   extra_guest_fee_cents?: number; fewer_guest_discount_percent?: number; weekly_discount_percent?: number; monthly_discount_percent?: number;
   pets_allowed?: boolean; amenities?: string[]; pet_fee_cents?: number; pet_fee_per?: string; services?: unknown;
@@ -12,7 +13,8 @@ export type Party = { adults: number; children: number; free_children: number; p
 export type Quote = {
   nights: number;
   baseNightly: number;     // listing's normal nightly price
-  nightly: number;         // nightly price for this group
+  nightly: number;         // nightly price for this group (the average when smart pricing changes it night by night)
+  smart: boolean;          // smart pricing set the nightly prices
   extraGuests: number;     // guests above base occupancy (paying an extra-guest fee)
   fewerGuests: number;     // guests below base occupancy (getting a discount)
   base: number;            // nightly × nights
@@ -28,15 +30,17 @@ export type Quote = {
 };
 
 /** Price for a stay, in cents. Shared by the browser (live preview) and the server (the amount that is saved). */
-export function quote(p: PricingInput, ci: string, co: string, taxPercent: number, party?: Party): Quote {
+export function quote(p: PricingInput, ci: string, co: string, taxPercent: number, party?: Party, today = todayLocal()): Quote {
   const nights = nightsBetween(ci, co);
   const baseOcc = Math.min(p.base_occupancy || p.max_guests, p.max_guests);
   const billable = party ? Math.max(1, party.adults + party.children) : baseOcc;
   const extraGuests = Math.max(0, billable - baseOcc);
   const fewerGuests = Math.max(0, baseOcc - billable);
   const fewerPct = Math.min(90, fewerGuests * Number(p.fewer_guest_discount_percent || 0));
-  const nightly = Math.round(p.nightly_price_cents * (1 - fewerPct / 100)) + extraGuests * (p.extra_guest_fee_cents || 0);
-  const base = nightly * nights;
+  const forGroup = (rate: number) => Math.round(rate * (1 - fewerPct / 100)) + extraGuests * (p.extra_guest_fee_cents || 0);
+  const smart = !!p.smart_pricing && nights > 0;
+  const base = smart ? eachNight(ci, co).reduce((n, d) => n + forGroup(nightPrice(p, d, today)), 0) : forGroup(p.nightly_price_cents) * nights;
+  const nightly = smart ? Math.round(base / nights) : forGroup(p.nightly_price_cents);
   const monthly = Number(p.monthly_discount_percent || 0), weekly = Number(p.weekly_discount_percent || 0);
   const pct = nights >= 28 && monthly > 0 ? monthly : nights >= 7 ? weekly : 0;
   const discountLabel = pct ? `${nights >= 28 && monthly > 0 ? "Monthly" : "Weekly"} discount (${pct}%)` : "";
@@ -53,7 +57,7 @@ export function quote(p: PricingInput, ci: string, co: string, taxPercent: numbe
     return { key: x.key, name: x.name, per: x.per, price_cents: x.price_cents, qty, total: x.price_cents * qty };
   });
   const extrasTotal = extras.reduce((n, x) => n + x.total, 0);
-  return { nights, baseNightly: p.nightly_price_cents, nightly, extraGuests, fewerGuests, base, discount, discountLabel, cleaning, pets, petFee, extras, extrasTotal, tax,
+  return { nights, baseNightly: p.nightly_price_cents, nightly, smart, extraGuests, fewerGuests, base, discount, discountLabel, cleaning, pets, petFee, extras, extrasTotal, tax,
     total: base - discount + cleaning + petFee + extrasTotal + tax };
 }
 

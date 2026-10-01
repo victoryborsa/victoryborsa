@@ -203,7 +203,7 @@ test("listing details, per-guest pricing with children, and the owner statement"
   // Admin sets a 20% management fee on Jim Thorpe Mountain Cabin.
   await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
   await page.goto("/admin/listings");
-  await page.locator("tr", { hasText: "Jim Thorpe" }).getByRole("link", { name: "Edit" }).click();
+  await page.locator(".al-card", { hasText: "Jim Thorpe" }).getByRole("link", { name: "Edit" }).click();
   await page.getByLabel("Management fee (%)").fill("20");
   await page.getByRole("button", { name: "Save listing" }).click();
   await expect(page.getByText(/Saved\./)).toBeVisible();
@@ -373,11 +373,11 @@ test("admin can delete a listing without reservations, but not one with reservat
   const [h] = await sql<{ id: string }>("SELECT id FROM users WHERE email = 'admin@demo.sevgio.com'");
   await sql("INSERT INTO properties (host_id, slug, title, city, address, description, nightly_price_cents, max_guests, bedrooms, beds, bathrooms) VALUES ($1, 'delete-me-test', 'Delete Me Test', 'Erie', '1 Main St', 'x', 9900, 2, 1, 1, 1)", [h.id]);
   await page.goto("/admin/listings");
-  await page.locator("tr", { hasText: "Delete Me Test" }).getByRole("link", { name: "Delete" }).click();
+  await page.locator(".al-card", { hasText: "Delete Me Test" }).getByRole("link", { name: "Delete" }).click();
   await page.getByLabel(/Yes, delete/).check();
   await page.getByRole("button", { name: "Delete listing" }).click();
   await expect(page.getByText("Listing deleted.")).toBeVisible();
-  await expect(page.locator("tr", { hasText: "Delete Me Test" })).toHaveCount(0);
+  await expect(page.locator(".al-card", { hasText: "Delete Me Test" })).toHaveCount(0);
   expect(await sql("SELECT 1 FROM properties WHERE slug = 'delete-me-test'")).toHaveLength(0);
   await signOut(page);
 });
@@ -610,7 +610,7 @@ test("admin adds a property owner without emailing them and puts a listing under
   await form.getByRole("button", { name: "Add person" }).click();
   await expect(page.getByText(/Added Owner Olivia\. No email was sent/)).toBeVisible();
   await page.goto("/admin/listings");
-  const row = page.locator("tr", { hasText: "Mount Washington View House" });
+  const row = page.locator(".al-card", { hasText: "Mount Washington View House" });
   await row.getByLabel("Host for Mount Washington View House").selectOption({ label: "Owner Olivia" });
   await row.locator("form").filter({ has: page.getByLabel("Host for Mount Washington View House") }).getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Mount Washington View House is now managed by Owner Olivia.")).toBeVisible();
@@ -668,7 +668,7 @@ test("yearly listing fee: a host can't publish until paid; admin marks paid or w
 
   await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
   await page.goto("/admin/listings");
-  const row = page.getByRole("row").filter({ hasText: l.title }).first();
+  const row = page.locator(".al-card").filter({ hasText: l.title }).first();
   await expect(row.getByText("Not paid")).toBeVisible();
   await row.getByRole("button", { name: "Mark paid (1 year)" }).click();
   await expect(row.getByText(/^Paid until/)).toBeVisible();
@@ -679,7 +679,7 @@ test("yearly listing fee: a host can't publish until paid; admin marks paid or w
   await expect(row.getByText("Waived")).toBeVisible();
   await expect(row.getByRole("button", { name: "Charge fee" })).toBeVisible();
   const [mine] = await sql<{ title: string }>("SELECT p.title FROM properties p JOIN users u ON u.id = p.host_id WHERE u.role = 'admin' ORDER BY p.title LIMIT 1");
-  if (mine) await expect(page.getByRole("row").filter({ hasText: mine.title }).first().getByText("Your listing, no fee")).toBeVisible();
+  if (mine) await expect(page.locator(".al-card").filter({ hasText: mine.title }).first().getByText("Your listing, no fee")).toBeVisible();
   await signOut(page);
 
   await signIn(page, "marcus@demo.sevgio.com", "demo-password-2026");
@@ -689,4 +689,39 @@ test("yearly listing fee: a host can't publish until paid; admin marks paid or w
   await expect(page.getByText(/^Saved\./)).toBeVisible();
   await signOut(page);
   await sql("UPDATE properties SET status = $2 WHERE id = $1", [l.id, before.status]);
+});
+
+test("smart pricing: prices follow events between the minimum and maximum; event days get a red circle", async ({ page }) => {
+  const [p] = await sql<{ id: string }>("SELECT id FROM properties WHERE slug = 'downtown-state-college-condo'");
+  // A Steelers game on a Tuesday a few weeks out.
+  let d = iso(20);
+  while (new Date(d + "T12:00:00Z").getUTCDay() !== 2) d = new Date(Date.parse(d + "T12:00:00Z") + 86_400_000).toISOString().slice(0, 10);
+  await sql("INSERT INTO events (source, title, local_date, team, category) VALUES ('manual', 'Steelers vs. Browns', $1, 'steelers', 'Sports')", [d]);
+
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto(`/host/listings/${p.id}`);
+  await page.getByLabel("Nightly price (USD)").fill("100");
+  await page.getByLabel(/Smart pricing/).check();
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText("Smart pricing needs a lowest and a highest price per night.")).toBeVisible();
+  await page.getByLabel("Lowest price per night (USD)").fill("90");
+  await page.getByLabel("Highest price per night (USD)").fill("149");
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/^Saved\./)).toBeVisible();
+
+  await page.goto(`/admin/calendar?view=month&property=${p.id}&start=${d}`);
+  const day = page.locator(".mg-day").filter({ has: page.locator(".mg-num.ev", { hasText: new RegExp(`^${Number(d.slice(8))}\\b`) }) });
+  await expect(day).toHaveCount(1);
+  await expect(day.locator(".mg-num")).toHaveAttribute("title", /Steelers vs\. Browns/);
+  await expect(day.locator(".mg-price")).toHaveText("$130");
+  await expect(page.getByText(/Red circle: a game, big event or holiday/)).toBeVisible();
+  await signOut(page);
+
+  // Monday + Tuesday (game) nights: $100 + $130.
+  const mon = new Date(Date.parse(d + "T12:00:00Z") - 86_400_000).toISOString().slice(0, 10);
+  await page.goto(`/stays/downtown-state-college-condo?ci=${mon}&co=${new Date(Date.parse(d + "T12:00:00Z") + 86_400_000).toISOString().slice(0, 10)}&adults=2`);
+  const panel = page.locator("#book table.breakdown");
+  await expect(panel).toContainText("$115 avg × 2 nights");
+  await expect(panel).toContainText("$230");
+  await sql("UPDATE properties SET smart_pricing = false WHERE id = $1", [p.id]);
 });

@@ -52,12 +52,18 @@ function readListing(fd: FormData) {
     deposit: toCents(str(fd, "security_deposit") || "0"),
     pet_fee: fd.getAll("amenities").includes("pets") && str(fd, "pet_fee_mode") === "fee" ? toCents(str(fd, "pet_fee") || "0") : 0,
     pet_fee_per: str(fd, "pet_fee_per") || "stay",
+    smart_pricing: fd.get("smart_pricing") === "on",
+    min_price: str(fd, "min_price") ? toCents(str(fd, "min_price")) : null,
+    max_price: str(fd, "max_price") ? toCents(str(fd, "max_price")) : null,
   };
   let error = "";
   if (!v.title) error = "Give the listing a title.";
   else if (fd.getAll("amenities").includes("pets") && str(fd, "pet_fee_mode") === "fee" && !(Number.isFinite(v.pet_fee) && (v.pet_fee as number) > 0)) error = "Add the pet fee amount, or choose Free.";
   else if (!["stay", "night", "pet_stay", "pet_night"].includes(v.pet_fee_per)) error = "Choose how the pet fee is charged.";
   else if (!(Number.isFinite(v.deposit) && (v.deposit as number) >= 0)) error = "Enter the security deposit as a number, or 0.";
+  else if (v.smart_pricing && !(v.min_price && v.max_price && v.min_price > 0 && v.max_price > 0)) error = "Smart pricing needs a lowest and a highest price per night.";
+  else if (v.smart_pricing && v.min_price! > v.max_price!) error = "The lowest price per night can't be higher than the highest.";
+  else if ((v.min_price !== null && !(v.min_price > 0)) || (v.max_price !== null && !(v.max_price > 0))) error = "Enter the minimum and maximum prices as numbers.";
   else if (!v.city) error = "Add the town or city.";
   else if (!(v.property_type in PROPERTY_TYPES)) error = "Choose a property type.";
   else if (!(v.max_guests >= 1 && v.max_guests <= 50)) error = "Maximum guests must be between 1 and 50.";
@@ -98,6 +104,7 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     children_free_age: v.children_free_age, owner_zelle: v.owner_zelle, owner_venmo: v.owner_venmo,
     pet_fee_cents: v.pet_fee || 0, pet_fee_per: v.pet_fee_per,
     rooms_detail: JSON.stringify(v.rooms), services: JSON.stringify(v.services), security_deposit_cents: v.deposit || 0,
+    smart_pricing: v.smart_pricing, min_price_cents: v.min_price, max_price_cents: v.max_price,
   };
   // Only admins set the management fee; hosts never see or change it.
   if (isAdmin && v.management_fee_percent !== null) cols.management_fee_percent = v.management_fee_percent;

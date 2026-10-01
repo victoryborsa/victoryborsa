@@ -5,6 +5,7 @@ import { getSettings } from "@/lib/settings.ts";
 import { isIsoDate, fmtShort, todayLocal } from "@/lib/dates.ts";
 import { AMENITY_FILTERS } from "@/lib/constants.ts";
 import { PropertyCard } from "@/components/PropertyCard.tsx";
+import { demandBetween } from "@/lib/demand.ts";
 import { SearchBar } from "@/components/SearchBar.tsx";
 import { FilterToggle } from "@/components/FilterToggle.tsx";
 import { AutoSubmit } from "@/components/AutoSubmit.tsx";
@@ -32,6 +33,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
   const amen = (Array.isArray(sp.amen) ? sp.amen : sp.amen ? [sp.amen] : []).filter(a => a in AMENITY_FILTERS);
   const f = { loc, ci, co, guests, maxPrice: num(sp.max), bedrooms: num(sp.beds), baths: num(sp.baths), amenities: amen, instant: first(sp.instant) === "1", privateBath: first(sp.pbath) === "1", sort: first(sp.sort) };
   const [list, cities, settings] = await Promise.all([searchProperties(f), publishedCities(), getSettings()]);
+  const demand = ci && list.some(p => p.smart_pricing) ? await demandBetween(ci, co) : undefined;
   const filtersOn = !!(f.maxPrice || f.bedrooms || f.baths || amen.length || f.instant || f.privateBath);
   const clearHref = "/stays?" + new URLSearchParams({ ...(loc && { loc }), ...(ci && { ci, co }), guests: String(guests) });
 
@@ -107,7 +109,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
           {dateError && <div className="notice warn" style={{ marginBottom: 18 }} role="alert">{dateError}</div>}
           {!ci && !dateError && <div className="notice info" style={{ marginBottom: 18 }}>Add your dates to see only homes that are free, with the total price for your stay.</div>}
           {list.length ? (
-            <div className="cards">{list.map((p, i) => <PropertyCard key={p.id} p={p} ci={ci} co={co} guests={guests} taxPercent={settings.tax_percent} eager={i < 3} />)}</div>
+            <div className="cards">{list.map((p, i) => <PropertyCard key={p.id} p={p} demand={demand} ci={ci} co={co} guests={guests} taxPercent={settings.tax_percent} eager={i < 3} />)}</div>
           ) : (
             <div className="empty">
               <h3>No stays match your search</h3>

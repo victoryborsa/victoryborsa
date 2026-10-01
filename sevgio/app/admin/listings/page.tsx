@@ -30,58 +30,63 @@ export default async function AdminListings({ searchParams }: { searchParams: Pr
         <Link className="btn btn-ghost" href="/host/listings/import">Import from file</Link>
         <Link className="btn btn-primary" href="/host/listings/new">Add a listing</Link>
       </div>
-      <div className="tbl-wrap">
-        <table className="tbl">
-          <thead><tr><th>Listing</th><th>Owner (host)</th><th className="num">Price</th><th>Rating (from other sites)</th>{settings.listing_fee_enabled && <th>Listing fee</th>}<th>Status</th><th /></tr></thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.id}>
-                <td><strong>{r.title}</strong><div className="hint">{r.city} · {r.photos} photos · {r.bookings} bookings</div></td>
-                <td style={{ minWidth: 220 }}>
-                  <ActionForm action={reassignListingAction} className="row">
-                    <input type="hidden" name="id" value={r.id} />
-                    <select name="host_id" defaultValue={r.host_id} aria-label={`Host for ${r.title}`}>{hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>
-                    <SubmitButton className="btn btn-ghost btn-sm" pendingText="…">Save</SubmitButton>
-                  </ActionForm>
-                </td>
-                <td className="num">{money(r.nightly_price_cents)}</td>
-                <td style={{ minWidth: 220 }}>
-                  <ActionForm action={setRatingAction} className="row">
-                    <input type="hidden" name="id" value={r.id} />
-                    <input className="input mono" name="rating" defaultValue={r.rating ?? ""} placeholder="4.9" inputMode="decimal" style={{ width: 70, minHeight: 34, padding: "4px 8px" }} aria-label="Rating" />
-                    <input className="input mono" name="review_count" defaultValue={r.review_count} inputMode="numeric" style={{ width: 70, minHeight: 34, padding: "4px 8px" }} aria-label="Review count" />
-                    <SubmitButton className="btn btn-ghost btn-sm" pendingText="…">Save</SubmitButton>
-                  </ActionForm>
-                </td>
-                {settings.listing_fee_enabled && (() => {
-                  const st = feeState(r, true);
-                  const btn = (cmd: string, label: string) => <form action={listingFeeAction}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="cmd" value={cmd} /><button className="btn btn-ghost btn-sm" type="submit">{label}</button></form>;
-                  return (
-                    <td style={{ minWidth: 190 }}>
-                      {st === "admin" ? <span className="hint">Your listing, no fee</span> : (
-                        <div className="stack" style={{ gap: 6 }}>
-                          <span className={`pill ${st === "paid" ? "ok" : st === "waived" ? "neutral" : "warn"}`}>{st === "paid" ? `Paid until ${fmtDate(r.listing_paid_until!, { month: "short", day: "numeric", year: "numeric" })}` : st === "waived" ? "Waived" : "Not paid"}</span>
-                          <div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
-                            {btn("paid", st === "paid" ? "+1 year paid" : "Mark paid (1 year)")}
-                            {st === "waived" ? btn("charge", "Charge fee") : btn("waive", "Waive")}
-                          </div>
-                        </div>
-                      )}
-                    </td>
-                  );
-                })()}
-                <td>
-                  <form action={setListingStatusAction} className="row" style={{ flexWrap: "nowrap" }}>
-                    <input type="hidden" name="id" value={r.id} />
-                    <span className={`pill ${r.status === "published" ? "ok" : r.status === "draft" ? "warn" : "neutral"}`}>{r.status === "published" ? "Live" : r.status === "draft" ? "Draft" : "Hidden"}</span>
-                    {r.status === "published" ? <SubmitButton className="btn btn-ghost btn-sm" name="status" value="hidden" pendingText="…">Hide</SubmitButton> : r.photos > 0 ? <SubmitButton className="btn btn-ghost btn-sm" name="status" value="published" pendingText="…">Publish</SubmitButton> : <span className="hint">Needs photos</span>}
-                  </form>
-                </td>
-                <td><div className="row" style={{ gap: 6, flexWrap: "nowrap" }}><Link className="btn btn-ghost btn-sm" href={`/host/listings/${r.id}`}>Edit</Link><Link className="btn btn-ghost btn-sm" href={`/stays/${r.slug}`}>View</Link><Link className="btn btn-danger btn-sm" href={`/host/listings/${r.id}?delete=1#delete`}>Delete</Link></div></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="al-list">
+        {rows.map(r => {
+          const st = feeState(r, settings.listing_fee_enabled);
+          const btn = (cmd: string, label: string) => <form action={listingFeeAction}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="cmd" value={cmd} /><button className="btn btn-ghost btn-sm" type="submit">{label}</button></form>;
+          return (
+            <article key={r.id} className="al-card" data-listing={r.title}>
+              <div className="al-cell al-title">
+                <strong>{r.title}</strong>
+                <span className="hint">{r.city} · {money(r.nightly_price_cents)}/night · {r.photos} photos · {r.bookings} bookings</span>
+                <div className="row" style={{ gap: 6 }}>
+                  <Link className="btn btn-ghost btn-sm" href={`/host/listings/${r.id}`}>Edit</Link>
+                  <Link className="btn btn-ghost btn-sm" href={`/stays/${r.slug}`}>View</Link>
+                  <Link className="btn btn-danger btn-sm" href={`/host/listings/${r.id}?delete=1#delete`}>Delete</Link>
+                </div>
+              </div>
+              <div className="al-cell">
+                <small>Owner (host)</small>
+                <ActionForm action={reassignListingAction} className="row">
+                  <input type="hidden" name="id" value={r.id} />
+                  <select className="input" name="host_id" defaultValue={r.host_id} aria-label={`Host for ${r.title}`} style={{ minHeight: 34, padding: "4px 8px", maxWidth: 150 }}>{hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>
+                  <SubmitButton className="btn btn-ghost btn-sm" pendingText="…">Save</SubmitButton>
+                </ActionForm>
+              </div>
+              <div className="al-cell">
+                <small>Rating · reviews</small>
+                <ActionForm action={setRatingAction} className="row">
+                  <input type="hidden" name="id" value={r.id} />
+                  <input className="input mono" name="rating" defaultValue={r.rating ?? ""} placeholder="4.9" inputMode="decimal" style={{ width: 58, minHeight: 34, padding: "4px 8px" }} aria-label="Rating" />
+                  <input className="input mono" name="review_count" defaultValue={r.review_count} inputMode="numeric" style={{ width: 58, minHeight: 34, padding: "4px 8px" }} aria-label="Review count" />
+                  <SubmitButton className="btn btn-ghost btn-sm" pendingText="…">Save</SubmitButton>
+                </ActionForm>
+              </div>
+              {st !== "off" && (
+                <div className="al-cell">
+                  <small>Listing fee</small>
+                  {st === "admin" ? <span className="hint">Your listing, no fee</span> : (
+                    <>
+                      <span className={`pill ${st === "paid" ? "ok" : st === "waived" ? "neutral" : "warn"}`} style={{ justifySelf: "start" }}>{st === "paid" ? `Paid until ${fmtDate(r.listing_paid_until!, { month: "short", day: "numeric", year: "numeric" })}` : st === "waived" ? "Waived" : "Not paid"}</span>
+                      <div className="row">
+                        {btn("paid", st === "paid" ? "+1 year paid" : "Mark paid (1 year)")}
+                        {st === "waived" ? btn("charge", "Charge fee") : btn("waive", "Waive")}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              <div className="al-cell">
+                <small>Status</small>
+                <form action={setListingStatusAction} className="row">
+                  <input type="hidden" name="id" value={r.id} />
+                  <span className={`pill ${r.status === "published" ? "ok" : r.status === "draft" ? "warn" : "neutral"}`}>{r.status === "published" ? "Live" : r.status === "draft" ? "Draft" : "Hidden"}</span>
+                  {r.status === "published" ? <SubmitButton className="btn btn-ghost btn-sm" name="status" value="hidden" pendingText="…">Hide</SubmitButton> : r.photos > 0 ? <SubmitButton className="btn btn-ghost btn-sm" name="status" value="published" pendingText="…">Publish</SubmitButton> : <span className="hint">Needs photos</span>}
+                </form>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </>
   );

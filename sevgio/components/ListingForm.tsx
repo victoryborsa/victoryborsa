@@ -105,6 +105,13 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
           <label className="field"><span>Check-in from</span><input className="input" name="check_in_time" defaultValue={p?.check_in_time || "3:00 pm"} /></label>
           <label className="field"><span>Check-out by</span><input className="input" name="check_out_time" defaultValue={p?.check_out_time || "11:00 am"} /></label>
         </div>
+        <div className="smart-box">
+          <label className="chk"><input type="checkbox" name="smart_pricing" defaultChecked={!!p?.smart_pricing} /><span><b>Smart pricing</b><span className="hint" style={{ display: "block" }}>Your prices are adjusted automatically based on guest demand: higher on Steelers, Penguins and Pirates game days, big concerts and events, holidays and weekends, a little lower for empty nights in the next 3 days. They always stay between your lowest and highest price below. The nightly price above is the normal price they start from.</span></span></label>
+          <div className="grid-2">
+            <label className="field"><span>Lowest price per night (USD)</span><input className="input mono" name="min_price" inputMode="decimal" defaultValue={p?.min_price_cents ? dollars(p.min_price_cents) : ""} placeholder="90" /></label>
+            <label className="field"><span>Highest price per night (USD)</span><input className="input mono" name="max_price" inputMode="decimal" defaultValue={p?.max_price_cents ? dollars(p.max_price_cents) : ""} placeholder="149" /></label>
+          </div>
+        </div>
       </div>
 
       <div className="box">

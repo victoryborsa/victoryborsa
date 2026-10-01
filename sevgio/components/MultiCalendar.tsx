@@ -2,8 +2,10 @@ import Link from "next/link";
 import type { User } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
 import { addDays, fmtDate, fmtShort, isIsoDate, nightsBetween, todayLocal } from "@/lib/dates.ts";
+import { demandBetween } from "@/lib/demand.ts";
+import { nightPrice, type Demand } from "@/lib/smart-pricing.ts";
 
-type Prop = { id: string; title: string; city: string; parent_id: string | null; status: string; cover_id: string | null; nightly_price_cents: number };
+type Prop = { id: string; title: string; city: string; parent_id: string | null; status: string; cover_id: string | null; nightly_price_cents: number; smart_pricing: boolean; min_price_cents: number | null; max_price_cents: number | null };
 type Res = { id: string; code: string; property_id: string; check_in: string; check_out: string; status: string; guest_name: string; guests: number; nights: number };
 type Blk = { id: string; property_id: string; start_date: string; end_date: string; note: string; source: string; feed_name: string | null };
 
@@ -17,7 +19,7 @@ export function channelOf(feedName: string | null): { key: string; label: string
   return { key: "other", label: feedName || "Other site" };
 }
 
-const COLS = `id, title, city, parent_id, status, nightly_price_cents,
+const COLS = `id, title, city, parent_id, status, nightly_price_cents, smart_pricing, min_price_cents, max_price_cents,
   (SELECT ph.id FROM photos ph WHERE ph.property_id = p.id ORDER BY ph.position, ph.created_at LIMIT 1) AS cover_id`;
 const LENGTHS = [14, 30, 60];
 const VIEWS = [["day", "Day"], ["week", "Week"], ["month", "Month"]] as const;
@@ -53,6 +55,9 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
     days = Number(sp.days); start = anchor || today; prev = addDays(start, -days); next = addDays(start, days); todayStart = today;
   }
   const end = addDays(start, days);
+  const demand = await demandBetween(start, end);
+  // Red circle on a date: a game, a big event or a holiday in Pittsburgh.
+  const evTitle = (d: string) => (demand[d]?.notable ? demand[d].reasons.join(" · ") : undefined);
 
   const all = await (u.role === "admin"
     ? q<Prop>(`SELECT ${COLS} FROM properties p`)
@@ -121,11 +126,12 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
         ))}
       </nav>
       <h2 className="mc-period">{period}{selected ? <span className="muted"> · {selected.title}</span> : null}</h2>
+      {Object.values(demand).some(x => x.notable) && <p className="hint mc-legend"><span className="ev-dot" aria-hidden /> Red circle: a game, big event or holiday in Pittsburgh. Hover or tap the date to see it.{selected?.smart_pricing ? " Smart pricing is on: prices in gold are adjusted for demand." : ""}</p>}
 
       {rows.length === 0 ? <div className="empty"><p className="muted">No listings yet.</p></div> : selected && view === "month" ? (
-        <MonthGrid p={selected} res={res} blocks={blocks} start={start} end={end} today={today} />
+        <MonthGrid p={selected} res={res} blocks={blocks} start={start} end={end} today={today} demand={demand} />
       ) : view === "month" ? (
-        <AllMonthGrid rows={rows} res={res} blocks={blocks} start={start} end={end} today={today} dayHref={d => link(d, "day")} />
+        <AllMonthGrid rows={rows} res={res} blocks={blocks} start={start} end={end} today={today} demand={demand} dayHref={d => link(d, "day")} />
       ) : (
         <div className="mc-wrap">
           <div className={`mc mc-v-${view}`} style={{ gridTemplateColumns: view === "day" ? "minmax(150px, 55%) minmax(110px, 1fr)" : `var(--mc-name-w) repeat(${days}, minmax(${view === "week" ? 34 : days > 30 ? 26 : 30}px, 1fr))` }}>
@@ -135,7 +141,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
               return (
                 <div key={d} className={`mc-day${dow === 0 || dow === 6 ? " we" : ""}${d === today ? " today" : ""}`}>
                   {view === "week" ? <small>{dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })}</small> : dt.getUTCDate() === 1 || d === start ? <small>{dt.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" })}</small> : <small>{"SMTWTFS"[dow]}</small>}
-                  <b>{dt.getUTCDate()}</b>
+                  <b className={evTitle(d) ? "ev" : undefined} title={evTitle(d)}>{dt.getUTCDate()}</b>
                 </div>
               );
             })}
@@ -206,8 +212,14 @@ function Thumb({ p }: { p: Prop }) {
 
 const money = (c: number) => "$" + (c / 100).toLocaleString("en-US", { maximumFractionDigits: 0 });
 
+/** A day number; today is filled gold, event and holiday days get a red circle (hover to see what's on). */
+function MgNum({ d, today, demand }: { d: string; today: string; demand: Demand }) {
+  const ev = demand[d]?.notable ? demand[d].reasons.join(" · ") : "";
+  return <span className={`mg-num${d === today ? " today" : ""}${ev ? " ev" : ""}`} title={ev || undefined}>{Number(d.slice(8))}{ev && <span className="sr-only"> ({ev})</span>}</span>;
+}
+
 /** One property's month, laid out like a wall calendar: each day shows its price, or who is staying. */
-function MonthGrid({ p, res, blocks, start, end, today }: { p: Prop; res: Res[]; blocks: Blk[]; start: string; end: string; today: string }) {
+function MonthGrid({ p, res, blocks, start, end, today, demand }: { p: Prop; res: Res[]; blocks: Blk[]; start: string; end: string; today: string; demand: Demand }) {
   type Stay = { key: string; from: string; to: string; cls: string; label: string; href?: string; title: string };
   const stays: Stay[] = [
     ...res.filter(b => b.property_id === p.id || b.property_id === p.parent_id).map(b => ({
@@ -229,13 +241,14 @@ function MonthGrid({ p, res, blocks, start, end, today }: { p: Prop; res: Res[];
       {Array.from({ length: lead }, (_, i) => <div key={"x" + i} className="mg-blank" />)}
       {dates.map(d => {
         const s = stays.find(x => x.from <= d && d < x.to);
+        const price = nightPrice({ ...p, demand }, d, today);
         const first = s && (s.from === d || d === start || dayLabel(d).getUTCDay() === 0);
         const inner = s ? (
           <span className={`mg-bar ${s.cls}${s.from === d ? " s" : ""}${addDays(d, 1) === s.to ? " e" : ""}`} title={s.title}>{first ? s.label : "\u00a0"}</span>
-        ) : <span className="mg-price">{money(p.nightly_price_cents)}</span>;
+        ) : <span className={`mg-price${p.smart_pricing && price !== p.nightly_price_cents ? " smart" : ""}`}>{money(price)}</span>;
         return (
           <div key={d} role="gridcell" className={`mg-day${d < today ? " past" : ""}${s ? " booked" : ""}`}>
-            <span className={`mg-num${d === today ? " today" : ""}`}>{Number(d.slice(8))}</span>
+            <MgNum d={d} today={today} demand={demand} />
             {s?.href ? <Link href={s.href} className="mg-link">{inner}</Link> : inner}
           </div>
         );
@@ -245,7 +258,7 @@ function MonthGrid({ p, res, blocks, start, end, today }: { p: Prop; res: Res[];
 }
 
 /** Every property's month on one wall calendar: each night lists the listings that are booked or blocked. Tap a day for details. */
-function AllMonthGrid({ rows, res, blocks, start, end, today, dayHref }: { rows: Prop[]; res: Res[]; blocks: Blk[]; start: string; end: string; today: string; dayHref: (d: string) => string }) {
+function AllMonthGrid({ rows, res, blocks, start, end, today, demand, dayHref }: { rows: Prop[]; res: Res[]; blocks: Blk[]; start: string; end: string; today: string; demand: Demand; dayHref: (d: string) => string }) {
   const name = new Map(rows.map(r => [r.id, r.title]));
   type Tag = { key: string; from: string; to: string; cls: string; text: string; title: string };
   const tags: Tag[] = [
@@ -269,7 +282,7 @@ function AllMonthGrid({ rows, res, blocks, start, end, today, dayHref }: { rows:
         const shown = on.slice(0, 4);
         return (
           <Link key={d} href={dayHref(d)} role="gridcell" className={`mg-day mg-link-day${d < today ? " past" : ""}`} aria-label={`${fmtDate(d)}: ${on.length ? `${on.length} booked` : "all free"}`}>
-            <span className={`mg-num${d === today ? " today" : ""}`}>{Number(d.slice(8))}</span>
+            <MgNum d={d} today={today} demand={demand} />
             <span className="mg-tags">
               {shown.map(t => <span key={t.key} className={`mg-tag ${t.cls}`} title={t.title}>{t.text}</span>)}
               {on.length > shown.length && <span className="mg-more">+{on.length - shown.length} more</span>}
