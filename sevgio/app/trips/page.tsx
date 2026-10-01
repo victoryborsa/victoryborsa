@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PhotoBackdrop } from "@/components/PhotoBackdrop.tsx";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
@@ -37,6 +38,7 @@ export default async function Trips() {
   );
   return (
     <div className="wrap page-pad">
+      <PhotoBackdrop />
       <p className="eyebrow">Your account</p>
       <h1 style={{ fontSize: "clamp(26px,4vw,36px)", marginBottom: 20 }}>My trips</h1>
       <h3 style={{ marginBottom: 12 }}>Upcoming</h3>

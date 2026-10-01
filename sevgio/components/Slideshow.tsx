@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ART } from "./PittsburghArt.tsx";
 
 type Slide = { src: string; caption: string };
 
-/** Home page slideshow: uploaded Pittsburgh photos, or drawn scenes until there are some. */
-export function Slideshow({ photos }: { photos: Slide[] }) {
+/** Pittsburgh slideshow (home page and guide): uploaded photos, or drawn scenes until there are some. Children are laid over the pictures. */
+export function Slideshow({ photos, className, children }: { photos: Slide[]; className?: string; children?: ReactNode }) {
   const count = photos.length || ART.length;
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -17,7 +17,7 @@ export function Slideshow({ photos }: { photos: Slide[] }) {
   const go = (n: number) => setI((n + count) % count);
   const caption = photos.length ? photos[i]?.caption : ART[i].caption;
   return (
-    <div className="slides" role="region" aria-roledescription="carousel" aria-label="Pittsburgh" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
+    <div className={`slides${className ? " " + className : ""}`} role="region" aria-roledescription="carousel" aria-label="Pittsburgh" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
       {Array.from({ length: count }, (_, n) => {
         const Art = ART[n]?.Art;
         return (
@@ -26,6 +26,7 @@ export function Slideshow({ photos }: { photos: Slide[] }) {
           </div>
         );
       })}
+      {children && <div className="slides-over">{children}</div>}
       {caption && <p className="slide-cap">{caption}</p>}
       {count > 1 && (
         <>

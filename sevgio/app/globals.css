@@ -476,6 +476,19 @@ tr.row-new td { background: color-mix(in srgb, var(--accent-soft) 55%, transpare
 .slide { position: absolute; inset: 0; opacity: 0; transition: opacity .9s ease; }
 .slide.on { opacity: 1; }
 .slide img, .slide svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.page-backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.page-backdrop img, .page-backdrop svg { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.9); }
+.page-backdrop::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,16,21,.80) 0%, rgba(11,16,21,.88) 45%, rgba(11,16,21,.94) 100%); }
+.slides-over { position: absolute; z-index: 2; pointer-events: none; }
+.slides-over a, .slides-over button { pointer-events: auto; }
+.slides-hero { aspect-ratio: 16 / 8; min-height: 380px; border: 1px solid var(--line); }
+.slides-hero .slides-over { inset: 0 0 auto 0; padding: 26px 30px 90px; background: linear-gradient(180deg, rgba(11,16,21,.82) 0%, rgba(11,16,21,.45) 60%, rgba(11,16,21,0) 100%); }
+.slides-hero .slides-over h1 { color: #fff; margin-top: 10px; max-width: 22ch; font-size: clamp(30px, 4.6vw, 56px); line-height: 1.05; text-shadow: 0 2px 14px rgba(0,0,0,.5); }
+.slides-hero .slides-over .eyebrow { color: #FFB612; }
+.hero-lede { font-size: 18px; margin-top: 18px; max-width: 70ch; }
+.hello-line { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: 4px; }
+.hello-line a { white-space: nowrap; flex: none; }
+@media (max-width: 640px) { .slides-hero { aspect-ratio: 4 / 5; min-height: 0; } .slides-hero .slides-over { padding: 18px 18px 70px; } }
 .slide-cap { position: absolute; left: 12px; bottom: 12px; margin: 0; max-width: calc(100% - 110px); padding: 5px 11px; border-radius: 999px; background: rgba(16, 24, 32, .72); color: #fff; font-size: 13px; font-weight: 600; }
 .slide-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 999px; border: 0; background: rgba(255, 255, 255, .85); color: #101820; font-size: 22px; line-height: 1; cursor: pointer; }
 .slide-nav.prev { left: 10px; } .slide-nav.next { right: 10px; }
@@ -657,15 +670,16 @@ a.room-card:hover { border-color: var(--gold); }
 .choice b { display: block; } .choice small { color: var(--muted); font-size: 12px; }
 
 /* Guide banner */
-.guide-banner { position: relative; margin-top: 24px; border-radius: var(--r-lg); overflow: hidden; min-height: 360px; display: flex; align-items: flex-end; border: 1px solid var(--line); }
-.guide-banner-pic { position: absolute; inset: 0; }
-.guide-banner-pic img, .guide-banner-pic svg { width: 100%; height: 100%; object-fit: cover; display: block; }
-.guide-banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,16,21,.05) 20%, rgba(11,16,21,.88) 100%); }
-.guide-banner-text { position: relative; z-index: 1; padding: 28px 28px 26px; max-width: 760px; }
+.guide-banner { margin-top: 24px; }
+.slides-guide { aspect-ratio: 16 / 7; min-height: 420px; border: 1px solid var(--line); }
+.slides-guide .slides-over { inset: auto 0 0 0; background: linear-gradient(180deg, rgba(11,16,21,0) 0%, rgba(11,16,21,.88) 45%); padding-top: 80px; }
+.slides-guide .slide-cap { top: 12px; bottom: auto; }
+.slides-guide .slide-dots { top: 20px; bottom: auto; }
+.guide-banner-text { padding: 0 28px 26px; max-width: 760px; }
 .guide-banner-text h1 { color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,.45); }
 .guide-banner-text .lede { color: #E8ECEF; font-size: 18px; margin-top: 10px; text-shadow: 0 1px 8px rgba(0,0,0,.5); }
 .guide-banner + .guide-hero { padding-top: 16px; }
-@media (max-width: 640px) { .guide-banner { min-height: 300px; } .guide-banner-text { padding: 18px; } .guide-banner-text .lede { font-size: 15px; } }
+@media (max-width: 640px) { .slides-guide { aspect-ratio: auto; min-height: 460px; } .guide-banner-text { padding: 18px; } .guide-banner-text .lede { font-size: 15px; } }
 
 /* Clickable places and tips */
 .near-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }

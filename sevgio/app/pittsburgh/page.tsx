@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { q } from "@/lib/db.ts";
-import { SkylineArt } from "@/components/PittsburghArt.tsx";
+import { Slideshow } from "@/components/Slideshow.tsx";
 import { NEAR, SECTIONS, YINZER, mapLink, slugOf, type Section } from "@/lib/guide.ts";
 import { getT } from "@/lib/i18n.ts";
 import type { T } from "@/lib/i18n.ts";
@@ -38,23 +38,22 @@ function Grid({ section, photos, t }: { section: Section; photos: Map<string, st
 
 export default async function PittsburghGuide() {
   const { lang, t } = await getT();
-  const rows = await q<{ id: string; slot: string }>("SELECT id, slot FROM site_photos WHERE slot IS NOT NULL");
-  const photos = new Map(rows.map(r => [r.slot, r.id]));
+  const rows = await q<{ id: string; slot: string | null; caption: string }>("SELECT id, slot, caption FROM site_photos ORDER BY position, created_at");
+  const photos = new Map(rows.filter(r => r.slot).map(r => [r.slot!, r.id]));
   const sec = (id: Section["id"]) => SECTIONS.find(s => s.id === id)!;
-  // Banner: the chosen banner photo, else the Duquesne Incline photo, else the drawn skyline.
-  const banner = photos.get("guide-banner") ?? photos.get(slugOf(SECTIONS[0].places[0].name));
+  // Banner slideshow: the guide banner photo first, then the home page Pittsburgh pictures; else the drawn scenes.
+  const banner = [...rows.filter(r => r.slot === "guide-banner"), ...rows.filter(r => r.slot === null)].slice(0, 20).map(r => ({ src: `/api/site-photos/${r.id}`, caption: r.caption }));
   return (
     <div className="wrap guide" style={{ paddingBottom: 56 }}>
       <section className="guide-banner">
-        <div className="guide-banner-pic" aria-hidden="true">
-          {banner ? <img src={`/api/site-photos/${banner}`} alt="" fetchPriority="high" /> : <SkylineArt />}
-        </div>
+        <Slideshow className="slides-guide" photos={banner}>
         <div className="guide-banner-text">
           <p className="eyebrow">{t("guide.eyebrow")}</p>
           <h1>{t("guide.title")}</h1>
           <p className="lede">{t("guide.intro")}</p>
           {lang !== "en" && <p className="hint">{t("guide.englishNote")}</p>}
         </div>
+        </Slideshow>
       </section>
       <section className="guide-hero">
         <nav className="guide-toc" aria-label="Guide sections">
