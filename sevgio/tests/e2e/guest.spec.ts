@@ -14,7 +14,7 @@ test("homepage shows search and property cards", async ({ page }) => {
 
 test("search by area, filter, sort and empty state", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("Where").fill("Poconos");
+  await page.getByLabel("Where").selectOption("Poconos");
   await page.getByRole("button", { name: "Search stays" }).click();
   await expect(page.getByRole("heading", { name: /2 stays matching/ })).toBeVisible();
   await page.getByLabel("Hot tub").check();
@@ -225,4 +225,16 @@ test("password boxes have an eye button to show what was typed", async ({ page }
   await expect(box).toHaveAttribute("type", "text");
   await page.getByRole("button", { name: "Hide what you typed" }).click();
   await expect(box).toHaveAttribute("type", "password");
+});
+
+test("Where offers preset places; Downtown Pittsburgh finds Pittsburgh stays; up to 10 guests", async ({ page }) => {
+  await page.goto("/");
+  const where = page.getByLabel("Where");
+  for (const label of ["Anywhere", "Pittsburgh (all areas)", "Downtown Pittsburgh", "Indiana, PA"]) await expect(where.locator("option", { hasText: label })).toHaveCount(1);
+  await expect(page.getByLabel("Guests").locator("option")).toHaveCount(10);
+  await where.selectOption({ label: "Downtown Pittsburgh" });
+  await page.getByRole("button", { name: "Search stays" }).click();
+  await expect(page.locator("a.card", { hasText: "Mount Washington View House" })).toBeVisible();
+  await expect(page.locator("a.card", { hasText: "Jim Thorpe" })).toHaveCount(0);
+  await expect(page.getByLabel("Where")).toHaveValue("Downtown Pittsburgh");
 });

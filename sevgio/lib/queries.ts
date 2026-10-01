@@ -18,6 +18,7 @@ export async function searchProperties(f: SearchFilters): Promise<CardProperty[]
   const where = ["p.status = 'published'"];
   const params: unknown[] = [];
   const add = (v: unknown) => { params.push(v); return "$" + params.length; };
+  if (f.loc) f = { ...f, loc: LOC_ALIASES[f.loc.toLowerCase()] ?? f.loc };
   if (f.loc) where.push(`(p.city || ' ' || p.area || ' ' || p.title) ILIKE ${add("%" + f.loc.replace(/[%_\\]/g, "\\$&") + "%")}`);
   if (f.guests) where.push(`p.max_guests >= ${add(f.guests)}`);
   if (f.maxPrice) where.push(`p.nightly_price_cents <= ${add(f.maxPrice * 100)}`);
@@ -69,6 +70,14 @@ export async function photosFor(propertyId: string) {
 export async function publishedCities() {
   return (await q<{ city: string }>("SELECT DISTINCT city FROM properties WHERE status = 'published' ORDER BY city")).map(r => r.city);
 }
+
+/** Neighborhoods/areas that have published stays, for the "Where" dropdown. */
+export async function publishedAreas() {
+  return (await q<{ area: string }>("SELECT DISTINCT area FROM properties WHERE status = 'published' AND area <> '' ORDER BY area")).map(r => r.area);
+}
+
+/** Search words that mean a wider place: every Pittsburgh stay is a short drive from downtown. */
+export const LOC_ALIASES: Record<string, string> = { "downtown pittsburgh": "Pittsburgh" };
 
 /** The whole home a room belongs to, and the rooms inside a whole home (published only), for linking between them. */
 export async function linkedListings(p: Property) {
