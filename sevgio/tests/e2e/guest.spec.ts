@@ -38,10 +38,14 @@ test("guest books instantly: sign up mid-booking, confirmation, My trips", async
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("guest-password-1");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(/\/book\/lake-harmony-lodge/);
-  // New accounts confirm their email with a code before booking. Plant a known code (the real one is emailed).
+  // New accounts must confirm their email with a code before they can be used. Plant a known code (the real one is emailed).
+  await expect(page).toHaveURL(/\/verify\?next=%2Fbook%2Flake-harmony-lodge/);
   await expect(page.getByRole("heading", { name: "Confirm your email" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Confirm booking/ })).toHaveCount(0);
+  // Until then, the rest of the account is locked.
+  const verifyUrl = page.url();
+  await page.goto("/trips");
+  await expect(page).toHaveURL(/\/verify\?next=%2Ftrips/);
+  await page.goto(verifyUrl);
   const crypto = await import("node:crypto");
   const [nu] = await sql<{ id: string }>("SELECT id FROM users WHERE email = $1", [email]);
   await sql("INSERT INTO email_codes (user_id, code_hash, expires_at) VALUES ($1, $2, now() + interval '15 minutes')", [nu.id, crypto.createHash("sha256").update(`${nu.id}:123456`).digest("hex")]);
@@ -50,6 +54,7 @@ test("guest books instantly: sign up mid-booking, confirmation, My trips", async
   await expect(page.getByText(/That code isn't right/)).toBeVisible();
   await page.getByLabel("6-digit code").fill("123456");
   await page.getByRole("button", { name: "Confirm email" }).click();
+  await expect(page).toHaveURL(/\/book\/lake-harmony-lodge/);
   await expect(page.getByRole("button", { name: /Confirm booking/ })).toBeVisible();
   await page.getByLabel("Mobile phone").fill("(570) 555-0199");
   await page.getByLabel(/Estimated arrival time/).selectOption("5:00 pm – 6:00 pm");
@@ -196,4 +201,17 @@ test("a house with rooms lets guests choose the whole house or a room", async ({
   } finally {
     await sql("UPDATE properties SET parent_id = $1 WHERE id = $2", [r.parent_id, r.id]);
   }
+});
+
+test("an unconfirmed account can start over with a different email", async ({ page }) => {
+  const wrong = `typo-${Date.now()}@example.com`;
+  await page.goto("/signup");
+  await page.getByLabel("Full name").fill("Typo Guest");
+  await page.getByLabel("Email").fill(wrong);
+  await page.getByLabel("Password").fill("guest-password-1");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByRole("heading", { name: "Confirm your email" })).toBeVisible();
+  await page.getByRole("button", { name: "Wrong email? Start over" }).click();
+  await expect(page).toHaveURL(/\/signup$/);
+  expect(await sql("SELECT 1 FROM users WHERE email = $1", [wrong])).toHaveLength(0);
 });

@@ -26,7 +26,15 @@ export async function signInAction(_: ActionState, fd: FormData): Promise<Action
   if (!u || !ok) return { error: "That email and password don't match. Check for typos, or reset your password." };
   if (u.disabled) return { error: "This account has been turned off. Contact us if you think this is a mistake." };
   await createSession(u.id);
-  redirect(safeNext(fd.get("next"), homeFor(u.role)));
+  const next = safeNext(fd.get("next"), homeFor(u.role));
+  // Guests who never confirmed their email get a fresh code and must confirm before using the account.
+  const unverified = await one("SELECT 1 FROM users WHERE id = $1 AND role = 'customer' AND email_verified_at IS NULL", [u.id]);
+  if (unverified) {
+    const full = await one<{ id: string; email: string; name: string }>("SELECT id, email, name FROM users WHERE id = $1", [u.id]);
+    await sendVerificationCode(full!);
+    redirect("/verify?next=" + encodeURIComponent(next));
+  }
+  redirect(next);
 }
 
 export async function signUpAction(_: ActionState, fd: FormData): Promise<ActionState> {
@@ -39,7 +47,8 @@ export async function signUpAction(_: ActionState, fd: FormData): Promise<Action
   const u = await one<{ id: string }>("INSERT INTO users (email, name, phone, password_hash) VALUES ($1, $2, $3, $4) RETURNING id", [email, name, phone, await hashPassword(password)]);
   await createSession(u!.id);
   await sendVerificationCode({ id: u!.id, email, name });
-  redirect(safeNext(fd.get("next"), "/trips"));
+  await logEvent("info", "Accounts", `New account waiting for email confirmation: ${email}`, {}, u!.id);
+  redirect("/verify?next=" + encodeURIComponent(safeNext(fd.get("next"), "/trips")));
 }
 
 export async function signOutAction() {
@@ -106,17 +115,26 @@ export async function changePasswordAction(_: ActionState, fd: FormData): Promis
 
 export async function resendCodeAction(_: ActionState, fd: FormData): Promise<ActionState> {
   void fd;
-  const u = await requireUser();
+  const u = await requireUser(undefined, undefined, { allowUnverified: true });
   if (u.verified) return { ok: "Your email is already confirmed." };
   const r = await sendVerificationCode(u);
   return "error" in r ? { error: r.error } : { ok: `We sent a new code to ${u.email}.` };
 }
 
 export async function verifyCodeAction(_: ActionState, fd: FormData): Promise<ActionState> {
-  const u = await requireUser();
+  const u = await requireUser(undefined, undefined, { allowUnverified: true });
   const code = str(fd, "code", 20);
   if (!/^\d{6}$/.test(code.replace(/\s/g, ""))) return { error: "Enter the 6-digit code from the email." };
   if (!(await checkVerificationCode(u.id, code))) return { error: "That code isn't right or has expired. Check the newest email, or send a new code." };
   await logEvent("info", "Accounts", `Email confirmed: ${u.email}`, {}, u.id);
   redirect(safeNext(fd.get("next"), "/trips"));
+}
+
+/** "Wrong email?" on the confirm page: removes the unconfirmed account so the guest can sign up again. */
+export async function startOverAction() {
+  const u = await requireUser(undefined, undefined, { allowUnverified: true });
+  if (u.verified || u.role !== "customer") redirect("/account");
+  await destroySession();
+  await q("DELETE FROM users WHERE id = $1 AND email_verified_at IS NULL AND role = 'customer' AND NOT EXISTS (SELECT 1 FROM bookings WHERE guest_id = $1)", [u.id]);
+  redirect("/signup");
 }

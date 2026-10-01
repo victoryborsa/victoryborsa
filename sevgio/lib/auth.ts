@@ -50,10 +50,12 @@ export const currentUser = cache(async (): Promise<User | null> => {
   );
 });
 
-/** Use at the top of every protected page and server action. Redirects signed-out visitors and blocks wrong roles. */
-export async function requireUser(roles?: Role[], next?: string): Promise<User> {
+/** Use at the top of every protected page and server action. Redirects signed-out visitors, guests who haven't
+ *  confirmed their email yet (to /verify), and wrong roles. Hosts and admins are set up by an admin, so they aren't held back. */
+export async function requireUser(roles?: Role[], next?: string, opts: { allowUnverified?: boolean } = {}): Promise<User> {
   const u = await currentUser();
   if (!u) redirect("/signin" + (next ? "?next=" + encodeURIComponent(next) : ""));
+  if (!u.verified && u.role === "customer" && !opts.allowUnverified) redirect("/verify" + (next ? "?next=" + encodeURIComponent(next) : ""));
   if (roles && !roles.includes(u.role)) redirect("/no-access");
   return u;
 }

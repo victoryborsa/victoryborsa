@@ -420,3 +420,11 @@ test("host can upload many big phone photos at once (over the 25 MB request limi
   await expect(page.locator(".photo-tile")).toHaveCount(before + 3);
   await signOut(page);
 });
+
+test("admin can send a test email and sees a plain explanation when email isn't set up", async ({ page }) => {
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin");
+  await page.getByRole("button", { name: "Send me a test email" }).click();
+  await expect(page.getByText(/Email isn't set up yet/)).toBeVisible();
+  await signOut(page);
+});

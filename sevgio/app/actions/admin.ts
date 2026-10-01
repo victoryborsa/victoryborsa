@@ -170,3 +170,24 @@ export async function slideCommandAction(fd: FormData) {
   revalidatePath("/admin/settings");
   revalidatePath("/");
 }
+
+// ---------- Email check ----------
+
+/** Sends a test email to the signed-in admin and explains any problem in plain words. */
+export async function testEmailAction(_: ActionState, _fd: FormData): Promise<ActionState> {
+  const u = await requireUser(["admin"]);
+  const r = await sendEmail(u.email, "Sevgio test email", "It works! Your website can send emails: verification codes, booking confirmations and new-booking alerts.");
+  if (r.ok) return { ok: `Test email sent to ${u.email}. Check your inbox (and the Spam folder).` };
+  if (r.error === "not-configured") return { error: "Email isn't set up yet. Add SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS in Render → Environment (see the steps in the README), then try again." };
+  if (/535|Username and Password not accepted|Invalid login|BadCredentials/i.test(r.error || "")) return { error: "Gmail refused the login. Check SMTP_USER is your full Gmail address and SMTP_PASS is the 16-letter App Password (not your normal Gmail password)." };
+  return { error: `The email couldn't be sent: ${(r.error || "").slice(0, 200)}` };
+}
+
+/** Confirms a guest's email by hand, e.g. when you've spoken to them on the phone. */
+export async function confirmEmailAction(fd: FormData) {
+  const admin = await requireUser(["admin"]);
+  const id = str(fd, "id", 40);
+  const u = await one<{ email: string }>("UPDATE users SET email_verified_at = now() WHERE id = $1 AND email_verified_at IS NULL RETURNING email", [id]);
+  if (u) await logEvent("info", "Accounts", `Email confirmed by an admin: ${u.email}`, {}, admin.id);
+  revalidatePath("/admin/users");
+}

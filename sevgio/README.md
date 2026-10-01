@@ -95,6 +95,16 @@ Do this only after the new site is tested.
 
 ## Email
 
+Without email settings, new guests can't confirm their account (the 6-digit code never arrives) and nobody gets booking emails.
+
+**With Gmail (sevgio.stays@gmail.com):**
+1. At myaccount.google.com → Security, turn on 2-Step Verification.
+2. Open myaccount.google.com/apppasswords, name it "Sevgio website" and click Create. Copy the 16-letter password.
+3. In Render → the `sevgio` service → Environment, add `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER=sevgio.stays@gmail.com`, `SMTP_PASS=<the 16 letters>` and `EMAIL_FROM=Sevgio <sevgio.stays@gmail.com>`, then Save, rebuild and deploy.
+4. In Admin → Overview, click "Send me a test email".
+
+Gmail can send about 500 emails a day, plenty for a small rental business. Admins can also confirm a guest's email by hand in Admin → Users.
+
 Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` and `EMAIL_FROM`. Any provider works, for example:
 - GoDaddy / Microsoft 365 email: host `smtp.office365.com`, port 587, your mailbox and password (SMTP sending must be enabled for the mailbox).
 - Google Workspace: host `smtp.gmail.com`, port 587, an app password.

@@ -6,6 +6,8 @@ import { todayLocal } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
 import { EventTable, type Ev } from "@/components/EventTable.tsx";
 import { emailReady } from "@/lib/email.ts";
+import { ActionForm, SubmitButton } from "@/components/forms.tsx";
+import { testEmailAction } from "@/app/actions/admin.ts";
 import { unseenBookings } from "@/lib/alerts.ts";
 
 export default async function AdminHome() {
@@ -34,6 +36,10 @@ export default async function AdminHome() {
           (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM) in Render → Environment. See “Email” in the README.
         </div>
       )}
+      <ActionForm action={testEmailAction} className="row" id="email-test">
+        <SubmitButton className="btn btn-ghost btn-sm" pendingText="Sending…">Send me a test email</SubmitButton>
+        <span className="hint">Checks that verification codes and booking emails can reach people.</span>
+      </ActionForm>
       {fresh > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}><b>{fresh} new booking{fresh === 1 ? "" : "s"}.</b> <Link href="/admin/bookings">Open Bookings</Link> to see {fresh === 1 ? "it" : "them"}.</div>}
       <div className="stats">
         <div className="stat"><b>{s.customers}</b><span>Guests</span></div>
