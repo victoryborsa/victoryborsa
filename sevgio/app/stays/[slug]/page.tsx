@@ -8,7 +8,7 @@ import { currentUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { one } from "@/lib/db.ts";
 import { addDays, todayLocal } from "@/lib/dates.ts";
-import { ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, bedLabel, parseBeds } from "@/lib/constants.ts";
+import { ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, bedLabelLong, parseBeds, parseRooms } from "@/lib/constants.ts";
 import { partyFromParams } from "@/lib/party.ts";
 import { Gallery } from "@/components/Gallery.tsx";
 import { StayChooser } from "@/components/StayChooser.tsx";
@@ -60,6 +60,12 @@ export default async function StayPage({ params, searchParams }: Params) {
   const hostFirst = (host?.name || "your host").split(" ")[0];
   const bookable = p.status === "published";
   const beds = parseBeds(p.beds_detail);
+  // Bedroom cards: the host's room-by-room details, or (for a whole house) its separately listed rooms.
+  const myPhotos = new Set(photos.map(ph => ph.id));
+  const rooms: { name: string; sqft: number | null; beds: ReturnType<typeof parseBeds>; note: string; img: string | null; href?: string }[] = parseRooms(p.rooms_detail).length
+    ? parseRooms(p.rooms_detail).map(r => ({ ...r, img: r.photo && myPhotos.has(r.photo) ? photoUrl(r.photo) : null }))
+    : linked.rooms.map(r => ({ name: r.title.includes(" – ") ? r.title.split(" – ").slice(1).join(" – ") : r.title, sqft: null, beds: parseBeds(r.beds_detail), img: r.cover_id ? photoUrl(r.cover_id) : null,
+        note: `${r.bathroom_type === "shared" ? "Shared" : "Private"} bathroom · also bookable on its own`, href: `/stays/${r.slug}` }));
 
   return (
     <div className="wrap has-mobile-book">
@@ -92,7 +98,9 @@ export default async function StayPage({ params, searchParams }: Params) {
           <div className="detail-main">
             <div className="facts">
               <div className="fact"><b>{p.max_guests}</b><span>guests</span></div>
-              <div className="fact"><b>{p.bedrooms}</b><span>bedroom{p.bedrooms === 1 ? "" : "s"}</span></div>
+              {rooms.length > 0
+                ? <a className="fact fact-link" href="#rooms" title="See each bedroom"><b>{p.bedrooms}</b><span>bedroom{p.bedrooms === 1 ? "" : "s"} ›</span></a>
+                : <div className="fact"><b>{p.bedrooms}</b><span>bedroom{p.bedrooms === 1 ? "" : "s"}</span></div>}
               <div className="fact"><b>{p.beds}</b><span>bed{p.beds === 1 ? "" : "s"}</span></div>
               <div className="fact"><b>{p.bathrooms}{p.half_bathrooms ? ` + ${p.half_bathrooms} half` : ""}</b><span>{p.bathroom_type === "shared" ? "shared" : "private"} bathroom{p.bathrooms + p.half_bathrooms === 1 ? "" : "s"}</span></div>
             </div>
@@ -106,10 +114,28 @@ export default async function StayPage({ params, searchParams }: Params) {
               <p className="prose">{p.description}</p>
               <p className="muted">Hosted by {host?.name}. {p.city}{p.area ? `, ${p.area}` : ""}, PA. The exact address is shared once your booking is confirmed.</p>
             </section>
-            {beds.length > 0 && (
-              <section>
+            {(rooms.length > 0 || beds.length > 0) && (
+              <section id="rooms" className="rooms-section">
                 <h2>Where you'll sleep</h2>
-                <ul className="amen">{beds.map((b, i) => <li key={i}><Check />{bedLabel(b)}</li>)}</ul>
+                {rooms.length > 0 && (
+                  <div className="room-cards">
+                    {rooms.map((r, i) => {
+                      const card = (
+                        <>
+                          <div className="room-pic">{r.img ? <img src={r.img} alt={r.name} loading="lazy" /> : <span aria-hidden>🛏️</span>}</div>
+                          <div className="room-body">
+                            <h3>{r.name}</h3>
+                            <ul className="room-beds">{r.beds.map((b, k) => <li key={k}>{bedLabelLong(b)}</li>)}</ul>
+                            {r.sqft && <p className="room-size">{r.sqft} sq ft</p>}
+                            {r.note && <p className="muted">{r.note}</p>}
+                          </div>
+                        </>
+                      );
+                      return r.href ? <Link key={i} className="room-card" href={r.href}>{card}</Link> : <article key={i} className="room-card">{card}</article>;
+                    })}
+                  </div>
+                )}
+                {beds.length > 0 && <><h3 style={{ marginTop: rooms.length ? 18 : 0 }}>All beds</h3><ul className="amen">{beds.map((b, i) => <li key={i}><Check />{bedLabelLong(b)}</li>)}</ul></>}
               </section>
             )}
             <section>

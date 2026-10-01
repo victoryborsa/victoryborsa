@@ -1,5 +1,6 @@
-import { ACCESS, AMENITY_GROUPS, CANCELLATION, parseBeds } from "@/lib/constants.ts";
+import { ACCESS, AMENITY_GROUPS, CANCELLATION, parseBeds, parseRooms } from "@/lib/constants.ts";
 import { BedsEditor } from "./BedsEditor.tsx";
+import { RoomsEditor } from "./RoomsEditor.tsx";
 import { CameraField } from "./CameraField.tsx";
 import { ListingKind } from "./ListingKind.tsx";
 import { PetsAmenity } from "./PetsAmenity.tsx";
@@ -9,7 +10,7 @@ import type { ActionState } from "@/lib/validate.ts";
 
 const dollars = (c?: number) => (c === undefined ? "" : String(c / 100));
 
-export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, submitLabel }: { action: (s: ActionState, fd: FormData) => Promise<ActionState>; p?: Property; hosts?: { id: string; name: string }[]; homes?: { id: string; title: string; host_name?: string }[]; isAdmin?: boolean; submitLabel: string }) {
+export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, submitLabel, photos = [] }: { action: (s: ActionState, fd: FormData) => Promise<ActionState>; p?: Property; hosts?: { id: string; name: string }[]; homes?: { id: string; title: string; host_name?: string }[]; isAdmin?: boolean; submitLabel: string; photos?: { id: string; caption: string }[] }) {
   return (
     <ActionForm action={action} className="stack" id="listing-form">
       {p && <input type="hidden" name="id" value={p.id} />}
@@ -59,6 +60,12 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
           <span>Beds and sleeping options</span>
           <BedsEditor initial={parseBeds(p?.beds_detail)} />
         </div>
+      </div>
+
+      <div className="box">
+        <h2>Bedroom details (shown to guests)</h2>
+        <p className="muted">Guests tap “bedrooms” on the listing to see each room: its beds and mattress sizes, room size, a note and a photo. For a whole house whose rooms are also listed separately, those rooms are shown automatically until you add details here.</p>
+        <RoomsEditor initial={parseRooms(p?.rooms_detail)} photos={photos} />
       </div>
 
       <div className="box">

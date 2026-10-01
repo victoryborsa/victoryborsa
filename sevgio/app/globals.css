@@ -613,3 +613,20 @@ a.event-card:hover { border-color: var(--gold); }
 a.guide-card.official { text-decoration: none; color: var(--ink); }
 a.guide-card.official:hover { border-color: var(--gold); }
 .official-icon { font-size: 34px; line-height: 1; }
+
+/* Bedroom details */
+a.fact-link { text-decoration: none; color: inherit; border-color: var(--gold); cursor: pointer; }
+a.fact-link span { color: var(--gold); font-weight: 600; }
+a.fact-link:hover { background: var(--surface-2); }
+.rooms-section { scroll-margin-top: 90px; }
+.rooms-section:target .room-card { border-color: var(--gold); }
+.room-cards { display: grid; gap: 14px; margin-top: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.room-card { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; color: var(--ink); text-decoration: none; }
+a.room-card:hover { border-color: var(--gold); }
+.room-pic { aspect-ratio: 4 / 3; display: grid; place-items: center; background: var(--surface-2); font-size: 44px; }
+.room-pic img { width: 100%; height: 100%; object-fit: cover; }
+.room-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+.room-beds { margin: 0; padding-left: 18px; }
+.room-size { margin: 0; font-weight: 600; color: var(--gold); }
+.room-edit { border: 1px solid var(--line); border-radius: var(--r-lg); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.room-edit legend { font-weight: 700; padding: 0 6px; color: var(--gold); }

@@ -6,7 +6,7 @@ import { requireUser, safeNext, type User } from "@/lib/auth.ts";
 import { withMsg } from "@/components/Flash.tsx";
 import { requireManageable } from "@/lib/access.ts";
 import { addBlock, setBookingStatus, type Booking } from "@/lib/bookings.ts";
-import { ACCESS, AMENITIES, CANCELLATION, PROPERTY_TYPES, parseBeds } from "@/lib/constants.ts";
+import { ACCESS, AMENITIES, CANCELLATION, PROPERTY_TYPES, parseBeds, parseRooms } from "@/lib/constants.ts";
 import { int, lines, slugify, str, type ActionState } from "@/lib/validate.ts";
 import { toCents } from "@/lib/money.ts";
 import { processPhoto } from "@/lib/photos.ts";
@@ -45,6 +45,7 @@ function readListing(fd: FormData) {
     children_free_age: int(fd, "children_free_age"),
     management_fee_percent: fd.has("management_fee_percent") ? pct(fd, "management_fee_percent") : null,
     owner_zelle: str(fd, "owner_zelle", 120), owner_venmo: str(fd, "owner_venmo", 60),
+    rooms: parseRooms(str(fd, "rooms_json", 30000) || "[]"),
     pet_fee: fd.getAll("amenities").includes("pets") && str(fd, "pet_fee_mode") === "fee" ? toCents(str(fd, "pet_fee") || "0") : 0,
     pet_fee_per: str(fd, "pet_fee_per") || "stay",
   };
@@ -91,6 +92,7 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     fewer_guest_discount_percent: v.fewer_guest_discount_percent, weekly_discount_percent: v.weekly_discount_percent, monthly_discount_percent: v.monthly_discount_percent,
     children_free_age: v.children_free_age, owner_zelle: v.owner_zelle, owner_venmo: v.owner_venmo,
     pet_fee_cents: v.pet_fee || 0, pet_fee_per: v.pet_fee_per,
+    rooms_detail: JSON.stringify(v.rooms),
   };
   // Only admins set the management fee; hosts never see or change it.
   if (isAdmin && v.management_fee_percent !== null) cols.management_fee_percent = v.management_fee_percent;
@@ -181,6 +183,7 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
   if (item.has_exterior_cameras) fd.set("has_exterior_cameras", "on");
   if (Number(item.pet_fee) > 0) { fd.set("pet_fee_mode", "fee"); fd.set("pet_fee", String(item.pet_fee)); }
   if (Array.isArray(item.beds)) fd.set("beds_json", JSON.stringify(item.beds));
+  if (Array.isArray(item.rooms)) fd.set("rooms_json", JSON.stringify(item.rooms));
   for (const a of Array.isArray(item.amenities) ? item.amenities : []) fd.append("amenities", String(a));
   const rules = Array.isArray(item.house_rules) ? item.house_rules.join("\n") : String(item.house_rules ?? "");
   fd.set("house_rules", rules);

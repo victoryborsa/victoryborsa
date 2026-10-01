@@ -73,6 +73,33 @@ export function parseBeds(raw: unknown): BedItem[] {
   }
 }
 
+/** "1 King bed · 76 × 80 in" — the bed with its mattress size, for the bedroom cards. */
+export function bedLabelLong(b: BedItem): string {
+  const dims = /\(([^)]+)\)/.exec(MATTRESS_SIZES[b.size] || "")?.[1];
+  return bedLabel(b).replace(/ \((Twin XL|Twin|Full|Queen|King|California King)\)$/, "") + (b.kind !== "bed" && SHORT_SIZE[b.size] ? ` · ${SHORT_SIZE[b.size]}` : "") + (dims ? ` · ${dims}` : "");
+}
+
+/** One bedroom's details. `photo` is the id of one of the listing's photos. */
+export type RoomDetail = { name: string; sqft: number | null; beds: BedItem[]; note: string; photo: string };
+export function parseRooms(raw: unknown): RoomDetail[] {
+  try {
+    const arr = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!Array.isArray(arr)) return [];
+    return arr.slice(0, 12).map((r, i) => {
+      const sqft = Math.round(Number(r?.sqft));
+      return {
+        name: String(r?.name ?? "").trim().slice(0, 60) || `Bedroom ${i + 1}`,
+        sqft: Number.isFinite(sqft) && sqft > 0 && sqft <= 5000 ? sqft : null,
+        beds: parseBeds(r?.beds),
+        note: String(r?.note ?? "").trim().slice(0, 200),
+        photo: /^[0-9a-f-]{36}$/i.test(String(r?.photo ?? "")) ? String(r.photo) : "",
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 export const ACCESS: Record<string, string> = { private: "Private", shared: "Shared with other guests", none: "Not available" };
 
 export const PROPERTY_TYPES: Record<string, string> = {

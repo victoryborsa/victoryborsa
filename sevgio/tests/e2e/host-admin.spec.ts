@@ -239,7 +239,7 @@ test("listing details, per-guest pricing with children, and the owner statement"
   await page.goto(`/stays/jim-thorpe-mountain-cabin?ci=${iso(150)}&co=${iso(157)}&adults=2`);
   await expect(page.getByRole("heading", { name: "Where you'll sleep" })).toBeVisible();
   await expect(page.getByText("1 Queen bed")).toBeVisible();
-  await expect(page.getByText("1 sofa bed (Full)")).toBeVisible();
+  await expect(page.getByText("1 sofa bed · Full · 54 × 75 in")).toBeVisible();
   await expect(page.getByText(/Exterior cameras: Front door and driveway/)).toBeVisible();
   await expect(page.getByText("Bedrooms are upstairs, one flight of stairs.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Home safety" })).toBeVisible();
@@ -511,4 +511,34 @@ test("pets: host sets a pet fee, guests add pets and pay it", async ({ page }) =
   const [free] = await sql<{ pet_fee_cents: number }>("SELECT pet_fee_cents FROM properties WHERE id = $1", [p.id]);
   expect(free.pet_fee_cents).toBe(0);
   await signOut(page);
+});
+
+test("bedroom details: host describes each room, guests tap bedrooms to see them", async ({ page }) => {
+  const [p] = await sql<{ id: string }>("SELECT id FROM properties WHERE slug = 'jim-thorpe-mountain-cabin'");
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto(`/host/listings/${p.id}`);
+  await page.getByRole("button", { name: "+ Add a bedroom" }).click();
+  await page.getByLabel("Room name").fill("Primary Bedroom");
+  await page.getByLabel("Room size (sq ft, optional)").fill("192");
+  await page.getByLabel(/Bed type \(Primary Bedroom, bed 1\)/).selectOption("bed");
+  await page.getByLabel(/Mattress size \(Primary Bedroom, bed 1\)/).selectOption("king");
+  await page.getByLabel("Note for guests (optional)").fill("Private bathroom and smart TV");
+  await page.getByLabel("Photo of this room").selectOption({ index: 1 });
+  await page.getByRole("button", { name: "+ Add a bedroom" }).click();
+  await page.getByLabel("Room name").nth(1).fill("Kids Room");
+  await page.getByLabel(/Bed type \(Kids Room, bed 1\)/).selectOption("bunk_bed");
+  await page.getByLabel(/Mattress size \(Kids Room, bed 1\)/).selectOption("twin");
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/^Saved\./)).toBeVisible();
+  await signOut(page);
+
+  await page.goto("/stays/jim-thorpe-mountain-cabin");
+  await page.locator("a.fact-link").click();
+  await expect(page).toHaveURL(/#rooms$/);
+  const primary = page.locator(".room-card", { hasText: "Primary Bedroom" });
+  await expect(primary).toContainText("1 King bed · 76 × 80 in");
+  await expect(primary).toContainText("192 sq ft");
+  await expect(primary).toContainText("Private bathroom and smart TV");
+  await expect(primary.locator("img")).toBeVisible();
+  await expect(page.locator(".room-card", { hasText: "Kids Room" })).toContainText("1 bunk bed · Twin · 38 × 75 in");
 });
