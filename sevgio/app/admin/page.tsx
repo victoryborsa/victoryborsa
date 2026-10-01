@@ -5,7 +5,7 @@ import { expireStaleRequests } from "@/lib/bookings.ts";
 import { todayLocal } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
 import { EventTable, type Ev } from "@/components/EventTable.tsx";
-import { emailReady } from "@/lib/email.ts";
+import { emailReady, missingEmailSettings } from "@/lib/email.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { testEmailAction } from "@/app/actions/admin.ts";
 import { unseenBookings } from "@/lib/alerts.ts";
@@ -14,6 +14,8 @@ export default async function AdminHome() {
   const u = await requireUser(["admin"], "/admin");
   await expireStaleRequests();
   const fresh = await unseenBookings(u);
+  const failures = await q<{ n: number }>("SELECT count(*)::int AS n FROM event_log WHERE area = 'Email' AND level = 'error' AND at > now() - interval '1 day'");
+  const emailFailures = failures[0]?.n ?? 0;
   const today = todayLocal();
   const [s] = await q<Record<string, number>>(
     `SELECT (SELECT count(*) FROM users WHERE role = 'customer') AS customers,
@@ -32,8 +34,13 @@ export default async function AdminHome() {
     <>
       {!emailReady() && (
         <div className="notice warn" role="alert" style={{ marginBottom: 16 }}>
-          <b>Emails are not being sent yet.</b> Booking confirmations, new-booking alerts and verification codes only appear in Render → Logs until you add the email settings
-          (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM) in Render → Environment. See “Email” in the README.
+          <b>Emails are not being sent yet.</b> Booking confirmations, new-booking alerts and verification codes only appear in Render → Logs until the email settings are complete.
+          Missing in Render → Environment: <b>{missingEmailSettings().join(", ")}</b>. SMTP_PASS is the 16-letter Google App Password. See “Email” in the README.
+        </div>
+      )}
+      {emailFailures > 0 && (
+        <div className="notice error" role="alert" style={{ marginBottom: 16 }}>
+          <b>Emails are failing.</b> {emailFailures} email{emailFailures === 1 ? "" : "s"} couldn't be sent in the last day, so guests may not get their codes. Click “Send me a test email” below to see why.
         </div>
       )}
       <ActionForm action={testEmailAction} className="row" id="email-test">

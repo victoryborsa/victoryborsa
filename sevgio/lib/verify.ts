@@ -12,7 +12,8 @@ export async function sendVerificationCode(user: { id: string; email: string; na
   if (recent && recent.n >= 5) return { error: "We've sent several codes already. Check your spam folder, or try again in an hour." };
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
   await q("INSERT INTO email_codes (user_id, code_hash, expires_at) VALUES ($1, $2, now() + interval '15 minutes')", [user.id, hashCode(user.id, code)]);
-  await sendEmail(user.email, `Your Sevgio code: ${code}`, `Hi ${user.name.split(" ")[0]},\n\nYour Sevgio verification code is:\n\n    ${code}\n\nIt expires in 15 minutes. If you didn't ask for it, you can ignore this email.`);
+  const sent = await sendEmail(user.email, `Your Sevgio code: ${code}`, `Hi ${user.name.split(" ")[0]},\n\nYour Sevgio verification code is:\n\n    ${code}\n\nIt expires in 15 minutes. If you didn't ask for it, you can ignore this email.`);
+  if (!sent.ok && sent.error !== "not-configured") return { error: "We couldn't send the email just now. Please try again in a few minutes, or contact us." };
   return { ok: true };
 }
 

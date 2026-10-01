@@ -29,11 +29,11 @@ export async function signInAction(_: ActionState, fd: FormData): Promise<Action
   await createSession(u.id);
   const next = safeNext(fd.get("next"), homeFor(u.role));
   // Guests who never confirmed their email get a fresh code and must confirm before using the account.
-  const unverified = await one("SELECT 1 FROM users WHERE id = $1 AND role = 'customer' AND email_verified_at IS NULL", [u.id]);
+  const unverified = await one<{ id: string; email: string; name: string }>("SELECT id, email, name FROM users WHERE id = $1 AND role = 'customer' AND email_verified_at IS NULL", [u.id]);
   if (unverified && verificationRequired()) {
-    const full = await one<{ id: string; email: string; name: string }>("SELECT id, email, name FROM users WHERE id = $1", [u.id]);
-    await sendVerificationCode(full!);
-    redirect("/verify?next=" + encodeURIComponent(next));
+    await sendVerificationCode(unverified);
+    // If the email couldn't be sent, verificationRequired() turns false and the guest carries on.
+    if (verificationRequired()) redirect("/verify?next=" + encodeURIComponent(next));
   }
   redirect(next);
 }
