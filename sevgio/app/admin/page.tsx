@@ -14,7 +14,7 @@ export default async function AdminHome() {
   const u = await requireUser(["admin"], "/admin");
   await expireStaleRequests();
   const fresh = await unseenBookings(u);
-  const failures = await q<{ n: number }>("SELECT count(*)::int AS n FROM event_log WHERE area = 'Email' AND level = 'error' AND at > now() - interval '1 day'");
+  const failures = await q<{ n: number }>("SELECT count(*)::int AS n FROM event_log WHERE area = 'Email' AND level = 'error' AND resolved_at IS NULL AND at > now() - interval '1 day'");
   const emailFailures = failures[0]?.n ?? 0;
   const today = todayLocal();
   const [s] = await q<Record<string, number>>(
