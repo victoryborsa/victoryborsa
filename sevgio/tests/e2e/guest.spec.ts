@@ -215,3 +215,14 @@ test("an unconfirmed account can start over with a different email", async ({ pa
   await expect(page).toHaveURL(/\/signup$/);
   expect(await sql("SELECT 1 FROM users WHERE email = $1", [wrong])).toHaveLength(0);
 });
+
+test("password boxes have an eye button to show what was typed", async ({ page }) => {
+  await page.goto("/signin");
+  const box = page.getByLabel("Password");
+  await box.fill("secret-123");
+  await expect(box).toHaveAttribute("type", "password");
+  await page.getByRole("button", { name: "Show what you typed" }).click();
+  await expect(box).toHaveAttribute("type", "text");
+  await page.getByRole("button", { name: "Hide what you typed" }).click();
+  await expect(box).toHaveAttribute("type", "password");
+});

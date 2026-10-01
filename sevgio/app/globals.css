@@ -604,3 +604,9 @@ a.event-card:hover { border-color: var(--gold); }
 .event-tags span { padding: 3px 9px; border-radius: 6px; background: rgba(16,24,32,.88); color: #fff; font-size: 12px; font-weight: 700; }
 .event-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
 .event-body h3 { font-size: 18px; }
+
+/* Password show/hide */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap .input { padding-right: 46px; width: 100%; }
+.pw-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+.pw-eye:hover, .pw-eye[aria-pressed="true"] { color: var(--gold); }

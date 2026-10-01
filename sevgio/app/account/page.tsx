@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth.ts";
 import { verificationRequired } from "@/lib/email.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { changePasswordAction, resendCodeAction, updateProfileAction, verifyCodeAction } from "@/app/actions/auth.ts";
+import { PasswordInput } from "@/components/PasswordInput.tsx";
 
 export const metadata: Metadata = { title: "Account" };
 export const dynamic = "force-dynamic";
@@ -44,8 +45,8 @@ export default async function Account({ searchParams }: { searchParams: Promise<
         <ActionForm action={changePasswordAction} className="box" resetOnOk>
           <h2>Password</h2>
           <div className="grid-2">
-            <label className="field"><span>Current password</span><input className="input" name="current" type="password" autoComplete="current-password" /></label>
-            <label className="field"><span>New password</span><input className="input" name="password" type="password" autoComplete="new-password" /><span className="hint">At least 8 characters</span></label>
+            <label className="field"><span>Current password</span><PasswordInput name="current" autoComplete="current-password" /></label>
+            <label className="field"><span>New password</span><PasswordInput name="password" autoComplete="new-password" /><span className="hint">At least 8 characters</span></label>
           </div>
           <div><SubmitButton pendingText="Saving…">Change password</SubmitButton></div>
         </ActionForm>
