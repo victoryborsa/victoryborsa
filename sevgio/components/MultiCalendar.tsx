@@ -46,12 +46,9 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
     start = anchor || today; days = 1; prev = addDays(start, -1); next = addDays(start, 1); todayStart = today;
   } else if (view === "week") {
     start = anchor || today; days = 7; prev = addDays(start, -7); next = addDays(start, 7); todayStart = today;
-  } else if (view === "month" && sp.property) {
-    // One property's month is a wall calendar, so it always shows the whole calendar month.
-    start = monthStart(anchor || today); days = nightsBetween(start, nextMonth(start)); prev = prevMonth(start); next = nextMonth(start); todayStart = monthStart(today);
   } else if (view === "month") {
-    // The board starts today; earlier days only show after tapping "Previous".
-    start = anchor || today; next = addMonths(start, 1); days = nightsBetween(start, next); prev = addMonths(start, -1); todayStart = today;
+    // Month is a wall calendar: the whole calendar month, Sunday to Saturday.
+    start = monthStart(anchor || today); days = nightsBetween(start, nextMonth(start)); prev = prevMonth(start); next = nextMonth(start); todayStart = monthStart(today);
   } else {
     days = Number(sp.days); start = anchor || today; prev = addDays(start, -days); next = addDays(start, days); todayStart = today;
   }
@@ -127,11 +124,13 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
 
       {rows.length === 0 ? <div className="empty"><p className="muted">No listings yet.</p></div> : selected && view === "month" ? (
         <MonthGrid p={selected} res={res} blocks={blocks} start={start} end={end} today={today} />
+      ) : view === "month" ? (
+        <AllMonthGrid rows={rows} res={res} blocks={blocks} start={start} end={end} today={today} dayHref={d => link(d, "day")} />
       ) : view === "day" ? (
         <DayList rows={rows} res={res} blocks={blocks} day={start} />
       ) : (
         <div className="mc-wrap">
-          <div className={`mc mc-${view}`} style={{ gridTemplateColumns: `var(--mc-name-w) repeat(${days}, minmax(${view === "week" ? 40 : days > 30 ? 26 : 30}px, 1fr))` }}>
+          <div className={`mc mc-${view}`} style={{ gridTemplateColumns: `var(--mc-name-w) repeat(${days}, minmax(${view === "week" ? 34 : days > 30 ? 26 : 30}px, 1fr))` }}>
             <div className="mc-corner"><span className="nav-txt">Property</span></div>
             {dates.map(d => {
               const dt = dayLabel(d), dow = dt.getUTCDay();
@@ -278,6 +277,44 @@ function MonthGrid({ p, res, blocks, start, end, today }: { p: Prop; res: Res[];
             <span className={`mg-num${d === today ? " today" : ""}`}>{Number(d.slice(8))}</span>
             {s?.href ? <Link href={s.href} className="mg-link">{inner}</Link> : inner}
           </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Every property's month on one wall calendar: each night lists the listings that are booked or blocked. Tap a day for details. */
+function AllMonthGrid({ rows, res, blocks, start, end, today, dayHref }: { rows: Prop[]; res: Res[]; blocks: Blk[]; start: string; end: string; today: string; dayHref: (d: string) => string }) {
+  const name = new Map(rows.map(r => [r.id, r.title]));
+  type Tag = { key: string; from: string; to: string; cls: string; text: string; title: string };
+  const tags: Tag[] = [
+    ...res.filter(b => name.has(b.property_id)).map(b => ({ key: b.id, from: b.check_in, to: b.check_out, cls: b.status === "confirmed" ? "ok" : "warn",
+      text: name.get(b.property_id)!, title: `${name.get(b.property_id)} · ${b.guest_name} · ${b.check_in} → ${b.check_out}` })),
+    ...blocks.filter(b => name.has(b.property_id)).map(b => {
+      const ch = b.source.startsWith("ical") ? channelOf(b.feed_name || b.note.split(":")[0]) : null;
+      return { key: b.id, from: b.start_date, to: b.end_date, cls: ch ? `ch-${ch.key}` : "blk", text: name.get(b.property_id)!,
+        title: `${name.get(b.property_id)} · ${ch ? `Booked on ${ch.label}` : b.note || "Blocked"} · ${b.start_date} → ${b.end_date}` };
+    }),
+  ].sort((a, b) => a.text.localeCompare(b.text));
+  const lead = dayLabel(start).getUTCDay();
+  const dates: string[] = [];
+  for (let d = start; d < end; d = addDays(d, 1)) dates.push(d);
+  return (
+    <div className="mg mg-all" role="grid" aria-label="All properties month calendar">
+      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(w => <div key={w} className="mg-dow" role="columnheader">{w}</div>)}
+      {Array.from({ length: lead }, (_, i) => <div key={"x" + i} className="mg-blank" />)}
+      {dates.map(d => {
+        const on = tags.filter(t => t.from <= d && d < t.to);
+        const shown = on.slice(0, 4);
+        return (
+          <Link key={d} href={dayHref(d)} role="gridcell" className={`mg-day mg-link-day${d < today ? " past" : ""}`} aria-label={`${fmtDate(d)}: ${on.length ? `${on.length} booked` : "all free"}`}>
+            <span className={`mg-num${d === today ? " today" : ""}`}>{Number(d.slice(8))}</span>
+            <span className="mg-tags">
+              {shown.map(t => <span key={t.key} className={`mg-tag ${t.cls}`} title={t.title}>{t.text}</span>)}
+              {on.length > shown.length && <span className="mg-more">+{on.length - shown.length} more</span>}
+            </span>
+            {on.length > 0 && <span className="mg-count">{on.length} booked</span>}
+          </Link>
         );
       })}
     </div>

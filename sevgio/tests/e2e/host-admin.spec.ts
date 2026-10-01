@@ -454,21 +454,26 @@ test("admin adds a real photo to a place in the Pittsburgh guide", async ({ page
   await signOut(page);
 });
 
-test("calendar opens on today; earlier days only after tapping Previous", async ({ page }) => {
+test("calendar: week starts today and month is a whole wall calendar", async ({ page }) => {
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
-  const dayNum = String(Number(today.slice(8)));
+  const [y, m] = today.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
   await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
-  for (const view of ["month", "week"]) {
-    await page.goto(`/admin/calendar?view=${view}`);
-    await expect(page.locator(".mc-day").first()).toHaveClass(/today/);
-    await expect(page.locator(".mc-day").first().locator("b")).toHaveText(dayNum);
-  }
+  await page.goto("/admin/calendar?view=week");
+  await expect(page.locator(".mc-day")).toHaveCount(7);
+  await expect(page.locator(".mc-day").first()).toHaveClass(/today/);
   await page.goto("/admin/calendar");
-  await expect(page.locator(".mc-day").first()).toHaveClass(/today/);
+  const grid = page.locator(".mg-all");
+  await expect(grid.locator(".mg-day")).toHaveCount(daysInMonth);
+  await expect(grid.locator(".mg-num.today")).toHaveCount(1);
+  await expect(grid.getByRole("columnheader", { name: "Sun" })).toBeVisible();
+  // Tapping a day opens that day's details.
+  await grid.locator(".mg-num.today").click();
+  await expect(page).toHaveURL(/view=day/);
+  await page.goto("/admin/calendar");
   await page.getByRole("link", { name: "Previous month" }).click();
-  await expect(page.locator(".mc-day.today")).toHaveCount(1);
-  await expect(page.locator(".mc-day").first()).not.toHaveClass(/today/);
+  await expect(page.locator(".mg-all .mg-num.today")).toHaveCount(0);
   await page.getByRole("link", { name: "Today" }).click();
-  await expect(page.locator(".mc-day").first()).toHaveClass(/today/);
+  await expect(page.locator(".mg-all .mg-num.today")).toHaveCount(1);
   await signOut(page);
 });
