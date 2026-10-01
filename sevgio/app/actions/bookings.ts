@@ -19,7 +19,7 @@ import { money } from "@/lib/money.ts";
 export async function createBookingAction(_: ActionState, fd: FormData): Promise<ActionState> {
   const slug = str(fd, "slug", 100);
   const ci = str(fd, "ci", 10), co = str(fd, "co", 10), party = partyFromForm(fd);
-  const u = await requireUser(undefined, `/book/${slug}?ci=${ci}&co=${co}&adults=${party.adults}&children=${party.children}&infants=${party.free_children}${party.pets ? `&pets=${party.pets}` : ""}`);
+  const u = await requireUser(undefined, `/book/${slug}?ci=${ci}&co=${co}&adults=${party.adults}&children=${party.children}&infants=${party.free_children}${party.pets ? `&pets=${party.pets}` : ""}${party.services?.length ? `&svc=${party.services.join(",")}` : ""}`);
   if (!u.verified && verificationRequired()) return { error: "Please confirm your email address first. Enter the code we sent you above." };
   const name = str(fd, "name", 120), phone = str(fd, "phone", 40), arrival = str(fd, "arrival", 60), message = str(fd, "message", 2000);
   const p = await one<{ id: string; booking_mode: string; owner_zelle: string; owner_venmo: string }>("SELECT id, booking_mode, owner_zelle, owner_venmo FROM properties WHERE slug = $1", [slug]);

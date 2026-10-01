@@ -100,6 +100,30 @@ export function parseRooms(raw: unknown): RoomDetail[] {
   }
 }
 
+/** Paid extras a listing can offer. Keys are stored, so never rename one. */
+export const SERVICE_PRESETS: Record<string, string> = {
+  airport_pickup: "Airport pickup", airport_dropoff: "Airport drop-off", city_tour: "Private city tour", shuttle: "Shuttle service",
+  ride: "Uber / Lyft ride booked for you", early_checkin: "Early check-in", late_checkout: "Late check-out", grocery: "Groceries stocked before you arrive",
+};
+export const SERVICE_PER: Record<string, string> = { trip: "per trip", person: "per person", night: "per night", stay: "per stay" };
+export type Service = { key: string; name: string; price_cents: number; per: string; note: string };
+export function parseServices(raw: unknown): Service[] {
+  try {
+    const arr = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!Array.isArray(arr)) return [];
+    const seen = new Set<string>();
+    return arr.slice(0, 15).map(x => ({
+      key: String(x?.key ?? "").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 30),
+      name: String(x?.name ?? "").trim().slice(0, 80),
+      price_cents: Math.max(0, Math.round(Number(x?.price_cents) || 0)),
+      per: String(x?.per ?? "trip") in SERVICE_PER ? String(x.per) : "trip",
+      note: String(x?.note ?? "").trim().slice(0, 160),
+    })).filter(x => x.key && x.name && !seen.has(x.key) && seen.add(x.key));
+  } catch {
+    return [];
+  }
+}
+
 export const ACCESS: Record<string, string> = { private: "Private", shared: "Shared with other guests", none: "Not available" };
 
 export const PROPERTY_TYPES: Record<string, string> = {

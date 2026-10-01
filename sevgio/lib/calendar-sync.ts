@@ -18,8 +18,8 @@ export async function syncFeed(feedId: string): Promise<{ count: number; error?:
     const today = todayLocal();
     const events = parseIcs(text).filter(e => e.end > today);
     const clashes = await replaceFeedBlocks(f.property_id, "ical:" + f.id, events.map(e => ({ start: e.start < today ? today : e.start, end: e.end, note: `${f.name}: ${e.summary}` })));
-    await q("UPDATE ical_feeds SET last_synced_at = now(), last_error = $2 WHERE id = $1", [f.id, clashes.length ? `Overlaps a Sevgio booking: ${clashes.join("; ")}` : null]);
-    if (clashes.length) await logEvent("warn", "Calendar sync", `${f.name} has dates that overlap Sevgio bookings`, { feed: f.id, clashes });
+    await q("UPDATE ical_feeds SET last_synced_at = now(), last_error = $2 WHERE id = $1", [f.id, clashes.length ? `Overlaps a Sevgio Stays booking: ${clashes.join("; ")}` : null]);
+    if (clashes.length) await logEvent("warn", "Calendar sync", `${f.name} has dates that overlap Sevgio Stays bookings`, { feed: f.id, clashes });
     return { count: events.length };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

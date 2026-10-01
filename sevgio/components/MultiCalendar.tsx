@@ -165,7 +165,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
                 ...res.filter(b => b.property_id === p.id && barRes.includes(b)).map(b => (
                   <Link key={b.id} href={`/trips/${b.code}`} className={`mc-bar ${b.status === "confirmed" ? "ok" : "warn"}${b.check_in < start ? " cut-l" : ""}${b.check_out > end ? " cut-r" : ""}`}
                     style={{ gridRow: r, gridColumn: `${col(b.check_in) + 1} / ${col(b.check_out) + 1}` }}
-                    title={`Sevgio · ${b.code} · ${b.guest_name} · ${b.check_in} → ${b.check_out} · ${b.nights} night${b.nights === 1 ? "" : "s"} · ${b.guests} guests${b.status === "pending" ? " · awaiting approval" : b.status === "awaiting_payment" ? " · awaiting payment" : ""}`}>
+                    title={`Sevgio Stays · ${b.code} · ${b.guest_name} · ${b.check_in} → ${b.check_out} · ${b.nights} night${b.nights === 1 ? "" : "s"} · ${b.guests} guests${b.status === "pending" ? " · awaiting approval" : b.status === "awaiting_payment" ? " · awaiting payment" : ""}`}>
                     <span>{view === "day" ? `${b.check_in === start ? "Arriving" : "Staying"}: ${b.guest_name}` : b.guest_name}</span>
                   </Link>
                 )),
@@ -184,7 +184,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
         <span><b>{inHouse}</b> <span className="muted">stays in progress</span></span>
         <span className="spacer" />
         <span className="legend" style={{ margin: 0 }}>
-          <span><i className="mc-key ok" />Sevgio</span>
+          <span><i className="mc-key ok" />Sevgio Stays</span>
           <span><i className="mc-key ch-airbnb" />Airbnb</span>
           <span><i className="mc-key ch-bookingcom" />Booking.com</span>
           <span><i className="mc-key ch-vrbo" />Vrbo</span>

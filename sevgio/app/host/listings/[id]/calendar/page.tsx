@@ -46,13 +46,13 @@ export default async function CalendarPage({ params }: { params: Promise<{ id: s
         <h3>Sync with Airbnb, Vrbo and Booking.com</h3>
         <p className="muted">Two-way calendar sync prevents double bookings when this home is listed on other sites too.</p>
         <div className="stack">
-          <strong>1. Send Sevgio bookings to other sites</strong>
+          <strong>1. Send Sevgio Stays bookings to other sites</strong>
           <p className="hint">Paste this link into the other site's "import calendar" setting. It stays private: anyone with the link can see which dates are booked, but not who booked them.</p>
-          <CopyField value={exportUrl} label="Sevgio calendar link" />
+          <CopyField value={exportUrl} label="Sevgio Stays calendar link" />
         </div>
         <div className="stack">
           <strong>2. Block dates booked on other sites</strong>
-          <p className="hint">Paste the other site's "export calendar" link. Sevgio checks it every hour, and you can refresh it any time.</p>
+          <p className="hint">Paste the other site's "export calendar" link. Sevgio Stays checks it every hour, and you can refresh it any time.</p>
           {feeds.map(f => (
             <div key={f.id} className="row" style={{ borderTop: "1px solid var(--line)", paddingTop: 10 }}>
               <div style={{ flex: 1, minWidth: 220 }}>

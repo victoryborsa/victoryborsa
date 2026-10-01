@@ -68,7 +68,7 @@ export async function forgotPasswordAction(_: ActionState, fd: FormData): Promis
     if (!recent || recent.n === 0) {
       const token = crypto.randomBytes(32).toString("base64url");
       await q("INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '30 minutes')", [sha256(token), u.id]);
-      await sendEmail(email, "Reset your Sevgio password", `Hi ${u.name.split(" ")[0]},\n\nUse this link to choose a new password. It works once and expires in 30 minutes:\n${siteUrl()}/reset/${token}\n\nIf you didn't ask for this, you can ignore this email. Your password hasn't changed.`);
+      await sendEmail(email, "Reset your Sevgio Stays password", `Hi ${u.name.split(" ")[0]},\n\nUse this link to choose a new password. It works once and expires in 30 minutes:\n${siteUrl()}/reset/${token}\n\nIf you didn't ask for this, you can ignore this email. Your password hasn't changed.`);
     }
   }
   // Same message either way, so this form can't be used to find out who has an account.

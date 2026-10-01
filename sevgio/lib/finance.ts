@@ -32,7 +32,7 @@ export async function statement(u: User, month: string, propertyId: string | nul
   const params: unknown[] = [start, next];
   const rows = await q<Omit<StatementRow, "rent" | "fee" | "owner">>(
     `SELECT b.id, b.code, b.property_id, p.title, b.guest_name, b.check_in, b.check_out, b.nights, b.guests, b.lodging_cents, b.discount_cents,
-            b.cleaning_fee_cents + b.pet_fee_cents AS cleaning_fee_cents, b.tax_cents, b.total_cents, b.management_fee_percent
+            b.cleaning_fee_cents + b.pet_fee_cents + b.services_cents AS cleaning_fee_cents, b.tax_cents, b.total_cents, b.management_fee_percent
      FROM bookings b JOIN properties p ON p.id = b.property_id
      WHERE b.status = 'confirmed' AND b.check_in >= $1 AND b.check_in < $2 AND ${scope(u, propertyId, params)}
      ORDER BY b.check_in, p.title`,
@@ -72,7 +72,7 @@ export async function yearOverview(u: User, endMonth: string, propertyId: string
   const startMonth = m === 12 ? `${y}-01` : `${y - 1}-${String(m + 1).padStart(2, "0")}`;
   const params: unknown[] = [monthRange(startMonth).start, next];
   const rows = await q<Omit<StatementRow, "rent" | "fee" | "owner"> & { month: string }>(
-    `SELECT to_char(b.check_in, 'YYYY-MM') AS month, b.nights, b.lodging_cents, b.discount_cents, b.cleaning_fee_cents + b.pet_fee_cents AS cleaning_fee_cents, b.management_fee_percent
+    `SELECT to_char(b.check_in, 'YYYY-MM') AS month, b.nights, b.lodging_cents, b.discount_cents, b.cleaning_fee_cents + b.pet_fee_cents + b.services_cents AS cleaning_fee_cents, b.management_fee_percent
      FROM bookings b JOIN properties p ON p.id = b.property_id
      WHERE b.status = 'confirmed' AND b.check_in >= $1 AND b.check_in < $2 AND ${scope(u, propertyId, params)}`,
     params,
@@ -101,7 +101,7 @@ const csvCell = (v: unknown) => {
 };
 export function statementCsv(rows: StatementRow[]): string {
   const d = (c: number) => (c / 100).toFixed(2);
-  const head = ["Reference", "Listing", "Guest", "Check-in", "Check-out", "Nights", "Guests", "Rent", "Discount", "Rent after discount", "Cleaning & pet fees", "Tax collected", "Guest total", "Management fee %", "Management fee", "Owner payout"];
+  const head = ["Reference", "Listing", "Guest", "Check-in", "Check-out", "Nights", "Guests", "Rent", "Discount", "Rent after discount", "Cleaning, pet fees & extras", "Tax collected", "Guest total", "Management fee %", "Management fee", "Owner payout"];
   const body = rows.map(r => [r.code, r.title, r.guest_name, r.check_in, r.check_out, r.nights, r.guests, d(r.lodging_cents), d(r.discount_cents), d(r.rent), d(r.cleaning_fee_cents), d(r.tax_cents), d(r.total_cents), r.management_fee_percent, d(r.fee), d(r.owner)]);
   return [head, ...body].map(line => line.map(csvCell).join(",")).join("\r\n") + "\r\n";
 }

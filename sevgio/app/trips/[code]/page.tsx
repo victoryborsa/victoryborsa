@@ -10,6 +10,7 @@ import { CANCELLATION } from "@/lib/constants.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { forListing } from "@/lib/payments.ts";
+import { extrasOf } from "@/lib/party.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { StatusPill } from "@/components/ui.tsx";
 import { partyLabel } from "@/lib/party.ts";
@@ -111,6 +112,8 @@ export default async function TripPage({ params, searchParams }: { params: Promi
               <tr><td>{money(b.nightly_price_cents)} × {b.nights} night{b.nights === 1 ? "" : "s"}</td><td>{money(b.lodging_cents)}</td></tr>
               {b.discount_cents > 0 && <tr><td>Length-of-stay discount</td><td>−{money(b.discount_cents)}</td></tr>}
               {b.cleaning_fee_cents > 0 && <tr><td>Cleaning fee</td><td>{money(b.cleaning_fee_cents)}</td></tr>}
+              {b.pet_fee_cents > 0 && <tr><td>Pet fee ({b.pets} pet{b.pets === 1 ? "" : "s"})</td><td>{money(b.pet_fee_cents)}</td></tr>}
+              {extrasOf(b).map(x => <tr key={x.key}><td>{x.name}{x.qty > 1 ? ` × ${x.qty}` : ""}</td><td>{money(x.total)}</td></tr>)}
               {b.tax_cents > 0 && <tr><td>Taxes</td><td>{money(b.tax_cents)}</td></tr>}
               {b.card_fee_cents > 0 && <tr><td>Card processing fee</td><td>{money(b.card_fee_cents)}</td></tr>}
               <tr className="total"><td>Total</td><td>{money(b.total_cents + b.card_fee_cents)}</td></tr>
@@ -118,6 +121,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
               {b.payment_method === "cash" && b.status === "confirmed" && b.paid_cents < b.total_cents && <tr><td>Due in cash at check-in</td><td>{money(b.total_cents - b.paid_cents)}</td></tr>}
             </tbody>
           </table>
+          {b.security_deposit_cents > 0 && <p className="hint">Refundable security deposit: <b>{money(b.security_deposit_cents)}</b>, collected by your host and returned after check-out. It isn't part of the total above.</p>}
           <p className="hint">Questions? <Link href="/contact">Contact us</Link> and include your reference {b.code}.</p>
         </aside>
       </div>

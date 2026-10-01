@@ -17,9 +17,9 @@ const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variabl
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL || "http://localhost:3000"),
-  title: { default: "Sevgio · Yinz Are Home · Stays in Pittsburgh", template: "%s · Sevgio" },
+  title: { default: "Sevgio Stays · Yinz Are Home in Pittsburgh", template: "%s · Sevgio Stays" },
   description: "Cozy private rooms and whole houses in Pittsburgh, booked direct with your hosts.",
-  openGraph: { siteName: "Sevgio", type: "website" },
+  openGraph: { siteName: "Sevgio Stays", type: "website" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#101820" };
 
@@ -34,7 +34,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {settings.site_notice && <div className="site-notice"><div className="wrap">{settings.site_notice}</div></div>}
         <header className="site">
           <div className="wrap">
-            <Link className="logo logo-badge" href="/" aria-label="Sevgio home"><Logo size={46} title="Sevgio" /><span>sevgio<span className="dot" /></span></Link>
+            <Link className="logo logo-badge" href="/" aria-label="Sevgio Stays home"><Logo size={46} title="Sevgio Stays" /><span>sevgio <span className="logo-stays">stays</span><span className="dot" /></span></Link>
             <nav className="main" aria-label="Main">
               <Link className="navlink" href="/stays">{t("nav.stays")}</Link>
               <Link className="navlink" href="/events">{t("nav.events")}</Link>
@@ -62,7 +62,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <footer className="site">
           <div className="wrap">
             <div className="stack" style={{ gap: 6 }}>
-              <strong style={{ fontFamily: "var(--f-display)", fontSize: 18 }}>sevgio</strong>
+              <strong style={{ fontFamily: "var(--f-display)", fontSize: 18 }}>Sevgio Stays</strong>
               <span className="muted">{t("foot.tagline")}</span>
             </div>
             <div className="stack" style={{ gap: 6 }}>

@@ -33,6 +33,6 @@ export async function contactAction(_: ActionState, fd: FormData): Promise<Actio
   const u = await currentUser();
   await q("INSERT INTO messages (user_id, name, email, topic, body) VALUES ($1, $2, $3, $4, $5)", [u?.id ?? null, name, email, topic, body]);
   const s = await getSettings();
-  if (s.contact_email) await sendEmail(s.contact_email, `[Sevgio contact] ${topic} from ${name}`, `${name} (${email}) wrote:\n\n${body}\n\nSee all messages: ${siteUrl()}/admin/messages`);
+  if (s.contact_email) await sendEmail(s.contact_email, `[Sevgio Stays contact] ${topic} from ${name}`, `${name} (${email}) wrote:\n\n${body}\n\nSee all messages: ${siteUrl()}/admin/messages`);
   return { ok: `Message sent. We'll reply to ${email}.` };
 }

@@ -3,9 +3,10 @@ import Link from "next/link";
 import { createContext, useContext, useMemo, useState } from "react";
 import { Calendar, addDaysC } from "./Calendar.tsx";
 import { PET_FEE_PER, quote, type Party, type PricingInput } from "@/lib/pricing.ts";
+import { SERVICE_PER, parseServices } from "@/lib/constants.ts";
 import { money } from "@/lib/money.ts";
 
-type P = PricingInput & { slug: string; min_nights: number; max_nights: number; booking_mode: "instant" | "request"; children_free_age: number };
+type P = PricingInput & { security_deposit_cents?: number; slug: string; min_nights: number; max_nights: number; booking_mode: "instant" | "request"; children_free_age: number };
 type Ctx = { p: P; today: string; taken: Set<string>; taxPercent: number; ci: string; co: string; party: Party; msg: string; pick: (d: string) => void; clear: () => void; setParty: (p: Party) => void; bookable: boolean };
 const BookingCtx = createContext<Ctx | null>(null);
 const use = () => useContext(BookingCtx)!;
@@ -22,7 +23,7 @@ export function BookingProvider({ p, today, unavailable, taxPercent, initial, bo
   const [party, setParty] = useState<Party>(() => {
     const adults = Math.min(Math.max(1, initial.party.adults || 2), p.max_guests);
     const children = Math.min(initial.party.children, p.max_guests - adults);
-    return { adults, children, free_children: Math.min(initial.party.free_children, p.max_guests - adults - children), pets: p.pets_allowed ? Math.min(initial.party.pets || 0, MAX_PETS) : 0 };
+    return { adults, children, free_children: Math.min(initial.party.free_children, p.max_guests - adults - children), pets: p.pets_allowed ? Math.min(initial.party.pets || 0, MAX_PETS) : 0, services: (initial.party.services || []).filter(k => parseServices(p.services).some(x => x.key === k)) };
   });
   const [msg, setMsg] = useState(initial.ci && !validInitial ? "The dates from your search aren't available here. Pick new dates below." : "");
 
@@ -79,7 +80,7 @@ function useQuote() {
 }
 
 export function bookHref(slug: string, ci: string, co: string, party: Party) {
-  return `/book/${slug}?` + new URLSearchParams({ ci, co, adults: String(party.adults), children: String(party.children), infants: String(party.free_children), ...(party.pets ? { pets: String(party.pets) } : {}) });
+  return `/book/${slug}?` + new URLSearchParams({ ci, co, adults: String(party.adults), children: String(party.children), infants: String(party.free_children), ...(party.pets ? { pets: String(party.pets) } : {}), ...(party.services?.length ? { svc: party.services.join(",") } : {}) });
 }
 
 /** Adults / children / young children (free) pickers. Total can't exceed the listing's maximum. */
@@ -118,6 +119,26 @@ function PartyPicker() {
   );
 }
 
+/** Paid extras the listing offers (airport pickup, city tour, …): ticking one adds it to the price. */
+function ExtrasPicker() {
+  const { p, party, setParty } = use();
+  const list = parseServices(p.services);
+  if (!list.length) return null;
+  const on = new Set(party.services || []);
+  const flip = (k: string) => setParty({ ...party, services: on.has(k) ? [...on].filter(x => x !== k) : [...on, k] });
+  return (
+    <fieldset className="extras">
+      <legend>Add extras</legend>
+      {list.map(x => (
+        <label key={x.key} className="chk extra-item">
+          <input type="checkbox" checked={on.has(x.key)} onChange={() => flip(x.key)} />
+          <span><b>{x.name}</b> <span className="muted">{money(x.price_cents)} {SERVICE_PER[x.per]}</span>{x.note && <span className="hint" style={{ display: "block" }}>{x.note}</span>}</span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
 export function BookingPanel({ paymentNote }: { paymentNote: string }) {
   const { p, ci, co, party, bookable, taxPercent } = use();
   const { pr, problem } = useQuote();
@@ -130,6 +151,7 @@ export function BookingPanel({ paymentNote }: { paymentNote: string }) {
         <div><small>Check-out</small>{fmt(co)}</div>
       </a>
       <PartyPicker />
+      <ExtrasPicker />
       {pr && !problem && (
         <table className="breakdown">
           <tbody>
@@ -137,12 +159,14 @@ export function BookingPanel({ paymentNote }: { paymentNote: string }) {
             {pr.discount > 0 && <tr><td>{pr.discountLabel}</td><td>−{money(pr.discount)}</td></tr>}
             {pr.cleaning > 0 && <tr><td>Cleaning fee</td><td>{money(pr.cleaning)}</td></tr>}
             {pr.petFee > 0 && <tr><td>Pet fee ({pr.pets} pet{pr.pets === 1 ? "" : "s"})</td><td>{money(pr.petFee)}</td></tr>}
+            {pr.extras.map(x => <tr key={x.key}><td>{x.name}{x.qty > 1 ? ` × ${x.qty}` : ""}</td><td>{money(x.total)}</td></tr>)}
             {taxPercent > 0 && <tr><td>Taxes ({taxPercent}%)</td><td>{money(pr.tax)}</td></tr>}
             <tr className="total"><td>Total</td><td>{money(pr.total)}</td></tr>
           </tbody>
         </table>
       )}
       {problem && <div className="notice warn" role="alert">{problem}</div>}
+      {!!p.security_deposit_cents && <p className="hint">Plus a refundable security deposit of {money(p.security_deposit_cents)}, collected by your host and returned after check-out. Not included in the total.</p>}
       {!bookable && <div className="notice info">This listing isn't published yet, so it can't be booked.</div>}
       {ready ? (
         <Link className="btn btn-primary btn-block" href={bookHref(p.slug, ci, co, party)}>{p.booking_mode === "instant" ? "Reserve" : "Request to book"}</Link>

@@ -542,3 +542,44 @@ test("bedroom details: host describes each room, guests tap bedrooms to see them
   await expect(primary.locator("img")).toBeVisible();
   await expect(page.locator(".room-card", { hasText: "Kids Room" })).toContainText("1 bunk bed · Twin · 38 × 75 in");
 });
+
+test("extra services and security deposit: host offers them, guest adds pickup and books", async ({ page }) => {
+  const [p] = await sql<{ id: string }>("SELECT id FROM properties WHERE slug = 'downtown-state-college-condo'");
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto(`/host/listings/${p.id}`);
+  await page.getByLabel("Airport pickup").check();
+  await page.getByLabel("Price for Airport pickup").fill("45");
+  await page.getByLabel("Private city tour").check();
+  await page.getByLabel("Price for Private city tour").fill("30");
+  await page.getByLabel("How Private city tour is charged").selectOption("person");
+  await page.getByLabel(/Refundable security deposit/).fill("200");
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/^Saved\./)).toBeVisible();
+  await signOut(page);
+
+  await page.goto(`/stays/downtown-state-college-condo?ci=${iso(345)}&co=${iso(347)}&adults=2`);
+  await expect(page.getByRole("heading", { name: "Extra services" })).toBeVisible();
+  await expect(page.getByText("$200, refundable after check-out")).toBeVisible();
+  await page.locator(".extras").getByLabel(/Airport pickup/).check();
+  await page.locator(".extras").getByLabel(/Private city tour/).check();
+  const panel = page.locator("#book table.breakdown");
+  await expect(panel).toContainText("Airport pickup");
+  await expect(panel).toContainText("Private city tour × 2");
+  await expect(panel).toContainText("$60");
+  await page.locator("#book").getByRole("link", { name: /Reserve|Request to book/ }).click();
+  await signIn(page, "guest@demo.sevgio.com", "demo-password-2026");
+  await page.goto(`/book/downtown-state-college-condo?ci=${iso(345)}&co=${iso(347)}&adults=2&svc=airport_pickup,city_tour,bogus`);
+  await expect(page.locator("table.breakdown")).toContainText("Airport pickup");
+  await page.getByLabel("Mobile phone").fill("(570) 555-0100");
+  if (await page.getByLabel(/^Zelle/).count()) await page.getByLabel(/^Zelle/).check();
+  await page.getByLabel(/I agree/).check();
+  await page.getByRole("button", { name: /Confirm booking|Request to book|Book and pay|Send request/ }).click();
+  await expect(page.locator(".code")).toBeVisible();
+  const code = (await page.locator(".code").textContent())!.trim();
+  const [b] = await sql<{ services_cents: number; security_deposit_cents: number; services: { name: string }[] }>("SELECT services_cents, security_deposit_cents, services FROM bookings WHERE code = $1", [code]);
+  expect(b.services_cents).toBe(4500 + 3000 * 2);
+  expect(b.security_deposit_cents).toBe(20000);
+  expect(b.services.map(x => x.name)).toEqual(["Airport pickup", "Private city tour"]);
+  await expect(page.getByText(/Refundable security deposit/)).toBeVisible();
+  await signOut(page);
+});

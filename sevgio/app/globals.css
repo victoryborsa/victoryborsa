@@ -630,3 +630,17 @@ a.room-card:hover { border-color: var(--gold); }
 .room-size { margin: 0; font-weight: 600; color: var(--gold); }
 .room-edit { border: 1px solid var(--line); border-radius: var(--r-lg); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
 .room-edit legend { font-weight: 700; padding: 0 6px; color: var(--gold); }
+.logo .logo-stays { color: var(--gold); font-weight: 600; }
+@media (max-width: 400px) { .logo .logo-stays { font-size: .85em; } }
+
+/* Extra services editor */
+.svc-preset { display: flex; flex-direction: column; gap: 6px; }
+.svc-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; margin-left: 28px; padding: 10px 12px; border-left: 2px solid var(--gold); background: var(--surface-2); border-radius: 0 var(--r) var(--r) 0; }
+
+/* Extras on the booking panel and listing */
+.extras { border: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.extras legend { font-weight: 700; font-size: 14px; padding: 0 4px; color: var(--gold); }
+.extra-item { align-items: flex-start; font-size: 14px; }
+.extras-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.extras-list li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.extras-list li .hint { flex-basis: 100%; }

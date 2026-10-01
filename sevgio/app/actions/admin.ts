@@ -53,7 +53,7 @@ export async function inviteUserAction(_: ActionState, fd: FormData): Promise<Ac
   const u = await one<{ id: string }>("INSERT INTO users (email, name, role, password_hash) VALUES ($1, $2, $3, $4) RETURNING id", [email, name, role, await hashPassword(nodeCrypto.randomBytes(32).toString("hex"))]);
   const token = nodeCrypto.randomBytes(32).toString("base64url");
   await q("INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '7 days')", [sha256(token), u!.id]);
-  await sendEmail(email, "You're invited to Sevgio", `Hi ${name.split(" ")[0]},\n\n${admin.name} has created a Sevgio ${role} account for you. Choose your password here (the link works for 7 days):\n${siteUrl()}/reset/${token}`);
+  await sendEmail(email, "You're invited to Sevgio Stays", `Hi ${name.split(" ")[0]},\n\n${admin.name} has created a Sevgio Stays ${role} account for you. Choose your password here (the link works for 7 days):\n${siteUrl()}/reset/${token}`);
   await logEvent("info", "Access", `Invited ${email} as ${role}`, {}, admin.id);
   revalidatePath("/admin/users");
   return { ok: `Invitation sent to ${email}.` };
@@ -179,7 +179,7 @@ export async function slideCommandAction(fd: FormData) {
 /** Sends a test email to the signed-in admin and explains any problem in plain words. */
 export async function testEmailAction(_: ActionState, _fd: FormData): Promise<ActionState> {
   const u = await requireUser(["admin"]);
-  const r = await sendEmail(u.email, "Sevgio test email", "It works! Your website can send emails: verification codes, booking confirmations and new-booking alerts.", { force: true });
+  const r = await sendEmail(u.email, "Sevgio Stays test email", "It works! Your website can send emails: verification codes, booking confirmations and new-booking alerts.", { force: true });
   if (r.ok) return { ok: `Test email sent to ${u.email}. Check your inbox (and the Spam folder).` };
   if (r.error === "not-configured") return { error: "Email isn't set up yet. Add SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS in Render → Environment (see the steps in the README), then try again." };
   if (/535|Username and Password not accepted|Invalid login|BadCredentials/i.test(r.error || "")) return { error: "Gmail refused the login. Check SMTP_USER is your full Gmail address and SMTP_PASS is the 16-letter App Password (not your normal Gmail password)." };

@@ -6,7 +6,7 @@ import { requireUser, safeNext, type User } from "@/lib/auth.ts";
 import { withMsg } from "@/components/Flash.tsx";
 import { requireManageable } from "@/lib/access.ts";
 import { addBlock, setBookingStatus, type Booking } from "@/lib/bookings.ts";
-import { ACCESS, AMENITIES, CANCELLATION, PROPERTY_TYPES, parseBeds, parseRooms } from "@/lib/constants.ts";
+import { ACCESS, AMENITIES, CANCELLATION, PROPERTY_TYPES, parseBeds, parseRooms, parseServices } from "@/lib/constants.ts";
 import { int, lines, slugify, str, type ActionState } from "@/lib/validate.ts";
 import { toCents } from "@/lib/money.ts";
 import { processPhoto } from "@/lib/photos.ts";
@@ -46,6 +46,8 @@ function readListing(fd: FormData) {
     management_fee_percent: fd.has("management_fee_percent") ? pct(fd, "management_fee_percent") : null,
     owner_zelle: str(fd, "owner_zelle", 120), owner_venmo: str(fd, "owner_venmo", 60),
     rooms: parseRooms(str(fd, "rooms_json", 30000) || "[]"),
+    services: parseServices(str(fd, "services_json", 20000) || "[]"),
+    deposit: toCents(str(fd, "security_deposit") || "0"),
     pet_fee: fd.getAll("amenities").includes("pets") && str(fd, "pet_fee_mode") === "fee" ? toCents(str(fd, "pet_fee") || "0") : 0,
     pet_fee_per: str(fd, "pet_fee_per") || "stay",
   };
@@ -53,6 +55,8 @@ function readListing(fd: FormData) {
   if (!v.title) error = "Give the listing a title.";
   else if (fd.getAll("amenities").includes("pets") && str(fd, "pet_fee_mode") === "fee" && !(Number.isFinite(v.pet_fee) && (v.pet_fee as number) > 0)) error = "Add the pet fee amount, or choose Free.";
   else if (!["stay", "night", "pet_stay", "pet_night"].includes(v.pet_fee_per)) error = "Choose how the pet fee is charged.";
+  else if (!(Number.isFinite(v.deposit) && (v.deposit as number) >= 0)) error = "Enter the security deposit as a number, or 0.";
+  else if (v.services.some(x => !x.price_cents)) error = `Add a price for "${v.services.find(x => !x.price_cents)!.name}", or untick it.`;
   else if (!v.city) error = "Add the town or city.";
   else if (!(v.property_type in PROPERTY_TYPES)) error = "Choose a property type.";
   else if (!(v.max_guests >= 1 && v.max_guests <= 50)) error = "Maximum guests must be between 1 and 50.";
@@ -92,7 +96,7 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     fewer_guest_discount_percent: v.fewer_guest_discount_percent, weekly_discount_percent: v.weekly_discount_percent, monthly_discount_percent: v.monthly_discount_percent,
     children_free_age: v.children_free_age, owner_zelle: v.owner_zelle, owner_venmo: v.owner_venmo,
     pet_fee_cents: v.pet_fee || 0, pet_fee_per: v.pet_fee_per,
-    rooms_detail: JSON.stringify(v.rooms),
+    rooms_detail: JSON.stringify(v.rooms), services: JSON.stringify(v.services), security_deposit_cents: v.deposit || 0,
   };
   // Only admins set the management fee; hosts never see or change it.
   if (isAdmin && v.management_fee_percent !== null) cols.management_fee_percent = v.management_fee_percent;
@@ -184,6 +188,8 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
   if (Number(item.pet_fee) > 0) { fd.set("pet_fee_mode", "fee"); fd.set("pet_fee", String(item.pet_fee)); }
   if (Array.isArray(item.beds)) fd.set("beds_json", JSON.stringify(item.beds));
   if (Array.isArray(item.rooms)) fd.set("rooms_json", JSON.stringify(item.rooms));
+  if (Array.isArray(item.services)) fd.set("services_json", JSON.stringify(item.services));
+  if (item.security_deposit) fd.set("security_deposit", String(item.security_deposit));
   for (const a of Array.isArray(item.amenities) ? item.amenities : []) fd.append("amenities", String(a));
   const rules = Array.isArray(item.house_rules) ? item.house_rules.join("\n") : String(item.house_rules ?? "");
   fd.set("house_rules", rules);

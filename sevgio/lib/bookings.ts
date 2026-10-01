@@ -14,14 +14,14 @@ export type Property = {
   parent_id: string | null; bathroom_type: "private" | "shared";
   beds_detail: unknown; half_bathrooms: number; kitchen_access: string; laundry_access: string; stairs_info: string; has_exterior_cameras: boolean; camera_locations: string;
   base_occupancy: number | null; extra_guest_fee_cents: number; fewer_guest_discount_percent: number; weekly_discount_percent: number; monthly_discount_percent: number;
-  children_free_age: number; management_fee_percent: number; shared_spaces: string; owner_zelle: string; owner_venmo: string; pet_fee_cents: number; pet_fee_per: string; rooms_detail: unknown;
+  children_free_age: number; management_fee_percent: number; shared_spaces: string; owner_zelle: string; owner_venmo: string; pet_fee_cents: number; pet_fee_per: string; rooms_detail: unknown; services: unknown; security_deposit_cents: number;
 };
 
 export type Booking = {
   id: string; code: string; property_id: string; guest_id: string; check_in: string; check_out: string; guests: number; status: string; nights: number;
   nightly_price_cents: number; cleaning_fee_cents: number; tax_cents: number; total_cents: number; guest_name: string; guest_phone: string;
   arrival_time: string; message: string; host_note: string; cancelled_by: string | null; created_at: string;
-  adults: number; children: number; free_children: number; lodging_cents: number; discount_cents: number; management_fee_percent: number; pets: number; pet_fee_cents: number;
+  adults: number; children: number; free_children: number; lodging_cents: number; discount_cents: number; management_fee_percent: number; pets: number; pet_fee_cents: number; services: unknown; services_cents: number; security_deposit_cents: number;
   payment_method: PayMethod | null; card_fee_cents: number; due_now_cents: number; paid_cents: number;
   payment_status: "none" | "pending" | "processing" | "paid" | "deposit_paid" | "failed"; payment_deadline: string | null;
 };
@@ -126,11 +126,11 @@ export async function createBooking(b: NewBooking): Promise<CreateResult> {
           const booking = await one<Booking>(
             `INSERT INTO bookings (code, property_id, guest_id, check_in, check_out, guests, status, nights, nightly_price_cents, cleaning_fee_cents, tax_cents, total_cents, guest_name, guest_phone, arrival_time, message,
                adults, children, free_children, lodging_cents, discount_cents, management_fee_percent,
-               payment_method, card_fee_cents, due_now_cents, payment_status, payment_deadline, pets, pet_fee_cents)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29) RETURNING *`,
+               payment_method, card_fee_cents, due_now_cents, payment_status, payment_deadline, pets, pet_fee_cents, services, services_cents, security_deposit_cents)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32) RETURNING *`,
             [newCode(), p.id, b.guestId, b.ci, b.co, guests, status, pr.nights, pr.nightly, pr.cleaning, pr.tax, pr.total, b.name, b.phone, b.arrival, b.message,
               b.party.adults, b.party.children, b.party.free_children, pr.base, pr.discount, p.management_fee_percent,
-              b.pay?.method ?? null, due.fee, due.now, b.pay ? "pending" : "none", deadline, pr.pets, pr.petFee],
+              b.pay?.method ?? null, due.fee, due.now, b.pay ? "pending" : "none", deadline, pr.pets, pr.petFee, JSON.stringify(pr.extras), pr.extrasTotal, p.security_deposit_cents || 0],
             c,
           );
           return { ok: true, booking: booking!, property: p } as const;

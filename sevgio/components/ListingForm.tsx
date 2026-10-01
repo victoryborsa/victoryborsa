@@ -1,6 +1,7 @@
-import { ACCESS, AMENITY_GROUPS, CANCELLATION, parseBeds, parseRooms } from "@/lib/constants.ts";
+import { ACCESS, AMENITY_GROUPS, CANCELLATION, parseBeds, parseRooms, parseServices } from "@/lib/constants.ts";
 import { BedsEditor } from "./BedsEditor.tsx";
 import { RoomsEditor } from "./RoomsEditor.tsx";
+import { ServicesEditor } from "./ServicesEditor.tsx";
 import { CameraField } from "./CameraField.tsx";
 import { ListingKind } from "./ListingKind.tsx";
 import { PetsAmenity } from "./PetsAmenity.tsx";
@@ -88,6 +89,7 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
         <div className="grid-2">
           <label className="field"><span>Nightly price (USD)</span><input className="input mono" name="nightly_price" inputMode="decimal" defaultValue={dollars(p?.nightly_price_cents)} placeholder="175" /></label>
           <label className="field"><span>Cleaning fee (USD, per stay)</span><input className="input mono" name="cleaning_fee" inputMode="decimal" defaultValue={dollars(p?.cleaning_fee_cents) || "0"} /></label>
+          <label className="field"><span>Refundable security deposit (USD, optional)</span><input className="input mono" name="security_deposit" inputMode="decimal" defaultValue={dollars(p?.security_deposit_cents) || "0"} /><span className="hint">Not added to the price. Guests see it before booking; you collect it and return it after check-out.</span></label>
           <label className="field"><span>Minimum nights</span><input className="input mono" name="min_nights" type="number" min={1} max={60} defaultValue={p?.min_nights ?? 2} /></label>
           <label className="field"><span>Maximum nights</span><input className="input mono" name="max_nights" type="number" min={1} max={365} defaultValue={p?.max_nights ?? 30} /></label>
           <label className="field"><span>How guests book</span>
@@ -119,7 +121,7 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
 
       <div className="box">
         <h2>Owner's payment accounts (optional)</h2>
-        <p className="muted">If this home's owner wants guests to pay them directly, add their Zelle and/or Venmo. Guests of this listing then see these instead of Sevgio's accounts. Leave empty to use the accounts in Admin → Settings.</p>
+        <p className="muted">If this home's owner wants guests to pay them directly, add their Zelle and/or Venmo. Guests of this listing then see these instead of Sevgio Stays's accounts. Leave empty to use the accounts in Admin → Settings.</p>
         <div className="grid-2">
           <label className="field"><span>Owner's Zelle (email or phone)</span><input className="input" name="owner_zelle" defaultValue={p?.owner_zelle ?? ""} placeholder="owner@example.com" autoComplete="off" /></label>
           <label className="field"><span>Owner's Venmo username</span><input className="input" name="owner_venmo" defaultValue={p?.owner_venmo ?? ""} placeholder="@Owner-Name" autoComplete="off" /></label>
@@ -146,6 +148,12 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
             </div>
           </fieldset>
         ))}
+      </div>
+
+      <div className="box">
+        <h2>Extra services (paid)</h2>
+        <p className="muted">Offer airport pickup, a private city tour, rides and more. Guests choose them when they book, and the price is added to their total. You'll see what they chose on the booking.</p>
+        <ServicesEditor initial={parseServices(p?.services)} />
       </div>
 
       <div className="box">

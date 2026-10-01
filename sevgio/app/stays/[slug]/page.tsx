@@ -8,7 +8,7 @@ import { currentUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { one } from "@/lib/db.ts";
 import { addDays, todayLocal } from "@/lib/dates.ts";
-import { ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, bedLabelLong, parseBeds, parseRooms } from "@/lib/constants.ts";
+import { ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, SERVICE_PER, bedLabelLong, parseBeds, parseRooms, parseServices } from "@/lib/constants.ts";
 import { partyFromParams } from "@/lib/party.ts";
 import { Gallery } from "@/components/Gallery.tsx";
 import { StayChooser } from "@/components/StayChooser.tsx";
@@ -87,7 +87,8 @@ export default async function StayPage({ params, searchParams }: Params) {
       <BookingProvider
         p={{ slug: p.slug, nightly_price_cents: p.nightly_price_cents, cleaning_fee_cents: p.cleaning_fee_cents, min_nights: p.min_nights, max_nights: p.max_nights, max_guests: p.max_guests, booking_mode: p.booking_mode,
           base_occupancy: p.base_occupancy, extra_guest_fee_cents: p.extra_guest_fee_cents, fewer_guest_discount_percent: Number(p.fewer_guest_discount_percent), weekly_discount_percent: Number(p.weekly_discount_percent), monthly_discount_percent: Number(p.monthly_discount_percent), children_free_age: p.children_free_age,
-          pets_allowed: p.amenities.includes("pets"), pet_fee_cents: p.pet_fee_cents, pet_fee_per: p.pet_fee_per }}
+          pets_allowed: p.amenities.includes("pets"), pet_fee_cents: p.pet_fee_cents, pet_fee_per: p.pet_fee_per,
+          services: parseServices(p.services), security_deposit_cents: p.security_deposit_cents }}
         today={today}
         unavailable={taken}
         taxPercent={settings.tax_percent}
@@ -172,6 +173,15 @@ export default async function StayPage({ params, searchParams }: Params) {
                 <div className="cards">{linked.rooms.map(r => <PropertyCard key={r.id} p={r} taxPercent={settings.tax_percent} ci={sp.ci} co={sp.co} guests={Number(sp.guests) || undefined} />)}</div>
               </section>
             )}
+            {parseServices(p.services).length > 0 && (
+              <section>
+                <h2>Extra services</h2>
+                <p className="muted">Add any of these when you book. Your host arranges them for you.</p>
+                <ul className="extras-list">
+                  {parseServices(p.services).map(x => <li key={x.key}><b>{x.name}</b><span className="mono">{money(x.price_cents)} {SERVICE_PER[x.per]}</span>{x.note && <span className="hint">{x.note}</span>}</li>)}
+                </ul>
+              </section>
+            )}
             <section>
               <h2>House rules</h2>
               <dl className="kv">
@@ -179,6 +189,7 @@ export default async function StayPage({ params, searchParams }: Params) {
                 <dt>Check-out</dt><dd>Before {p.check_out_time}</dd>
                 <dt>Minimum stay</dt><dd>{p.min_nights} night{p.min_nights > 1 ? "s" : ""}</dd>
                 <dt>Maximum guests</dt><dd>{p.max_guests}</dd>
+                {p.security_deposit_cents > 0 && <><dt>Security deposit</dt><dd>{money(p.security_deposit_cents)}, refundable after check-out</dd></>}
                 <dt>Pets</dt><dd>{!p.amenities.includes("pets") ? "Not allowed" : p.pet_fee_cents ? `Allowed · ${money(p.pet_fee_cents)} ${PET_FEE_PER[p.pet_fee_per]}` : "Allowed · free"}</dd>
               </dl>
               {p.house_rules.length > 0 && <ul className="rules">{p.house_rules.map((r, i) => <li key={i}>{r}</li>)}</ul>}

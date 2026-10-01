@@ -1,12 +1,13 @@
 import { nightsBetween } from "./dates.ts";
+import { parseServices } from "./constants.ts";
 
 export type PricingInput = {
   nightly_price_cents: number; cleaning_fee_cents: number; max_guests: number; base_occupancy?: number | null;
   extra_guest_fee_cents?: number; fewer_guest_discount_percent?: number; weekly_discount_percent?: number; monthly_discount_percent?: number;
-  pets_allowed?: boolean; amenities?: string[]; pet_fee_cents?: number; pet_fee_per?: string;
+  pets_allowed?: boolean; amenities?: string[]; pet_fee_cents?: number; pet_fee_per?: string; services?: unknown;
 };
 /** Who is staying. Children at or under the listing's free age are `free_children` and don't change the price. */
-export type Party = { adults: number; children: number; free_children: number; pets?: number };
+export type Party = { adults: number; children: number; free_children: number; pets?: number; services?: string[] };
 
 export type Quote = {
   nights: number;
@@ -20,6 +21,8 @@ export type Quote = {
   cleaning: number;
   pets: number;
   petFee: number;          // pet fee for this stay (0 when free or no pets)
+  extras: { key: string; name: string; per: string; price_cents: number; qty: number; total: number }[]; // paid services the guest chose
+  extrasTotal: number;
   tax: number;
   total: number;
 };
@@ -42,7 +45,16 @@ export function quote(p: PricingInput, ci: string, co: string, taxPercent: numbe
   const pets = (p.pets_allowed ?? p.amenities?.includes("pets")) ? Math.max(0, party?.pets || 0) : 0;
   const petFee = petFeeFor(p, pets, nights);
   const tax = Math.round(((base - discount + cleaning + petFee) * taxPercent) / 100);
-  return { nights, baseNightly: p.nightly_price_cents, nightly, extraGuests, fewerGuests, base, discount, discountLabel, cleaning, pets, petFee, tax, total: base - discount + cleaning + petFee + tax };
+  // Extra services aren't lodging, so no lodging tax is added to them.
+  const people = party ? party.adults + party.children + party.free_children : billable;
+  const chosen = new Set(party?.services ?? []);
+  const extras = parseServices(p.services).filter(x => chosen.has(x.key)).map(x => {
+    const qty = x.per === "person" ? people : x.per === "night" ? nights : 1;
+    return { key: x.key, name: x.name, per: x.per, price_cents: x.price_cents, qty, total: x.price_cents * qty };
+  });
+  const extrasTotal = extras.reduce((n, x) => n + x.total, 0);
+  return { nights, baseNightly: p.nightly_price_cents, nightly, extraGuests, fewerGuests, base, discount, discountLabel, cleaning, pets, petFee, extras, extrasTotal, tax,
+    total: base - discount + cleaning + petFee + extrasTotal + tax };
 }
 
 export const PET_FEE_PER: Record<string, string> = { stay: "per stay", night: "per night", pet_stay: "per pet, per stay", pet_night: "per pet, per night" };

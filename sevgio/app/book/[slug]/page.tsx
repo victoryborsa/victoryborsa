@@ -25,7 +25,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   const { slug } = await params;
   const sp = await searchParams;
   const ci = sp.ci || "", co = sp.co || "", party = partyFromParams(sp);
-  const qs = new URLSearchParams({ ci, co, adults: String(party.adults), children: String(party.children), infants: String(party.free_children), ...(party.pets ? { pets: String(party.pets) } : {}) });
+  const qs = new URLSearchParams({ ci, co, adults: String(party.adults), children: String(party.children), infants: String(party.free_children), ...(party.pets ? { pets: String(party.pets) } : {}), ...(party.services?.length ? { svc: party.services.join(",") } : {}) });
   const back = `/stays/${slug}?${qs}`;
   const u = await requireUser(undefined, `/book/${slug}?${qs}`);
   const p = await propertyBySlug(slug);
@@ -81,6 +81,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
           <input type="hidden" name="children" value={party.children} />
           <input type="hidden" name="infants" value={party.free_children} />
           <input type="hidden" name="pets" value={party.pets || 0} />
+          <input type="hidden" name="svc" value={(party.services || []).join(",")} />
           <div className="grid-2">
             <label className="field"><span>Lead guest's full name</span><input className="input" name="name" autoComplete="name" defaultValue={u.name} required /></label>
             <label className="field"><span>Mobile phone</span><input className="input" name="phone" type="tel" autoComplete="tel" defaultValue={u.phone} required /><span className="hint">For the host to reach you during your stay</span></label>
@@ -119,6 +120,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
               {pr.discount > 0 && <tr><td>{pr.discountLabel}</td><td>−{money(pr.discount)}</td></tr>}
               {pr.cleaning > 0 && <tr><td>Cleaning fee</td><td>{money(pr.cleaning)}</td></tr>}
               {pr.petFee > 0 && <tr><td>Pet fee ({pr.pets} pet{pr.pets === 1 ? "" : "s"})</td><td>{money(pr.petFee)}</td></tr>}
+              {pr.extras.map(x => <tr key={x.key}><td>{x.name}{x.qty > 1 ? ` × ${x.qty}` : ""}</td><td>{money(x.total)}</td></tr>)}
               {settings.tax_percent > 0 && <tr><td>Taxes ({settings.tax_percent}%)</td><td>{money(pr.tax)}</td></tr>}
               <tr className="total"><td>Total</td><td>{money(pr.total)}</td></tr>
             </tbody>
