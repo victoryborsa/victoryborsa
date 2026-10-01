@@ -12,7 +12,7 @@ import { getT, LANGS } from "@/lib/i18n.ts";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [{ lang, t }, props, cities, settings, slides] = await Promise.all([getT(), allPublished(), publishedCities(), getSettings(), q<{ id: string; caption: string }>("SELECT id, caption FROM site_photos ORDER BY position, created_at LIMIT 20")]);
+  const [{ lang, t }, props, cities, settings, slides] = await Promise.all([getT(), allPublished(), publishedCities(), getSettings(), q<{ id: string; caption: string }>("SELECT id, caption FROM site_photos WHERE slot IS NULL ORDER BY position, created_at LIMIT 20")]);
   return (
     <div className="wrap">
       <section className="hero hero-welcome">

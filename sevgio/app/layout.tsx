@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   description: "Cozy private rooms and whole houses in Pittsburgh, booked direct with your hosts.",
   openGraph: { siteName: "Sevgio", type: "website" },
 };
-export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#0A6B66" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#101820" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [user, settings, { lang, t }] = await Promise.all([currentUser(), getSettings(), getT()]);

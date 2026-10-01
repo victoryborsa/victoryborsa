@@ -10,7 +10,7 @@ export default async function Settings() {
   await requireUser(["admin"], "/admin");
   const s = await getSettings();
   const stripe = stripeReady();
-  const slides = await q<{ id: string; caption: string }>("SELECT id, caption FROM site_photos ORDER BY position, created_at");
+  const slides = await q<{ id: string; caption: string }>("SELECT id, caption FROM site_photos WHERE slot IS NULL ORDER BY position, created_at");
   return (
     <div className="stack" style={{ gap: 24 }}>
     <ActionForm action={saveSettingsAction} className="box" id="settings">

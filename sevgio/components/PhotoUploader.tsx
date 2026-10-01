@@ -25,7 +25,7 @@ async function shrink(file: File): Promise<File> {
 }
 
 /** Uploads photos one at a time, so any number of photos can be chosen at once. */
-export function PhotoUploader({ id, action }: { id: string; action: (prev: ActionState, fd: FormData) => Promise<ActionState> }) {
+export function PhotoUploader({ id, action, compact = false, label = "Upload" }: { id: string; action: (prev: ActionState, fd: FormData) => Promise<ActionState>; compact?: boolean; label?: string }) {
   const input = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -62,11 +62,11 @@ export function PhotoUploader({ id, action }: { id: string; action: (prev: Actio
   }
 
   return (
-    <form className="box stack" onSubmit={upload} noValidate>
-      <h3>Upload photos</h3>
-      <input ref={input} className="input" type="file" name="photos" accept="image/*" multiple disabled={busy} />
-      <p className="hint">Choose as many photos as you like. They're made smaller on your device and uploaded one by one, so big phone photos are fine. Location data is removed. The first photo is the cover.</p>
-      <div><button className="btn btn-primary" type="submit" disabled={busy} aria-busy={busy}>{busy ? progress || "Uploading…" : "Upload"}</button></div>
+    <form className={compact ? "row" : "box stack"} onSubmit={upload} noValidate>
+      {!compact && <h3>Upload photos</h3>}
+      <input ref={input} className="input" type="file" name="photos" accept="image/*" multiple={!compact} disabled={busy} aria-label={compact ? `Photo for ${id}` : undefined} style={compact ? { maxWidth: 260 } : undefined} />
+      {!compact && <p className="hint">Choose as many photos as you like. They're made smaller on your device and uploaded one by one, so big phone photos are fine. Location data is removed. The first photo is the cover.</p>}
+      <div><button className={compact ? "btn btn-ghost btn-sm" : "btn btn-primary"} type="submit" disabled={busy} aria-busy={busy}>{busy ? progress || "Uploading…" : label}</button></div>
       {result?.error && <div className="notice error" role="alert">{result.error}</div>}
       {result?.ok && <div className="notice ok" role="status">{result.ok}</div>}
     </form>

@@ -10,6 +10,9 @@ import { toCents } from "@/lib/money.ts";
 import { logEvent } from "@/lib/log.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { processPhoto } from "@/lib/photos.ts";
+import { SECTIONS, slugOf } from "@/lib/guide.ts";
+
+const GUIDE_SLUGS = new Set(SECTIONS.flatMap(s => s.places.map(p => slugOf(p.name))));
 
 export async function setRoleAction(_: ActionState, fd: FormData): Promise<ActionState> {
   const admin = await requireUser(["admin"]);
@@ -146,7 +149,7 @@ export async function uploadSlideAction(_: ActionState, fd: FormData): Promise<A
   for (const f of files.slice(0, 30)) {
     const r = await processPhoto(f);
     if ("error" in r) { errors.push(r.error); continue; }
-    await q("INSERT INTO site_photos (position, large, thumb, width, height) VALUES ((SELECT coalesce(max(position), -1) + 1 FROM site_photos), $1, $2, $3, $4)", [r.large, r.thumb, r.width, r.height]);
+    await q("INSERT INTO site_photos (position, large, thumb, width, height) VALUES ((SELECT coalesce(max(position), -1) + 1 FROM site_photos WHERE slot IS NULL), $1, $2, $3, $4)", [r.large, r.thumb, r.width, r.height]);
     added++;
   }
   revalidatePath("/admin/settings");
@@ -158,7 +161,7 @@ export async function uploadSlideAction(_: ActionState, fd: FormData): Promise<A
 export async function slideCommandAction(fd: FormData) {
   await requireUser(["admin"]);
   const id = str(fd, "photo", 40), cmd = str(fd, "cmd", 20);
-  const rows = await q<{ id: string }>("SELECT id FROM site_photos ORDER BY position, created_at");
+  const rows = await q<{ id: string }>("SELECT id FROM site_photos WHERE slot IS NULL ORDER BY position, created_at");
   const i = rows.findIndex(r => r.id === id);
   if (i < 0) return;
   if (cmd === "caption") await q("UPDATE site_photos SET caption = $2 WHERE id = $1", [id, str(fd, "caption", 120)]);
@@ -190,4 +193,29 @@ export async function confirmEmailAction(fd: FormData) {
   const u = await one<{ email: string }>("UPDATE users SET email_verified_at = now() WHERE id = $1 AND email_verified_at IS NULL RETURNING email", [id]);
   if (u) await logEvent("info", "Accounts", `Email confirmed by an admin: ${u.email}`, {}, admin.id);
   revalidatePath("/admin/users");
+}
+
+// ---------- Pittsburgh guide photos ----------
+
+/** Sets (or replaces) the photo for one place in the Pittsburgh guide. The uploader sends the place's slug as "id". */
+export async function uploadGuidePhotoAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  await requireUser(["admin"]);
+  const slot = str(fd, "id", 80);
+  if (!GUIDE_SLUGS.has(slot)) return { error: "Unknown place." };
+  const file = fd.getAll("photos").find((f): f is File => f instanceof File && f.size > 0);
+  if (!file) return { error: "Choose a photo to upload." };
+  const r = await processPhoto(file);
+  if ("error" in r) return { error: r.error };
+  await q("DELETE FROM site_photos WHERE slot = $1", [slot]);
+  await q("INSERT INTO site_photos (slot, large, thumb, width, height) VALUES ($1, $2, $3, $4, $5)", [slot, r.large, r.thumb, r.width, r.height]);
+  revalidatePath("/admin/guide");
+  revalidatePath("/pittsburgh");
+  return { ok: "Photo added." };
+}
+
+export async function removeGuidePhotoAction(fd: FormData) {
+  await requireUser(["admin"]);
+  await q("DELETE FROM site_photos WHERE slot = $1", [str(fd, "slot", 80)]);
+  revalidatePath("/admin/guide");
+  revalidatePath("/pittsburgh");
 }
