@@ -1,6 +1,7 @@
 "use server";
 import crypto from "node:crypto";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { one, q } from "@/lib/db.ts";
 import { checkPassword, clientIp, createSession, destroySession, dummyHash, hashPassword, recordAttempt, requireUser, safeNext, sha256, tooManyAttempts } from "@/lib/auth.ts";
 import { isEmail, str, type ActionState } from "@/lib/validate.ts";
@@ -45,7 +46,13 @@ export async function signUpAction(_: ActionState, fd: FormData): Promise<Action
   if (password.length < 8) return { error: "Use at least 8 characters for your password." };
   const exists = await one("SELECT 1 FROM users WHERE lower(email) = $1", [email]);
   if (exists) return { error: "An account with this email already exists. Sign in instead, or reset your password." };
-  const u = await one<{ id: string }>("INSERT INTO users (email, name, phone, password_hash) VALUES ($1, $2, $3, $4) RETURNING id", [email, name, phone, await hashPassword(password)]);
+  const wantsHost = str(fd, "want", 10) === "host";
+  const u = await one<{ id: string }>("INSERT INTO users (email, name, phone, password_hash, host_requested_at) VALUES ($1, $2, $3, $4, $5) RETURNING id", [email, name, phone, await hashPassword(password), wantsHost ? new Date().toISOString() : null]);
+  if (wantsHost) {
+    await logEvent("warn", "Accounts", `Host request from ${name} (${email})`, {}, u!.id);
+    const admins = await q<{ email: string }>("SELECT email FROM users WHERE role = 'admin' AND NOT disabled");
+    for (const a of admins) await sendEmail(a.email, `New host request: ${name}`, `${name} (${email}${phone ? `, ${phone}` : ""}) signed up and wants to list their home on Sevgio Stays.\n\nApprove them in Admin → Users & roles: ${siteUrl()}/admin/users?role=requests`);
+  }
   await createSession(u!.id);
   await sendVerificationCode({ id: u!.id, email, name });
   const next = safeNext(fd.get("next"), "/trips");
@@ -140,4 +147,17 @@ export async function startOverAction() {
   await destroySession();
   await q("DELETE FROM users WHERE id = $1 AND email_verified_at IS NULL AND role = 'customer' AND NOT EXISTS (SELECT 1 FROM bookings WHERE guest_id = $1)", [u.id]);
   redirect("/signup");
+}
+
+/** A guest asks to list their home; admins get an email and approve them in Users & roles. */
+export async function requestHostAction(_: ActionState, _fd: FormData): Promise<ActionState> {
+  const u = await requireUser(["customer"]);
+  const r = await one("UPDATE users SET host_requested_at = now() WHERE id = $1 AND host_requested_at IS NULL RETURNING id", [u.id]);
+  if (r) {
+    await logEvent("warn", "Accounts", `Host request from ${u.name} (${u.email})`, {}, u.id);
+    const admins = await q<{ email: string }>("SELECT email FROM users WHERE role = 'admin' AND NOT disabled");
+    for (const a of admins) await sendEmail(a.email, `New host request: ${u.name}`, `${u.name} (${u.email}) wants to list their home on Sevgio Stays.\n\nApprove them in Admin → Users & roles: ${siteUrl()}/admin/users?role=requests`);
+  }
+  revalidatePath("/account");
+  return { ok: "Request sent. We'll email you when your host tools are ready." };
 }

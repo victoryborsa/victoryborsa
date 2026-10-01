@@ -1,20 +1,20 @@
 import { requireUser } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
-import { confirmEmailAction, inviteUserAction, setDisabledAction, setRoleAction } from "@/app/actions/admin.ts";
+import { approveHostAction, confirmEmailAction, inviteUserAction, setDisabledAction, setRoleAction } from "@/app/actions/admin.ts";
 
-type Row = { id: string; name: string; email: string; phone: string; role: string; disabled: boolean; created_at: string; listings: number; bookings: number; verified: boolean };
+type Row = { id: string; name: string; email: string; phone: string; role: string; disabled: boolean; created_at: string; listings: number; bookings: number; verified: boolean; host_requested: boolean };
 
 export default async function Users({ searchParams }: { searchParams: Promise<{ q?: string; role?: string }> }) {
   const me = await requireUser(["admin"]);
   const sp = await searchParams;
   const term = (sp.q || "").trim().slice(0, 80);
-  const role = ["customer", "host", "admin"].includes(sp.role || "") ? sp.role! : "";
+  const role = ["customer", "host", "admin", "requests"].includes(sp.role || "") ? sp.role! : "";
   const rows = await q<Row>(
-    `SELECT u.id, u.name, u.email, u.phone, u.role, u.disabled, u.created_at, u.email_verified_at IS NOT NULL AS verified,
+    `SELECT u.id, u.name, u.email, u.phone, u.role, u.disabled, u.created_at, u.email_verified_at IS NOT NULL AS verified, u.host_requested_at IS NOT NULL AS host_requested,
             (SELECT count(*) FROM properties p WHERE p.host_id = u.id) AS listings,
             (SELECT count(*) FROM bookings b WHERE b.guest_id = u.id) AS bookings
-     FROM users u WHERE ($1 = '' OR u.name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%') AND ($2 = '' OR u.role = $2)
+     FROM users u WHERE ($1 = '' OR u.name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%') AND ($2 = '' OR u.role = $2 OR ($2 = 'requests' AND u.host_requested_at IS NOT NULL))
      ORDER BY u.created_at DESC LIMIT 300`,
     [term, role],
   );
@@ -22,7 +22,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
     <div className="stack" style={{ gap: 20 }}>
       <form className="row" method="get">
         <input className="input" name="q" defaultValue={term} placeholder="Search name or email" style={{ maxWidth: 320 }} />
-        <select className="input" name="role" defaultValue={role} style={{ width: "auto" }}><option value="">All roles</option><option value="customer">Guests</option><option value="host">Hosts</option><option value="admin">Admins</option></select>
+        <select className="input" name="role" defaultValue={role} style={{ width: "auto" }}><option value="">All roles</option><option value="customer">Guests</option><option value="host">Hosts</option><option value="admin">Admins</option><option value="requests">Host requests</option></select>
         <button className="btn btn-ghost">Search</button>
       </form>
       <div className="tbl-wrap">
@@ -31,7 +31,13 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
           <tbody>
             {rows.map(u => (
               <tr key={u.id} style={u.disabled ? { opacity: 0.6 } : undefined}>
-                <td><strong>{u.name}</strong>{u.phone && <div className="hint">{u.phone}</div>}</td>
+                <td><strong>{u.name}</strong>{u.host_requested && (
+                  <div className="row host-request" style={{ gap: 6, marginTop: 6 }}>
+                    <span className="pill warn">Wants to host</span>
+                    <form action={approveHostAction}><input type="hidden" name="id" value={u.id} /><input type="hidden" name="decision" value="approve" /><button className="btn btn-primary btn-sm" type="submit">Approve as host</button></form>
+                    <form action={approveHostAction}><input type="hidden" name="id" value={u.id} /><input type="hidden" name="decision" value="decline" /><button className="linkbtn" type="submit">Decline</button></form>
+                  </div>
+                )}{u.phone && <div className="hint">{u.phone}</div>}</td>
                 <td>{u.email}{!u.verified && <div className="row" style={{ gap: 6, marginTop: 4 }}><span className="pill warn">Not confirmed</span><form action={confirmEmailAction}><input type="hidden" name="id" value={u.id} /><button className="linkbtn" type="submit">Confirm by hand</button></form></div>}</td>
                 <td>{new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
                 <td className="num">{u.listings || "—"}</td>

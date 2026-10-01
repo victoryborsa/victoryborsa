@@ -238,3 +238,36 @@ test("Where offers preset places; Downtown Pittsburgh finds Pittsburgh stays; up
   await expect(page.locator("a.card", { hasText: "Jim Thorpe" })).toHaveCount(0);
   await expect(page.getByLabel("Where")).toHaveValue("Downtown Pittsburgh");
 });
+
+test("sign-up asks guest or host; host requests wait for admin approval", async ({ page }) => {
+  const hostEmail = `newhost-${Date.now()}@example.com`;
+  await page.goto("/signup");
+  await page.getByLabel(/List my home/).check();
+  await page.getByLabel("Full name").fill("New Host");
+  await page.getByLabel("Email").fill(hostEmail);
+  await page.getByLabel("Password").fill("host-password-1");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByRole("heading", { name: "Confirm your email" })).toBeVisible();
+  const [nu] = await sql<{ id: string; role: string; host_requested_at: string | null }>("SELECT id, role, host_requested_at FROM users WHERE email = $1", [hostEmail]);
+  expect(nu.role).toBe("customer");
+  expect(nu.host_requested_at).not.toBeNull();
+  await sql("UPDATE users SET email_verified_at = now() WHERE id = $1", [nu.id]);
+  await page.goto("/account");
+  await expect(page.getByText("Your host request is being reviewed.")).toBeVisible();
+  await page.goto("/host");
+  await expect(page).toHaveURL(/no-access/);
+  await signOut(page);
+
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin");
+  await expect(page.getByText(/host request/)).toBeVisible();
+  await page.goto("/admin/users?role=requests");
+  await page.locator("tr", { hasText: hostEmail }).getByRole("button", { name: "Approve as host" }).click();
+  await expect(page.locator("tr", { hasText: hostEmail }).getByText("Wants to host")).toHaveCount(0);
+  const [after] = await sql<{ role: string }>("SELECT role FROM users WHERE id = $1", [nu.id]);
+  expect(after.role).toBe("host");
+  await signOut(page);
+  await signIn(page, hostEmail, "host-password-1");
+  await page.goto("/host");
+  await expect(page).toHaveURL(/\/host$/);
+});

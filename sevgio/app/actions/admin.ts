@@ -220,3 +220,22 @@ export async function removeGuidePhotoAction(fd: FormData) {
   revalidatePath("/admin/guide");
   revalidatePath("/pittsburgh");
 }
+
+/** Approves someone who chose "List my home" at sign-up: they become a host and get an email. */
+export async function approveHostAction(fd: FormData) {
+  const admin = await requireUser(["admin"]);
+  const id = str(fd, "id", 40), decision = str(fd, "decision", 10);
+  const u = await one<{ email: string; name: string; role: string }>("SELECT email, name, role FROM users WHERE id = $1 AND host_requested_at IS NOT NULL", [id]);
+  if (!u) return;
+  if (decision === "approve") {
+    await q("UPDATE users SET role = CASE WHEN role = 'customer' THEN 'host' ELSE role END, host_requested_at = NULL WHERE id = $1", [id]);
+    await q("DELETE FROM sessions WHERE user_id = $1", [id]); // host tools appear at next sign-in
+    await sendEmail(u.email, "You're a Sevgio Stays host", `Hi ${u.name.split(" ")[0]},\n\nYour host account is ready. Sign in and open your host dashboard to add your first listing: ${siteUrl()}/host`);
+    await logEvent("info", "Access", `${u.email} approved as a host`, {}, admin.id);
+  } else {
+    await q("UPDATE users SET host_requested_at = NULL WHERE id = $1", [id]);
+    await logEvent("info", "Access", `Host request from ${u.email} declined`, {}, admin.id);
+  }
+  revalidatePath("/admin/users");
+  revalidatePath("/admin");
+}

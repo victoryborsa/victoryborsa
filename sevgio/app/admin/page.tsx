@@ -16,6 +16,7 @@ export default async function AdminHome() {
   const fresh = await unseenBookings(u);
   const failures = await q<{ n: number }>("SELECT count(*)::int AS n FROM event_log WHERE area = 'Email' AND level = 'error' AND resolved_at IS NULL AND at > now() - interval '1 day'");
   const emailFailures = failures[0]?.n ?? 0;
+  const hostReqs = (await q<{ n: number }>("SELECT count(*)::int AS n FROM users WHERE host_requested_at IS NOT NULL AND NOT disabled"))[0]?.n ?? 0;
   const today = todayLocal();
   const [s] = await q<Record<string, number>>(
     `SELECT (SELECT count(*) FROM users WHERE role = 'customer') AS customers,
@@ -47,6 +48,7 @@ export default async function AdminHome() {
         <SubmitButton className="btn btn-ghost btn-sm" pendingText="Sending…">Send me a test email</SubmitButton>
         <span className="hint">Checks that verification codes and booking emails can reach people.</span>
       </ActionForm>
+      {hostReqs > 0 && <div className="notice warn" role="status" style={{ marginBottom: 16 }}><b>{hostReqs} host request{hostReqs === 1 ? "" : "s"}.</b> <Link href="/admin/users?role=requests">Review in Users &amp; roles</Link> to approve them as hosts.</div>}
       {fresh > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}><b>{fresh} new booking{fresh === 1 ? "" : "s"}.</b> <Link href="/admin/bookings">Open Bookings</Link> to see {fresh === 1 ? "it" : "them"}.</div>}
       <div className="stats">
         <div className="stat"><b>{s.customers}</b><span>Guests</span></div>
