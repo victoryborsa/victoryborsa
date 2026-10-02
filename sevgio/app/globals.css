@@ -506,6 +506,15 @@ tr.row-new td { background: color-mix(in srgb, var(--accent-soft) 55%, transpare
 .share-menu a:hover, .share-menu button:hover { background: var(--bg); }
 .share-note { margin: 4px 8px; word-break: break-all; }
 @media (max-width: 640px) { .share-menu { position: fixed; left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; z-index: 60; } }
+/* Public pages can't be selected and copied (form fields still work). Private pages (trips, admin, host) are left alone. */
+html[data-protect="on"] body { -webkit-user-select: none; user-select: none; }
+html[data-protect="on"] :is(input, textarea, select, [contenteditable], .selectable) { -webkit-user-select: text; user-select: text; }
+/* Printing a public page shows a notice instead of the page. */
+@media print {
+  html:not([data-protect="off"]) body > * { display: none !important; }
+  html:not([data-protect="off"]) body::after { content: "Printing is turned off for this page. Visit Sevgio Stays online to see it."; display: block; padding: 40px; font: 16px Arial, sans-serif; color: #000; }
+}
+.foot-legal { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
 /* Photos: no long-press "Save image" on phones, no dragging them off the page. */
 img { -webkit-user-drag: none; user-select: none; -webkit-touch-callout: none; }
 .smart-box { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); display: grid; gap: 12px; }

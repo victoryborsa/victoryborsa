@@ -11,7 +11,7 @@ import { getSettings } from "@/lib/settings.ts";
 import { signOutAction } from "./actions/auth.ts";
 import { getT, LANGS } from "@/lib/i18n.ts";
 import { LangMenu } from "@/components/LangMenu.tsx";
-import { ProtectImages } from "@/components/ProtectImages.tsx";
+import { ProtectPage } from "@/components/ProtectPage.tsx";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-display", display: "swap" });
 const body = Figtree({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-body", display: "swap" });
@@ -61,7 +61,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </header>
         <main id="main">{children}</main>
-        <ProtectImages />
+        <ProtectPage />
         <footer className="site">
           <div className="wrap">
             <div className="stack" style={{ gap: 6 }}>
@@ -86,6 +86,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/host">{t("foot.hostSignin")}</Link>
             </div>
           </div>
+          <div className="wrap foot-legal">© {new Date().getFullYear()} Sevgio Stays. All rights reserved. The photos, text, design and layout of this website belong to Sevgio Stays and may not be copied, reproduced or reused without written permission.</div>
         </footer>
       </body>
     </html>

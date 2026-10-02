@@ -304,3 +304,25 @@ test("listing pages can be shared by email, text, WhatsApp, Facebook and more; p
   });
   expect(blocked).toBe(true);
 });
+
+test("public pages can't be copied: no right-click, no copy, no save/print shortcuts; copier programs are refused", async ({ page, request }) => {
+  await page.goto("/stays/jim-thorpe-mountain-cabin");
+  await expect(page.locator("html")).toHaveAttribute("data-protect", "on");
+  const r = await page.evaluate(() => {
+    const fire = (type: string, target: EventTarget, init: object = {}) => {
+      const e = type === "keydown" ? new KeyboardEvent(type, { bubbles: true, cancelable: true, ...init }) : type === "copy" ? new ClipboardEvent(type, { bubbles: true, cancelable: true }) : new MouseEvent(type, { bubbles: true, cancelable: true });
+      target.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    const h1 = document.querySelector("h1")!;
+    return { menu: fire("contextmenu", h1), copy: fire("copy", h1), save: fire("keydown", document, { key: "s", ctrlKey: true }), source: fire("keydown", document, { key: "u", ctrlKey: true }), print: fire("keydown", document, { key: "p", metaKey: true }),
+      select: getComputedStyle(document.body).userSelect };
+  });
+  expect(r).toEqual({ menu: true, copy: true, save: true, source: true, print: true, select: "none" });
+  await expect(page.getByText(/All rights reserved/)).toBeVisible();
+  // Website-copying programs get turned away; search engines and normal browsers don't.
+  expect((await request.get("/", { headers: { "User-Agent": "Mozilla/4.5 (compatible; HTTrack 3.0x; Windows 98)" } })).status()).toBe(403);
+  expect((await request.get("/", { headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1)" } })).status()).toBe(200);
+  const robots = await (await request.get("/robots.txt")).text();
+  expect(robots).toContain("GPTBot");
+});
