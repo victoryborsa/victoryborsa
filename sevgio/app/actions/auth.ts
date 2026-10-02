@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { one, q } from "@/lib/db.ts";
-import { checkPassword, clientIp, createSession, destroySession, dummyHash, hashPassword, recordAttempt, requireUser, safeNext, sha256, tooManyAttempts } from "@/lib/auth.ts";
+import { checkPassword, clearFailedSignIns, clientIp, createSession, linkToken, destroySession, dummyHash, hashPassword, recordAttempt, requireUser, safeNext, sha256, tooManyAttempts } from "@/lib/auth.ts";
 import { isEmail, str, type ActionState } from "@/lib/validate.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
@@ -73,7 +73,7 @@ export async function forgotPasswordAction(_: ActionState, fd: FormData): Promis
   if (u) {
     const recent = await one<{ n: number }>("SELECT count(*) AS n FROM password_resets WHERE user_id = $1 AND expires_at > now() + interval '25 minutes'", [u.id]);
     if (!recent || recent.n === 0) {
-      const token = crypto.randomBytes(32).toString("base64url");
+      const token = linkToken();
       await q("INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '30 minutes')", [sha256(token), u.id]);
       await sendEmail(email, "Reset your Sevgio Stays password", `Hi ${u.name.split(" ")[0]},\n\nUse this link to choose a new password. It works once and expires in 30 minutes:\n${siteUrl()}/reset/${token}\n\nIf you didn't ask for this, you can ignore this email. Your password hasn't changed.`);
     }
@@ -90,6 +90,7 @@ export async function resetPasswordAction(_: ActionState, fd: FormData): Promise
   if (!r) return { error: "This reset link has expired or was already used. Request a new one." };
   await q("UPDATE users SET password_hash = $2, email_verified_at = coalesce(email_verified_at, now()) WHERE id = $1", [r.user_id, await hashPassword(password)]);
   await q("DELETE FROM sessions WHERE user_id = $1", [r.user_id]); // sign out everywhere
+  await clearFailedSignIns(r.user_id);
   await createSession(r.user_id);
   redirect("/account?reset=1");
 }

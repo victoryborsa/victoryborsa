@@ -111,11 +111,19 @@ test("password reset: link works once", async ({ page }) => {
   await page.getByRole("button", { name: "Save new password" }).click();
   await expect(page.getByText("Your password has been changed")).toBeVisible();
   await signOut(page);
+  // A used link explains itself and offers a new one, instead of a dead end.
   await page.goto(`/reset/${token}`);
-  await page.getByLabel("New password").fill("another-pass-33");
-  await page.getByLabel("Type it again").fill("another-pass-33");
-  await page.getByRole("button", { name: "Save new password" }).click();
-  await expect(page.getByText(/expired or was already used/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "This link doesn't work anymore" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Send me a new link" })).toBeVisible();
+  // A link cut short by a mail app, or with a stray character added, still lands somewhere useful.
+  await page.goto("/reset");
+  await expect(page.getByRole("heading", { name: "This link doesn't work anymore" })).toBeVisible();
+  const token2 = "abc123def456" + Date.now();
+  await sql("INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '30 minutes')", [crypto.createHash("sha256").update(token2).digest("hex"), u.id]);
+  await page.goto(`/reset/${token2}%E2%80%8B`);
+  await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
+  await page.goto(`/reset?token=${token2}`);
+  await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
 });
 
 test("wrong password shows a helpful error and sign-in is rate limited", async ({ page }) => {

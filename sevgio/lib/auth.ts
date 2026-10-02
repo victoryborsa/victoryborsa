@@ -15,6 +15,12 @@ const SESSION_DAYS = 30;
 
 export const sha256 = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
 export const hashPassword = (pw: string) => bcrypt.hash(pw, 12);
+/** Token for links we email (password reset, invitations): 128 random bits as 32 letters and digits, so the link stays short and nothing can break it. */
+export const linkToken = () => crypto.randomBytes(16).toString("hex");
+/** After a password change, forget the failed sign-ins that may have locked the account. */
+export async function clearFailedSignIns(userId: string) {
+  await q("DELETE FROM login_attempts WHERE NOT success AND lower(email) = (SELECT lower(email) FROM users WHERE id = $1)", [userId]);
+}
 export const checkPassword = (pw: string, hash: string) => bcrypt.compare(pw, hash);
 let dummy: Promise<string> | null = null;
 /** A real hash to compare against when an email has no account, so timing doesn't reveal which emails exist. */

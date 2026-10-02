@@ -750,3 +750,18 @@ test("monthly rentals: the Indiana house file imports as a house and 4 rooms pri
   await expect(panel).toContainText("All-inclusive monthly rent");
   await signOut(page);
 });
+
+test("admin sets a new password for a locked-out person; they can sign in right away", async ({ page }) => {
+  const [o] = await sql<{ id: string; email: string }>("SELECT id, email FROM users WHERE name = 'Owner Olivia'");
+  for (let i = 0; i < 6; i++) await sql("INSERT INTO login_attempts (email, ip, success) VALUES ($1, '10.0.0.9', false)", [o.email]);
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto(`/admin/users?q=${encodeURIComponent(o.email)}`);
+  await page.getByText("Set a new password").click();
+  await page.getByLabel("New password for Owner").fill("olivia-pass-2026");
+  await page.getByRole("button", { name: "Save password" }).click();
+  await expect(page.getByText(/New password saved for/)).toBeVisible();
+  await signOut(page);
+  await signIn(page, o.email, "olivia-pass-2026");
+  await expect(page.getByRole("link", { name: "Account" }).first()).toBeVisible();
+  await signOut(page);
+});

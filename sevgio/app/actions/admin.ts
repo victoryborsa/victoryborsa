@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { one, q } from "@/lib/db.ts";
 import nodeCrypto from "node:crypto";
-import { hashPassword, requireUser, sha256 } from "@/lib/auth.ts";
+import { clearFailedSignIns, hashPassword, linkToken, requireUser, sha256 } from "@/lib/auth.ts";
 import { ROLES } from "@/lib/constants.ts";
 import { saveSetting } from "@/lib/settings.ts";
 import { isEmail, str, type ActionState } from "@/lib/validate.ts";
@@ -52,7 +52,7 @@ export async function inviteUserAction(_: ActionState, fd: FormData): Promise<Ac
   if (await one("SELECT 1 FROM users WHERE lower(email) = $1", [email])) return { error: "Someone already has an account with this email. Change their role in the list instead." };
   // Random password they never see; they set their own with the reset link.
   const u = await one<{ id: string }>("INSERT INTO users (email, name, role, password_hash) VALUES ($1, $2, $3, $4) RETURNING id", [email, name, role, await hashPassword(nodeCrypto.randomBytes(32).toString("hex"))]);
-  const token = nodeCrypto.randomBytes(32).toString("base64url");
+  const token = linkToken();
   await q("INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '7 days')", [sha256(token), u!.id]);
   const notify = fd.get("notify") === "on";
   if (notify) await sendEmail(email, "You're invited to Sevgio Stays", `Hi ${name.split(" ")[0]},\n\n${admin.name} has created a Sevgio Stays ${role} account for you. Choose your password here (the link works for 7 days):\n${siteUrl()}/reset/${token}`);
@@ -202,6 +202,19 @@ export async function confirmEmailAction(fd: FormData) {
   const u = await one<{ email: string }>("UPDATE users SET email_verified_at = now() WHERE id = $1 AND email_verified_at IS NULL RETURNING email", [id]);
   if (u) await logEvent("info", "Accounts", `Email confirmed by an admin: ${u.email}`, {}, admin.id);
   revalidatePath("/admin/users");
+}
+
+/** Admin sets a new password for someone who is locked out (e.g. the reset email didn't reach them). Signs them out everywhere. */
+export async function setPasswordAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireUser(["admin"]);
+  const id = str(fd, "id", 40), password = str(fd, "password", 200);
+  if (password.length < 8) return { error: "Use at least 8 characters." };
+  const u = await one<{ id: string; email: string }>("UPDATE users SET password_hash = $2, email_verified_at = coalesce(email_verified_at, now()) WHERE id = $1 RETURNING id, email", [id, await hashPassword(password)]);
+  if (!u) return { error: "We couldn't find that person." };
+  await q("DELETE FROM sessions WHERE user_id = $1", [u.id]);
+  await clearFailedSignIns(u.id);
+  await logEvent("info", "Accounts", `Password set by an admin for ${u.email}`, {}, admin.id);
+  return { ok: `New password saved for ${u.email}. Tell them privately (by phone or text), and ask them to change it in Account after signing in.` };
 }
 
 // ---------- Pittsburgh guide photos ----------

@@ -2,11 +2,18 @@ import type { Metadata } from "next";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { resetPasswordAction } from "@/app/actions/auth.ts";
 import { PasswordInput } from "@/components/PasswordInput.tsx";
+import { one } from "@/lib/db.ts";
+import { sha256 } from "@/lib/auth.ts";
+import { LinkProblem } from "@/components/ResetLinkProblem.tsx";
 
 export const metadata: Metadata = { title: "Choose a new password", robots: { index: false } };
+export const dynamic = "force-dynamic";
 
 export default async function Reset({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
+  // Mail apps sometimes add stray characters around a link; keep only what a token can contain.
+  const token = decodeURIComponent((await params).token).trim().replace(/[^A-Za-z0-9_-]/g, "");
+  const ok = await one("SELECT 1 FROM password_resets WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()", [sha256(token)]);
+  if (!ok) return <LinkProblem />;
   return (
     <div className="wrap">
       <ActionForm action={resetPasswordAction} className="auth box">

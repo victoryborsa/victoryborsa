@@ -36,6 +36,18 @@ export const verificationRequired = () => env("REQUIRE_EMAIL_VERIFICATION") === 
 export const siteUrl = () => (process.env.SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 
 /** Sends a plain-text email. Failures are logged for admins but never break the page. */
+/** The same message as simple HTML, so every link is a real, tappable link that no mail app can cut in two. */
+function toHtml(text: string): string {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const body = esc(text).replace(/https?:\/\/[^\s<]+/g, url => {
+    const isAction = /\/(reset|verify|trips|book)\//.test(url);
+    return isAction
+      ? `<a href="${url}" style="display:inline-block;margin:6px 0;padding:10px 18px;border-radius:8px;background:#FFB612;color:#101820;font-weight:700;text-decoration:none">${/\/reset\//.test(url) ? "Choose a new password" : "Open"}</a><br><span style="font-size:12px;color:#666">or copy this link: <a href="${url}" style="color:#666">${url}</a></span>`
+      : `<a href="${url}">${url}</a>`;
+  }).replace(/\n/g, "<br>");
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#101820">${body}</div>`;
+}
+
 export async function sendEmail(to: string, subject: string, text: string, opts: { force?: boolean } = {}): Promise<{ ok: boolean; error?: string }> {
   const t = getTransport();
   const body = text + "\n\n— Sevgio Stays\n" + siteUrl();
@@ -49,7 +61,7 @@ export async function sendEmail(to: string, subject: string, text: string, opts:
     return { ok: false, error: "failing" };
   }
   try {
-    await t.sendMail({ from: fromAddress(), to, subject, text: body });
+    await t.sendMail({ from: fromAddress(), to, subject, text: body, html: toHtml(body) });
     lastSuccess = Date.now();
     return { ok: true };
   } catch (e) {

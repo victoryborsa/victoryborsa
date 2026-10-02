@@ -1,7 +1,8 @@
 import { requireUser } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
-import { approveHostAction, confirmEmailAction, inviteUserAction, setDisabledAction, setRoleAction } from "@/app/actions/admin.ts";
+import { approveHostAction, confirmEmailAction, inviteUserAction, setDisabledAction, setPasswordAction, setRoleAction } from "@/app/actions/admin.ts";
+import { PasswordInput } from "@/components/PasswordInput.tsx";
 
 type Row = { id: string; name: string; email: string; phone: string; role: string; disabled: boolean; created_at: string; listings: number; bookings: number; verified: boolean; host_requested: boolean };
 
@@ -38,7 +39,18 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
                     <form action={approveHostAction}><input type="hidden" name="id" value={u.id} /><input type="hidden" name="decision" value="decline" /><button className="linkbtn" type="submit">Decline</button></form>
                   </div>
                 )}{u.phone && <div className="hint">{u.phone}</div>}</td>
-                <td>{u.email}{!u.verified && <div className="row" style={{ gap: 6, marginTop: 4 }}><span className="pill warn">Not confirmed</span><form action={confirmEmailAction}><input type="hidden" name="id" value={u.id} /><button className="linkbtn" type="submit">Confirm by hand</button></form></div>}</td>
+                <td>{u.email}{!u.verified && <div className="row" style={{ gap: 6, marginTop: 4 }}><span className="pill warn">Not confirmed</span><form action={confirmEmailAction}><input type="hidden" name="id" value={u.id} /><button className="linkbtn" type="submit">Confirm by hand</button></form></div>}
+                  {u.id !== me.id && (
+                    <details className="set-pw">
+                      <summary className="linkbtn">Set a new password</summary>
+                      <ActionForm action={setPasswordAction} className="stack" resetOnOk>
+                        <input type="hidden" name="id" value={u.id} />
+                        <label className="field"><span>New password for {u.name.split(" ")[0]}</span><PasswordInput name="password" autoComplete="new-password" minLength={8} /></label>
+                        <SubmitButton className="btn btn-ghost btn-sm" pendingText="Saving…">Save password</SubmitButton>
+                      </ActionForm>
+                    </details>
+                  )}
+                </td>
                 <td>{new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
                 <td className="num">{u.listings || "—"}</td>
                 <td className="num">{u.bookings || "—"}</td>
