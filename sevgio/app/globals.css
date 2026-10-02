@@ -533,8 +533,13 @@ img { -webkit-user-drag: none; user-select: none; -webkit-touch-callout: none; }
 .where-ico { flex: none; width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: var(--bg); border: 1px solid var(--line); }
 .where-none { padding: 8px 12px; color: var(--muted); font-size: 14px; }
 /* ---------- Search results: quick filters, list + map ---------- */
-.chips-row { display: flex; gap: 8px; overflow-x: auto; padding: 16px 2px 6px; scrollbar-width: thin; }
-.chip { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; text-decoration: none; cursor: pointer; white-space: nowrap; }
+/* Computers: the filter buttons wrap onto a second line, no scrollbar. Phones: swipe sideways, no visible bar. */
+.chips-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 2px 6px; }
+@media (max-width: 760px) {
+  .chips-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .chips-row::-webkit-scrollbar { display: none; }
+}
+.chip { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; text-decoration: none; cursor: pointer; white-space: nowrap; }
 .chip:hover { border-color: var(--ink); }
 .chip.on { background: var(--gold); border-color: var(--gold); color: #101820; font-weight: 700; }
 .chip-filters { font-weight: 700; }
