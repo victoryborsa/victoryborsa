@@ -289,8 +289,9 @@ test("calendar board shows every property's reservations, filterable by property
   await expect(page.locator(".mc-name", { hasText: "Rittenhouse Square Loft" })).toBeVisible();
   await expect(page.locator(`a.mc-bar[href="/trips/${b.code}"]`)).toBeVisible();
   // Choosing one property shows just that home (and its rooms).
+  // Picking a property in the list switches straight to it.
   await page.getByLabel("Property").selectOption({ label: "Rittenhouse Square Loft" });
-  await page.getByRole("button", { name: "Show" }).click();
+  await expect(page).toHaveURL(/property=/);
   await expect(page.locator(".mc-name")).toHaveCount(1);
   await expect(page.locator(`a.mc-bar[href="/trips/${b.code}"]`)).toHaveCount(0);
   await signOut(page);
@@ -352,11 +353,19 @@ test("calendar has day, week and month views, and a one-property month with pric
   await expect(page.locator(`a.mc-bar[href="/trips/${b.code}"]`)).toHaveText(`Arriving: ${b.guest_name}`);
   await page.getByRole("link", { name: "Next day" }).click();
   await expect(page.locator(`a[href="/trips/${b.code}"]`).first()).toHaveText(new RegExp(`(Staying|Leaving): ${b.guest_name}`));
-  // Tapping a property's photo opens its month like a wall calendar, with prices on free days.
+  // Picking a property shows its month like a wall calendar, with prices on free days, and a Settings panel beside it.
   await page.getByRole("link", { name: "Month", exact: true }).click();
-  await page.locator(".mc-rail").getByRole("link", { name: b.title }).click();
+  await expect(page).toHaveURL(/view=month/);
+  await page.getByLabel("Property").selectOption({ label: b.title });
   await expect(page.locator(`.mg a[href="/trips/${b.code}"]`).first()).toBeVisible();
-  await expect(page.locator(".mg-price").first()).toHaveText("$" + (b.price / 100).toLocaleString("en-US", { maximumFractionDigits: 0 }));
+  const price = "$" + (b.price / 100).toLocaleString("en-US", { maximumFractionDigits: 0 });
+  await expect(page.locator(".mg-price").first()).toHaveText(price);
+  const settings = page.getByRole("complementary", { name: `Settings for ${b.title}` });
+  await expect(settings.getByRole("link", { name: /Base rate/ })).toContainText(`${price} / night`);
+  await expect(settings.getByRole("link", { name: /Base rate/ })).toHaveAttribute("href", /\/host\/listings\/.+#pricing$/);
+  await settings.getByRole("tab", { name: "Availability" }).click();
+  await expect(settings).toContainText("Nights booked");
+  await expect(settings.getByRole("link", { name: /Block dates/ })).toHaveAttribute("href", /\/calendar$/);
   await signOut(page);
 });
 
@@ -389,12 +398,12 @@ test("new bookings show an alert until the admin opens Bookings", async ({ page 
   await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
   await page.goto("/admin");
   await expect(page.getByText("1 new booking.")).toBeVisible();
-  await expect(page.locator(".subnav .badge-new")).toHaveText("1");
-  await page.locator(".subnav").getByRole("link", { name: /Bookings/ }).click();
+  await expect(page.locator(".dn a[href=\"/admin/bookings\"] .dn-badge")).toHaveText("1");
+  await page.locator(".dn").getByRole("link", { name: /Bookings/ }).click();
   await expect(page.locator("tr.row-new", { hasText: b.code })).toBeVisible();
   await page.reload();
   await expect(page.locator("tr.row-new")).toHaveCount(0);
-  await expect(page.locator(".subnav .badge-new")).toHaveCount(0);
+  await expect(page.locator(".dn a[href=\"/admin/bookings\"] .dn-badge")).toHaveCount(0);
   await signOut(page);
 });
 

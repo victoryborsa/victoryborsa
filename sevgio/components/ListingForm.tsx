@@ -85,7 +85,7 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
         <CameraField has={!!p?.has_exterior_cameras} locations={p?.camera_locations || ""} />
       </div>
 
-      <div className="box">
+      <div className="box" id="pricing">
         <h2>Pricing and booking</h2>
         <div className="grid-2">
           <label className="field"><span>Nightly price (USD)</span><input className="input mono" name="nightly_price" inputMode="decimal" defaultValue={dollars(p?.nightly_price_cents)} placeholder="175" /></label>
@@ -117,7 +117,7 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
         </div>
       </div>
 
-      <div className="box">
+      <div className="box" id="guest-pricing">
         <h2>Pricing per guest</h2>
         <p className="muted">The nightly price covers the base number of guests. Adjust it for bigger or smaller groups.</p>
         <div className="grid-2">

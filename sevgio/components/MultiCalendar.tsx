@@ -4,6 +4,8 @@ import { q } from "@/lib/db.ts";
 import { addDays, fmtDate, fmtShort, isIsoDate, nightsBetween, todayLocal } from "@/lib/dates.ts";
 import { demandBetween } from "@/lib/demand.ts";
 import { nightPrice, type Demand } from "@/lib/smart-pricing.ts";
+import { AutoSubmit } from "./AutoSubmit.tsx";
+import { CalSettings, type CalSettingsData } from "./CalSettings.tsx";
 
 type Prop = { id: string; title: string; city: string; parent_id: string | null; status: string; cover_id: string | null; nightly_price_cents: number; smart_pricing: boolean; min_price_cents: number | null; max_price_cents: number | null };
 type Res = { id: string; code: string; property_id: string; check_in: string; check_out: string; status: string; guest_name: string; guests: number; nights: number };
@@ -96,40 +98,39 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
 
   return (
     <div className="stack" style={{ gap: 16 }}>
-      <div className="row mc-controls">
-        <div className="seg" role="group" aria-label="Calendar view">
-          {VIEWS.map(([v, label]) => (
-            <Link key={v} className={`btn btn-sm ${view === v ? "btn-primary" : "btn-ghost"}`} aria-current={view === v ? "page" : undefined}
-              href={link(v === "day" ? (start <= today && today < end ? today : start) : start, v)}>{label}</Link>
-          ))}
+      <div className="cal-top">
+        <Link className="btn btn-ghost btn-sm cal-today" href={link(todayStart)}>Today</Link>
+        <div className="cal-step">
+          <Link className="cal-arrow" href={link(prev)} aria-label={unit ? `Previous ${unit}` : "Earlier"}>‹</Link>
+          <h2 className="mc-period">{period}</h2>
+          <Link className="cal-arrow" href={link(next)} aria-label={unit ? `Next ${unit}` : "Later"}>›</Link>
         </div>
-        <Link className="btn btn-ghost btn-sm" href={link(prev)} aria-label={unit ? `Previous ${unit}` : "Earlier"}>‹<span className="nav-txt">{unit ? ` Previous ${unit}` : " Earlier"}</span></Link>
-        <Link className="btn btn-ghost btn-sm" href={link(todayStart)}>Today</Link>
-        <Link className="btn btn-ghost btn-sm" href={link(next)} aria-label={unit ? `Next ${unit}` : "Later"}><span className="nav-txt">{unit ? `Next ${unit} ` : "Later "}</span>›</Link>
+        <nav className="cal-tabs" aria-label="Calendar view">
+          {VIEWS.map(([v, label]) => (
+            <Link key={v} aria-current={view === v ? "page" : undefined} href={link(v === "day" ? (start <= today && today < end ? today : start) : start, v)}>{label}</Link>
+          ))}
+        </nav>
       </div>
-      <form className="row mc-controls" method="get" action={basePath}>
+      <form className="cal-prop" method="get" action={basePath}>
+        <AutoSubmit />
         <input type="hidden" name="view" value={view} />
+        <input type="hidden" name="start" value={start} />
         {view === "range" && <input type="hidden" name="days" value={String(days)} />}
-        <input className="input mc-date" type="date" name="start" defaultValue={start} style={{ width: "auto" }} aria-label="Go to date" />
-        <select className="input mc-propsel" name="property" defaultValue={selected?.id || ""} style={{ width: "auto", minWidth: 0, maxWidth: "100%" }} aria-label="Property">
+        {selected && <span className="cal-prop-ph" aria-hidden><Thumb p={selected} /></span>}
+        <label className="sr-only" htmlFor="cal-property">Property</label>
+        <select id="cal-property" className="input" name="property" defaultValue={selected?.id || ""}>
           <option value="">All properties</option>
           {ordered.map(p => <option key={p.id} value={p.id}>{p.parent_id ? "   ↳ " : ""}{p.title}</option>)}
         </select>
-        <button className="btn btn-ghost">Show</button>
+        <noscript><button className="btn btn-ghost">Show</button></noscript>
       </form>
-      <nav className="mc-rail" aria-label="Pick a listing by photo">
-        <Link href={`${basePath}?` + new URLSearchParams({ view, start })} className={`mc-rail-all${selected ? "" : " on"}`} title="All properties">All</Link>
-        {ordered.map(p => (
-          <Link key={p.id} href={`${basePath}?` + new URLSearchParams({ view, start, property: p.id })} className={selected?.id === p.id ? "on" : ""} title={p.title} aria-label={p.title}>
-            <Thumb p={p} />
-          </Link>
-        ))}
-      </nav>
-      <h2 className="mc-period">{period}{selected ? <span className="muted"> · {selected.title}</span> : null}</h2>
       {Object.values(demand).some(x => x.notable) && <p className="hint mc-legend"><span className="ev-dot" aria-hidden /> Red circle: a game, big event or holiday in Pittsburgh. Hover or tap the date to see it.{selected?.smart_pricing ? " Smart pricing is on: prices in gold are adjusted for demand." : ""}</p>}
 
       {rows.length === 0 ? <div className="empty"><p className="muted">No listings yet.</p></div> : selected && view === "month" ? (
-        <MonthGrid p={selected} res={res} blocks={blocks} start={start} end={end} today={today} demand={demand} />
+        <div className="cal-split">
+          <MonthGrid p={selected} res={res} blocks={blocks} start={start} end={end} today={today} demand={demand} />
+          <CalSettings d={await settingsFor(selected, res, blocks, start, end, today)} />
+        </div>
       ) : view === "month" ? (
         <AllMonthGrid rows={rows} res={res} blocks={blocks} start={start} end={end} today={today} demand={demand} dayHref={d => link(d, "day")} />
       ) : (
@@ -199,9 +200,39 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
           <span><i className="mc-key blk" />Blocked by you</span>
         </span>
       </div>
-      <p className="hint">{view === "day" ? "Tap a guest to open the reservation, or a property name to block dates." : <>Bars run from check-in day to check-out day. Click a reservation to open it, or a property name to block dates. Tap a photo to see that property's month with prices. Rooms are listed under their house; booking the house blocks its rooms. On a phone, swipe the board sideways to see more days.</>}</p>
+      <p className="hint">{view === "day" ? "Tap a guest to open the reservation, or a property name to block dates." : <>Bars run from check-in day to check-out day. Click a reservation to open it. Pick a property above to see its month with prices and settings. Rooms are listed under their house; booking the house blocks its rooms.</>}</p>
     </div>
   );
+}
+
+/** What the Settings panel beside a listing's month shows. */
+async function settingsFor(p: Prop, res: Res[], blocks: Blk[], start: string, end: string, today: string): Promise<CalSettingsData> {
+  const [x] = await q<{ monthly_price_cents: number | null; weekly_discount_percent: string; monthly_discount_percent: string; cleaning_fee_cents: number; extra_guest_fee_cents: number;
+    pet_fee_cents: number; security_deposit_cents: number; min_nights: number; max_nights: number; booking_mode: string; base_occupancy: number | null; blocks: number; feeds: number }>(
+    `SELECT monthly_price_cents, weekly_discount_percent, monthly_discount_percent, cleaning_fee_cents, extra_guest_fee_cents, pet_fee_cents, security_deposit_cents,
+            min_nights, max_nights, booking_mode, base_occupancy,
+            (SELECT count(*)::int FROM blocks k WHERE k.property_id = p.id AND k.source = 'host' AND k.end_date > $2) AS blocks,
+            (SELECT count(*)::int FROM ical_feeds f WHERE f.property_id = p.id) AS feeds
+     FROM properties p WHERE p.id = $1`, [p.id, today]);
+  const taken = new Set<string>();
+  for (const r of [...res.filter(b => b.property_id === p.id || b.property_id === p.parent_id).map(b => [b.check_in, b.check_out]),
+    ...blocks.filter(b => b.property_id === p.id || b.property_id === p.parent_id).map(b => [b.start_date, b.end_date])])
+    for (let d = r[0] < start ? start : r[0]; d < r[1] && d < end; d = addDays(d, 1)) taken.add(d);
+  const fees = [
+    x.cleaning_fee_cents ? { label: "Cleaning", value: money(x.cleaning_fee_cents) } : null,
+    x.extra_guest_fee_cents ? { label: "Extra guests", value: `${money(x.extra_guest_fee_cents)} per guest a night${x.base_occupancy ? ` after ${x.base_occupancy}` : ""}` } : null,
+    x.pet_fee_cents ? { label: "Pets", value: money(x.pet_fee_cents) } : null,
+    x.security_deposit_cents ? { label: "Security deposit", value: `${money(x.security_deposit_cents)} (refundable)` } : null,
+  ].filter((f): f is { label: string; value: string } => !!f);
+  return {
+    id: p.id, title: p.title, status: p.status,
+    base: money(x.monthly_price_cents || p.nightly_price_cents), baseUnit: x.monthly_price_cents ? "month" : "night",
+    smart: p.smart_pricing && !x.monthly_price_cents ? { min: money(p.min_price_cents || 0), max: money(p.max_price_cents || 0) } : null,
+    weekly: Number(x.weekly_discount_percent), monthly: Number(x.monthly_discount_percent), fees,
+    minNights: x.min_nights, maxNights: x.max_nights, instant: x.booking_mode === "instant",
+    month: { label: fmtDate(start, { month: "long", year: "numeric" }), booked: taken.size, nights: nightsBetween(start, end) },
+    blocks: x.blocks, feeds: x.feeds,
+  };
 }
 
 function Thumb({ p }: { p: Prop }) {

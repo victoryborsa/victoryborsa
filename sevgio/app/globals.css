@@ -878,3 +878,73 @@ a.room-card:hover { border-color: var(--gold); }
 .near-list a { font-weight: 600; text-decoration: none; }
 .near-list a:hover { text-decoration: underline; }
 .tip-link { display: inline-block; margin: 2px 8px 2px 0; font-weight: 600; white-space: nowrap; }
+
+/* Dashboards (admin and host): menu column on the left, page on the right. */
+.dash { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 32px; align-items: start; padding-bottom: 56px; }
+.dash-main { min-width: 0; }
+.dash-h1 { font-size: clamp(24px, 3vw, 32px); }
+.dn { position: sticky; top: 84px; padding-top: 24px; }
+.dn-toggle { display: none; }
+.dn-list { display: grid; gap: 18px; }
+.dn-group { display: grid; gap: 2px; }
+.dn-title { margin: 0 0 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.dn a { position: relative; display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; color: var(--ink); text-decoration: none; font-weight: 600; font-size: 15px; transition: background .15s ease; }
+.dn a:hover { background: var(--surface); }
+.dn a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+.dn a[aria-current="page"]::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--accent); }
+.dn-ic { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.dn-label { flex: 1; }
+.dn-badge { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-grid; place-items: center; background: var(--danger); color: #fff; font-size: 12px; font-weight: 700; }
+.dn-chev { width: 18px; height: 18px; margin-left: auto; fill: none; stroke: currentColor; stroke-width: 2; transition: transform .2s ease; }
+@media (max-width: 999px) {
+  .dash { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .dn { position: relative; top: 0; padding-top: 16px; z-index: 20; }
+  .dn-toggle { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: 16px; cursor: pointer; }
+  .dn.open .dn-chev { transform: rotate(180deg); }
+  .dn-list { display: none; margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  .dn.open .dn-list { display: grid; }
+  .dn a { min-height: 48px; }
+  .dn a:hover { background: var(--bg); }
+}
+
+/* Calendar top bar: Today, ‹ Month ›, Month/Week/Day tabs, then one listing picker. */
+.cal-top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.cal-today { border-radius: 999px; padding-inline: 18px; }
+.cal-step { display: flex; align-items: center; gap: 6px; }
+.cal-step .mc-period { margin: 0; min-width: 0; font-size: clamp(20px, 2.4vw, 26px); }
+.cal-arrow { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; color: var(--ink); text-decoration: none; font-size: 26px; line-height: 1; }
+.cal-arrow:hover { background: var(--surface); }
+.cal-tabs { display: flex; gap: 4px; margin-left: auto; }
+.cal-tabs a { padding: 8px 14px; color: var(--muted); text-decoration: none; font-weight: 600; border-bottom: 2px solid transparent; }
+.cal-tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+.cal-prop { display: flex; align-items: center; gap: 10px; max-width: 520px; }
+.cal-prop select { flex: 1; min-width: 0; }
+.cal-prop-ph img, .cal-prop-ph .mc-noph { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; display: grid; place-items: center; }
+.cal-split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+@media (max-width: 1199px) { .cal-split { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .cal-tabs { margin-left: 0; width: 100%; } .cal-tabs a { flex: 1; text-align: center; } }
+
+/* Settings panel beside a listing's month (like Vrbo's). */
+.cs { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); padding: 18px; position: sticky; top: 84px; }
+.cs-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cs-h { margin: 0; font-size: 20px; }
+.cs-tabs { display: flex; gap: 4px; margin: 14px 0 6px; border-bottom: 1px solid var(--line); }
+.cs-tabs button { padding: 10px 14px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-weight: 700; cursor: pointer; }
+.cs-tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.cs-body { display: grid; gap: 10px; }
+.cs-sec { margin: 10px 0 0; font-weight: 700; }
+.cs-card { display: flex; align-items: center; gap: 12px; justify-content: space-between; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); color: var(--ink); text-decoration: none; transition: border-color .15s ease; }
+a.cs-card:hover { border-color: var(--accent); }
+.cs-card > span { display: grid; gap: 2px; }
+.cs-k { font-weight: 600; }
+.cs-v { color: var(--muted); font-size: 14px; }
+.cs-big { font-size: 28px; font-family: var(--f-display); font-variant-numeric: tabular-nums; }
+.cs-big small { font-size: 14px; color: var(--muted); font-family: var(--f-body); font-weight: 500; }
+.cs-chev { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.cs-meter { display: block; height: 8px; margin: 6px 0 2px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.cs-meter i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+@media (max-width: 1199px) { .cs { position: static; } }
+.dash-head { margin-bottom: 12px; }
+@media (min-width: 700px) { .dash .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 699px) { .dash .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.email-test { margin-bottom: 16px; }

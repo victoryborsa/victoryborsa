@@ -35,21 +35,21 @@ export default async function AdminHome() {
     <>
       {!emailReady() && (
         <div className="notice warn" role="alert" style={{ marginBottom: 16 }}>
-          <b>Emails are not being sent yet.</b> Booking confirmations, new-booking alerts and verification codes only appear in Render → Logs until the email settings are complete.
-          Missing in Render → Environment: <b>{missingEmailSettings().join(", ")}</b>. SMTP_PASS is the 16-letter Google App Password. See “Email” in the README.
+          <div><b>Emails are not being sent yet.</b> Booking confirmations, new-booking alerts and verification codes only appear in Render → Logs until the email settings are complete.
+          Missing in Render → Environment: <b>{missingEmailSettings().join(", ")}</b>. SMTP_PASS is the 16-letter Google App Password. See “Email” in the README.</div>
         </div>
       )}
       {emailFailures > 0 && (
         <div className="notice error" role="alert" style={{ marginBottom: 16 }}>
-          <b>Emails are failing.</b> {emailFailures} email{emailFailures === 1 ? "" : "s"} couldn't be sent in the last day, so guests may not get their codes. Click “Send me a test email” below to see why.
+          <div><b>Emails are failing.</b> {emailFailures} email{emailFailures === 1 ? "" : "s"} couldn't be sent in the last day, so guests may not get their codes. Click “Send me a test email” below to see why.</div>
         </div>
       )}
-      <ActionForm action={testEmailAction} className="row" id="email-test">
+      <ActionForm action={testEmailAction} className="row email-test" id="email-test">
         <SubmitButton className="btn btn-ghost btn-sm" pendingText="Sending…">Send me a test email</SubmitButton>
         <span className="hint">Checks that verification codes and booking emails can reach people.</span>
       </ActionForm>
-      {hostReqs > 0 && <div className="notice warn" role="status" style={{ marginBottom: 16 }}><b>{hostReqs} host request{hostReqs === 1 ? "" : "s"}.</b> <Link href="/admin/users?role=requests">Review in Users &amp; roles</Link> to approve them as hosts.</div>}
-      {fresh > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}><b>{fresh} new booking{fresh === 1 ? "" : "s"}.</b> <Link href="/admin/bookings">Open Bookings</Link> to see {fresh === 1 ? "it" : "them"}.</div>}
+      {hostReqs > 0 && <div className="notice warn" role="status" style={{ marginBottom: 16 }}><div><b>{hostReqs} host request{hostReqs === 1 ? "" : "s"}.</b> <Link href="/admin/users?role=requests">Review in Users &amp; roles</Link> to approve them as hosts.</div></div>}
+      {fresh > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}><div><b>{fresh} new booking{fresh === 1 ? "" : "s"}.</b> <Link href="/admin/bookings">Open Bookings</Link> to see {fresh === 1 ? "it" : "them"}.</div></div>}
       <div className="stats">
         <div className="stat"><b>{s.customers}</b><span>Guests</span></div>
         <div className="stat"><b>{s.hosts}</b><span>Hosts</span></div>
