@@ -4,11 +4,12 @@ import type { Property } from "./bookings.ts";
 import { AMENITY_FILTERS } from "./constants.ts";
 
 export type Photo = { id: string; property_id: string; position: number; caption: string; width: number; height: number };
-export type CardProperty = Property & { cover_id: string | null };
+export type CardProperty = Property & { cover_id: string | null; host_name: string | null };
 
 export const photoUrl = (id: string, size: "thumb" | "large" = "large") => `/api/photos/${id}?s=${size}`;
 
-const COVER = `(SELECT id FROM photos ph WHERE ph.property_id = p.id ORDER BY position, created_at LIMIT 1) AS cover_id`;
+const COVER = `(SELECT id FROM photos ph WHERE ph.property_id = p.id ORDER BY position, created_at LIMIT 1) AS cover_id,
+  (SELECT u.name FROM users u WHERE u.id = p.host_id) AS host_name`;
 
 export type SearchFilters = {
   loc?: string; ci?: string; co?: string; guests?: number; maxPrice?: number; bedrooms?: number; baths?: number; amenities?: string[]; instant?: boolean; privateBath?: boolean; sort?: string;

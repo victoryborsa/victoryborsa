@@ -951,3 +951,4 @@ a.cs-card:hover { border-color: var(--accent); }
 /* After the dates are picked, the guest choices glow briefly so the eye lands there. */
 .party.flash { animation: party-flash 1.4s ease-out; border-radius: 12px; }
 @keyframes party-flash { 0% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: 0 0 0 3px transparent; } }
+.card-host { font-size: 14px; color: var(--muted); }

@@ -86,6 +86,7 @@ export default async function StayPage({ params, searchParams }: Params) {
           <div className="row" style={{ gap: "8px 16px" }}>
             <Rating rating={p.rating} count={p.review_count} />
             <span className="muted">{placeFull(p.city, p.area)}</span>
+            {host?.name && <span className="muted">Hosted by <b style={{ color: "var(--ink)" }}>{hostFirst}</b></span>}
             {p.booking_mode === "instant" ? <span className="pill ok">Instant booking</span> : <span className="pill warn">Request to book</span>}
             <span className="spacer" />
             <ShareButtons url={`${siteUrl()}/stays/${p.slug}`} title={p.title} statsId={bookable ? p.id : undefined} />

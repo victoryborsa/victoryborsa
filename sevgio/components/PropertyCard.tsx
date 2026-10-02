@@ -30,6 +30,7 @@ export function PropertyCard({ p, ci, co, guests, taxPercent, eager, demand }: {
           <Rating rating={p.rating} count={p.review_count} />
         </div>
         <span className="card-title">{p.title}</span>
+        {p.host_name && <span className="card-host">Hosted by {p.host_name.split(" ")[0]}</span>}
         <span className="specs">
           <span>{p.max_guests} guests</span>
           <span>{p.bedrooms} bedroom{p.bedrooms === 1 ? "" : "s"}</span>

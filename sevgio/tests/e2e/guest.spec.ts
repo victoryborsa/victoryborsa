@@ -10,6 +10,9 @@ test("homepage shows search and property cards", async ({ page }) => {
   await expect(page.getByRole("search")).toBeVisible();
   await expect(page.locator("a.card")).toHaveCount(6);
   await expect(page.locator("a.card").first().locator("img")).toBeVisible();
+  // Every card shows who hosts it.
+  await expect(page.locator("a.card .card-host")).toHaveCount(6);
+  await expect(page.locator("a.card", { hasText: "Jim Thorpe" }).locator(".card-host")).toHaveText(/^Hosted by \w+$/);
 });
 
 test("search form moves on by itself: Where, then check-in, check-out, guests; listing dates move on to guests", async ({ page }) => {
