@@ -1,8 +1,9 @@
-import { todayLocal, addDays } from "@/lib/dates.ts";
+import { todayLocal } from "@/lib/dates.ts";
 import { getT } from "@/lib/i18n.ts";
 import { q } from "@/lib/db.ts";
 import { WherePicker, type Place } from "./WherePicker.tsx";
 import { AutoAdvance } from "./AutoAdvance.tsx";
+import { DateRangeField } from "./DateRangeField.tsx";
 
 /** GET form, so results are shareable links. "Where" opens a list of suggested places as soon as it's tapped. */
 export async function SearchBar({ loc = "", ci = "", co = "", guests = 2, compact = false }: { loc?: string; ci?: string; co?: string; guests?: number; cities?: string[]; compact?: boolean }) {
@@ -31,14 +32,7 @@ export async function SearchBar({ loc = "", ci = "", co = "", guests = 2, compac
     <form className="searchbar" action="/stays" method="get" role="search" style={compact ? { marginTop: 0 } : undefined}>
       <AutoAdvance />
       <WherePicker name="loc" label={t("search.where")} initial={loc} places={places} anywhere={t("search.anywhere")} />
-      <label className="field">
-        <span>{t("search.checkin")}</span>
-        <input className="input" type="date" name="ci" min={today} defaultValue={ci} />
-      </label>
-      <label className="field">
-        <span>{t("search.checkout")}</span>
-        <input className="input" type="date" name="co" min={addDays(today, 1)} defaultValue={co} />
-      </label>
+      <DateRangeField today={today} initialCi={ci} initialCo={co} ciLabel={t("search.checkin")} coLabel={t("search.checkout")} />
       <label className="field">
         <span>{t("search.guests")}</span>
         <select className="input" name="guests" defaultValue={String(Math.min(guests, 10))}>

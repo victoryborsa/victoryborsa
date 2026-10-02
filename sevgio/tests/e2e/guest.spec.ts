@@ -20,14 +20,25 @@ test("search form moves on by itself: Where, then check-in, check-out, guests; l
   const form = page.getByRole("search");
   await form.getByRole("combobox", { name: "Where" }).click();
   await page.getByRole("option", { name: /Poconos/ }).click();
-  await expect(form.getByLabel("Check-in")).toBeFocused();
-  await form.getByLabel("Check-in").fill(iso(30));
-  await expect(form.getByLabel("Check-out")).toBeFocused();
-  await expect(form.getByLabel("Check-out")).toHaveAttribute("min", iso(31));
-  await form.getByLabel("Check-out").fill(iso(33));
+  // The calendar opens for check-in by itself; picking it moves straight on to check-out.
+  const cal = page.getByRole("dialog", { name: "Choose check-in" });
+  await expect(cal).toBeVisible();
+  await cal.locator(`[data-day="${iso(30)}"]`).click();
+  const out = page.getByRole("dialog", { name: "Choose check-out" });
+  await expect(out).toBeVisible();
+  // Days before check-in can't be picked as check-out.
+  const ci = iso(30);
+  expect(await out.locator("[data-day]").evaluateAll((els, c) => els.filter(e => (e.getAttribute("data-day") || "") < c).every(e => (e as HTMLButtonElement).disabled), ci)).toBe(true);
+  await expect(out.locator(`[data-day="${ci}"]`)).toHaveClass(/sel/);
+  await out.locator(`[data-day="${iso(33)}"]`).click();
+  await expect(out).toHaveCount(0);
   await expect(form.getByLabel("Guests")).toBeFocused();
   await form.getByLabel("Guests").selectOption("3");
   await expect(form.getByRole("button", { name: "Search stays" })).toBeFocused();
+  await form.getByRole("button", { name: "Search stays" }).click();
+  await expect(page).toHaveURL(new RegExp(`ci=${iso(30)}&co=${iso(33)}&guests=3`));
+  // On the results page the dates are kept, and picking new ones works the same way.
+  await expect(page.getByRole("search").getByRole("button", { name: /Check-in/ })).toContainText(/\w{3} \d+/);
   // On a listing, picking check-out moves to who's coming.
   await page.goto("/stays/jim-thorpe-mountain-cabin");
   await pickDates(page, iso(40), iso(43));
