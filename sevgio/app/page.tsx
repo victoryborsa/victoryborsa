@@ -4,7 +4,7 @@ import { getSettings } from "@/lib/settings.ts";
 import { PropertyCard } from "@/components/PropertyCard.tsx";
 import { SearchBar } from "@/components/SearchBar.tsx";
 import { WorldMap } from "@/components/WorldMap.tsx";
-import { Slideshow } from "@/components/Slideshow.tsx";
+import { PictureTrio } from "@/components/PictureTrio.tsx";
 import { Logo } from "@/components/Logo.tsx";
 import { q } from "@/lib/db.ts";
 import { getT, LANGS } from "@/lib/i18n.ts";
@@ -16,7 +16,7 @@ export default async function Home() {
   return (
     <div className="wrap">
       <section className="hero hero-welcome">
-        <div className="hero-grid">
+        <div className="hero-grid home-top">
           <div>
         <div className="row" style={{ gap: 18, alignItems: "center", flexWrap: "nowrap" }}>
           <div className="hero-logo"><Logo size={120} /></div>
@@ -32,7 +32,7 @@ export default async function Home() {
         </nav>
         <p className="hint" style={{ marginTop: 6 }}>{t("home.pickLang")}</p>
           </div>
-          <Slideshow photos={slides.map(s => ({ src: `/api/site-photos/${s.id}`, caption: s.caption }))} />
+          <PictureTrio photos={slides} />
         </div>
         <div className="worldmap-wrap"><WorldMap /></div>
         <SearchBar cities={cities} />

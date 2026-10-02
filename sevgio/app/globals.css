@@ -784,6 +784,8 @@ a.room-card:hover { border-color: var(--gold); }
 /* Guide banner */
 .guide-banner { margin-top: 24px; }
 /* Guide page top: title and intro beside three smaller Pittsburgh pictures. */
+@media (min-width: 900px) { .hero-grid.home-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 36px; align-items: center; } }
+.home-top .guide-trio { align-self: center; }
 .guide-top { display: grid; gap: 22px; align-items: center; margin-top: 24px; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 1000px) { .guide-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 36px; } }
 .guide-top .lede { color: var(--muted); font-size: 17px; margin-top: 10px; max-width: 62ch; }

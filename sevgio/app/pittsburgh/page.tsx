@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { q } from "@/lib/db.ts";
-import { ART } from "@/components/PittsburghArt.tsx";
+import { PictureTrio } from "@/components/PictureTrio.tsx";
 import { NEAR, SECTIONS, YINZER, mapLink, slugOf, type Section } from "@/lib/guide.ts";
 import { getT } from "@/lib/i18n.ts";
 import type { T } from "@/lib/i18n.ts";
@@ -43,7 +43,7 @@ export default async function PittsburghGuide() {
   const sec = (id: Section["id"]) => SECTIONS.find(s => s.id === id)!;
   // Three pictures at the top: the guide banner photo and the home page Pittsburgh photos first, then the drawn scenes.
   const uploaded = [...rows.filter(r => r.slot === "guide-banner"), ...rows.filter(r => r.slot === null)].slice(0, 3);
-  const trio = [0, 1, 2].map(i => (uploaded[i] ? { src: `/api/site-photos/${uploaded[i].id}`, caption: uploaded[i].caption, Art: null } : { src: "", caption: ART[i - uploaded.length]?.caption ?? "", Art: ART[i - uploaded.length]?.Art ?? null }));
+
   return (
     <div className="wrap guide" style={{ paddingBottom: 56 }}>
       <section className="guide-top">
@@ -53,14 +53,7 @@ export default async function PittsburghGuide() {
           <p className="lede">{t("guide.intro")}</p>
           {lang !== "en" && <p className="hint">{t("guide.englishNote")}</p>}
         </div>
-        <div className="guide-trio">
-          {trio.map(({ src, caption, Art }, i) => (
-            <figure key={i} className="guide-trio-pic">
-              {src ? <img src={src} alt={caption || "Pittsburgh"} /> : Art ? <Art /> : null}
-              {caption && <figcaption>{caption}</figcaption>}
-            </figure>
-          ))}
-        </div>
+        <PictureTrio photos={uploaded} />
       </section>
       <section className="guide-hero">
         <nav className="guide-toc" aria-label="Guide sections">
