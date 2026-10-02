@@ -36,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {settings.site_notice && <div className="site-notice"><div className="wrap">{settings.site_notice}</div></div>}
         <header className="site">
           <div className="wrap">
-            <Link className="logo logo-badge" href="/" aria-label="Sevgio Stays home"><Logo size={46} title="Sevgio Stays" /><span>sevgio <span className="logo-stays">stays</span><span className="dot" /></span></Link>
+            <Link className="logo logo-badge" href="/" aria-label="Sevgio Stays home"><Logo size={46} title="Sevgio Stays" /><span>sevgio <span className="logo-stays">stays</span></span></Link>
             <nav className="main" aria-label="Main">
               <Link className="navlink" href="/stays">{t("nav.stays")}</Link>
               <Link className="navlink" href="/events">{t("nav.events")}</Link>
