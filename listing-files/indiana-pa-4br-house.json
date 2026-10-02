@@ -1,0 +1,49 @@
+[
+  {
+    "listing_kind": "home",
+    "property_type": "house",
+    "title": "Spacious 4-Bedroom House near Downtown Indiana & IUP",
+    "city": "Indiana",
+    "area": "Indiana County",
+    "address": "157 Meadow Wood Rd, Indiana, PA 15701",
+    "bedrooms": 4,
+    "bathrooms": 2,
+    "half_bathrooms": 0,
+    "bathroom_type": "private",
+    "kitchen_access": "private",
+    "laundry_access": "none",
+    "max_guests": 8,
+    "base_occupancy": 8,
+    "beds": [
+      { "kind": "bed", "size": "king", "count": 1 },
+      { "kind": "bed", "size": "queen", "count": 3 }
+    ],
+    "rooms": [
+      { "name": "Bedroom 1", "beds": [{ "kind": "bed", "size": "queen", "count": 1 }] },
+      { "name": "Bedroom 2", "beds": [{ "kind": "bed", "size": "queen", "count": 1 }] },
+      { "name": "Bedroom 3", "beds": [{ "kind": "bed", "size": "queen", "count": 1 }] },
+      { "name": "Bedroom 4", "beds": [{ "kind": "bed", "size": "king", "count": 1 }] }
+    ],
+    "nightly_price": 120,
+    "cleaning_fee": 0,
+    "extra_guest_fee": 0,
+    "weekly_discount_percent": 0,
+    "monthly_discount_percent": 0,
+    "min_nights": 1,
+    "max_nights": 90,
+    "booking_mode": "request",
+    "cancellation_policy": "flexible",
+    "check_in_time": "3:00 pm",
+    "check_out_time": "11:00 am",
+    "children_free_age": 2,
+    "amenities": [
+      "kitchen",
+      "backyard",
+      "patio",
+      "free_driveway",
+      "selfcheckin",
+      "long_term"
+    ],
+    "description": "Spacious 4-bedroom private home in the heart of Indiana, PA, just 3 minutes from Downtown Indiana. The house has a large front and back yard, a private patio and an oversized driveway that fits up to 4 vehicles. Inside you'll find generous living space, comfortable bedrooms (three queen beds and one king bed), two full bathrooms and a full kitchen. It's perfect for families, travel professionals and groups. Whether you're visiting for work, school or a weekend getaway, this home offers privacy, convenience and comfort.\n\nGreat for: families visiting IUP, travel nurses and medical professionals, corporate housing, group stays, long-term guests and weekend visitors. Ideal if you want a full private home with yard space and easy parking.\n\nWhat's yours: the entire 4-bedroom house, the large backyard, the front yard patio, the full kitchen and the private driveway (room for 4 cars). There are no shared spaces; the whole home is yours.\n\nCheck-in is self check-in, for flexibility and privacy. We're always available by message if you need help, local recommendations or support during your stay.\n\nThe neighborhood: a quiet residential street in the heart of Indiana, PA. The area is peaceful and safe, and close to downtown shops, restaurants, hospitals and the IUP campus.\n\nGetting around: 3 minutes to Downtown Indiana, 5 minutes to IRMC Hospital (Indiana Regional Medical Center) and 5 minutes to IUP. Large private driveway and easy access to main roads, perfect for guests traveling with several vehicles or larger groups."
+  }
+]
