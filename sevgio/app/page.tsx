@@ -22,8 +22,9 @@ export default async function Home() {
           <div className="hero-logo"><Logo size={120} /></div>
           <p className="eyebrow">{t("home.eyebrow")}</p>
         </div>
-        <h1 style={{ marginTop: 10 }}>{t("home.h1")}</h1>
+        <h1 style={{ marginTop: 10, whiteSpace: "pre-line" }}>{t("home.h1")}</h1>
         <p className="lede">{t("home.lede")}</p>
+        <p className="home-welcome">{t("home.welcome")}</p>
         <nav className="hello" aria-label={t("home.pickLang")}>
           {[...LANGS.slice(1), LANGS[0]].map(l => (
             <a key={l.code} href={`/lang/${l.code}?next=/`} lang={l.code} hrefLang={l.code} className={l.code === lang ? "on" : undefined} aria-current={l.code === lang ? "true" : undefined} title={l.name}>{l.hello}</a>
