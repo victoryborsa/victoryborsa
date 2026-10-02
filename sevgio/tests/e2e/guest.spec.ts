@@ -190,6 +190,15 @@ test("tapping a greeting switches the site language, and back", async ({ page })
 test("Pittsburgh guide lists places with map links", async ({ page }) => {
   await page.goto("/pittsburgh");
   await expect(page.getByRole("heading", { name: "Must-see & historic Pittsburgh" })).toBeVisible();
+  // Only the first category starts open; a chip opens its category.
+  await expect(page.getByRole("heading", { name: "Duquesne Incline & Mount Washington" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Primanti Bros." })).toBeHidden();
+  await page.locator(".guide-toc").getByRole("link", { name: /What to eat/ }).click();
+  await expect(page.getByRole("heading", { name: "Primanti Bros." })).toBeVisible();
+  // Clicking a category's header folds it shut again.
+  await page.locator("#eat > summary").click();
+  await expect(page.getByRole("heading", { name: "Primanti Bros." })).toBeHidden();
+  await page.getByRole("button", { name: "Open all" }).click();
   await expect(page.getByRole("heading", { name: "Primanti Bros." })).toBeVisible();
   await expect(page.locator("a.guide-map").first()).toHaveAttribute("href", /google\.com\/maps\/dir\/\?api=1&destination=/);
   // Every place near our homes, and the getting-around tips, open directions or schedules.

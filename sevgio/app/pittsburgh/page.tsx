@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { q } from "@/lib/db.ts";
 import { PictureTrio } from "@/components/PictureTrio.tsx";
+import { GuideNav } from "@/components/GuideNav.tsx";
 import { NEAR, SECTIONS, YINZER, mapLink, slugOf, type Section } from "@/lib/guide.ts";
 import { getT } from "@/lib/i18n.ts";
 import type { T } from "@/lib/i18n.ts";
@@ -12,6 +13,27 @@ export const metadata: Metadata = {
   title: "Pittsburgh guide: what to eat, see and do",
   description: "A local's guide to Pittsburgh: famous food, bars and breweries, historic neighborhoods, museums, game days and Yinzer words.",
 };
+
+// Every category, in page order, with the icon shown on its chip and header.
+const CATS = [
+  { id: "yinzer", icon: "🗣️" }, { id: "see", icon: "🏛️" }, { id: "museums", icon: "🎨" }, { id: "eat", icon: "🍽️" },
+  { id: "drink", icon: "🍺" }, { id: "do", icon: "🎟️" }, { id: "near", icon: "🏠" }, { id: "tips", icon: "🚇" },
+] as const;
+
+/** A category that folds open and shut. Closed, it shows just its title and a one-line summary, so the page reads like a menu. */
+function Category({ id, title, summary, open, children }: { id: (typeof CATS)[number]["id"]; title: string; summary: string; open?: boolean; children: React.ReactNode }) {
+  const icon = CATS.find(c => c.id === id)!.icon;
+  return (
+    <details id={id} className="guide-cat" open={open}>
+      <summary>
+        <span className="guide-cat-icon" aria-hidden="true">{icon}</span>
+        <span className="guide-cat-head"><h2>{title}</h2><span className="guide-cat-sum">{summary}</span></span>
+        <span className="guide-cat-chev" aria-hidden="true" />
+      </summary>
+      <div className="guide-cat-body">{children}</div>
+    </details>
+  );
+}
 
 function Grid({ section, photos, t }: { section: Section; photos: Map<string, string>; t: T }) {
   return (
@@ -40,7 +62,6 @@ export default async function PittsburghGuide() {
   const { lang, t } = await getT();
   const rows = await q<{ id: string; slot: string | null; caption: string }>("SELECT id, slot, caption FROM site_photos ORDER BY position, created_at");
   const photos = new Map(rows.filter(r => r.slot).map(r => [r.slot!, r.id]));
-  const sec = (id: Section["id"]) => SECTIONS.find(s => s.id === id)!;
   // Three pictures at the top: the guide banner photo and the home page Pittsburgh photos first, then the drawn scenes.
   const uploaded = [...rows.filter(r => r.slot === "guide-banner"), ...rows.filter(r => r.slot === null)].slice(0, 3);
 
@@ -56,27 +77,24 @@ export default async function PittsburghGuide() {
         <PictureTrio photos={uploaded} />
       </section>
       <section className="guide-hero">
-        <nav className="guide-toc" aria-label="Guide sections">
-          {([["yinzer", t("guide.yinzer")], ["see", t("guide.see")], ["museums", t("guide.museums")], ["eat", t("guide.eat")], ["drink", t("guide.drink")], ["do", t("guide.do")], ["near", t("guide.near")], ["tips", t("guide.tips")]] as const).map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
-        </nav>
+        <GuideNav items={CATS.map(c => ({ id: c.id, icon: c.icon, label: t(`guide.${c.id}`) }))} openAll={t("guide.openAll")} closeAll={t("guide.closeAll")} />
       </section>
 
-      <section id="yinzer" className="block">
-        <h2>{t("guide.yinzer")}</h2>
+      <Category id="yinzer" title={t("guide.yinzer")} summary={t("guide.words", { n: YINZER.length })}>
         <p className="muted">{t("guide.yinzerIntro")}</p>
         <dl className="yinzer">
           {YINZER.map(([w, m]) => <div key={w}><dt>{w}</dt><dd>{m}</dd></div>)}
         </dl>
-      </section>
+      </Category>
 
-      <section id="see" className="block"><h2>{t("guide.see")}</h2><Grid section={sec("see")} photos={photos} t={t} /></section>
-      <section id="museums" className="block"><h2>{t("guide.museums")}</h2><Grid section={sec("museums")} photos={photos} t={t} /></section>
-      <section id="eat" className="block"><h2>{t("guide.eat")}</h2><p className="muted">{t("guide.eatIntro")}</p><Grid section={sec("eat")} photos={photos} t={t} /></section>
-      <section id="drink" className="block"><h2>{t("guide.drink")}</h2><Grid section={sec("drink")} photos={photos} t={t} /></section>
-      <section id="do" className="block"><h2>{t("guide.do")}</h2><Grid section={sec("do")} photos={photos} t={t} /></section>
+      {SECTIONS.map(s => (
+        <Category key={s.id} id={s.id} title={t(`guide.${s.id}`)} summary={t("guide.places", { n: s.places.length })} open={s.id === "see"}>
+          {s.id === "eat" && <p className="muted">{t("guide.eatIntro")}</p>}
+          <Grid section={s} photos={photos} t={t} />
+        </Category>
+      ))}
 
-      <section id="near" className="block">
-        <h2>{t("guide.near")}</h2>
+      <Category id="near" title={t("guide.near")} summary={NEAR.map(n => n.home).join(" · ")}>
         <div className="guide-grid">
           {NEAR.map(n => (
             <article key={n.home} className="guide-card">
@@ -90,11 +108,9 @@ export default async function PittsburghGuide() {
             </article>
           ))}
         </div>
-      </section>
+      </Category>
 
-
-      <section id="tips" className="block">
-        <h2>{t("guide.tips")}</h2>
+      <Category id="tips" title={t("guide.tips")} summary={t("guide.tipsSummary")}>
         <ul className="rules">
           <li>{t("guide.tip1")} <a className="tip-link" href={mapLink({ name: "Pittsburgh International Airport", q: "Pittsburgh International Airport (PIT)" })} target="_blank" rel="noopener noreferrer">✈️ Directions to the airport ↗</a></li>
           <li>{t("guide.tip2")} <a className="tip-link" href="https://www.rideprt.org/" target="_blank" rel="noopener noreferrer">🚇 T and bus schedules (PRT) ↗</a></li>
@@ -102,6 +118,9 @@ export default async function PittsburghGuide() {
           <li>{t("guide.tip4")}</li>
           <li>{t("guide.tip5")}</li>
         </ul>
+      </Category>
+
+      <section className="block">
         <div className="box" style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 16, marginTop: 20 }}>
           <div className="stack" style={{ flex: 1, minWidth: 240 }}><h3>{t("guide.ready")}</h3><p className="muted">{t("guide.readyText")}</p></div>
           <Link className="btn btn-primary" href="/stays">{t("guide.cta")}</Link>
