@@ -7,7 +7,7 @@ import { one } from "@/lib/db.ts";
 import { expireStaleRequests, type Booking } from "@/lib/bookings.ts";
 import { addDays, fmtDate, todayLocal } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
-import { CANCELLATION } from "@/lib/constants.ts";
+import { CANCELLATION, placeFull } from "@/lib/constants.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { forListing } from "@/lib/payments.ts";
@@ -94,7 +94,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
           {confirmed && (
             <div className="box" style={{ background: "var(--surface-2)" }}>
               <h3>Getting there</h3>
-              <p><b>Address:</b> {b.address ? <a href={directionsUrl(b.address)} target="_blank" rel="noopener noreferrer">📍 {b.address} · Directions ↗</a> : `${b.city}${b.area ? ", " + b.area : ""} (the host will send the exact address)`}</p>
+              <p><b>Address:</b> {b.address ? <a href={directionsUrl(b.address)} target="_blank" rel="noopener noreferrer">📍 {b.address} · Directions ↗</a> : `${placeFull(b.city, b.area)} (the host will send the exact address)`}</p>
               {b.arrival_instructions && <p className="prose">{b.arrival_instructions}</p>}
               <p><b>Your host:</b> {b.host_name} · <a href={mailUrl(b.host_email)}>{b.host_email}</a>{b.host_phone ? <> · <a href={telUrl(b.host_phone)}>📞 {b.host_phone}</a></> : null}</p>
             </div>

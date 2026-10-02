@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { searchProperties, publishedCities } from "@/lib/queries.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { isIsoDate, fmtShort, todayLocal } from "@/lib/dates.ts";
-import { AMENITY_FILTERS } from "@/lib/constants.ts";
+import { AMENITY_FILTERS, placeLabel } from "@/lib/constants.ts";
 import { PropertyCard } from "@/components/PropertyCard.tsx";
 import { demandBetween } from "@/lib/demand.ts";
 import { SearchBar } from "@/components/SearchBar.tsx";
@@ -63,7 +63,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
     if (!pos) return [];
     const tag = priceTag(p);
     const qs = ci ? `?ci=${ci}&co=${co}&guests=${guests}` : "";
-    return [{ id: p.id, lat: pos[0], lng: pos[1], price: `${money(tag.cents)}${tag.unit === "month" ? "/mo" : ""}`, title: p.title, sub: `${p.city}${p.area ? `, ${p.area}` : ""}`, href: `/stays/${p.slug}${qs}`, img: p.cover_id ? photoUrl(p.cover_id, "thumb") : null }];
+    return [{ id: p.id, lat: pos[0], lng: pos[1], price: `${money(tag.cents)}${tag.unit === "month" ? "/mo" : ""}`, title: p.title, sub: placeLabel(p.city, p.area), href: `/stays/${p.slug}${qs}`, img: p.cover_id ? photoUrl(p.cover_id, "thumb") : null }];
   });
 
   return (

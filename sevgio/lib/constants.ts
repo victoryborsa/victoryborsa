@@ -168,3 +168,13 @@ export const BOOKING_STATUS: Record<string, { label: string; tone: "ok" | "warn"
 
 /** Requests the host hasn't answered within this many hours expire and release the dates. */
 export const REQUEST_EXPIRY_HOURS = 48;
+
+/** Where a stay is, for guests: "Pittsburgh, North Side" or "Jim Thorpe, Poconos"; a county adds nothing, so it's "Indiana, PA". */
+export function placeLabel(city: string, area?: string | null): string {
+  return area && !/\bcounty$/i.test(area.trim()) && area.trim().toLowerCase() !== city.trim().toLowerCase() ? `${city}, ${area}` : `${city}, PA`;
+}
+/** The same with the state always at the end: "Pittsburgh, North Side, PA", "Indiana, PA". */
+export function placeFull(city: string, area?: string | null): string {
+  const s = placeLabel(city, area);
+  return s.endsWith(", PA") ? s : `${s}, PA`;
+}

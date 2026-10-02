@@ -9,7 +9,7 @@ import { currentUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { one } from "@/lib/db.ts";
 import { addDays, todayLocal } from "@/lib/dates.ts";
-import { ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, bedLabelLong, parseBeds, parseRooms, parseServices, servicePrice } from "@/lib/constants.ts";
+import { placeFull, ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, bedLabelLong, parseBeds, parseRooms, parseServices, servicePrice } from "@/lib/constants.ts";
 import { partyFromParams } from "@/lib/party.ts";
 import { Gallery } from "@/components/Gallery.tsx";
 import { StayChooser } from "@/components/StayChooser.tsx";
@@ -85,7 +85,7 @@ export default async function StayPage({ params, searchParams }: Params) {
           <h1 style={{ fontSize: "clamp(26px,4vw,36px)" }}>{p.title}</h1>
           <div className="row" style={{ gap: "8px 16px" }}>
             <Rating rating={p.rating} count={p.review_count} />
-            <span className="muted">{p.city}{p.area ? `, ${p.area}` : ""}, Pennsylvania</span>
+            <span className="muted">{placeFull(p.city, p.area)}</span>
             {p.booking_mode === "instant" ? <span className="pill ok">Instant booking</span> : <span className="pill warn">Request to book</span>}
             <span className="spacer" />
             <ShareButtons url={`${siteUrl()}/stays/${p.slug}`} title={p.title} statsId={bookable ? p.id : undefined} />
@@ -126,7 +126,7 @@ export default async function StayPage({ params, searchParams }: Params) {
             <section>
               <h2>About this {(PROPERTY_TYPES[p.property_type] || "home").toLowerCase()}</h2>
               <p className="prose">{p.description}</p>
-              <p className="muted">Hosted by {host?.name}. {p.city}{p.area ? `, ${p.area}` : ""}, PA. The exact address is shared once your booking is confirmed.</p>
+              <p className="muted">Hosted by {host?.name}. {placeFull(p.city, p.area)}. The exact address is shared once your booking is confirmed.</p>
             </section>
             {(rooms.length > 0 || beds.length > 0) && (
               <section id="rooms" className="rooms-section">

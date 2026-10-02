@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { placeLabel } from "@/lib/constants.ts";
 import type { CardProperty } from "@/lib/queries.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { money } from "@/lib/money.ts";
@@ -25,7 +26,7 @@ export function PropertyCard({ p, ci, co, guests, taxPercent, eager, demand }: {
       </div>
       <div className="card-body">
         <div className="card-top">
-          <span className="muted" style={{ fontSize: 14 }}>{p.city}{p.area ? `, ${p.area}` : ""}</span>
+          <span className="muted" style={{ fontSize: 14 }}>{placeLabel(p.city, p.area)}</span>
           <Rating rating={p.rating} count={p.review_count} />
         </div>
         <span className="card-title">{p.title}</span>
