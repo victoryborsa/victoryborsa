@@ -21,7 +21,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL || "http://localhost:3000"),
   title: { default: "Sevgio Stays · Yinz Are Home in Pittsburgh", template: "%s · Sevgio Stays" },
   description: "Cozy private rooms and whole houses in Pittsburgh, booked direct with your hosts.",
-  openGraph: { siteName: "Sevgio Stays", type: "website" },
+  openGraph: { siteName: "Sevgio Stays", type: "website", title: "Sevgio Stays · Yinz Are Home in Pittsburgh", description: "Cozy private rooms and whole houses in Pittsburgh, booked direct with your hosts." },
+  twitter: { card: "summary_large_image", title: "Sevgio Stays · Yinz Are Home in Pittsburgh" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#101820" };
 
