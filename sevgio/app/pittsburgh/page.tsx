@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { q } from "@/lib/db.ts";
-import { Slideshow } from "@/components/Slideshow.tsx";
+import { ART } from "@/components/PittsburghArt.tsx";
 import { NEAR, SECTIONS, YINZER, mapLink, slugOf, type Section } from "@/lib/guide.ts";
 import { getT } from "@/lib/i18n.ts";
 import type { T } from "@/lib/i18n.ts";
@@ -41,19 +41,26 @@ export default async function PittsburghGuide() {
   const rows = await q<{ id: string; slot: string | null; caption: string }>("SELECT id, slot, caption FROM site_photos ORDER BY position, created_at");
   const photos = new Map(rows.filter(r => r.slot).map(r => [r.slot!, r.id]));
   const sec = (id: Section["id"]) => SECTIONS.find(s => s.id === id)!;
-  // Banner slideshow: the guide banner photo first, then the home page Pittsburgh pictures; else the drawn scenes.
-  const banner = [...rows.filter(r => r.slot === "guide-banner"), ...rows.filter(r => r.slot === null)].slice(0, 20).map(r => ({ src: `/api/site-photos/${r.id}`, caption: r.caption }));
+  // Three pictures at the top: the guide banner photo and the home page Pittsburgh photos first, then the drawn scenes.
+  const uploaded = [...rows.filter(r => r.slot === "guide-banner"), ...rows.filter(r => r.slot === null)].slice(0, 3);
+  const trio = [0, 1, 2].map(i => (uploaded[i] ? { src: `/api/site-photos/${uploaded[i].id}`, caption: uploaded[i].caption, Art: null } : { src: "", caption: ART[i - uploaded.length]?.caption ?? "", Art: ART[i - uploaded.length]?.Art ?? null }));
   return (
     <div className="wrap guide" style={{ paddingBottom: 56 }}>
-      <section className="guide-banner">
-        <Slideshow className="slides-guide" photos={banner}>
-        <div className="guide-banner-text">
+      <section className="guide-top">
+        <div className="guide-top-text">
           <p className="eyebrow">{t("guide.eyebrow")}</p>
           <h1>{t("guide.title")}</h1>
           <p className="lede">{t("guide.intro")}</p>
           {lang !== "en" && <p className="hint">{t("guide.englishNote")}</p>}
         </div>
-        </Slideshow>
+        <div className="guide-trio">
+          {trio.map(({ src, caption, Art }, i) => (
+            <figure key={i} className="guide-trio-pic">
+              {src ? <img src={src} alt={caption || "Pittsburgh"} /> : Art ? <Art /> : null}
+              {caption && <figcaption>{caption}</figcaption>}
+            </figure>
+          ))}
+        </div>
       </section>
       <section className="guide-hero">
         <nav className="guide-toc" aria-label="Guide sections">
