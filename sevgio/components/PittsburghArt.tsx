@@ -1,4 +1,4 @@
-// Drawn Pittsburgh scenes, shown in the home page slideshow until real photos are uploaded.
+// Drawn Pittsburgh scenes. They always play in the slideshows, after any uploaded photos.
 const GOLD = "#FFB612";
 
 function windows(x: number, y: number, w: number, h: number, seed: number) {
@@ -9,8 +9,15 @@ function windows(x: number, y: number, w: number, h: number, seed: number) {
   return out;
 }
 
+/** Downtown at dusk: ten buildings spelling P-I-T-T-S-B-U-R-G-H (PPG Place and the Gulf Tower among them) above the three yellow bridges. */
 export function SkylineArt() {
-  const towers: [number, number, number][] = [[40, 70, 26], [70, 95, 22], [96, 58, 30], [130, 80, 18], [178, 66, 24], [206, 102, 20], [230, 76, 28], [262, 90, 22]];
+  type B = { x: number; w: number; h: number; kind?: "ppg" | "gulf" };
+  const buildings: B[] = [
+    { x: 12, w: 22, h: 70 }, { x: 38, w: 20, h: 88 }, { x: 62, w: 26, h: 60 }, { x: 92, w: 18, h: 82 },
+    { x: 114, w: 26, h: 80, kind: "ppg" }, { x: 146, w: 22, h: 68 }, { x: 172, w: 24, h: 74, kind: "gulf" },
+    { x: 200, w: 20, h: 92 }, { x: 224, w: 28, h: 72 }, { x: 256, w: 22, h: 86 },
+  ];
+  const roof = (b: B) => 150 - b.h - (b.kind === "ppg" ? 12 : b.kind === "gulf" ? 18 : 0);
   return (
     <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" aria-hidden>
       <defs>
@@ -18,14 +25,25 @@ export function SkylineArt() {
         <linearGradient id="pa-river" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#2B4C7E" /><stop offset="1" stopColor="#152640" /></linearGradient>
       </defs>
       <rect width="320" height="200" fill="url(#pa-dusk)" />
-      <circle cx="250" cy="52" r="10" fill="#FFE8B0" opacity=".9" />
-      {towers.map(([x, h, w], i) => <g key={i}><rect x={x} y={150 - h} width={w} height={h} fill="#101820" />{windows(x, 150 - h, w, h, i)}</g>)}
-      {/* PPG Place: glass castle spires */}
-      <g fill="#1E2C3E">
-        <rect x="150" y="62" width="26" height="88" />
-        {[150, 156, 162, 168].map(x => <polygon key={x} points={`${x},62 ${x + 4},48 ${x + 8},62`} />)}
-      </g>
-      {windows(150, 62, 26, 88, 9)}
+      <circle cx="298" cy="58" r="9" fill="#FFE8B0" opacity=".9" />
+      {buildings.map((b, i) => (
+        <g key={i}>
+          <rect x={b.x} y={150 - b.h} width={b.w} height={b.h} fill={b.kind === "ppg" ? "#1E2C3E" : "#101820"} />
+          {/* PPG Place: glass castle spires */}
+          {b.kind === "ppg" && <g fill="#1E2C3E">{[0, 6, 12, 18].map(d => <polygon key={d} points={`${b.x + d},${150 - b.h} ${b.x + d + 4},${150 - b.h - 12} ${b.x + d + 8},${150 - b.h}`} />)}</g>}
+          {/* Gulf Tower: stepped pyramid top with its weather beacon */}
+          {b.kind === "gulf" && (
+            <g fill="#101820">
+              <rect x={b.x + 3} y={150 - b.h - 5} width={b.w - 6} height="5" />
+              <rect x={b.x + 6} y={150 - b.h - 10} width={b.w - 12} height="5" />
+              <rect x={b.x + 9} y={150 - b.h - 15} width={b.w - 18} height="5" />
+              <rect x={b.x + b.w / 2 - 1.5} y={150 - b.h - 18} width="3" height="3" fill="#E5484D" />
+            </g>
+          )}
+          {windows(b.x, 150 - b.h, b.w, b.h, i)}
+          <text x={b.x + b.w / 2} y={roof(b) - 4} textAnchor="middle" fontSize="11" fontWeight="800" fontFamily="Arial, Helvetica, sans-serif" fill={GOLD}>{"PITTSBURGH"[i]}</text>
+        </g>
+      ))}
       <rect y="150" width="320" height="50" fill="url(#pa-river)" />
       {/* Three yellow bridges */}
       {[[18, 118], [128, 226], [236, 318]].map(([a, b], i) => (

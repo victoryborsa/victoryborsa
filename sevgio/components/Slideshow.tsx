@@ -6,7 +6,8 @@ type Slide = { src: string; caption: string };
 
 /** Pittsburgh slideshow (home page and guide): uploaded photos, or drawn scenes until there are some. Children are laid over the pictures. */
 export function Slideshow({ photos, className, children }: { photos: Slide[]; className?: string; children?: ReactNode }) {
-  const count = photos.length || ART.length;
+  // Uploaded photos first, then the drawn Pittsburgh scenes, which always stay in the show.
+  const count = photos.length + ART.length;
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   useEffect(() => {
@@ -15,14 +16,14 @@ export function Slideshow({ photos, className, children }: { photos: Slide[]; cl
     return () => clearInterval(t);
   }, [paused, count]);
   const go = (n: number) => setI((n + count) % count);
-  const caption = photos.length ? photos[i]?.caption : ART[i].caption;
+  const caption = i < photos.length ? photos[i]?.caption : ART[i - photos.length]?.caption;
   return (
     <div className={`slides${className ? " " + className : ""}`} role="region" aria-roledescription="carousel" aria-label="Pittsburgh" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
       {Array.from({ length: count }, (_, n) => {
-        const Art = ART[n]?.Art;
+        const Art = ART[n - photos.length]?.Art;
         return (
           <div key={n} className={`slide${n === i ? " on" : ""}`} aria-hidden={n !== i} role="group" aria-roledescription="slide" aria-label={`${n + 1} of ${count}`}>
-            {photos.length ? <img src={photos[n].src} alt={photos[n].caption || "Pittsburgh"} loading={n === 0 ? "eager" : "lazy"} /> : <Art />}
+            {n < photos.length ? <img src={photos[n].src} alt={photos[n].caption || "Pittsburgh"} loading={n === 0 ? "eager" : "lazy"} /> : <Art />}
           </div>
         );
       })}
