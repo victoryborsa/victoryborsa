@@ -21,7 +21,7 @@ export function EventTable({ rows }: { rows: Ev[] }) {
                   <details><summary className="hint" style={{ cursor: "pointer" }}>Details</summary><pre className="mono" style={{ fontSize: 12, whiteSpace: "pre-wrap", maxWidth: 520 }}>{JSON.stringify(e.details, null, 2)}</pre></details>
                 )}
               </td>
-              <td className="hint">{e.email || "—"}</td>
+              <td className="hint">{e.email || "-"}</td>
               <td>
                 {e.level !== "info" && (
                   <form action={resolveEventAction}>

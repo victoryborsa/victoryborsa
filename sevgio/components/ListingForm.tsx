@@ -169,7 +169,7 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
 
       <div className="box">
         <h2>Rules and arrival</h2>
-        <label className="field"><span>House rules (one per line)</span><textarea className="input" name="house_rules" defaultValue={p?.house_rules.join("\n")} placeholder={"No parties or events\nQuiet hours 10 pm – 8 am\nNo smoking"} /></label>
+        <label className="field"><span>House rules (one per line)</span><textarea className="input" name="house_rules" defaultValue={p?.house_rules.join("\n")} placeholder={"No parties or events\nQuiet hours 10 pm to 8 am\nNo smoking"} /></label>
         <label className="field"><span>Arrival instructions <span className="muted" style={{ fontWeight: 400 }}>(only shared after a booking is confirmed)</span></span><textarea className="input" name="arrival_instructions" defaultValue={p?.arrival_instructions} placeholder="Door code, parking, Wi-Fi password, who to call…" /></label>
       </div>
       <div className="row"><SubmitButton pendingText="Saving…">{submitLabel}</SubmitButton></div>

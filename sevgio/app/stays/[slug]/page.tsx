@@ -69,7 +69,7 @@ export default async function StayPage({ params, searchParams }: Params) {
   const myPhotos = new Set(photos.map(ph => ph.id));
   const rooms: { name: string; sqft: number | null; beds: ReturnType<typeof parseBeds>; note: string; img: string | null; href?: string }[] = parseRooms(p.rooms_detail).length
     ? parseRooms(p.rooms_detail).map(r => ({ ...r, img: r.photo && myPhotos.has(r.photo) ? photoUrl(r.photo) : null }))
-    : linked.rooms.map(r => ({ name: r.title.includes(" – ") ? r.title.split(" – ").slice(1).join(" – ") : r.title, sqft: null, beds: parseBeds(r.beds_detail), img: r.cover_id ? photoUrl(r.cover_id) : null,
+    : linked.rooms.map(r => ({ name: r.title.split(/ [-\u2013\u2014] /).length > 1 ? r.title.split(/ [-\u2013\u2014] /).slice(1).join(" - ") : r.title, sqft: null, beds: parseBeds(r.beds_detail), img: r.cover_id ? photoUrl(r.cover_id) : null,
         note: `${r.bathroom_type === "shared" ? "Shared" : "Private"} bathroom · also bookable on its own`, href: `/stays/${r.slug}` }));
 
   return (

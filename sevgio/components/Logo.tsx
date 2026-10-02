@@ -1,7 +1,7 @@
 // The Sevgio badge: a house over a gold Pittsburgh bridge, with the river flowing underneath.
 const NAVY = "#0B2A5B", GOLD = "#E3A60D";
 
-export function Logo({ size = 48, animated = true, title = "Sevgio – Yinz Are Home" }: { size?: number; animated?: boolean; title?: string }) {
+export function Logo({ size = 48, animated = true, title = "Sevgio Stays: Yinz Are Home" }: { size?: number; animated?: boolean; title?: string }) {
   const hangers = [110, 122, 134, 162, 176, 190, 210, 224, 238, 266, 278, 290];
   const cable = (x: number) => {
     if (x < 148) return 268 - ((x - 85) / 63) * 36;

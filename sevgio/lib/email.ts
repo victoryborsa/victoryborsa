@@ -50,7 +50,7 @@ function toHtml(text: string): string {
 
 export async function sendEmail(to: string, subject: string, text: string, opts: { force?: boolean } = {}): Promise<{ ok: boolean; error?: string }> {
   const t = getTransport();
-  const body = text + "\n\n— Sevgio Stays\n" + siteUrl();
+  const body = text + "\n\nSevgio Stays\n" + siteUrl();
   if (!t) {
     console.log(`\n[email not configured] To: ${to}\nSubject: ${subject}\n${body}\n`);
     return { ok: false, error: "not-configured" };

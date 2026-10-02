@@ -87,7 +87,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
     `${basePath}?` + new URLSearchParams({ view: v, start: s, ...(v === "range" ? { days: String(days) } : {}), ...(selected ? { property: selected.id } : {}) });
   const period = view === "day" ? fmtDate(start, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
     : view === "month" && start.endsWith("-01") && end === nextMonth(start) ? fmtDate(start, { month: "long", year: "numeric" })
-    : `${fmtShort(start)} – ${fmtDate(addDays(end, -1), { month: "short", day: "numeric", year: "numeric" })}`;
+    : `${fmtShort(start)} - ${fmtDate(addDays(end, -1), { month: "short", day: "numeric", year: "numeric" })}`;
   const unit = view === "day" ? "day" : view === "week" ? "week" : view === "month" ? "month" : "";
   // On the board, bars only include stays that touch a night in view (not ones that just left on day one).
   const barRes = res.filter(b => b.check_out > start), barBlocks = blocks.filter(b => b.end_date > start);
@@ -149,7 +149,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
               const r = ri + 2;
               return [
                 <div key={p.id + "n"} className={`mc-name mc-name-ph${p.parent_id ? " room" : ""}`} style={{ gridRow: r }}>
-                  <Link href={`${basePath}?` + new URLSearchParams({ view: "month", start, property: p.id })} title={`${p.title} – open its month calendar`} className="mc-ph"><Thumb p={p} /></Link>
+                  <Link href={`${basePath}?` + new URLSearchParams({ view: "month", start, property: p.id })} title={`${p.title}: open its month calendar`} className="mc-ph"><Thumb p={p} /></Link>
                   <div className="mc-name-txt">
                     <Link href={`/host/listings/${p.id}/calendar`} title="Block dates on this listing">{p.parent_id ? "↳ " : ""}{p.title}</Link>
                     <span className="hint">{p.city}{p.status !== "published" ? ` · ${p.status}` : ""}</span>

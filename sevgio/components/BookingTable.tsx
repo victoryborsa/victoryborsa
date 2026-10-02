@@ -8,7 +8,7 @@ import { ActionForm, SubmitButton } from "./forms.tsx";
 import { decideBookingAction, markPaidAction } from "@/app/actions/host.ts";
 
 const METHOD_SHORT: Record<string, string> = { card: "Card", ach: "Bank transfer", zelle: "Zelle", venmo: "Venmo", cash: "Cash + deposit" };
-const PAY_LABEL: Record<string, string> = { none: "—", pending: "Waiting", processing: "Processing", paid: "Paid", deposit_paid: "Deposit paid", failed: "Failed" };
+const PAY_LABEL: Record<string, string> = { none: "-", pending: "Waiting", processing: "Processing", paid: "Paid", deposit_paid: "Deposit paid", failed: "Failed" };
 const PAY_TONE: Record<string, string> = { none: "neutral", pending: "warn", processing: "warn", paid: "ok", deposit_paid: "ok", failed: "danger" };
 import type { Booking } from "@/lib/bookings.ts";
 
@@ -29,7 +29,7 @@ export function BookingTable({ rows, today, back, showActions = true, fresh }: {
                 <td className="mono"><Link href={`/trips/${b.code}`}>{b.code}</Link>{fresh?.has(b.id) && <span className="badge-new">New</span>}</td>
                 <td>{b.title}</td>
                 <td>{b.guest_name}{active && <div className="muted" style={{ fontSize: 13 }}><a href={telUrl(b.guest_phone)}>{b.guest_phone}</a> · <a href={mailUrl(b.guest_email)}>{b.guest_email}</a></div>}{b.message && <div className="hint" style={{ maxWidth: 280 }}>“{b.message}”</div>}</td>
-                <td style={{ whiteSpace: "nowrap" }}>{fmtShort(b.check_in)} – {fmtShort(b.check_out)}<div className="hint">{b.nights} night{b.nights === 1 ? "" : "s"}{b.arrival_time ? ` · arrives ${b.arrival_time}` : ""}</div></td>
+                <td style={{ whiteSpace: "nowrap" }}>{fmtShort(b.check_in)} - {fmtShort(b.check_out)}<div className="hint">{b.nights} night{b.nights === 1 ? "" : "s"}{b.arrival_time ? ` · arrives ${b.arrival_time}` : ""}</div></td>
                 <td className="num">{b.guests}</td>
                 <td className="num">{money(b.total_cents)}{extrasOf(b).length > 0 && <div className="hint" style={{ textAlign: "left" }}>Extras: {extrasOf(b).map(x => x.name).join(", ")}{extrasOf(b).filter(x => x.details).map(x => <div key={x.key}>{x.name}: {x.details}</div>)}</div>}{b.security_deposit_cents > 0 && <div className="hint">+ {money(b.security_deposit_cents)} deposit to collect</div>}</td>
                 <td style={{ minWidth: 190 }}>

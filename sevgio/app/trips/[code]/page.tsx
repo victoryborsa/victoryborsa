@@ -85,7 +85,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
           <dl className="kv">
             <dt>Status</dt><dd><StatusPill status={b.status} /></dd>
             <dt>Home</dt><dd><Link href={`/stays/${b.slug}`}>{b.title}</Link>, {b.city}</dd>
-            <dt>Dates</dt><dd>{fmtDate(b.check_in)} – {fmtDate(b.check_out)} ({b.nights} night{b.nights === 1 ? "" : "s"})</dd>
+            <dt>Dates</dt><dd>{fmtDate(b.check_in)} - {fmtDate(b.check_out)} ({b.nights} night{b.nights === 1 ? "" : "s"})</dd>
             <dt>Guests</dt><dd>{partyLabel(b)}</dd>
             <dt>Lead guest</dt><dd>{b.guest_name}, <a href={telUrl(b.guest_phone)}>{b.guest_phone}</a></dd>
           </dl>

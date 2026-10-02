@@ -43,7 +43,7 @@ export function RoomsEditor({ initial, photos }: { initial: RoomDetail[]; photos
             {photos.length ? (
               <select className="input" value={r.photo} onChange={e => set(i, { photo: e.target.value })}>
                 <option value="">No photo</option>
-                {photos.map((p, n) => <option key={p.id} value={p.id}>Photo {n + 1}{p.caption ? ` – ${p.caption}` : ""}</option>)}
+                {photos.map((p, n) => <option key={p.id} value={p.id}>Photo {n + 1}{p.caption ? `: ${p.caption}` : ""}</option>)}
               </select>
             ) : <span className="hint">Upload the listing's photos first, then pick one for each room here.</span>}
           </label>

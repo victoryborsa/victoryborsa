@@ -141,10 +141,10 @@ test("arrival time options start at check-in and run to midnight", async () => {
   const { arrivalOptions, parseHour } = await import("../../lib/arrival.ts");
   assert.equal(parseHour("3:00 pm"), 15); assert.equal(parseHour("12:00 PM"), 12); assert.equal(parseHour("12:00 am"), 0); assert.equal(parseHour("16:00"), 16); assert.equal(parseHour("whenever"), 15);
   const noon = arrivalOptions("12:00 pm");
-  assert.equal(noon[0], "12:00 pm – 1:00 pm");
-  assert.equal(noon[noon.length - 2], "11:00 pm – 12:00 am");
+  assert.equal(noon[0], "12:00 pm - 1:00 pm");
+  assert.equal(noon[noon.length - 2], "11:00 pm - 12:00 am");
   assert.equal(noon[noon.length - 1], "After midnight");
-  assert.equal(arrivalOptions("3:00 pm")[0], "3:00 pm – 4:00 pm");
+  assert.equal(arrivalOptions("3:00 pm")[0], "3:00 pm - 4:00 pm");
 });
 
 test("card fee is grossed up so the host receives the full price; cash takes a deposit", async () => {

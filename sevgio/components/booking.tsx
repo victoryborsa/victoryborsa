@@ -102,8 +102,8 @@ function PartyPicker() {
   return (
     <div className="stack" style={{ gap: 10 }}>
       {row("adults", "Adults", "Age 18+", 1)}
-      {freeAge < 17 && row("children", "Children", `Ages ${freeAge + 1}–17`, 0)}
-      {row("free_children", freeAge === 0 ? "Infants" : "Young children", freeAge === 0 ? "Under 1 · stay free" : `Ages 0–${freeAge} · stay free`, 0)}
+      {freeAge < 17 && row("children", "Children", `Ages ${freeAge + 1}-17`, 0)}
+      {row("free_children", freeAge === 0 ? "Infants" : "Young children", freeAge === 0 ? "Under 1 · stay free" : `Ages 0-${freeAge} · stay free`, 0)}
       <span className="hint">Up to {p.max_guests} guests in total, including children.</span>
       {p.pets_allowed && (
         <div className="row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>

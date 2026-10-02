@@ -78,7 +78,7 @@ export async function FinanceView({ u, basePath, sp }: { u: User; basePath: stri
                   <tr key={r.id}>
                     <td className="mono"><Link href={`/trips/${r.code}`}>{r.code}</Link></td>
                     <td>{r.title}</td><td>{r.guest_name}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} – {fmtShort(r.check_out)}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} - {fmtShort(r.check_out)}</td>
                     <td className="num">{r.nights}</td>
                     <td className="num">{money(r.rent)}{r.discount_cents > 0 && <div className="hint">after {money(r.discount_cents)} discount</div>}</td>
                     <td className="num">{money(r.cleaning_fee_cents)}</td><td className="num">{money(r.tax_cents)}</td><td className="num">{money(r.total_cents)}</td>

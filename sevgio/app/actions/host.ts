@@ -455,7 +455,7 @@ export async function decideBookingAction(_: ActionState, fd: FormData): Promise
   if (!b) return { error: "You can't manage this booking." };
   const decision = str(fd, "decision"), note = str(fd, "note", 1000);
   const back = safeNext(str(fd, "back", 300), "/host/bookings");
-  const dates = `${fmtDate(b.check_in)} – ${fmtDate(b.check_out)}`;
+  const dates = `${fmtDate(b.check_in)} - ${fmtDate(b.check_out)}`;
   if (decision === "accept") {
     // With payments on, an accepted request waits for the guest's payment; otherwise it's confirmed now.
     const needsPay = !!b.payment_method;

@@ -20,7 +20,7 @@ const label = (h: number) => {
 export function arrivalOptions(checkInTime: string): string[] {
   const start = parseHour(checkInTime);
   const out: string[] = [];
-  for (let h = start; h < 24; h++) out.push(`${label(h)} – ${label(h + 1)}`);
+  for (let h = start; h < 24; h++) out.push(`${label(h)} - ${label(h + 1)}`);
   out.push("After midnight");
   return out;
 }

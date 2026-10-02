@@ -30,7 +30,7 @@ export default async function Trips() {
       <div style={{ width: 110, borderRadius: "var(--r)", overflow: "hidden", aspectRatio: "4/3", flex: "none" }}>{r.cover_id ? <img src={photoUrl(r.cover_id, "thumb")} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div className="noph" style={{ minHeight: 0 }} />}</div>
       <div className="stack" style={{ gap: 4, flex: 1, minWidth: 200 }}>
         <div className="row" style={{ gap: 8 }}><strong>{r.title}</strong><StatusPill status={r.status} /></div>
-        <span className="muted">{fmtDate(r.check_in)} – {fmtDate(r.check_out)} · {r.guests} guest{r.guests > 1 ? "s" : ""} · <span className="mono">{r.code}</span></span>
+        <span className="muted">{fmtDate(r.check_in)} - {fmtDate(r.check_out)} · {r.guests} guest{r.guests > 1 ? "s" : ""} · <span className="mono">{r.code}</span></span>
         <span style={{ fontSize: 14 }}>{r.city} · {money(r.total_cents)}</span>
       </div>
       <span className="btn btn-ghost btn-sm">View</span>

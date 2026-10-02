@@ -18,7 +18,7 @@ const en = {
   "nav.account": "Account", "nav.signout": "Sign out", "nav.signin": "Sign in", "nav.signup": "Create account", "nav.language": "Language",
   "foot.tagline": "Homes and private rooms in Pittsburgh, booked direct.", "foot.guests": "Guests", "foot.find": "Find a stay", "foot.help": "Help", "foot.contact": "Contact us", "foot.hosts": "Hosts", "foot.hostSignin": "Host sign in",
   "home.eyebrow": "Welcome, yinz!", "home.h1": "From wherever yinz call home,\nto right here in the ’Burgh.", "home.welcome": "Come on in. Yinz are home.",
-  "home.lede": "Whether yinz are flying in from Istanbul, London, or Tokyo—or just coming up the Parkway—we’ve got a cozy place waiting for you. Find private rooms and whole homes, book directly with your hosts, and see availability and the full price before you book.",
+  "home.lede": "Whether yinz are flying in from Istanbul, London, or Tokyo, or just coming up the Parkway, we’ve got a cozy place waiting for you. Find private rooms and whole homes, book directly with your hosts, and see availability and the full price before you book.",
   "home.pickLang": "Tap a greeting to see the site in that language", "home.allStays": "All our stays", "home.count": "{n} places to stay in Pittsburgh, n'at. Rent a whole house, or a private room in one.",
   "home.searchDates": "Search by dates", "home.questions": "Questions before you book?", "home.questionsText": "We answer within a few hours, every day of the week. Ask about parking, early check-in, cribs or anything else.", "home.contactUs": "Contact us",
   "home.guideTitle": "New to Pittsburgh?", "home.guideText": "Where to eat, what to see, bars, game days and how to talk like a Yinzer.", "home.guideBtn": "Read our Pittsburgh guide",
@@ -28,7 +28,7 @@ const en = {
   "guide.see": "Must-see & historic Pittsburgh", "guide.museums": "Museums & gardens", "guide.eat": "What to eat", "guide.eatIntro": "Pittsburgh food is hearty, a little quirky, and shaped by the city's Italian, Polish, Slovak and German roots.",
   "guide.drink": "Bars, breweries & nightlife", "guide.do": "Things to do", "guide.near": "Near our homes", "guide.yinzer": "Talk like a Yinzer", "guide.yinzerIntro": "Pittsburghers have their own way of talking. Try a few words and locals will love you for it.",
   "guide.openAll": "Open all", "guide.closeAll": "Close all", "guide.tips": "Getting around", "guide.map": "Directions", "guide.ready": "Ready to visit?", "guide.readyText": "Stay in a cozy room or a whole house, close to all of this.", "guide.cta": "See our stays",
-  "guide.tip1": "Pittsburgh International Airport is about 25–35 minutes from our homes by car.", "guide.tip2": "The \"T\" light rail is free between the downtown stations and the North Side stations, handy for games and concerts.",
+  "guide.tip1": "Pittsburgh International Airport is about 25-35 minutes from our homes by car.", "guide.tip2": "The \"T\" light rail is free between the downtown stations and the North Side stations, handy for games and concerts.",
   "guide.tip3": "Buses run across the city. Plan trips with Google Maps or the Transit app.", "guide.tip4": "Pittsburgh is hilly, with steep streets and many public stairways. Wear comfortable shoes.", "guide.tip5": "Opening hours change with the seasons, so check before you go.",
   "guide.englishNote": "",
 };
@@ -50,7 +50,7 @@ const tr: Dict = {
   "guide.see": "Mutlaka görülmesi gereken tarihi yerler", "guide.museums": "Müzeler ve bahçeler", "guide.eat": "Ne yemeli", "guide.eatIntro": "Pittsburgh mutfağı doyurucu, biraz farklı ve şehrin İtalyan, Polonyalı, Slovak ve Alman kökenlerinden izler taşır.",
   "guide.drink": "Barlar, bira fabrikaları ve gece hayatı", "guide.do": "Yapılacak şeyler", "guide.near": "Evlerimizin yakınında", "guide.yinzer": "Pittsburgh'lu gibi konuşun", "guide.yinzerIntro": "Pittsburgh'luların kendine özgü bir konuşma tarzı var. Birkaç kelime deneyin, yerliler bayılacak.",
   "guide.openAll": "Hepsini aç", "guide.closeAll": "Hepsini kapat", "guide.tips": "Ulaşım", "guide.map": "Yol tarifi", "guide.ready": "Gelmeye hazır mısınız?", "guide.readyText": "Tüm bunlara yakın, rahat bir odada ya da bütün bir evde kalın.", "guide.cta": "Konaklamalarımızı görün",
-  "guide.tip1": "Pittsburgh Uluslararası Havalimanı evlerimize arabayla yaklaşık 25–35 dakika uzaklıkta.", "guide.tip2": "\"T\" hafif raylı sistemi, şehir merkezi ile North Side istasyonları arasında ücretsizdir; maçlar ve konserler için idealdir.",
+  "guide.tip1": "Pittsburgh Uluslararası Havalimanı evlerimize arabayla yaklaşık 25-35 dakika uzaklıkta.", "guide.tip2": "\"T\" hafif raylı sistemi, şehir merkezi ile North Side istasyonları arasında ücretsizdir; maçlar ve konserler için idealdir.",
   "guide.tip3": "Otobüsler şehrin her yerine gider. Yolculuğunuzu Google Maps veya Transit uygulamasıyla planlayın.", "guide.tip4": "Pittsburgh tepelik bir şehir; dik sokaklar ve pek çok merdiven var. Rahat ayakkabı giyin.", "guide.tip5": "Çalışma saatleri mevsime göre değişir, gitmeden önce kontrol edin.",
   "guide.englishNote": "Mekân açıklamaları İngilizcedir.",
 };
@@ -70,7 +70,7 @@ const es: Dict = {
   "guide.see": "Imprescindibles e historia", "guide.museums": "Museos y jardines", "guide.eat": "Qué comer", "guide.eatIntro": "La comida de Pittsburgh es contundente, un poco peculiar y marcada por sus raíces italianas, polacas, eslovacas y alemanas.",
   "guide.drink": "Bares, cervecerías y vida nocturna", "guide.do": "Qué hacer", "guide.near": "Cerca de nuestras casas", "guide.yinzer": "Habla como un Yinzer", "guide.yinzerIntro": "Los de Pittsburgh tienen su propia forma de hablar. Prueba unas palabras y los locales te adorarán.",
   "guide.openAll": "Abrir todo", "guide.closeAll": "Cerrar todo", "guide.tips": "Cómo moverse", "guide.map": "Cómo llegar", "guide.ready": "¿Listo para visitarnos?", "guide.readyText": "Alójate en una habitación acogedora o una casa entera, cerca de todo esto.", "guide.cta": "Ver alojamientos",
-  "guide.tip1": "El Aeropuerto Internacional de Pittsburgh está a unos 25–35 minutos en coche de nuestras casas.", "guide.tip2": "El tren ligero \"T\" es gratis entre las estaciones del centro y las de North Side, ideal para partidos y conciertos.",
+  "guide.tip1": "El Aeropuerto Internacional de Pittsburgh está a unos 25-35 minutos en coche de nuestras casas.", "guide.tip2": "El tren ligero \"T\" es gratis entre las estaciones del centro y las de North Side, ideal para partidos y conciertos.",
   "guide.tip3": "Los autobuses recorren toda la ciudad. Planifica con Google Maps o la app Transit.", "guide.tip4": "Pittsburgh tiene muchas colinas, calles empinadas y escaleras públicas. Usa calzado cómodo.", "guide.tip5": "Los horarios cambian según la temporada; consúltalos antes de ir.",
   "guide.englishNote": "Las descripciones de los lugares están en inglés.",
 };
@@ -90,7 +90,7 @@ const fr: Dict = {
   "guide.see": "Incontournables et histoire", "guide.museums": "Musées et jardins", "guide.eat": "Que manger", "guide.eatIntro": "La cuisine de Pittsburgh est copieuse, un peu originale, et marquée par ses racines italiennes, polonaises, slovaques et allemandes.",
   "guide.drink": "Bars, brasseries et vie nocturne", "guide.do": "À faire", "guide.near": "Près de nos maisons", "guide.yinzer": "Parler comme un Yinzer", "guide.yinzerIntro": "Les habitants de Pittsburgh ont leur propre façon de parler. Essayez quelques mots, ils vont adorer.",
   "guide.openAll": "Tout ouvrir", "guide.closeAll": "Tout fermer", "guide.tips": "Se déplacer", "guide.map": "Itinéraire", "guide.ready": "Prêt à venir ?", "guide.readyText": "Séjournez dans une chambre douillette ou une maison entière, tout près.", "guide.cta": "Voir nos logements",
-  "guide.tip1": "L'aéroport international de Pittsburgh est à environ 25–35 minutes en voiture de nos maisons.", "guide.tip2": "Le tramway « T » est gratuit entre les stations du centre-ville et celles de North Side, pratique pour les matchs et les concerts.",
+  "guide.tip1": "L'aéroport international de Pittsburgh est à environ 25-35 minutes en voiture de nos maisons.", "guide.tip2": "Le tramway « T » est gratuit entre les stations du centre-ville et celles de North Side, pratique pour les matchs et les concerts.",
   "guide.tip3": "Les bus desservent toute la ville. Préparez vos trajets avec Google Maps ou l'application Transit.", "guide.tip4": "Pittsburgh est vallonnée, avec des rues en pente et de nombreux escaliers publics. Prévoyez des chaussures confortables.", "guide.tip5": "Les horaires changent selon la saison : vérifiez avant d'y aller.",
   "guide.englishNote": "Les descriptions des lieux sont en anglais.",
 };
@@ -108,10 +108,10 @@ const de: Dict = {
   "guide.eyebrow": "Bereit?", "guide.title": "Ihr Pittsburgh-Guide",
   "guide.intro": "Die Stadt der Brücken hat 446 davon, drei Flüsse, eine unvergessliche Skyline und einige der freundlichsten Menschen Amerikas. Das empfehlen wir unseren eigenen Gästen: wo man isst, wohin man geht und was man unternimmt.",
   "guide.see": "Sehenswertes und Geschichte", "guide.museums": "Museen und Gärten", "guide.eat": "Was man essen sollte", "guide.eatIntro": "Das Essen in Pittsburgh ist herzhaft, etwas eigen und geprägt von italienischen, polnischen, slowakischen und deutschen Wurzeln.",
-  "guide.drink": "Bars, Brauereien und Nachtleben", "guide.do": "Unternehmungen", "guide.near": "In der Nähe unserer Häuser", "guide.yinzer": "Sprechen wie ein Yinzer", "guide.yinzerIntro": "Pittsburgher haben ihre eigene Art zu sprechen. Probieren Sie ein paar Wörter – die Einheimischen werden es lieben.",
+  "guide.drink": "Bars, Brauereien und Nachtleben", "guide.do": "Unternehmungen", "guide.near": "In der Nähe unserer Häuser", "guide.yinzer": "Sprechen wie ein Yinzer", "guide.yinzerIntro": "Pittsburgher haben ihre eigene Art zu sprechen. Probieren Sie ein paar Wörter, die Einheimischen werden es lieben.",
   "guide.openAll": "Alle öffnen", "guide.closeAll": "Alle schließen", "guide.tips": "Unterwegs in der Stadt", "guide.map": "Route", "guide.ready": "Bereit für Ihren Besuch?", "guide.readyText": "Übernachten Sie in einem gemütlichen Zimmer oder einem ganzen Haus, ganz in der Nähe.", "guide.cta": "Unterkünfte ansehen",
-  "guide.tip1": "Der Pittsburgh International Airport ist mit dem Auto etwa 25–35 Minuten von unseren Häusern entfernt.", "guide.tip2": "Die Stadtbahn „T“ ist zwischen den Stationen in Downtown und North Side kostenlos – praktisch für Spiele und Konzerte.",
-  "guide.tip3": "Busse fahren durch die ganze Stadt. Planen Sie mit Google Maps oder der Transit-App.", "guide.tip4": "Pittsburgh ist hügelig, mit steilen Straßen und vielen öffentlichen Treppen. Tragen Sie bequeme Schuhe.", "guide.tip5": "Öffnungszeiten ändern sich je nach Saison – prüfen Sie sie vorher.",
+  "guide.tip1": "Der Pittsburgh International Airport ist mit dem Auto etwa 25-35 Minuten von unseren Häusern entfernt.", "guide.tip2": "Die Stadtbahn „T“ ist zwischen den Stationen in Downtown und North Side kostenlos, praktisch für Spiele und Konzerte.",
+  "guide.tip3": "Busse fahren durch die ganze Stadt. Planen Sie mit Google Maps oder der Transit-App.", "guide.tip4": "Pittsburgh ist hügelig, mit steilen Straßen und vielen öffentlichen Treppen. Tragen Sie bequeme Schuhe.", "guide.tip5": "Öffnungszeiten ändern sich je nach Saison. Prüfen Sie sie vorher.",
   "guide.englishNote": "Die Beschreibungen der Orte sind auf Englisch.",
 };
 
@@ -130,7 +130,7 @@ const it: Dict = {
   "guide.see": "Da non perdere e luoghi storici", "guide.museums": "Musei e giardini", "guide.eat": "Cosa mangiare", "guide.eatIntro": "La cucina di Pittsburgh è sostanziosa, un po' originale e segnata dalle radici italiane, polacche, slovacche e tedesche.",
   "guide.drink": "Bar, birrifici e vita notturna", "guide.do": "Cosa fare", "guide.near": "Vicino alle nostre case", "guide.yinzer": "Parla come uno Yinzer", "guide.yinzerIntro": "A Pittsburgh si parla a modo proprio. Prova qualche parola e la gente del posto ti adorerà.",
   "guide.openAll": "Apri tutto", "guide.closeAll": "Chiudi tutto", "guide.tips": "Come muoversi", "guide.map": "Indicazioni", "guide.ready": "Pronto a venire?", "guide.readyText": "Soggiorna in una camera accogliente o in una casa intera, vicino a tutto questo.", "guide.cta": "Vedi gli alloggi",
-  "guide.tip1": "L'aeroporto internazionale di Pittsburgh è a circa 25–35 minuti di auto dalle nostre case.", "guide.tip2": "La metropolitana leggera \"T\" è gratuita tra le stazioni del centro e quelle di North Side, comoda per partite e concerti.",
+  "guide.tip1": "L'aeroporto internazionale di Pittsburgh è a circa 25-35 minuti di auto dalle nostre case.", "guide.tip2": "La metropolitana leggera \"T\" è gratuita tra le stazioni del centro e quelle di North Side, comoda per partite e concerti.",
   "guide.tip3": "Gli autobus coprono tutta la città. Pianifica con Google Maps o l'app Transit.", "guide.tip4": "Pittsburgh è collinare, con strade ripide e molte scalinate pubbliche. Indossa scarpe comode.", "guide.tip5": "Gli orari cambiano con le stagioni: controlla prima di andare.",
   "guide.englishNote": "Le descrizioni dei luoghi sono in inglese.",
 };
@@ -150,7 +150,7 @@ const pt: Dict = {
   "guide.see": "Imperdíveis e história", "guide.museums": "Museus e jardins", "guide.eat": "O que comer", "guide.eatIntro": "A comida de Pittsburgh é farta, um pouco peculiar e marcada pelas raízes italianas, polonesas, eslovacas e alemãs.",
   "guide.drink": "Bares, cervejarias e vida noturna", "guide.do": "O que fazer", "guide.near": "Perto das nossas casas", "guide.yinzer": "Fale como um Yinzer", "guide.yinzerIntro": "Os moradores de Pittsburgh têm seu próprio jeito de falar. Experimente algumas palavras e eles vão adorar.",
   "guide.openAll": "Abrir tudo", "guide.closeAll": "Fechar tudo", "guide.tips": "Como se locomover", "guide.map": "Como chegar", "guide.ready": "Pronto para visitar?", "guide.readyText": "Fique em um quarto aconchegante ou em uma casa inteira, perto de tudo isso.", "guide.cta": "Ver hospedagens",
-  "guide.tip1": "O Aeroporto Internacional de Pittsburgh fica a cerca de 25–35 minutos de carro das nossas casas.", "guide.tip2": "O VLT \"T\" é gratuito entre as estações do centro e as de North Side, ótimo para jogos e shows.",
+  "guide.tip1": "O Aeroporto Internacional de Pittsburgh fica a cerca de 25-35 minutos de carro das nossas casas.", "guide.tip2": "O VLT \"T\" é gratuito entre as estações do centro e as de North Side, ótimo para jogos e shows.",
   "guide.tip3": "Os ônibus cobrem toda a cidade. Planeje com o Google Maps ou o app Transit.", "guide.tip4": "Pittsburgh tem muitas ladeiras e escadarias públicas. Use calçados confortáveis.", "guide.tip5": "Os horários mudam conforme a estação; confira antes de ir.",
   "guide.englishNote": "As descrições dos lugares estão em inglês.",
 };
@@ -190,7 +190,7 @@ const zh: Dict = {
   "guide.see": "必看景点与历史", "guide.museums": "博物馆与花园", "guide.eat": "特色美食", "guide.eatIntro": "匹兹堡的食物分量十足、别具特色，融合了意大利、波兰、斯洛伐克和德国的传统。",
   "guide.drink": "酒吧、酒厂与夜生活", "guide.do": "玩乐推荐", "guide.near": "住宿附近", "guide.yinzer": "学说匹兹堡话", "guide.yinzerIntro": "匹兹堡人说话有自己的特色。试着说几个词，当地人会很喜欢。",
   "guide.openAll": "全部展开", "guide.closeAll": "全部收起", "guide.tips": "交通出行", "guide.map": "路线", "guide.ready": "准备好出发了吗？", "guide.readyText": "入住温馨的房间或整栋房屋，离这些地方都很近。", "guide.cta": "查看住宿",
-  "guide.tip1": "匹兹堡国际机场距离我们的房子约25–35分钟车程。", "guide.tip2": "轻轨“T”在市中心和北岸（North Side）车站之间免费，看球赛和演唱会很方便。",
+  "guide.tip1": "匹兹堡国际机场距离我们的房子约25-35分钟车程。", "guide.tip2": "轻轨“T”在市中心和北岸（North Side）车站之间免费，看球赛和演唱会很方便。",
   "guide.tip3": "公交车覆盖全市，可用 Google 地图或 Transit 应用规划行程。", "guide.tip4": "匹兹堡多山，坡道和公共台阶很多，请穿舒适的鞋。", "guide.tip5": "营业时间随季节变化，出发前请先确认。",
   "guide.englishNote": "景点介绍为英文。",
 };
@@ -210,7 +210,7 @@ const hi: Dict = {
   "guide.see": "ज़रूर देखें और इतिहास", "guide.museums": "संग्रहालय और बगीचे", "guide.eat": "क्या खाएँ", "guide.eatIntro": "पिट्सबर्ग का खाना भरपेट और थोड़ा अनोखा है, जिस पर इतालवी, पोलिश, स्लोवाक और जर्मन परंपराओं की छाप है।",
   "guide.drink": "बार, ब्रुअरी और नाइटलाइफ़", "guide.do": "करने लायक चीज़ें", "guide.near": "हमारे घरों के पास", "guide.yinzer": "यिंज़र की तरह बोलें", "guide.yinzerIntro": "पिट्सबर्ग के लोगों का बोलने का अपना अंदाज़ है। कुछ शब्द आज़माइए, स्थानीय लोग खुश हो जाएँगे।",
   "guide.openAll": "सभी खोलें", "guide.closeAll": "सभी बंद करें", "guide.tips": "आना-जाना", "guide.map": "रास्ता देखें", "guide.ready": "आने के लिए तैयार?", "guide.readyText": "इन सब के पास किसी आरामदायक कमरे या पूरे घर में ठहरें।", "guide.cta": "हमारी जगहें देखें",
-  "guide.tip1": "पिट्सबर्ग अंतरराष्ट्रीय हवाई अड्डा हमारे घरों से कार से लगभग 25–35 मिनट दूर है।", "guide.tip2": "\"T\" लाइट रेल डाउनटाउन और नॉर्थ साइड स्टेशनों के बीच मुफ़्त है, खेल और कॉन्सर्ट के लिए बढ़िया।",
+  "guide.tip1": "पिट्सबर्ग अंतरराष्ट्रीय हवाई अड्डा हमारे घरों से कार से लगभग 25-35 मिनट दूर है।", "guide.tip2": "\"T\" लाइट रेल डाउनटाउन और नॉर्थ साइड स्टेशनों के बीच मुफ़्त है, खेल और कॉन्सर्ट के लिए बढ़िया।",
   "guide.tip3": "बसें पूरे शहर में चलती हैं। Google Maps या Transit ऐप से यात्रा की योजना बनाएँ।", "guide.tip4": "पिट्सबर्ग पहाड़ी शहर है, खड़ी सड़कें और कई सार्वजनिक सीढ़ियाँ हैं। आरामदायक जूते पहनें।", "guide.tip5": "खुलने का समय मौसम के साथ बदलता है, जाने से पहले जाँच लें।",
   "guide.englishNote": "जगहों का विवरण अंग्रेज़ी में है।",
 };

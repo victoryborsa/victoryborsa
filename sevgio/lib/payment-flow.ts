@@ -21,7 +21,7 @@ export async function bookingInfo(id: string) {
   );
 }
 
-const dates = (b: Booking) => `${fmtDate(b.check_in)} – ${fmtDate(b.check_out)}`;
+const dates = (b: Booking) => `${fmtDate(b.check_in)} - ${fmtDate(b.check_out)}`;
 const deadlineText = (b: Booking) =>
   b.payment_deadline ? new Date(b.payment_deadline).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" }) + " ET" : "";
 
@@ -50,7 +50,7 @@ async function toHostAndAdmins(b: Info, subject: string, text: string) {
 
 export async function notifyBooking(b: Info) {
   const s = forListing(await getSettings(), b);
-  const extras = extrasOf(b).length ? `\nExtras: ${extrasOf(b).map(x => `${x.name}${x.qty > 1 && x.total ? ` × ${x.qty}` : ""} (${x.total ? money(x.total) : "free"})${x.details ? ` — ${x.details}` : ""}`).join(", ")}` : "";
+  const extras = extrasOf(b).length ? `\nExtras: ${extrasOf(b).map(x => `${x.name}${x.qty > 1 && x.total ? ` × ${x.qty}` : ""} (${x.total ? money(x.total) : "free"})${x.details ? `: ${x.details}` : ""}`).join(", ")}` : "";
   const deposit = b.security_deposit_cents > 0 ? `\nRefundable security deposit: ${money(b.security_deposit_cents)} (collected separately by your host, returned after check-out)` : "";
   const first = b.guest_name.split(" ")[0];
   const link = `${siteUrl()}/trips/${b.code}`;
@@ -64,7 +64,7 @@ export async function notifyBooking(b: Info) {
       ? `Complete your payment here: ${link}\nPlease pay by ${deadlineText(b)}, or the dates are released.`
       : manualInstructions(b, s);
     await sendEmail(b.guest_email, `Complete your booking: ${b.title}`, `Hi ${first},\n\nYour dates at ${b.title} (${dates(b)}) are held for you. To confirm the booking:\n\n${how}\n\nReference: ${b.code}\nView your booking: ${link}`);
-    await toHostAndAdmins(b, `New booking awaiting payment: ${b.title}, ${dates(b)}`, `${b.guest_name} booked ${b.title} for ${dates(b)} and chose to pay by ${b.payment_method ? METHOD_LABEL[b.payment_method] : "—"}.\n${b.payment_method === "card" || b.payment_method === "ach" ? "It confirms automatically once paid." : `When you receive ${money(b.due_now_cents)}, click "Mark payment received" in ${siteUrl()}/host/bookings`}`);
+    await toHostAndAdmins(b, `New booking awaiting payment: ${b.title}, ${dates(b)}`, `${b.guest_name} booked ${b.title} for ${dates(b)} and chose to pay by ${b.payment_method ? METHOD_LABEL[b.payment_method] : "not chosen"}.\n${b.payment_method === "card" || b.payment_method === "ach" ? "It confirms automatically once paid." : `When you receive ${money(b.due_now_cents)}, click "Mark payment received" in ${siteUrl()}/host/bookings`}`);
   } else if (b.status === "pending") {
     await sendEmail(b.guest_email, `Request sent: ${b.title}`, `Hi ${first},\n\nWe've sent your request to the host. Your dates are held while they decide, usually within a few hours. You'll get another email when they reply${b.payment_method ? ", with how to pay" : ""}.\n\nReference: ${b.code}\nDates: ${dates(b)}\n\nView your request: ${link}`);
     await toHostAndAdmins(b, `Booking request: ${b.title}, ${dates(b)}`, `${b.guest_name} would like to stay at ${b.title} for ${dates(b)} (${partyLabel(b)}).${extras}\n\nMessage: ${b.message}\n\nAccept or decline within 48 hours: ${siteUrl()}/host/bookings`);

@@ -52,8 +52,8 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
                   )}
                 </td>
                 <td>{new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
-                <td className="num">{u.listings || "—"}</td>
-                <td className="num">{u.bookings || "—"}</td>
+                <td className="num">{u.listings || "-"}</td>
+                <td className="num">{u.bookings || "-"}</td>
                 <td style={{ minWidth: 200 }}>
                   {u.id === me.id ? <span className="pill neutral">Admin (you)</span> : (
                     <ActionForm action={setRoleAction} className="row">

@@ -20,15 +20,18 @@ export function StaysMap({ pins }: { pins: MapPin[] }) {
     };
     const resize = () => setTimeout(() => map?.resize(), 50);
     (async () => {
-      const maplibregl = (await import("maplibre-gl")).default;
+      const maplibregl = await import("maplibre-gl");
+      // The map's background worker is served from public/maplibre (copied there by scripts/copy-maplibre-worker.mjs).
+      if (!maplibregl.getWorkerUrl()?.startsWith("/maplibre/")) maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
       if (cancelled || !el.current) return;
-      map = new maplibregl.Map({
+      const m = new maplibregl.Map({
         container: el.current, style: STYLE, center: [-79.9959, 40.4406], zoom: 11,
         attributionControl: { compact: true }, cooperativeGestures: false, dragRotate: false, pitchWithRotate: false,
       });
-      map.touchZoomRotate.disableRotation();
-      map.addControl(new maplibregl.FullscreenControl(), "top-right");
-      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      map = m;
+      m.touchZoomRotate.disableRotation();
+      m.addControl(new maplibregl.FullscreenControl(), "top-right");
+      m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
       const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
       for (const p of pins) {
         const node = document.createElement("button");
@@ -40,7 +43,7 @@ export function StaysMap({ pins }: { pins: MapPin[] }) {
         const popup = new maplibregl.Popup({ offset: 18, maxWidth: "260px", className: "map-popup" }).setHTML(
           `<a class="map-card" href="${esc(p.href)}">${p.img ? `<img src="${esc(p.img)}" alt="">` : ""}<span class="map-card-body"><b>${esc(p.title)}</b><span>${esc(p.sub)}</span><span class="map-card-price">${esc(p.price)}</span></span></a>`,
         );
-        new maplibregl.Marker({ element: node }).setLngLat([p.lng, p.lat]).setPopup(popup).addTo(map);
+        new maplibregl.Marker({ element: node }).setLngLat([p.lng, p.lat]).setPopup(popup).addTo(m);
       }
       if (pins.length > 1) {
         // Open on where most stays are (Pittsburgh when it's a tie): a far-away one like Indiana, PA isn't framed, but its pin still shows.
@@ -51,9 +54,9 @@ export function StaysMap({ pins }: { pins: MapPin[] }) {
         const near = pins.filter(p => km(p, center) < 30);
         const b = new maplibregl.LngLatBounds();
         (near.length ? near : pins).forEach(p => b.extend([p.lng, p.lat]));
-        map.fitBounds(b, { padding: 60, maxZoom: 14, duration: 0 });
-        if (near.length === 1) map.jumpTo({ center: [near[0].lng, near[0].lat], zoom: 12 });
-      } else if (pins.length === 1) map.jumpTo({ center: [pins[0].lng, pins[0].lat], zoom: 13 });
+        m.fitBounds(b, { padding: 60, maxZoom: 14, duration: 0 });
+        if (near.length === 1) m.jumpTo({ center: [near[0].lng, near[0].lat], zoom: 12 });
+      } else if (pins.length === 1) m.jumpTo({ center: [pins[0].lng, pins[0].lat], zoom: 13 });
       document.addEventListener("mouseover", onHover);
       document.addEventListener("mouseout", onHover);
       window.addEventListener("sevgio:map-shown", resize);

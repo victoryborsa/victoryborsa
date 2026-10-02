@@ -187,7 +187,7 @@ export async function replaceFeedBlocks(propertyId: string, source: string, rang
         [propertyId, r.start, r.end],
         c,
       );
-      if (clash) { clashes.push(`${r.start}–${r.end} overlaps ${clash.code}`); continue; }
+      if (clash) { clashes.push(`${r.start} to ${r.end} overlaps ${clash.code}`); continue; }
       await q("INSERT INTO blocks (property_id, start_date, end_date, note, source) VALUES ($1, $2, $3, $4, $5)", [propertyId, r.start, r.end, r.note, source], c);
     }
     return clashes;

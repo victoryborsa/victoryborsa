@@ -48,7 +48,7 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
   for (const e of events) { const d = e.local_date < from ? from : e.local_date; groups.set(d, [...(groups.get(d) ?? []), e]); }
   const period = view === "day" ? fmtDate(from, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
     : view === "month" ? fmtDate(monthStart(from), { month: "long", year: "numeric" })
-    : `${fmtShort(from)} – ${fmtDate(addDays(to, -1), { month: "short", day: "numeric", year: "numeric" })}`;
+    : `${fmtShort(from)} - ${fmtDate(addDays(to, -1), { month: "short", day: "numeric", year: "numeric" })}`;
   const unit = view === "day" ? "day" : view;
 
   return (
@@ -111,7 +111,7 @@ function EventCard({ e }: { e: Ev }) {
           <b>{d.getUTCDate()}<sup>{ord(d.getUTCDate())}</sup></b>
           {e.local_time && <small>{timeLabel(e.local_time)}</small>}
         </span>
-        {multi > 0 && <span className="event-dates"><b>See all dates</b><small>{fmtShort(e.local_date)} – {fmtShort(e.end_date!)} ({multi} days)</small></span>}
+        {multi > 0 && <span className="event-dates"><b>See all dates</b><small>{fmtShort(e.local_date)} - {fmtShort(e.end_date!)} ({multi} days)</small></span>}
         <span className="event-tags">
           {e.featured && <span>Featured</span>}
           {e.free && <span>Free</span>}

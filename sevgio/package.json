@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/copy-maplibre-worker.mjs && next build",
     "start": "next start",
     "migrate": "node scripts/migrate.mjs",
     "create-admin": "node scripts/create-admin.mjs",
@@ -16,11 +16,12 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types tests/unit/*.test.ts",
     "test:e2e": "playwright test",
-    "start:host": "node scripts/migrate.mjs && node scripts/bootstrap.mjs && next start"
+    "start:host": "node scripts/migrate.mjs && node scripts/bootstrap.mjs && next start",
+    "postinstall": "node scripts/copy-maplibre-worker.mjs"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",
-    "maplibre-gl": "5.6.2",
+    "maplibre-gl": "6.11.2",
     "next": "15.5.26",
     "nodemailer": "10.0.12",
     "pg": "8.23.0",

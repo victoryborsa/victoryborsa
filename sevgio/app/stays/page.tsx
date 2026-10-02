@@ -131,8 +131,8 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
         <section className="results-list" aria-label="Stays">
           <div className="results-head">
             <div>
-              <h2>{list.length} {list.length === 1 ? "stay" : "stays"}{loc ? ` in ${loc}` : ""}</h2>
-              <p className="muted">{ci ? `${fmtShort(ci)} – ${fmtShort(co)}` : "Any dates"} · {guests} guest{guests > 1 ? "s" : ""}</p>
+              <h1 className="h-like-2">{list.length} {list.length === 1 ? "stay" : "stays"}{loc ? ` in ${loc}` : ""}</h1>
+              <p className="muted">{ci ? `${fmtShort(ci)} - ${fmtShort(co)}` : "Any dates"} · {guests} guest{guests > 1 ? "s" : ""}</p>
             </div>
             <span className="spacer" />
             <form action="/stays" method="get" className="row" style={{ gap: 8 }}>
@@ -157,7 +157,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
             <div className="empty">
               <h3>No stays match your search</h3>
               <p className="muted" style={{ maxWidth: "46ch" }}>
-                {ci ? `Every home that fits is booked for ${fmtShort(ci)} – ${fmtShort(co)}, or needs a different length of stay. ` : ""}
+                {ci ? `Every home that fits is booked for ${fmtShort(ci)} - ${fmtShort(co)}, or needs a different length of stay. ` : ""}
                 Try different dates, fewer filters, or a nearby town.
               </p>
               <div className="row" style={{ justifyContent: "center" }}>

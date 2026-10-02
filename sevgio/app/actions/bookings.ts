@@ -107,7 +107,7 @@ export async function guestCancelAction(_: ActionState, fd: FormData): Promise<A
   if (!b) return { error: "We couldn't find that booking on your account." };
   const updated = await setBookingStatus(b.id, ["pending", "awaiting_payment", "confirmed"], "cancelled", { cancelledBy: "guest" });
   if (!updated) return { error: "This booking can't be cancelled anymore." };
-  await sendEmail(b.host_email, `Cancelled: ${b.title}, ${fmtDate(b.check_in)}`, `${b.guest_name} cancelled booking ${b.code} (${fmtDate(b.check_in)} – ${fmtDate(b.check_out)}). The dates are open again.`);
-  await sendEmail(u.email, `You cancelled booking ${b.code}`, `Your booking at ${b.title} for ${fmtDate(b.check_in)} – ${fmtDate(b.check_out)} is cancelled.`);
+  await sendEmail(b.host_email, `Cancelled: ${b.title}, ${fmtDate(b.check_in)}`, `${b.guest_name} cancelled booking ${b.code} (${fmtDate(b.check_in)} - ${fmtDate(b.check_out)}). The dates are open again.`);
+  await sendEmail(u.email, `You cancelled booking ${b.code}`, `Your booking at ${b.title} for ${fmtDate(b.check_in)} - ${fmtDate(b.check_out)} is cancelled.`);
   redirect(`/trips/${b.code}?msg=guestcancelled`);
 }

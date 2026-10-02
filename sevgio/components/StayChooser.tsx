@@ -14,7 +14,7 @@ export async function StayChooser({ current, house, rooms, sp }: { current: Opt;
   const free = dated ? await Promise.all(opts.map(o => isRangeFree(o.id, sp.ci!, sp.co!))) : [];
   const guests = Number(sp.guests) || 0;
   const qs = new URLSearchParams(Object.entries({ ci: sp.ci, co: sp.co, guests: sp.guests }).filter((e): e is [string, string] => !!e[1])).toString();
-  const short = (t: string) => t.includes(" – ") ? t.split(" – ").slice(1).join(" – ") : t;
+  const short = (t: string) => (/ [-\u2013\u2014] /.test(t) ? t.split(/ [-\u2013\u2014] /).slice(1).join(" - ") : t);
   return (
     <section className="chooser" aria-label="Whole house or a room">
       <h2>How would you like to stay?</h2>
