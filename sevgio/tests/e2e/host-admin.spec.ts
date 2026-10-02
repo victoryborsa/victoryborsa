@@ -193,7 +193,7 @@ test("host marks a bathroom as shared; guests see it and can filter it out", asy
   await expect(page.locator(".facts")).toContainText("shared bathroom");
   await page.goto("/stays?loc=Philadelphia");
   await expect(page.locator("a.card")).toContainText("1 shared bath");
-  await page.getByLabel("Private bathroom only").check();
+  await page.getByRole("link", { name: /Private bathroom/ }).click();
   await expect(page).toHaveURL(/pbath=1/);
   await expect(page.getByRole("heading", { name: "No stays match your search" })).toBeVisible();
   await signOut(page);

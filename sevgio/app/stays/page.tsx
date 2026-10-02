@@ -7,7 +7,13 @@ import { AMENITY_FILTERS } from "@/lib/constants.ts";
 import { PropertyCard } from "@/components/PropertyCard.tsx";
 import { demandBetween } from "@/lib/demand.ts";
 import { SearchBar } from "@/components/SearchBar.tsx";
-import { FilterToggle } from "@/components/FilterToggle.tsx";
+import { FilterDrawer } from "@/components/FilterDrawer.tsx";
+import { MapToggle } from "@/components/MapToggle.tsx";
+import { StaysMap, type MapPin } from "@/components/StaysMap.tsx";
+import { approxPosition } from "@/lib/map-pins.ts";
+import { priceTag } from "@/lib/pricing.ts";
+import { money } from "@/lib/money.ts";
+import { photoUrl } from "@/lib/queries.ts";
 import { AutoSubmit } from "@/components/AutoSubmit.tsx";
 
 export const metadata: Metadata = { title: "Find a stay" };
@@ -31,24 +37,51 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
   }
   const guests = Math.min(num(sp.guests) || 1, 50);
   const amen = (Array.isArray(sp.amen) ? sp.amen : sp.amen ? [sp.amen] : []).filter(a => a in AMENITY_FILTERS);
-  const f = { loc, ci, co, guests, maxPrice: num(sp.max), bedrooms: num(sp.beds), baths: num(sp.baths), amenities: amen, instant: first(sp.instant) === "1", privateBath: first(sp.pbath) === "1", sort: first(sp.sort) };
+  const kind: "" | "home" | "room" = first(sp.kind) === "home" || first(sp.kind) === "room" ? (first(sp.kind) as "home" | "room") : "";
+  const f = { loc, ci, co, guests, maxPrice: num(sp.max), bedrooms: num(sp.beds), baths: num(sp.baths), amenities: amen, instant: first(sp.instant) === "1", privateBath: first(sp.pbath) === "1", sort: first(sp.sort),
+    monthly: first(sp.monthly) === "1", freeCancel: first(sp.cancel) === "1", kind };
   const [list, cities, settings] = await Promise.all([searchProperties(f), publishedCities(), getSettings()]);
   const demand = ci && list.some(p => p.smart_pricing) ? await demandBetween(ci, co) : undefined;
-  const filtersOn = !!(f.maxPrice || f.bedrooms || f.baths || amen.length || f.instant || f.privateBath);
+  const activeCount = (f.maxPrice ? 1 : 0) + (f.bedrooms ? 1 : 0) + (f.baths ? 1 : 0) + amen.length + (f.instant ? 1 : 0) + (f.privateBath ? 1 : 0) + (f.monthly ? 1 : 0) + (f.freeCancel ? 1 : 0) + (kind ? 1 : 0);
+  const filtersOn = activeCount > 0;
   const clearHref = "/stays?" + new URLSearchParams({ ...(loc && { loc }), ...(ci && { ci, co }), guests: String(guests) });
+  // Quick filter buttons: each one is a link that switches that filter on or off.
+  const params = () => { const u = new URLSearchParams(); for (const [k, v] of Object.entries(sp)) for (const x of Array.isArray(v) ? v : [v]) if (x) u.append(k, x); return u; };
+  const toggle = (key: string, value: string) => {
+    const u = params();
+    if (u.getAll(key).includes(value)) { const rest = u.getAll(key).filter(x => x !== value); u.delete(key); rest.forEach(x => u.append(key, x)); } else if (key === "amen") u.append(key, value); else u.set(key, value);
+    return "/stays?" + u.toString();
+  };
+  const chips: [string, string, string, string][] = [
+    ["kind", "home", "Entire home", "🏠"], ["kind", "room", "Private room", "🛏️"], ["amen", "pets", "Allows pets", "🐾"], ["amen", "selfcheckin", "Self check-in", "🔑"],
+    ["amen", "parking", "Free parking", "🚗"], ["cancel", "1", "Free cancellation", "✅"], ["amen", "wifi", "Wifi", "📶"], ["amen", "kitchen", "Kitchen", "🍳"],
+    ["amen", "washer", "Washer", "🧺"], ["amen", "ac", "Air conditioning", "❄️"], ["amen", "workspace", "Workspace", "💻"], ["amen", "hottub", "Hot tub", "🛁"],
+    ["amen", "fireplace", "Fireplace", "🔥"], ["instant", "1", "Instant book", "⚡"], ["pbath", "1", "Private bathroom", "🚿"], ["monthly", "1", "Monthly stays", "📅"],
+  ];
+  const pins: MapPin[] = list.flatMap(p => {
+    const pos = approxPosition(p);
+    if (!pos) return [];
+    const tag = priceTag(p);
+    const qs = ci ? `?ci=${ci}&co=${co}&guests=${guests}` : "";
+    return [{ id: p.id, lat: pos[0], lng: pos[1], price: `${money(tag.cents)}${tag.unit === "month" ? "/mo" : ""}`, title: p.title, sub: `${p.city}${p.area ? `, ${p.area}` : ""}`, href: `/stays/${p.slug}${qs}`, img: p.cover_id ? photoUrl(p.cover_id, "thumb") : null }];
+  });
 
   return (
-    <div className="wrap" style={{ paddingTop: 22 }}>
+    <div className="wrap wrap-wide" style={{ paddingTop: 22 }}>
       <SearchBar loc={loc} ci={ci} co={co} guests={guests} cities={cities} compact />
-      <div className="results-layout">
-        <FilterToggle active={(f.maxPrice ? 1 : 0) + (f.bedrooms ? 1 : 0) + (f.baths ? 1 : 0) + amen.length + (f.instant ? 1 : 0) + (f.privateBath ? 1 : 0)}>
+      <nav className="chips-row" aria-label="Quick filters">
+        <FilterDrawer active={activeCount}>
         <form className="filters" action="/stays" method="get" aria-label="Filters">
-          <AutoSubmit />
           <input type="hidden" name="loc" value={loc} />
           {ci && <><input type="hidden" name="ci" value={ci} /><input type="hidden" name="co" value={co} /></>}
           <input type="hidden" name="guests" value={guests} />
           <input type="hidden" name="sort" value={f.sort} />
-          <div className="row"><h3>Filters</h3><span className="spacer" />{filtersOn && <Link href={clearHref}>Clear all</Link>}</div>
+          <fieldset>
+            <legend>Type of place</legend>
+            <div className="seg">
+              {([["", "Any type"], ["home", "Entire home"], ["room", "Private room"]] as const).map(([v, l]) => <label key={v} className="seg-opt"><input type="radio" name="kind" value={v} defaultChecked={kind === v} /><span>{l}</span></label>)}
+            </div>
+          </fieldset>
           <label className="field">
             <span>Max price per night</span>
             <select className="input" name="max" defaultValue={String(f.maxPrice || "")}>
@@ -71,7 +104,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
             </label>
           </div>
           <label className="chk"><input type="checkbox" name="pbath" value="1" defaultChecked={f.privateBath} />Private bathroom only</label>
-          <fieldset>
+          <fieldset className="two-col">
             <legend>Amenities</legend>
             {Object.entries(AMENITY_FILTERS).map(([a, f]) => (
               <label className="chk" key={a}><input type="checkbox" name="amen" value={a} defaultChecked={amen.includes(a)} />{f.label}</label>
@@ -80,15 +113,25 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
           <fieldset>
             <legend>Booking</legend>
             <label className="chk"><input type="checkbox" name="instant" value="1" defaultChecked={f.instant} />Instant booking only</label>
+            <label className="chk"><input type="checkbox" name="cancel" value="1" defaultChecked={f.freeCancel} />Free cancellation</label>
+            <label className="chk"><input type="checkbox" name="monthly" value="1" defaultChecked={f.monthly} />Monthly stays (1 month or more)</label>
           </fieldset>
-          <noscript><button className="btn btn-primary" type="submit">Apply filters</button></noscript>
+          <div className="drawer-foot">
+            {filtersOn ? <Link className="btn btn-ghost" href={clearHref}>Clear all</Link> : <span />}
+            <button className="btn btn-primary" type="submit">Show stays</button>
+          </div>
         </form>
-        </FilterToggle>
-
-        <div style={{ minWidth: 0 }}>
+        </FilterDrawer>
+        {chips.map(([k, v, label, icon]) => {
+          const on = params().getAll(k).includes(v);
+          return <Link key={k + v} href={toggle(k, v)} className={`chip${on ? " on" : ""}`} aria-pressed={on} scroll={false}><span aria-hidden>{icon}</span>{label}</Link>;
+        })}
+      </nav>
+      <div className="results-split">
+        <section className="results-list" aria-label="Stays">
           <div className="results-head">
             <div>
-              <h2>{list.length} {list.length === 1 ? "stay" : "stays"}{loc ? ` matching “${loc}”` : " in Pennsylvania"}</h2>
+              <h2>{list.length} {list.length === 1 ? "stay" : "stays"}{loc ? ` in ${loc}` : ""}</h2>
               <p className="muted">{ci ? `${fmtShort(ci)} – ${fmtShort(co)}` : "Any dates"} · {guests} guest{guests > 1 ? "s" : ""}</p>
             </div>
             <span className="spacer" />
@@ -109,7 +152,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
           {dateError && <div className="notice warn" style={{ marginBottom: 18 }} role="alert">{dateError}</div>}
           {!ci && !dateError && <div className="notice info" style={{ marginBottom: 18 }}>Add your dates to see only homes that are free, with the total price for your stay.</div>}
           {list.length ? (
-            <div className="cards">{list.map((p, i) => <PropertyCard key={p.id} p={p} demand={demand} ci={ci} co={co} guests={guests} taxPercent={settings.tax_percent} eager={i < 3} />)}</div>
+            <div className="cards results-cards">{list.map((p, i) => <PropertyCard key={p.id} p={p} demand={demand} ci={ci} co={co} guests={guests} taxPercent={settings.tax_percent} eager={i < 3} />)}</div>
           ) : (
             <div className="empty">
               <h3>No stays match your search</h3>
@@ -124,8 +167,13 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
               </div>
             </div>
           )}
-        </div>
+        </section>
+        <aside className="results-map" aria-label="Map">
+          <StaysMap pins={pins} />
+          {list.length > pins.length && <p className="map-note">{list.length - pins.length} stay{list.length - pins.length === 1 ? " isn't" : "s aren't"} on the map yet.</p>}
+        </aside>
       </div>
+      <MapToggle />
     </div>
   );
 }

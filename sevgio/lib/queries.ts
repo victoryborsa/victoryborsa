@@ -12,6 +12,7 @@ const COVER = `(SELECT id FROM photos ph WHERE ph.property_id = p.id ORDER BY po
 
 export type SearchFilters = {
   loc?: string; ci?: string; co?: string; guests?: number; maxPrice?: number; bedrooms?: number; baths?: number; amenities?: string[]; instant?: boolean; privateBath?: boolean; sort?: string;
+  monthly?: boolean; freeCancel?: boolean; kind?: "" | "home" | "room";
 };
 
 export async function searchProperties(f: SearchFilters): Promise<CardProperty[]> {
@@ -28,6 +29,10 @@ export async function searchProperties(f: SearchFilters): Promise<CardProperty[]
   for (const key of f.amenities || []) if (AMENITY_FILTERS[key]) where.push(`p.amenities && ${add(AMENITY_FILTERS[key].keys)}::text[]`);
   if (f.instant) where.push(`p.booking_mode = 'instant'`);
   if (f.privateBath) where.push(`p.bathroom_type = 'private'`);
+  if (f.monthly) where.push(`p.monthly_price_cents IS NOT NULL`);
+  if (f.freeCancel) where.push(`p.cancellation_policy IN ('flexible', 'moderate')`);
+  if (f.kind === "room") where.push(`(p.parent_id IS NOT NULL OR p.property_type = 'room')`);
+  if (f.kind === "home") where.push(`(p.parent_id IS NULL AND p.property_type <> 'room')`);
   if (f.ci && f.co) {
     const ci = add(f.ci), co = add(f.co);
     where.push(`(${co}::date - ${ci}::date) BETWEEN p.min_nights AND p.max_nights`);

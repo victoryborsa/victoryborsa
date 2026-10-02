@@ -14,7 +14,7 @@ export function PropertyCard({ p, ci, co, guests, taxPercent, eager, demand }: {
   const href = `/stays/${p.slug}${qs.size ? "?" + qs : ""}`;
   const badge = p.booking_mode === "request" ? "Request to book" : p.rating && p.rating >= 4.9 && p.review_count >= 10 ? "Guest favorite" : "";
   return (
-    <Link className="card" href={href}>
+    <Link className="card" href={href} data-pid={p.id}>
       <div className="ph">
         {p.cover_id ? (
           <img src={photoUrl(p.cover_id, "thumb")} alt={p.title} loading={eager ? "eager" : "lazy"} decoding="async" width={720} height={540} />

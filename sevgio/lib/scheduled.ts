@@ -5,6 +5,7 @@ import { expireStaleRequests } from "./bookings.ts";
 import { syncAllEvents } from "./events.ts";
 import { logEvent } from "./log.ts";
 import { runListingFeeJobs } from "./listing-fee.ts";
+import { geocodeMissing } from "./geocode.ts";
 
 /** Hourly housekeeping: expire unpaid/unanswered requests, remove unconfirmed sign-ups, refresh Airbnb/Booking.com calendars and events. */
 export async function runScheduledJobs() {
@@ -16,7 +17,8 @@ export async function runScheduledJobs() {
   for (const f of feeds) (await syncFeed(f.id)).error ? failed++ : ok++;
   const events = await syncAllEvents();
   const listingFees = await runListingFeeJobs();
-  return { listingFees, feeds: feeds.length, ok, failed, expiredRequests: expired.length, removedUnconfirmedAccounts: removed.length, events };
+  const mapped = await geocodeMissing();
+  return { listingFees, mapped, feeds: feeds.length, ok, failed, expiredRequests: expired.length, removedUnconfirmedAccounts: removed.length, events };
 }
 
 let lastCheck = 0;

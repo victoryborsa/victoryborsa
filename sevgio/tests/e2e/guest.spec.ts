@@ -14,11 +14,14 @@ test("homepage shows search and property cards", async ({ page }) => {
 
 test("search by area, filter, sort and empty state", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("Where").selectOption("Poconos");
+  await page.getByRole("combobox", { name: "Where" }).fill("Pocon");
+  await page.getByRole("option", { name: /Poconos/ }).click();
   await page.getByRole("button", { name: "Search stays" }).click();
-  await expect(page.getByRole("heading", { name: /2 stays matching/ })).toBeVisible();
-  await page.getByLabel("Hot tub").check();
+  await expect(page.getByRole("heading", { name: /2 stays in Poconos/ })).toBeVisible();
+  // Quick filter buttons across the top switch a filter on and off.
+  await page.getByRole("link", { name: /Hot tub/ }).click();
   await expect(page).toHaveURL(/amen=hottub/);
+  await expect(page.getByRole("link", { name: /Hot tub/ })).toHaveAttribute("aria-pressed", "true");
   await page.getByLabel("Sort by").selectOption("price_asc");
   await expect(page).toHaveURL(/sort=price_asc/);
   await expect(page.locator("a.card").first()).toContainText("Jim Thorpe");
@@ -240,14 +243,20 @@ test("password boxes have an eye button to show what was typed", async ({ page }
 
 test("Where offers preset places; Downtown Pittsburgh finds Pittsburgh stays; up to 10 guests", async ({ page }) => {
   await page.goto("/");
-  const where = page.getByLabel("Where");
-  for (const label of ["Anywhere", "Pittsburgh (all areas)", "Downtown Pittsburgh", "Indiana, PA"]) await expect(where.locator("option", { hasText: label })).toHaveCount(1);
+  // Tapping "Where" opens suggested places right away.
+  const where = page.getByRole("combobox", { name: "Where" });
+  await where.click();
+  for (const label of ["Anywhere", "Pittsburgh, PA", "Downtown Pittsburgh", "Indiana, PA"]) await expect(page.getByRole("option", { name: new RegExp(label) }).first()).toBeVisible();
   await expect(page.getByLabel("Guests").locator("option")).toHaveCount(10);
-  await where.selectOption({ label: "Downtown Pittsburgh" });
+  await page.getByRole("option", { name: /Downtown Pittsburgh/ }).click();
   await page.getByRole("button", { name: "Search stays" }).click();
   await expect(page.locator("a.card", { hasText: "Mount Washington View House" })).toBeVisible();
   await expect(page.locator("a.card", { hasText: "Jim Thorpe" })).toHaveCount(0);
-  await expect(page.getByLabel("Where")).toHaveValue("Downtown Pittsburgh");
+  await expect(page.getByRole("combobox", { name: "Where" })).toHaveValue("Downtown Pittsburgh");
+  // Recent searches are remembered for next time.
+  await page.goto("/");
+  await page.getByRole("combobox", { name: "Where" }).click();
+  await expect(page.getByText("Recent searches")).toBeVisible();
 });
 
 test("sign-up asks guest or host; host requests wait for admin approval", async ({ page }) => {
@@ -325,4 +334,29 @@ test("public pages can't be copied: no right-click, no copy, no save/print short
   expect((await request.get("/", { headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1)" } })).status()).toBe(200);
   const robots = await (await request.get("/robots.txt")).text();
   expect(robots).toContain("GPTBot");
+});
+
+test("search results: map with a price pin for each stay, filters panel, entire home / private room", async ({ page }) => {
+  await sql("UPDATE properties SET lat = 40.44 + (random() - 0.5) * 0.05, lng = -79.99 + (random() - 0.5) * 0.08 WHERE status = 'published' AND city = 'Pittsburgh'");
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto("/stays?loc=Pittsburgh");
+  const map = page.getByRole("region", { name: "Map of stays" });
+  await expect(map.locator(".map-pin").first()).toBeVisible();
+  const cards = await page.locator("a.card").count();
+  await expect(map.locator(".map-pin")).toHaveCount(cards);
+  // Hovering a stay lights up its pin; tapping a pin shows the stay.
+  await page.locator("a.card").first().hover();
+  await expect(map.locator(".map-pin.hot")).toHaveCount(1);
+  await map.locator(".map-pin").first().click();
+  await expect(page.locator(".map-card")).toBeVisible();
+  // All filters in one panel.
+  await page.getByRole("button", { name: /^Filters/ }).click();
+  const panel = page.getByRole("dialog", { name: "Filters" });
+  await panel.getByText("Entire home", { exact: true }).click();
+  await panel.getByRole("button", { name: "Show stays" }).click();
+  await expect(page).toHaveURL(/kind=home/);
+  const homes = await page.locator("a.card").count();
+  expect(homes).toBeGreaterThan(0);
+  expect(homes).toBeLessThanOrEqual(cards);
+  await expect(page.getByRole("button", { name: /Filters \(1\)/ })).toBeVisible();
 });

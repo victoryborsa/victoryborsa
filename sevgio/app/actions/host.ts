@@ -19,6 +19,8 @@ import { moveListingFamily } from "@/lib/homes.ts";
 import { feePayText, feeState, type FeeRow } from "@/lib/listing-fee.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
+import { after } from "next/server";
+import { geocodeListing } from "@/lib/geocode.ts";
 import { fmtDate, todayLocal } from "@/lib/dates.ts";
 
 // ---------- Listings ----------
@@ -158,6 +160,8 @@ async function createListingCore(u: User, fd: FormData): Promise<{ id: string } 
     `INSERT INTO properties (${names.join(", ")}) VALUES (${names.map((_, i) => "$" + (i + 1)).join(", ")}) RETURNING id`,
     Object.values(cols),
   );
+  // Find it on the map in the background, after the page has answered.
+  if (row) after(() => geocodeListing(row.id).then(() => undefined));
   await logEvent("info", "Listings", `Listing created: ${v.title}`, {}, u.id);
   return { id: row!.id };
 }
@@ -311,6 +315,7 @@ export async function updateListingAction(_: ActionState, fd: FormData): Promise
   const cols = { ...listingColumns(v, u.role === "admin"), status: v.status, host_id: hostId };
   const names = Object.keys(cols);
   await q(`UPDATE properties SET ${names.map((n, i) => `${n} = $${i + 2}`).join(", ")}, updated_at = now() WHERE id = $1`, [p.id, ...Object.values(cols)]);
+  if (v.address !== p.address || v.city !== p.city || p.lat === null) after(() => geocodeListing(p.id).then(() => undefined));
   let movedNote = "";
   if (hostId !== p.host_id) {
     // A house and its rooms share one host, so the whole linked family moves together.

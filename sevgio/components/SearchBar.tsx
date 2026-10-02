@@ -1,24 +1,34 @@
 import { todayLocal, addDays } from "@/lib/dates.ts";
 import { getT } from "@/lib/i18n.ts";
-import { publishedAreas } from "@/lib/queries.ts";
+import { q } from "@/lib/db.ts";
+import { WherePicker, type Place } from "./WherePicker.tsx";
 
-/** Plain GET form: works before any JavaScript loads, and results are shareable links. */
-export async function SearchBar({ loc = "", ci = "", co = "", guests = 2, cities = [], compact = false }: { loc?: string; ci?: string; co?: string; guests?: number; cities?: string[]; compact?: boolean }) {
+/** GET form, so results are shareable links. "Where" opens a list of suggested places as soon as it's tapped. */
+export async function SearchBar({ loc = "", ci = "", co = "", guests = 2, compact = false }: { loc?: string; ci?: string; co?: string; guests?: number; cities?: string[]; compact?: boolean }) {
   const today = todayLocal();
-  const [{ t }, areas] = await Promise.all([getT(), publishedAreas()]);
-  const main = [["", t("search.anywhere")], ["Pittsburgh", t("search.pittsburgh")], ["Downtown Pittsburgh", "Downtown Pittsburgh"], ["Indiana", "Indiana, PA"]];
-  const others = [...new Set([...areas, ...cities.filter(c => !["Pittsburgh", "Indiana"].includes(c))])].filter(a => !main.some(m => m[0] === a)).sort();
-  const known = main.some(m => m[0] === loc) || others.includes(loc);
+  const [{ t }, rows] = await Promise.all([
+    getT(),
+    q<{ city: string; area: string; n: number }>("SELECT city, area, count(*)::int AS n FROM properties WHERE status = 'published' GROUP BY city, area ORDER BY city, area"),
+  ]);
+  const inCity = (c: string) => rows.filter(r => r.city.toLowerCase() === c).reduce((n, r) => n + r.n, 0);
+  const count = (n: number) => (n ? ` · ${n} stay${n === 1 ? "" : "s"}` : "");
+  const places: Place[] = [
+    { value: "Pittsburgh", label: "Pittsburgh, PA", sub: `For sights like Acrisure Stadium and PNC Park${count(inCity("pittsburgh"))}`, icon: "🌉" },
+    { value: "Downtown Pittsburgh", label: "Downtown Pittsburgh", sub: "Close to the stadiums, Point State Park and the Cultural District", icon: "🏙️" },
+    { value: "Indiana", label: "Indiana, PA", sub: `Near IUP and Indiana Regional Medical Center${count(inCity("indiana"))}`, icon: "🎓" },
+  ];
+  const seen = new Set(places.map(p => p.value.toLowerCase()));
+  for (const r of rows) {
+    for (const [value, sub] of [[r.area, `Neighborhood in ${r.city}`], [r.city, "Town in Pennsylvania"]] as const) {
+      if (!value || seen.has(value.toLowerCase())) continue;
+      seen.add(value.toLowerCase());
+      const n = rows.filter(x => x.area === value || x.city === value).reduce((k, x) => k + x.n, 0);
+      places.push({ value, label: value, sub: sub + count(n), icon: sub.startsWith("Neighborhood") ? "🏘️" : "📍" });
+    }
+  }
   return (
     <form className="searchbar" action="/stays" method="get" role="search" style={compact ? { marginTop: 0 } : undefined}>
-      <label className="field">
-        <span>{t("search.where")}</span>
-        <select className="input" name="loc" defaultValue={loc}>
-          {main.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-          {others.length > 0 && <optgroup label={t("search.neighborhoods")}>{others.map(a => <option key={a} value={a}>{a}</option>)}</optgroup>}
-          {loc && !known && <option value={loc}>{loc}</option>}
-        </select>
-      </label>
+      <WherePicker name="loc" label={t("search.where")} initial={loc} places={places} anywhere={t("search.anywhere")} />
       <label className="field">
         <span>{t("search.checkin")}</span>
         <input className="input" type="date" name="ci" min={today} defaultValue={ci} />
