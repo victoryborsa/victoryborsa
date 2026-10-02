@@ -725,3 +725,28 @@ test("smart pricing: prices follow events between the minimum and maximum; event
   await expect(panel).toContainText("$230");
   await sql("UPDATE properties SET smart_pricing = false WHERE id = $1", [p.id]);
 });
+
+test("monthly rentals: the Indiana house file imports as a house and 4 rooms priced by the month", async ({ page }) => {
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/host/listings/import");
+  await page.getByLabel("Listing file").setInputFiles(path.join(process.cwd(), "..", "listing-files", "meadow-wood-house-indiana-pa.json"));
+  await page.getByRole("button", { name: "Import as drafts" }).click();
+  await expect(page.getByText(/Imported 5 listings as drafts/)).toBeVisible();
+  const rows = await sql<{ title: string; monthly_price_cents: number; min_nights: number; max_nights: number; max_guests: number; parent: string | null }>(
+    "SELECT p.title, p.monthly_price_cents, p.min_nights, p.max_nights, p.max_guests, h.title AS parent FROM properties p LEFT JOIN properties h ON h.id = p.parent_id WHERE p.title LIKE 'Meadow Wood House%' ORDER BY p.title");
+  expect(rows).toHaveLength(5);
+  const house = rows.find(r => r.title.endsWith("Entire Home"))!;
+  expect(house).toMatchObject({ monthly_price_cents: 395000, max_guests: 8, min_nights: 30, max_nights: 365, parent: null });
+  expect(rows.filter(r => r.parent === house.title).every(r => r.monthly_price_cents === 99500 && r.max_guests === 2)).toBe(true);
+  // Publish one room (with a photo) and check what guests see.
+  const [room] = await sql<{ id: string; slug: string }>("SELECT id, slug FROM properties WHERE title = 'Meadow Wood House – King Suite'");
+  await sql("INSERT INTO photos (property_id, position, large, thumb, width, height) SELECT $1, 0, large, thumb, width, height FROM photos LIMIT 1", [room.id]);
+  await sql("UPDATE properties SET status = 'published' WHERE id = $1", [room.id]);
+  await page.goto(`/stays/${room.slug}?ci=${iso(40)}&co=${iso(75)}&adults=2`);
+  await expect(page.locator(".panel-price")).toContainText("$995");
+  await expect(page.locator(".panel-price")).toContainText("/ month");
+  const panel = page.locator("#book table.breakdown");
+  await expect(panel).toContainText("$995 × 1 month + 5 extra days");
+  await expect(panel).toContainText("All-inclusive monthly rent");
+  await signOut(page);
+});

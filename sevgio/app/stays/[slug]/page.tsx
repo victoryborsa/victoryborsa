@@ -91,7 +91,7 @@ export default async function StayPage({ params, searchParams }: Params) {
           base_occupancy: p.base_occupancy, extra_guest_fee_cents: p.extra_guest_fee_cents, fewer_guest_discount_percent: Number(p.fewer_guest_discount_percent), weekly_discount_percent: Number(p.weekly_discount_percent), monthly_discount_percent: Number(p.monthly_discount_percent), children_free_age: p.children_free_age,
           pets_allowed: p.amenities.includes("pets"), pet_fee_cents: p.pet_fee_cents, pet_fee_per: p.pet_fee_per,
           services: parseServices(p.services), security_deposit_cents: p.security_deposit_cents,
-          smart_pricing: p.smart_pricing, min_price_cents: p.min_price_cents, max_price_cents: p.max_price_cents, demand }}
+          monthly_price_cents: p.monthly_price_cents, smart_pricing: p.smart_pricing, min_price_cents: p.min_price_cents, max_price_cents: p.max_price_cents, demand }}
         today={today}
         unavailable={taken}
         taxPercent={settings.tax_percent}

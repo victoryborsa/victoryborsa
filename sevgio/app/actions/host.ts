@@ -52,10 +52,13 @@ function readListing(fd: FormData) {
     deposit: toCents(str(fd, "security_deposit") || "0"),
     pet_fee: fd.getAll("amenities").includes("pets") && str(fd, "pet_fee_mode") === "fee" ? toCents(str(fd, "pet_fee") || "0") : 0,
     pet_fee_per: str(fd, "pet_fee_per") || "stay",
+    monthly: str(fd, "monthly_price") ? toCents(str(fd, "monthly_price")) : null,
     smart_pricing: fd.get("smart_pricing") === "on",
     min_price: str(fd, "min_price") ? toCents(str(fd, "min_price")) : null,
     max_price: str(fd, "max_price") ? toCents(str(fd, "max_price")) : null,
   };
+  // Monthly rentals don't need a nightly price; keep one (rent ÷ 30) for sorting and the calendar.
+  if (v.monthly && !v.nightly) v.nightly = Math.round(v.monthly / 30);
   let error = "";
   if (!v.title) error = "Give the listing a title.";
   else if (fd.getAll("amenities").includes("pets") && str(fd, "pet_fee_mode") === "fee" && !(Number.isFinite(v.pet_fee) && (v.pet_fee as number) > 0)) error = "Add the pet fee amount, or choose Free.";
@@ -64,6 +67,8 @@ function readListing(fd: FormData) {
   else if (v.smart_pricing && !(v.min_price && v.max_price && v.min_price > 0 && v.max_price > 0)) error = "Smart pricing needs a lowest and a highest price per night.";
   else if (v.smart_pricing && v.min_price! > v.max_price!) error = "The lowest price per night can't be higher than the highest.";
   else if ((v.min_price !== null && !(v.min_price > 0)) || (v.max_price !== null && !(v.max_price > 0))) error = "Enter the minimum and maximum prices as numbers.";
+  else if (v.monthly !== null && !(v.monthly > 0)) error = "Enter the monthly rent as a number, or leave it empty.";
+  else if (v.monthly && v.min_nights < 28) error = "Monthly rentals need a minimum stay of at least 28 nights. Set Minimum nights to 30.";
   else if (!v.city) error = "Add the town or city.";
   else if (!(v.property_type in PROPERTY_TYPES)) error = "Choose a property type.";
   else if (!(v.max_guests >= 1 && v.max_guests <= 50)) error = "Maximum guests must be between 1 and 50.";
@@ -104,7 +109,7 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     children_free_age: v.children_free_age, owner_zelle: v.owner_zelle, owner_venmo: v.owner_venmo,
     pet_fee_cents: v.pet_fee || 0, pet_fee_per: v.pet_fee_per,
     rooms_detail: JSON.stringify(v.rooms), services: JSON.stringify(v.services), security_deposit_cents: v.deposit || 0,
-    smart_pricing: v.smart_pricing, min_price_cents: v.min_price, max_price_cents: v.max_price,
+    monthly_price_cents: v.monthly, smart_pricing: v.smart_pricing && !v.monthly, min_price_cents: v.min_price, max_price_cents: v.max_price,
   };
   // Only admins set the management fee; hosts never see or change it.
   if (isAdmin && v.management_fee_percent !== null) cols.management_fee_percent = v.management_fee_percent;
@@ -179,7 +184,7 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
   const plain = ["title", "property_type", "city", "area", "address", "description", "max_guests", "bedrooms", "bathrooms", "half_bathrooms", "bathroom_type",
     "kitchen_access", "laundry_access", "stairs_info", "shared_spaces", "camera_locations", "min_nights", "max_nights", "booking_mode", "cancellation_policy", "check_in_time",
     "check_out_time", "arrival_instructions", "base_occupancy", "fewer_guest_discount_percent", "weekly_discount_percent", "monthly_discount_percent",
-    "children_free_age", "management_fee_percent", "owner_zelle", "owner_venmo", "pet_fee_per", ...Object.keys(IMPORT_FIELDS)];
+    "children_free_age", "management_fee_percent", "owner_zelle", "owner_venmo", "pet_fee_per", "monthly_price", ...Object.keys(IMPORT_FIELDS)];
   for (const k of plain) set(IMPORT_FIELDS[k] || k, item[k]);
   const isRoom = item.listing_kind === "room" || item.property_type === "room";
   fd.set("listing_kind", isRoom ? "room" : "home");

@@ -3,6 +3,7 @@ import { nightPrice, type SmartListing } from "./smart-pricing.ts";
 import { parseServices } from "./constants.ts";
 
 export type PricingInput = SmartListing & {
+  monthly_price_cents?: number | null;
   nightly_price_cents: number; cleaning_fee_cents: number; max_guests: number; base_occupancy?: number | null;
   extra_guest_fee_cents?: number; fewer_guest_discount_percent?: number; weekly_discount_percent?: number; monthly_discount_percent?: number;
   pets_allowed?: boolean; amenities?: string[]; pet_fee_cents?: number; pet_fee_per?: string; services?: unknown;
@@ -15,6 +16,8 @@ export type Quote = {
   baseNightly: number;     // listing's normal nightly price
   nightly: number;         // nightly price for this group (the average when smart pricing changes it night by night)
   smart: boolean;          // smart pricing set the nightly prices
+  months: number;          // monthly rentals: whole months in the stay (0 otherwise)
+  extraDays: number;       // monthly rentals: days beyond the whole months, charged at the monthly rent ÷ 30
   extraGuests: number;     // guests above base occupancy (paying an extra-guest fee)
   fewerGuests: number;     // guests below base occupancy (getting a discount)
   base: number;            // nightly × nights
@@ -37,6 +40,7 @@ export function quote(p: PricingInput, ci: string, co: string, taxPercent: numbe
   const extraGuests = Math.max(0, billable - baseOcc);
   const fewerGuests = Math.max(0, baseOcc - billable);
   const fewerPct = Math.min(90, fewerGuests * Number(p.fewer_guest_discount_percent || 0));
+  if (p.monthly_price_cents) return monthlyQuote(p, p.monthly_price_cents, nights, taxPercent, party);
   const forGroup = (rate: number) => Math.round(rate * (1 - fewerPct / 100)) + extraGuests * (p.extra_guest_fee_cents || 0);
   const smart = !!p.smart_pricing && nights > 0;
   const base = smart ? eachNight(ci, co).reduce((n, d) => n + forGroup(nightPrice(p, d, today)), 0) : forGroup(p.nightly_price_cents) * nights;
@@ -57,7 +61,7 @@ export function quote(p: PricingInput, ci: string, co: string, taxPercent: numbe
     return { key: x.key, name: x.name, per: x.per, price_cents: x.price_cents, qty, total: x.price_cents * qty };
   });
   const extrasTotal = extras.reduce((n, x) => n + x.total, 0);
-  return { nights, baseNightly: p.nightly_price_cents, nightly, smart, extraGuests, fewerGuests, base, discount, discountLabel, cleaning, pets, petFee, extras, extrasTotal, tax,
+  return { nights, baseNightly: p.nightly_price_cents, nightly, smart, months: 0, extraDays: 0, extraGuests, fewerGuests, base, discount, discountLabel, cleaning, pets, petFee, extras, extrasTotal, tax,
     total: base - discount + cleaning + petFee + extrasTotal + tax };
 }
 
@@ -76,4 +80,38 @@ export function payout(b: { lodging_cents: number; discount_cents: number; clean
   const rent = b.lodging_cents - b.discount_cents;
   const fee = Math.round((rent * Number(b.management_fee_percent)) / 100);
   return { rent, fee, owner: rent + b.cleaning_fee_cents - fee };
+}
+
+/** Monthly rentals are all-inclusive: the rent per month (30 nights), plus monthly rent ÷ 30 for each extra day. No per-guest pricing. */
+function monthlyQuote(p: PricingInput, monthly: number, nights: number, taxPercent: number, party?: Party): Quote {
+  const months = Math.max(0, Math.floor(nights / 30)), extraDays = Math.max(0, nights - months * 30);
+  const base = months * monthly + Math.round((extraDays * monthly) / 30);
+  const cleaning = p.cleaning_fee_cents;
+  const pets = (p.pets_allowed ?? p.amenities?.includes("pets")) ? Math.max(0, party?.pets || 0) : 0;
+  const petFee = petFeeFor(p, pets, nights);
+  // Rent is all-inclusive, and Pennsylvania's hotel occupancy tax doesn't apply to stays of 30 days or more.
+  const tax = nights >= 30 ? 0 : Math.round(((base + cleaning + petFee) * taxPercent) / 100);
+  const chosen = new Set(party?.services ?? []);
+  const people = party ? party.adults + party.children + party.free_children : p.max_guests;
+  const extras = parseServices(p.services).filter(x => chosen.has(x.key)).map(x => {
+    const qty = x.per === "person" ? people : x.per === "night" ? nights : 1;
+    return { key: x.key, name: x.name, per: x.per, price_cents: x.price_cents, qty, total: x.price_cents * qty };
+  });
+  const extrasTotal = extras.reduce((n, x) => n + x.total, 0);
+  return { nights, baseNightly: p.nightly_price_cents, nightly: nights > 0 ? Math.round(base / nights) : 0, smart: false, months, extraDays, extraGuests: 0, fewerGuests: 0,
+    base, discount: 0, discountLabel: "", cleaning, pets, petFee, extras, extrasTotal, tax, total: base + cleaning + petFee + extrasTotal + tax };
+}
+
+/** The headline price for a listing: the monthly rent for monthly rentals, else the nightly price. */
+export function priceTag(p: { nightly_price_cents: number; monthly_price_cents?: number | null }): { cents: number; unit: "month" | "night" } {
+  return p.monthly_price_cents ? { cents: p.monthly_price_cents, unit: "month" } : { cents: p.nightly_price_cents, unit: "night" };
+}
+
+/** "$995 × 1 month + 5 days", or "$120 × 3 nights". */
+export function baseLabel(q: Quote, money: (c: number) => string, p: { monthly_price_cents?: number | null }): string {
+  if (p.monthly_price_cents) {
+    const parts = [q.months ? `${money(p.monthly_price_cents)} × ${q.months} month${q.months === 1 ? "" : "s"}` : "", q.extraDays ? `${q.extraDays} extra day${q.extraDays === 1 ? "" : "s"}` : ""].filter(Boolean);
+    return parts.join(" + ");
+  }
+  return `${money(q.nightly)}${q.smart && q.nights > 1 ? " avg" : ""} × ${q.nights} night${q.nights === 1 ? "" : "s"}`;
 }

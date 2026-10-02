@@ -6,7 +6,7 @@ import { propertyBySlug, photosFor, photoUrl } from "@/lib/queries.ts";
 import { isRangeFree, stayProblem } from "@/lib/bookings.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { fmtDate } from "@/lib/dates.ts";
-import { quote } from "@/lib/pricing.ts";
+import { baseLabel, quote } from "@/lib/pricing.ts";
 import { demandBetween } from "@/lib/demand.ts";
 import { money } from "@/lib/money.ts";
 import { CANCELLATION, FLIGHT_SERVICES } from "@/lib/constants.ts";
@@ -128,7 +128,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
           </dl>
           <table className="breakdown">
             <tbody>
-              <tr><td>{money(pr.nightly)}{pr.smart && pr.nights > 1 ? " avg" : ""} × {pr.nights} night{pr.nights === 1 ? "" : "s"}{pr.smart && <div className="hint">Nightly prices follow demand in Pittsburgh</div>}</td><td>{money(pr.base)}</td></tr>
+              <tr><td>{baseLabel(pr, money, p)}{pr.smart && <div className="hint">Nightly prices follow demand in Pittsburgh</div>}</td><td>{money(pr.base)}</td></tr>
               {pr.discount > 0 && <tr><td>{pr.discountLabel}</td><td>−{money(pr.discount)}</td></tr>}
               {pr.cleaning > 0 && <tr><td>Cleaning fee</td><td>{money(pr.cleaning)}</td></tr>}
               {pr.petFee > 0 && <tr><td>Pet fee ({pr.pets} pet{pr.pets === 1 ? "" : "s"})</td><td>{money(pr.petFee)}</td></tr>}

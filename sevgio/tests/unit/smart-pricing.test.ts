@@ -43,3 +43,16 @@ test("quote adds up each night's smart price", () => {
   assert.equal(q.nightly, Math.round(34000 / 3));
   assert.equal(q.smart, true);
 });
+
+test("monthly rent: whole months plus rent ÷ 30 per extra day, all-inclusive", () => {
+  const p = { nightly_price_cents: 3317, monthly_price_cents: 99500, cleaning_fee_cents: 0, max_guests: 2 };
+  const one = quote(p, "2026-11-01", "2026-12-01", 0, { adults: 2, children: 0, free_children: 0 });
+  assert.equal(one.months, 1);
+  assert.equal(one.extraDays, 0);
+  assert.equal(one.total, 99500);
+  assert.equal(quote(p, "2026-11-01", "2026-12-01", 7).total, 99500); // no lodging tax on 30+ night stays
+  const more = quote(p, "2026-11-01", "2027-01-05", 0); // 65 nights = 2 months + 5 days
+  assert.equal(more.months, 2);
+  assert.equal(more.extraDays, 5);
+  assert.equal(more.base, 2 * 99500 + Math.round((5 * 99500) / 30));
+});

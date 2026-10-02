@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { createContext, useContext, useMemo, useState } from "react";
 import { Calendar, addDaysC } from "./Calendar.tsx";
-import { PET_FEE_PER, quote, type Party, type PricingInput } from "@/lib/pricing.ts";
+import { PET_FEE_PER, baseLabel, priceTag, quote, type Party, type PricingInput } from "@/lib/pricing.ts";
 import { parseServices, servicePrice } from "@/lib/constants.ts";
 import { money } from "@/lib/money.ts";
 
@@ -145,7 +145,7 @@ export function BookingPanel({ paymentNote }: { paymentNote: string }) {
   const ready = !!(ci && co && pr && !problem && bookable);
   return (
     <aside className="panel sticky" aria-label="Book this home" id="book">
-      <div className="panel-price"><b>{money(p.nightly_price_cents)}</b><span className="muted">/ night</span></div>
+      <div className="panel-price"><b>{money(priceTag(p).cents)}</b><span className="muted">/ {priceTag(p).unit}{p.monthly_price_cents ? " · all-inclusive" : ""}</span></div>
       <a href="#availability" className="datepair" style={{ color: "inherit", textDecoration: "none" }}>
         <div><small>Check-in</small>{fmt(ci)}</div>
         <div><small>Check-out</small>{fmt(co)}</div>
@@ -155,7 +155,7 @@ export function BookingPanel({ paymentNote }: { paymentNote: string }) {
       {pr && !problem && (
         <table className="breakdown">
           <tbody>
-            <tr><td>{money(pr.nightly)}{pr.smart && pr.nights > 1 ? " avg" : ""} × {pr.nights} night{pr.nights === 1 ? "" : "s"}{pr.smart && <div className="hint">Nightly prices follow demand in Pittsburgh</div>}{pr.extraGuests > 0 ? <div className="hint">Includes {pr.extraGuests} extra guest{pr.extraGuests > 1 ? "s" : ""}</div> : pr.fewerGuests > 0 && !pr.smart && pr.nightly < pr.baseNightly ? <div className="hint">Smaller-group price</div> : null}</td><td>{money(pr.base)}</td></tr>
+            <tr><td>{baseLabel(pr, money, p)}{p.monthly_price_cents && <div className="hint">All-inclusive monthly rent</div>}{pr.smart && <div className="hint">Nightly prices follow demand in Pittsburgh</div>}{pr.extraGuests > 0 ? <div className="hint">Includes {pr.extraGuests} extra guest{pr.extraGuests > 1 ? "s" : ""}</div> : pr.fewerGuests > 0 && !pr.smart && pr.nightly < pr.baseNightly ? <div className="hint">Smaller-group price</div> : null}</td><td>{money(pr.base)}</td></tr>
             {pr.discount > 0 && <tr><td>{pr.discountLabel}</td><td>−{money(pr.discount)}</td></tr>}
             {pr.cleaning > 0 && <tr><td>Cleaning fee</td><td>{money(pr.cleaning)}</td></tr>}
             {pr.petFee > 0 && <tr><td>Pet fee ({pr.pets} pet{pr.pets === 1 ? "" : "s"})</td><td>{money(pr.petFee)}</td></tr>}
@@ -187,7 +187,7 @@ export function MobileBookBar() {
   return (
     <div className="mobile-book">
       <div style={{ flex: 1, minWidth: 0 }}>
-        {pr && !problem ? <><b className="mono">{money(pr.total)}</b> <span className="muted">· {pr.nights} nights</span></> : <><b className="mono">{money(p.nightly_price_cents)}</b> <span className="muted">/ night</span></>}
+        {pr && !problem ? <><b className="mono">{money(pr.total)}</b> <span className="muted">· {pr.nights} nights</span></> : <><b className="mono">{money(priceTag(p).cents)}</b> <span className="muted">/ {priceTag(p).unit}</span></>}
       </div>
       {ready ? <Link className="btn btn-primary" href={bookHref(p.slug, ci, co, party)}>{p.booking_mode === "instant" ? "Reserve" : "Request"}</Link> : <a className="btn btn-primary" href="#availability">Check dates</a>}
     </div>

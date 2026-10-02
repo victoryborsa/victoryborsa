@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { CardProperty } from "@/lib/queries.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { money } from "@/lib/money.ts";
-import { quote } from "@/lib/pricing.ts";
+import { priceTag, quote } from "@/lib/pricing.ts";
 import type { Demand } from "@/lib/smart-pricing.ts";
 import { Rating } from "./ui.tsx";
 
@@ -36,9 +36,9 @@ export function PropertyCard({ p, ci, co, guests, taxPercent, eager, demand }: {
         </span>
         <span className="price">
           {pr ? (
-            <><b>{money(pr.total)}</b> total for {pr.nights} night{pr.nights === 1 ? "" : "s"} <span className="muted">· {money(p.nightly_price_cents)}/night</span></>
+            <><b>{money(pr.total)}</b> total for {pr.nights} night{pr.nights === 1 ? "" : "s"} <span className="muted">· {money(priceTag(p).cents)}/{priceTag(p).unit}</span></>
           ) : (
-            <>From <b>{money(p.nightly_price_cents)}</b> <span className="muted">/ night</span></>
+            <>From <b>{money(priceTag(p).cents)}</b> <span className="muted">/ {priceTag(p).unit}{p.monthly_price_cents ? " · all-inclusive" : ""}</span></>
           )}
         </span>
       </div>

@@ -2,8 +2,9 @@ import Link from "next/link";
 import { isRangeFree } from "@/lib/bookings.ts";
 import { isIsoDate } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
+import { priceTag } from "@/lib/pricing.ts";
 
-type Opt = { id: string; slug: string; title: string; max_guests: number; nightly_price_cents: number; bedrooms: number; bathroom_type: string };
+type Opt = { id: string; slug: string; title: string; max_guests: number; nightly_price_cents: number; monthly_price_cents?: number | null; bedrooms: number; bathroom_type: string };
 
 /** "Whole house or a room?" — shown on any listing that is part of a house with rooms. */
 export async function StayChooser({ current, house, rooms, sp }: { current: Opt; house: Opt; rooms: Opt[]; sp: { ci?: string; co?: string; guests?: string } }) {
@@ -29,7 +30,7 @@ export async function StayChooser({ current, house, rooms, sp }: { current: Opt;
               <b>{i === 0 ? o.title : short(o.title)}</b>
               <span className="hint">Up to {o.max_guests} guests · {o.bedrooms} bedroom{o.bedrooms === 1 ? "" : "s"}{i > 0 ? ` · ${o.bathroom_type === "shared" ? "shared" : "private"} bath` : ""}</span>
               <span className="chooser-foot">
-                <span>From <b>{money(o.nightly_price_cents)}</b> / night</span>
+                <span>From <b>{money(priceTag(o).cents)}</b> / {priceTag(o).unit}</span>
                 {status && <span className={`pill ${status === "Available" ? "ok" : "neutral"}`}>{status}</span>}
                 {tooSmall && <span className="pill neutral">Too small for {guests}</span>}
                 {on && <span className="pill ok">Selected</span>}

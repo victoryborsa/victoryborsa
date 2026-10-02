@@ -106,6 +106,9 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
           <label className="field"><span>Check-out by</span><input className="input" name="check_out_time" defaultValue={p?.check_out_time || "11:00 am"} /></label>
         </div>
         <div className="smart-box">
+          <label className="field" style={{ maxWidth: 360 }}><span>Monthly rent (USD, all-inclusive, optional)</span><input className="input mono" name="monthly_price" inputMode="decimal" defaultValue={p?.monthly_price_cents ? dollars(p.monthly_price_cents) : ""} placeholder="995" /><span className="hint">For month-to-month stays like Furnished Finder. Guests then see “$995 / month”, pay the rent per 30 nights (plus rent ÷ 30 for extra days), and the nightly price and per-guest pricing aren't used. Set Minimum nights to 30 and Maximum nights to 365.</span></label>
+        </div>
+        <div className="smart-box">
           <label className="chk"><input type="checkbox" name="smart_pricing" defaultChecked={!!p?.smart_pricing} /><span><b>Smart pricing</b><span className="hint" style={{ display: "block" }}>Your prices are adjusted automatically based on guest demand: higher on Steelers, Penguins and Pirates game days, big concerts and events, holidays and weekends, a little lower for empty nights in the next 3 days. They always stay between your lowest and highest price below. The nightly price above is the normal price they start from.</span></span></label>
           <div className="grid-2">
             <label className="field"><span>Lowest price per night (USD)</span><input className="input mono" name="min_price" inputMode="decimal" defaultValue={p?.min_price_cents ? dollars(p.min_price_cents) : ""} placeholder="90" /></label>
