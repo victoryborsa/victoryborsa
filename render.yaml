@@ -36,7 +36,9 @@ services:
       - key: PRICE_SOURCE
         value: site
       - key: AI_MODEL
-        value: claude-opus-5
+        value: claude-opus-5-5
+      - key: CHAT_VERIFICATION
+        value: none
       - key: FIREBASE_API_KEY
         sync: false
       - key: FIREBASE_AUTH_DOMAIN

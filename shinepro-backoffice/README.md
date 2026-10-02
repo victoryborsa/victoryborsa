@@ -6,7 +6,7 @@ Lead capture, website chat and admin for **pghshinepro.com**. Built so no potent
 
 | Feature | What it does |
 |---|---|
-| **Website chat** | A "Chat With Us" window on every page. Before chatting, the customer confirms their **email** with a code we email them and their **phone** with a code we text them. Anyone who can't verify can't chat. The **AI assistant** answers questions about services and prices. The customer can tap **"Request a call back"** and leave a note, and you get an urgent email. You can also reply from the admin, and your reply appears in their chat window. |
+| **Website chat** | A "Chat With Us" button on every page. The customer types their name, email and phone, and you get an email right away. They can tap a **popular question** and get the answer instantly, or type their own: the **AI assistant** answers what they asked, asks one follow-up question at a time, and its answer appears word by word while it's still being written, so there's no long wait. "Urgent? Call or text (412) 447-8047" is always on screen, and they can tap **"Request a call back"**. You can also reply from the admin, and your reply appears in their chat window. |
 | **Quote requests** | Your website's existing quote form (with your real prices) also sends each request here. It is saved *first*, then alerts go out. |
 | **New-lead alerts** | An email the moment someone requests a quote, starts a chat or asks for a call back, with a link straight to the lead. Turn on Gmail notifications on your phone and it pops up like a text. |
 | **Leads pipeline** | New → Contacted → Quoted → Booked / Lost. Call-back requests are pinned to the top in red. |
@@ -28,6 +28,8 @@ npm start
 ```
 Open http://localhost:3000/admin (dev password: `changeme123`) and http://localhost:3000/quote.
 
+To try only the chat: `npm run preview`, then open http://localhost:3000/chat-preview.html.
+
 ## Put it online
 
 See **DEVELOPER_HANDOFF.md**. In short: Render.com (about $7/month) using the included `render.yaml`, on `admin.pghshinepro.com`.
@@ -46,7 +48,7 @@ See **DEVELOPER_HANDOFF.md**. In short: Render.com (about $7/month) using the in
 
 ## Teach the chat assistant about your business
 
-Edit **`knowledge.md`** in plain English: service area, hours, what's included, policies, add-ons. Lines marked `[CONFIRM]` are guesses you should check. The assistant only answers from this file and the prices in `public/pricing.js`. For anything else, it tells the customer the team will follow up and suggests "Request a call back". Restart the server after editing.
+Edit **`knowledge.md`** in plain English: service area, hours, what's included, policies, add-ons. Lines marked `[CONFIRM]` are guesses you should check. The assistant only answers from this file and the prices in `public/pricing.js`. For anything else, it tells the customer a team member will follow up. The popular questions and their instant answers are in **`src/answers.js`**; keep them in line with `knowledge.md`. Restart the server after editing.
 
 ## Prices
 

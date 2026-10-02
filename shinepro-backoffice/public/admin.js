@@ -606,9 +606,10 @@
         ${row(a.alert_emails > 0, `Alert email address(es): ${a.alert_emails}`)}
         ${a.sms_configured ? row(a.alert_phones > 0, `Alert phone number(s): ${a.alert_phones}`) : `<div>📱 Texting uses Google Voice <strong>${esc(a.google_voice_number)}</strong>. New-lead alerts come by email, so turn on Gmail notifications on your phone to see them instantly.</div>`}
         <h3 style="margin-top:16px">Website chat</h3>
-        ${row(META.chat.aiEnabled, 'AI assistant (ANTHROPIC_API_KEY)')}
+        ${row(META.chat.aiEnabled, META.chat.aiEnabled ? 'AI assistant (ANTHROPIC_API_KEY)' : 'AI assistant is OFF: the chat answers with ready-made replies only (set ANTHROPIC_API_KEY)')}
+        ${META.chat.verification === 'codes' ? `
         ${row(!META.chat.phoneVerification || META.chat.phoneVerificationReady, META.chat.phoneVerification ? 'Phone verification (Firebase)' : 'Phone verification is OFF (testing only)')}
-        ${row(a.email_configured, 'Email verification codes (SMTP)')}
+        ${row(a.email_configured, 'Email verification codes (SMTP)')}` : '<div>💬 Customers start chatting after typing their name, email and phone (no codes).</div>'}
         <p class="muted small">These are set in the server's environment settings (see README). Every lead is saved in the Leads page even if an alert fails.</p>
         <button class="btn" id="test">Send test alert</button>
       </div>

@@ -128,7 +128,7 @@ function createApp({
   admin.get('/meta', (req, res) => res.json({
     pricing: PRICING, leadStatuses: svc.LEAD_STATUSES, jobStatuses: svc.JOB_STATUSES,
     smsConfigured: notifier.senders.smsEnabled, googleVoiceNumber: config.googleVoiceNumber,
-    chat: { aiEnabled: Boolean(ai), phoneVerification: config.requirePhoneVerification, phoneVerificationReady: Boolean(verifyPhoneToken) },
+    chat: { aiEnabled: Boolean(ai), verification: config.chatVerification, phoneVerification: config.chatVerification === 'codes' && config.requirePhoneVerification, phoneVerificationReady: Boolean(verifyPhoneToken) },
   }));
   admin.get('/notifications', (req, res) => res.json(
     db.prepare('SELECT * FROM notifications ORDER BY id DESC LIMIT 200').all()
@@ -241,6 +241,7 @@ function createApp({
   app.use((err, req, res, next) => {
     const status = err.status || err.statusCode || 500;
     if (status >= 500 && status !== 502) console.error(err);
+    if (res.headersSent) return res.end(); // a streamed chat reply was already under way
     res.status(status).json({ error: status >= 500 && status !== 502 ? 'Something went wrong' : err.message, message_record: err.message_record });
   });
 
