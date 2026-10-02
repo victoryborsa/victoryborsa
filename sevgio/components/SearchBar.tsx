@@ -2,6 +2,7 @@ import { todayLocal, addDays } from "@/lib/dates.ts";
 import { getT } from "@/lib/i18n.ts";
 import { q } from "@/lib/db.ts";
 import { WherePicker, type Place } from "./WherePicker.tsx";
+import { AutoAdvance } from "./AutoAdvance.tsx";
 
 /** GET form, so results are shareable links. "Where" opens a list of suggested places as soon as it's tapped. */
 export async function SearchBar({ loc = "", ci = "", co = "", guests = 2, compact = false }: { loc?: string; ci?: string; co?: string; guests?: number; cities?: string[]; compact?: boolean }) {
@@ -28,6 +29,7 @@ export async function SearchBar({ loc = "", ci = "", co = "", guests = 2, compac
   }
   return (
     <form className="searchbar" action="/stays" method="get" role="search" style={compact ? { marginTop: 0 } : undefined}>
+      <AutoAdvance />
       <WherePicker name="loc" label={t("search.where")} initial={loc} places={places} anywhere={t("search.anywhere")} />
       <label className="field">
         <span>{t("search.checkin")}</span>

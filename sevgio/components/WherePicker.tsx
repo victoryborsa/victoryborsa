@@ -38,7 +38,11 @@ export function WherePicker({ name, label, initial, places, anywhere }: { name: 
   const typing = q && q !== (places.find(p => p.value === value)?.label ?? value).toLowerCase();
   const matches = typing ? places.filter(p => (p.label + " " + p.sub).toLowerCase().includes(q)) : places;
   const options: Place[] = [{ value: "", label: anywhere, sub: "Every stay we have", icon: "🧭" }, ...matches];
-  const pick = (p: Place) => { setValue(p.value); setText(p.value ? p.label : ""); setOpen(false); setActive(-1); };
+  const pick = (p: Place) => {
+    setValue(p.value); setText(p.value ? p.label : ""); setOpen(false); setActive(-1);
+    // Lets the search form move on to the check-in date.
+    box.current?.dispatchEvent(new CustomEvent("sevgio:where-picked", { bubbles: true }));
+  };
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setActive(a => Math.min(a + 1, options.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActive(a => Math.max(a - 1, 0)); }

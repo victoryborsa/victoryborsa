@@ -39,6 +39,15 @@ export function BookingProvider({ p, today, unavailable, taxPercent, initial, bo
     if (n < p.min_nights) return setMsg(`This home has a ${p.min_nights}-night minimum stay. Pick a check-out on or after ${fmt(addDaysC(ci, p.min_nights))}.`);
     if (n > p.max_nights) return setMsg(`Stays here can be up to ${p.max_nights} nights.`);
     setCo(d);
+    // Dates done: move on to who's coming.
+    setTimeout(() => {
+      const box = document.getElementById("party");
+      if (!box) return;
+      const r = box.getBoundingClientRect();
+      if (r.top < 0 || r.bottom > window.innerHeight) box.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+      box.querySelector<HTMLButtonElement>('button[aria-label^="More"]:not(:disabled)')?.focus({ preventScroll: true });
+      box.classList.remove("flash"); void box.offsetWidth; box.classList.add("flash");
+    }, 60);
   };
   const value: Ctx = { p, today, taken, taxPercent, ci, co, party, msg, pick, clear: () => { setCi(""); setCo(""); setMsg(""); }, setParty, bookable };
   return <BookingCtx.Provider value={value}>{children}</BookingCtx.Provider>;
@@ -100,7 +109,7 @@ function PartyPicker() {
     </div>
   );
   return (
-    <div className="stack" style={{ gap: 10 }}>
+    <div className="stack party" id="party" style={{ gap: 10 }} aria-label="Who's coming" role="group">
       {row("adults", "Adults", "Age 18+", 1)}
       {freeAge < 17 && row("children", "Children", `Ages ${freeAge + 1}-17`, 0)}
       {row("free_children", freeAge === 0 ? "Infants" : "Young children", freeAge === 0 ? "Under 1 · stay free" : `Ages 0-${freeAge} · stay free`, 0)}

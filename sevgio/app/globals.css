@@ -948,3 +948,6 @@ a.cs-card:hover { border-color: var(--accent); }
 @media (min-width: 700px) { .dash .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 699px) { .dash .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .email-test { margin-bottom: 16px; }
+/* After the dates are picked, the guest choices glow briefly so the eye lands there. */
+.party.flash { animation: party-flash 1.4s ease-out; border-radius: 12px; }
+@keyframes party-flash { 0% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: 0 0 0 3px transparent; } }

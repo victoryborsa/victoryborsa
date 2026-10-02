@@ -12,6 +12,25 @@ test("homepage shows search and property cards", async ({ page }) => {
   await expect(page.locator("a.card").first().locator("img")).toBeVisible();
 });
 
+test("search form moves on by itself: Where, then check-in, check-out, guests; listing dates move on to guests", async ({ page }) => {
+  await page.goto("/");
+  const form = page.getByRole("search");
+  await form.getByRole("combobox", { name: "Where" }).click();
+  await page.getByRole("option", { name: /Poconos/ }).click();
+  await expect(form.getByLabel("Check-in")).toBeFocused();
+  await form.getByLabel("Check-in").fill(iso(30));
+  await expect(form.getByLabel("Check-out")).toBeFocused();
+  await expect(form.getByLabel("Check-out")).toHaveAttribute("min", iso(31));
+  await form.getByLabel("Check-out").fill(iso(33));
+  await expect(form.getByLabel("Guests")).toBeFocused();
+  await form.getByLabel("Guests").selectOption("3");
+  await expect(form.getByRole("button", { name: "Search stays" })).toBeFocused();
+  // On a listing, picking check-out moves to who's coming.
+  await page.goto("/stays/jim-thorpe-mountain-cabin");
+  await pickDates(page, iso(40), iso(43));
+  await expect(page.getByRole("button", { name: "More adults" })).toBeFocused();
+});
+
 test("search by area, filter, sort and empty state", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("combobox", { name: "Where" }).fill("Pocon");
