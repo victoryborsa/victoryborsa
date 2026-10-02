@@ -21,21 +21,24 @@ export async function geocode(query: string): Promise<{ lat: number; lng: number
   }
 }
 
-/** Looks up one listing's position from its address (or its town if there's no address) and saves it. */
+/** Looks up one listing's position from its address and saves it. */
 export async function geocodeListing(id: string): Promise<boolean> {
   const p = await one<{ address: string; city: string; area: string; title: string }>("SELECT address, city, area, title FROM properties WHERE id = $1", [id]);
   if (!p) return false;
   let pos = p.address ? await geocode(p.address) : null;
-  if (!pos) pos = await geocode(`${p.city}, Pennsylvania`);
+  // Addresses written oddly (unit numbers) sometimes aren't found; try once more without the unit.
+  if (!pos && p.address) pos = await geocode(p.address.replace(/\s*(#|apt\.?|unit|suite|ste\.?)\s*[\w-]+/gi, ""));
+  // Still not found: save nothing, so the map shows the listing at its neighborhood (see AREA_CENTERS in map-pins.ts),
+  // never at a whole-city guess downtown.
   await q("UPDATE properties SET lat = $2, lng = $3, geocoded_at = now() WHERE id = $1", [id, pos?.lat ?? null, pos?.lng ?? null]);
   if (!pos && enabled()) await logEvent("warn", "Map", `Couldn't find "${p.title}" on the map. Check its address.`, { property: id });
   return !!pos;
 }
 
 /** Hourly: finds listings that aren't on the map yet (a few at a time, one per second, as OpenStreetMap asks). */
-export async function geocodeMissing(limit = 20): Promise<number> {
+export async function geocodeMissing(limit = 20, retryAll = false): Promise<number> {
   if (!enabled()) return 0;
-  const rows = await q<{ id: string }>("SELECT id FROM properties WHERE lat IS NULL AND (geocoded_at IS NULL OR geocoded_at < now() - interval '1 day') ORDER BY created_at LIMIT $1", [limit]);
+  const rows = await q<{ id: string }>(`SELECT id FROM properties WHERE lat IS NULL ${retryAll ? "" : "AND (geocoded_at IS NULL OR geocoded_at < now() - interval '1 day')"} ORDER BY created_at LIMIT $1`, [limit]);
   let found = 0;
   for (const r of rows) {
     if (await geocodeListing(r.id)) found++;

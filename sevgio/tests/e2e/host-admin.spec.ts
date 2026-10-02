@@ -765,3 +765,12 @@ test("admin sets a new password for a locked-out person; they can sign in right 
   await expect(page.getByRole("link", { name: "Account" }).first()).toBeVisible();
   await signOut(page);
 });
+
+test("admin can look up all listings on the map; each listing says whether it's on the map", async ({ page }) => {
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin/listings");
+  await expect(page.getByText(/On the map|Not looked up yet|Address not found/).first()).toBeVisible();
+  await page.getByRole("button", { name: /Find listings on the map/ }).click();
+  await expect(page.getByText(/on the map|couldn't be found/).first()).toBeVisible();
+  await signOut(page);
+});

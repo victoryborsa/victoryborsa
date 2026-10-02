@@ -8,6 +8,9 @@ import { saveSetting } from "@/lib/settings.ts";
 import { isEmail, str, type ActionState } from "@/lib/validate.ts";
 import { toCents } from "@/lib/money.ts";
 import { logEvent } from "@/lib/log.ts";
+import { geocodeMissing } from "@/lib/geocode.ts";
+import { redirect } from "next/navigation";
+import { withMsg } from "@/components/Flash.tsx";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { processPhoto } from "@/lib/photos.ts";
 import { moveListingFamily } from "@/lib/homes.ts";
@@ -215,6 +218,17 @@ export async function setPasswordAction(_: ActionState, fd: FormData): Promise<A
   await clearFailedSignIns(u.id);
   await logEvent("info", "Accounts", `Password set by an admin for ${u.email}`, {}, admin.id);
   return { ok: `New password saved for ${u.email}. Tell them privately (by phone or text), and ask them to change it in Account after signing in.` };
+}
+
+/** Admin → Listings "Find listings on the map": looks up every listing whose address hasn't been found yet (about a second each). */
+export async function mapListingsAction() {
+  const admin = await requireUser(["admin"]);
+  const before = await one<{ n: number }>("SELECT count(*)::int AS n FROM properties WHERE lat IS NULL");
+  const found = await geocodeMissing(25, true);
+  const left = (before?.n ?? 0) - found;
+  await logEvent("info", "Map", `Map lookup by admin: ${found} found, ${left} not found`, {}, admin.id);
+  revalidatePath("/stays");
+  redirect(withMsg("/admin/listings", found || !left ? `Found ${found} listing${found === 1 ? "" : "s"} on the map.${left ? ` ${left} still not found: check ${left === 1 ? "its" : "their"} address (street, town, PA and ZIP).` : ""}` : `${left} listing${left === 1 ? "" : "s"} couldn't be found. Check the address (street, town, PA and ZIP); until then ${left === 1 ? "it shows" : "they show"} at ${left === 1 ? "its" : "their"} neighborhood.`));
 }
 
 // ---------- Pittsburgh guide photos ----------
