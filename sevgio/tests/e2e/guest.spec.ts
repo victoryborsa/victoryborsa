@@ -6,7 +6,7 @@ const email = `guest-${Date.now()}@example.com`;
 
 test("homepage shows search and property cards", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("a home in Pittsburgh");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("right here in the ’Burgh");
   await expect(page.getByRole("search")).toBeVisible();
   await expect(page.locator("a.card")).toHaveCount(6);
   await expect(page.locator("a.card").first().locator("img")).toBeVisible();
@@ -181,7 +181,7 @@ test("tapping a greeting switches the site language, and back", async ({ page })
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ihr Pittsburgh-Guide");
   await page.goto("/");
   await page.locator(".hello").getByRole("link", { name: "Yinz are welcome!" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("a home in Pittsburgh");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("right here in the ’Burgh");
   // Only site paths are allowed as the return address.
   const r = await page.request.get("/lang/fr?next=//evil.example", { maxRedirects: 0 });
   expect(r.headers()["location"]).toBe("/");

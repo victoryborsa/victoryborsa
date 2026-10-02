@@ -23,7 +23,7 @@ export async function signIn(page: Page, email: string, password: string) {
 
 export async function signOut(page: Page) {
   await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
+  await expect(page.getByRole("banner").getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
 }
 
 /** Clicks check-in and check-out days on the property calendar, paging forward to the right month. */
