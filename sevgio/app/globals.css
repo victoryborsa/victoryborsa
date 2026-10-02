@@ -39,9 +39,9 @@ a { color: var(--accent); }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 /* Pages use most of a big screen (up to 1600px), with comfortable side margins; phones keep a 16px gutter. */
-.wrap { max-width: 1440px; margin: 0 auto; padding-inline: clamp(16px, 3vw, 40px); }
-.wrap.wrap-wide { max-width: 1600px; }
-@media (min-width: 1700px) { .wrap { max-width: 1600px; } }
+/* Pages fill the screen like Airbnb, with side margins that grow on big screens; phones keep a 16px gutter. */
+.wrap { max-width: 2200px; margin: 0 auto; padding-inline: clamp(16px, 3vw, 64px); }
+.wrap.wrap-wide, header.site .wrap, footer.site .wrap { max-width: none; }
 @media (min-width: 720px) { .wrap { padding-inline: 28px; } }
 .muted { color: var(--muted); }
 .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
@@ -483,6 +483,7 @@ tr.row-new td { background: color-mix(in srgb, var(--accent-soft) 55%, transpare
 .chooser-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; font-size: 14px; }
 
 /* Home page slideshow */
+.hero-grid .slides { max-height: 560px; }
 .slides { position: relative; border-radius: var(--r-lg); overflow: hidden; aspect-ratio: 16 / 10; background: #101820; }
 .slide { position: absolute; inset: 0; opacity: 0; transition: opacity .9s ease; }
 .slide.on { opacity: 1; }
@@ -555,10 +556,16 @@ img { -webkit-user-drag: none; user-select: none; -webkit-touch-callout: none; }
 .seg-opt input:checked + span { background: var(--gold); color: #101820; font-weight: 700; }
 .seg-opt input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: -2px; }
 .results-split { display: grid; gap: 24px; padding-block: 14px 48px; grid-template-columns: minmax(0, 1fr); }
+/* Home page: bigger listings (bigger photos, fewer per row). */
+.home-cards { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 30px 24px; }
+.home-cards .card .ph { aspect-ratio: 4 / 3; }
+.home-cards .card-title { font-size: 18px; }
+@media (min-width: 2000px) { .home-cards { grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); } }
 .results-cards { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+@media (min-width: 1600px) { .results-split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .results-cards { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); } }
 .results-map { display: none; }
 @media (min-width: 1000px) {
-  .results-split { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .results-split { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
   .results-map { display: block; position: sticky; top: 84px; align-self: start; height: calc(100vh - 104px); }
   .map-toggle { display: none; }
 }

@@ -47,7 +47,7 @@ export default async function Home() {
           <Link className="btn btn-ghost" href="/stays">{t("home.searchDates")}</Link>
         </div>
         {props.length ? (
-          <div className="cards">{props.map((p, i) => <PropertyCard key={p.id} p={p} taxPercent={settings.tax_percent} eager={i < 4} />)}</div>
+          <div className="cards home-cards">{props.map((p, i) => <PropertyCard key={p.id} p={p} taxPercent={settings.tax_percent} eager={i < 4} />)}</div>
         ) : (
           <div className="empty"><h3>New homes are on the way</h3><p className="muted">Check back soon, or contact us and we'll help you find a stay.</p></div>
         )}

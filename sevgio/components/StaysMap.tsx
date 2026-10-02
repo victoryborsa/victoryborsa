@@ -43,9 +43,16 @@ export function StaysMap({ pins }: { pins: MapPin[] }) {
         new maplibregl.Marker({ element: node }).setLngLat([p.lng, p.lat]).setPopup(popup).addTo(map);
       }
       if (pins.length > 1) {
+        // Open on where most stays are (Pittsburgh when it's a tie): a far-away one like Indiana, PA isn't framed, but its pin still shows.
+        const km = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => Math.hypot((a.lat - b.lat) * 111, (a.lng - b.lng) * 85);
+        const pgh = { lat: 40.4406, lng: -79.9959 };
+        const score = (p: MapPin) => pins.filter(q => km(p, q) < 30).length * 1000 - km(p, pgh);
+        const center = pins.reduce((best, p) => (score(p) > score(best) ? p : best), pins[0]);
+        const near = pins.filter(p => km(p, center) < 30);
         const b = new maplibregl.LngLatBounds();
-        pins.forEach(p => b.extend([p.lng, p.lat]));
+        (near.length ? near : pins).forEach(p => b.extend([p.lng, p.lat]));
         map.fitBounds(b, { padding: 60, maxZoom: 14, duration: 0 });
+        if (near.length === 1) map.jumpTo({ center: [near[0].lng, near[0].lat], zoom: 12 });
       } else if (pins.length === 1) map.jumpTo({ center: [pins[0].lng, pins[0].lat], zoom: 13 });
       document.addEventListener("mouseover", onHover);
       document.addEventListener("mouseout", onHover);
