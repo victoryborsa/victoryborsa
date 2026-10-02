@@ -40,13 +40,17 @@ function loadConfig(env = process.env) {
     priceSource: env.PRICE_SOURCE === 'package' ? 'package' : 'site',
     // Website chat
     anthropicApiKey: env.ANTHROPIC_API_KEY || '',
-    aiModel: env.AI_MODEL || 'claude-opus-5',
+    aiModel: env.AI_MODEL || 'claude-opus-5-5',
     firebase: {
       apiKey: env.FIREBASE_API_KEY || '',
       authDomain: env.FIREBASE_AUTH_DOMAIN || '',
       projectId: env.FIREBASE_PROJECT_ID || '',
     },
-    // Only turn this off for local testing. The owner requires verified phone numbers.
+    // How customers start a chat:
+    //  'none'  (default) the customer types name, email and phone and starts chatting right away.
+    //  'codes' the customer must enter a code we email them (and a texted code via Firebase).
+    chatVerification: env.CHAT_VERIFICATION === 'codes' ? 'codes' : 'none',
+    // Only used with CHAT_VERIFICATION=codes. Only turn this off for local testing.
     requirePhoneVerification: env.REQUIRE_PHONE_VERIFICATION !== 'false',
   };
 

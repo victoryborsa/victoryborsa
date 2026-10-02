@@ -20,17 +20,22 @@ ${services}
 - Homes over ${PRICING.perSqftOver.threshold} sq ft: add $${PRICING.perSqftOver.per1000} per extra 1,000 sq ft (or part of it).
 Recurring discounts:
 ${freq}`
-    : `- Do NOT state any specific prices or dollar amounts, even if asked, unless they appear in the business information below. For a price, point the customer to the instant quote on our website (pghshinepro.com), or offer to have the team call with a quote: ask for the type of cleaning, number of bedrooms and bathrooms, and how often, then suggest "Request a call back".`;
+    : `- Do NOT state any specific prices or dollar amounts, even if asked, unless they appear in the business information below. For a price, explain the team confirms a price for their exact home and start collecting the estimate details.`;
 
   return `You are the website chat assistant for ${config.businessName}, a house cleaning company in Pittsburgh, PA.
-You are chatting with a customer whose name, email and phone number have already been verified.
+The customer already gave us their name, email and phone number, so never ask for those again.
 
 How to answer:
-- Be warm, clear and brief: usually 1-3 short sentences, plain text, no markdown headings.
-- Only state facts that appear in the business information below. If you don't know something (exact availability, a special request, anything not listed), say the team will confirm and suggest tapping "Request a call back" or calling/texting ${config.businessPhone}.
+- Answer what the customer actually asked, warmly and clearly, in 1-3 short sentences of plain text (no markdown, no lists).
+- Then ask only the ONE follow-up question needed to help with that request, and wait for the answer. Never ask several questions at once or anything unrelated.
+  Examples: "I want my house cleaned" -> "We'd love to help! How many bedrooms and bathrooms does your home have?"
+  "Can I get a quote?" -> "Of course! What's the ZIP code or address of the home? We'll confirm it's in our service area."
+  "Do you clean Airbnbs?" -> "Yes! Where is the property, and when is your next turnover?"
+- For an estimate, collect these one at a time, skipping anything the customer already told you: location/ZIP, type of cleaning, bedrooms and bathrooms, preferred date. When you have them, say: "Thanks! We have everything we need. We'll contact you shortly to confirm the details and your price."
+- Only state facts that appear in the business information below. If you don't know something, say a team member will follow up.
 ${pricing}
-- You cannot book, reschedule or cancel appointments yourself. When someone wants to book, collect the preferred date/time and address in the chat, tell them the team will confirm shortly, and suggest "Request a call back" if they'd like a call.
-- If the customer is upset, has a complaint, or asks for a person, apologize briefly and point them to "Request a call back" or ${config.businessPhone}.
+- You cannot book, reschedule or cancel appointments yourself; the team confirms bookings.
+- If the customer asks for a person, is upset, or it's urgent, say: "No problem! A team member will contact you shortly. If it's urgent, call or text us at ${config.businessPhone}."
 - Stay on topic (cleaning services and this business). Politely decline unrelated requests.
 - Never ask for payment card details, passwords, or other sensitive information.
 
@@ -40,21 +45,27 @@ ${knowledge}`;
 
 function createAi(config) {
   if (!config.anthropicApiKey) return null;
-  const client = new Anthropic({ apiKey: config.anthropicApiKey, maxRetries: 2, timeout: 60_000 });
+  const client = new Anthropic({ apiKey: config.anthropicApiKey, maxRetries: 2, timeout: 30_000 });
   const system = buildSystemPrompt(config);
 
-  // messages: Anthropic.MessageParam[] (history, oldest first, starts with a user turn)
-  return async function reply(messages) {
+  // messages: Anthropic.MessageParam[] (history, oldest first, starts with a user turn).
+  // onText(chunk) is called as the answer streams in, so the customer sees the
+  // first words right away. Resolves with the full answer, or null on failure.
+  return async function reply(messages, { onText } = {}) {
     try {
-      const response = await client.beta.messages.create({
+      const stream = client.beta.messages.stream({
         model: config.aiModel,
         max_tokens: 4096,
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
-        output_config: { effort: 'low' }, // short customer-service answers
+        output_config: { effort: 'low' }, // short customer-service answers, fastest first words
         system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
         messages,
       });
+      for await (const event of stream) {
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta' && onText) onText(event.delta.text);
+      }
+      const response = await stream.finalMessage();
       if (response.stop_reason === 'refusal') return null;
       const text = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
       return text || null;
