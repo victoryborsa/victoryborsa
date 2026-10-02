@@ -431,7 +431,7 @@ test("admin can send a test email and sees a plain explanation when email isn't 
 });
 
 test("admin adds a real photo to a place in the Pittsburgh guide", async ({ page }) => {
-  await page.goto("/pittsburgh");
+  await page.goto("/pittsburgh#see");
   const card = page.locator(".guide-card", { hasText: "Duquesne Incline & Mount Washington" });
   await expect(card.locator(".guide-icon")).toBeVisible();
   await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
@@ -444,14 +444,14 @@ test("admin adds a real photo to a place in the Pittsburgh guide", async ({ page
   await row.locator('input[type="file"]').setInputFiles(f);
   await row.getByRole("button", { name: "Add photo" }).click();
   await expect(row.getByText("1 photo added.")).toBeVisible();
-  await page.goto("/pittsburgh");
+  await page.goto("/pittsburgh#see");
   await expect(card.locator("img")).toBeVisible();
   // Guide photos never show up in the home page slideshow.
   expect(await sql("SELECT 1 FROM site_photos WHERE slot IS NULL")).toHaveLength(0);
   await page.goto("/admin/guide");
   await row.getByRole("button", { name: "Remove photo" }).click();
   await expect(row.getByRole("button", { name: "Remove photo" })).toHaveCount(0);
-  await page.goto("/pittsburgh");
+  await page.goto("/pittsburgh#see");
   await expect(card.locator(".guide-icon")).toBeVisible();
   await signOut(page);
 });

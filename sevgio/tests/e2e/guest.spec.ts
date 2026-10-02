@@ -187,15 +187,30 @@ test("tapping a greeting switches the site language, and back", async ({ page })
   expect(r.headers()["location"]).toBe("/");
 });
 
-test("Pittsburgh guide lists places with map links", async ({ page }) => {
+test("Pittsburgh guide: categories fold open and closed; places have map links", async ({ page }) => {
   await page.goto("/pittsburgh");
+  // Every category starts as a tidy closed row.
+  const see = page.locator("details#see");
   await expect(page.getByRole("heading", { name: "Must-see & historic Pittsburgh" })).toBeVisible();
+  await expect(see).not.toHaveAttribute("open", "");
+  await expect(page.getByRole("heading", { name: "Primanti Bros." })).toBeHidden();
+  // Tapping a row opens it.
+  await page.locator("details#eat > summary").click();
   await expect(page.getByRole("heading", { name: "Primanti Bros." })).toBeVisible();
-  await expect(page.locator("a.guide-map").first()).toHaveAttribute("href", /google\.com\/maps\/dir\/\?api=1&destination=/);
-  // Every place near our homes, and the getting-around tips, open directions or schedules.
+  await expect(page.locator("details#eat a.guide-map").first()).toHaveAttribute("href", /google\.com\/maps\/dir\/\?api=1&destination=/);
+  // The category buttons open their section and jump to it.
+  await page.locator(".guide-toc").getByRole("link", { name: /Near our homes/ }).click();
   await expect(page.locator(".near-list a", { hasText: "Mayfly Market" })).toHaveAttribute("href", /maps\/dir\/.*Mayfly%20Market/);
+  await expect(page).toHaveURL(/#near$/);
+  // Open all / Close all.
+  await page.getByRole("button", { name: "Open all" }).click();
   await expect(page.getByRole("link", { name: /Directions to the airport/ })).toHaveAttribute("href", /Pittsburgh%20International%20Airport/);
   await expect(page.getByText("Yinz", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Close all" }).click();
+  await expect(page.getByRole("heading", { name: "Primanti Bros." })).toBeHidden();
+  // A link straight to a section opens it.
+  await page.goto("/pittsburgh#drink");
+  await expect(page.locator("details#drink")).toHaveAttribute("open", "");
 });
 
 test("a house with rooms lets guests choose the whole house or a room", async ({ page }) => {

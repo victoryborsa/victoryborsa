@@ -786,6 +786,27 @@ a.room-card:hover { border-color: var(--gold); }
 /* Guide page top: title and intro beside three smaller Pittsburgh pictures. */
 @media (min-width: 900px) { .hero-grid.home-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 36px; align-items: center; } }
 .home-top .guide-trio { align-self: center; }
+/* Guide: each category is a collapsible row (icon, name, what's inside) that opens to its places. */
+.gsec-controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin: 22px 0 14px; }
+.gsec-controls .guide-toc { margin: 0; }
+.gsec-controls .guide-toc a { display: inline-flex; gap: 6px; align-items: center; }
+.gsec-all { display: flex; gap: 8px; }
+.gsec-list { display: grid; gap: 10px; }
+.gsec { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); scroll-margin-top: 84px; overflow: hidden; }
+.gsec > summary { display: flex; align-items: center; gap: 16px; padding: 14px 18px; cursor: pointer; list-style: none; }
+.gsec > summary::-webkit-details-marker { display: none; }
+.gsec > summary:hover { background: rgba(255, 182, 18, .06); }
+.gsec > summary:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+.gsec-ico { flex: none; width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 24px; background: var(--bg); border: 1px solid var(--line); }
+.gsec-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.gsec-txt h2 { margin: 0; font-size: 20px; }
+.gsec-txt small { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gsec-chev { flex: none; width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; border: 1px solid var(--line); color: var(--gold); font-size: 18px; line-height: 1; transition: transform .2s ease; }
+.gsec[open] > summary { border-bottom: 1px solid var(--line); }
+.gsec[open] .gsec-chev { transform: rotate(180deg); background: var(--gold); color: #101820; border-color: var(--gold); }
+.gsec-body { padding: 16px 18px 20px; }
+.gsec-body > .guide-grid:first-child, .gsec-body > .yinzer:first-child { margin-top: 0; }
+@media (max-width: 640px) { .gsec-controls .guide-toc { display: none; } .gsec > summary { padding: 12px 14px; gap: 12px; } .gsec-ico { width: 40px; height: 40px; font-size: 20px; } .gsec-txt h2 { font-size: 17px; } .gsec-body { padding: 12px 12px 16px; } .gsec-all { width: 100%; } }
 .guide-top { display: grid; gap: 22px; align-items: center; margin-top: 24px; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 1000px) { .guide-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 36px; } }
 .guide-top .lede { color: var(--muted); font-size: 17px; margin-top: 10px; max-width: 62ch; }
