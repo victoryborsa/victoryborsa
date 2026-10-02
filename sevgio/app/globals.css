@@ -73,6 +73,10 @@ nav.main { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; align-it
 .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field > span { font-size: 13px; font-weight: 600; }
+/* iPhone zooms in (and the page then slides sideways) when a box's text is under 16px, so phones and tablets get 16px. */
+@media (max-width: 1024px), (pointer: coarse) { input, select, textarea, .input { font-size: 16px !important; } }
+/* Nothing may make the page wider than the screen. */
+html, body { overflow-x: clip; max-width: 100%; }
 .input { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; min-height: 44px; }
 .input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 textarea.input { min-height: 96px; resize: vertical; }
