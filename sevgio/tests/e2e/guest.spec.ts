@@ -375,3 +375,21 @@ test("search results: map with a price pin for each stay, filters panel, entire 
   expect(homes).toBeLessThanOrEqual(cards);
   await expect(page.getByRole("button", { name: /Filters \(1\)/ })).toBeVisible();
 });
+
+test("phones: a Menu button opens every link as a big row (no sideways-scrolling strip)", async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await ctx.newPage();
+  await page.goto("/pittsburgh");
+  await expect(page.locator("nav.main")).toBeHidden();
+  const menu = page.getByRole("button", { name: "Menu" });
+  await expect(menu).toBeVisible();
+  await menu.click();
+  const panel = page.getByRole("navigation", { name: "Menu" });
+  for (const name of ["Stays", "Events", "Pittsburgh guide", "Contact", "Sign in", "Create account"]) await expect(panel.getByRole("link", { name })).toBeVisible();
+  await expect(panel.getByRole("link", { name: "Pittsburgh guide" })).toHaveAttribute("aria-current", "page");
+  await panel.getByRole("link", { name: "Events" }).click();
+  await expect(page).toHaveURL(/\/events$/);
+  await expect(panel).toBeHidden();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await ctx.close();
+});

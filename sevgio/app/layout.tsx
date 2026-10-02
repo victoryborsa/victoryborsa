@@ -11,6 +11,7 @@ import { getSettings } from "@/lib/settings.ts";
 import { signOutAction } from "./actions/auth.ts";
 import { getT, LANGS } from "@/lib/i18n.ts";
 import { LangMenu } from "@/components/LangMenu.tsx";
+import { MobileMenu } from "@/components/MobileMenu.tsx";
 import { ProtectPage } from "@/components/ProtectPage.tsx";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-display", display: "swap" });
@@ -58,6 +59,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </>
               )}
             </nav>
+            <MobileMenu
+              explore={[{ href: "/stays", label: t("nav.stays") }, { href: "/events", label: t("nav.events") }, { href: "/pittsburgh", label: t("nav.guide") }, { href: "/contact", label: t("nav.contact") }]}
+              account={[
+                ...(user?.role === "host" ? [{ href: "/host", label: t("nav.host") }] : []),
+                ...(user?.role === "admin" ? [{ href: "/admin", label: t("nav.admin") }] : []),
+                { href: "/trips", label: t("nav.trips") }, { href: "/account", label: t("nav.account") },
+              ]}
+              signedIn={!!user}
+              signOut={signOutAction}
+              labels={{ menu: t("nav.menu"), close: t("nav.close"), explore: t("nav.explore"), account: t("nav.yourAccount"), signout: t("nav.signout"), signin: t("nav.signin"), signup: t("nav.signup") }}
+            />
             <LangMenu current={lang} label={t("nav.language")} langs={LANGS.map(l => ({ code: l.code, name: l.name }))} />
           </div>
         </header>
