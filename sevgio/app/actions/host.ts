@@ -243,7 +243,7 @@ export async function importListingsAction(_: ActionState, fd: FormData): Promis
     if (file.size > 500_000) return { error: "That file is too big for a listing import." };
     text = await file.text();
   }
-  if (!text) return { error: "Choose the listing file (.json) to import, or paste its contents." };
+  if (!text) return { error: "No file was chosen. Click \"Choose File\", open your Downloads folder and pick the listing file (it ends in .json), then press Import. Or open \"Or paste the file's text instead\" and paste the text." };
   let items: ImportItem[];
   try {
     const parsed = JSON.parse(text);

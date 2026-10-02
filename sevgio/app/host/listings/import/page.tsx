@@ -18,7 +18,7 @@ export default async function ImportListings() {
             <select className="input" name="host_id" defaultValue={u.id}>{hosts.map(h => <option key={h.id} value={h.id}>{h.name}{h.id === u.id ? " (you)" : ""}</option>)}</select>
           </label>
         )}
-        <label className="field"><span>Listing file</span><input className="input" type="file" name="file" accept=".json,application/json" /></label>
+        <label className="field"><span>Listing file</span><input className="input" type="file" name="file" accept=".json,.txt,application/json,text/plain" /><span className="hint">The file we send you ends in .json (for example meadow-wood-king-suite.json) and is usually in your Downloads folder. If you can't see it, pick "All files" in the window that opens.</span></label>
         <details>
           <summary className="linkbtn" style={{ cursor: "pointer" }}>Or paste the file's text instead</summary>
           <textarea className="input mono" name="json" style={{ minHeight: 160, marginTop: 8, fontSize: 13 }} placeholder='[{ "title": "…", "city": "…" }]' />
