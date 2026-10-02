@@ -28,7 +28,7 @@ export async function signOut(page: Page) {
 
 /** Clicks check-in and check-out days on the property calendar, paging forward to the right month. */
 export async function pickDates(page: Page, ci: string, co: string) {
-  // The page shows a loading placeholder first; wait for the real calendar before paging through it.
+  // Wait for the calendar before paging through it.
   await expect(page.locator(".cal-wrap [data-day]").first()).toBeVisible();
   for (const d of [ci, co]) {
     for (let i = 0; i < 18 && !(await page.locator(`[data-day="${d}"]`).isVisible()); i++) await page.getByRole("button", { name: "Next month" }).click();

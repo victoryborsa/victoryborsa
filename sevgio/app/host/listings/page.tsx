@@ -6,16 +6,17 @@ import { requireUser } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
 import { scopeSql } from "@/lib/access.ts";
 import { money } from "@/lib/money.ts";
+import { priceTag } from "@/lib/pricing.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { todayLocal } from "@/lib/dates.ts";
 
-type Row = { id: string; slug: string; title: string; city: string; status: string; booking_mode: string; nightly_price_cents: number; min_nights: number; cover_id: string | null; photo_count: number; host_name: string; next_in: string | null; listing_paid_until: string | null; listing_fee_waived: boolean; host_role: string };
+type Row = { id: string; slug: string; title: string; city: string; status: string; booking_mode: string; nightly_price_cents: number; monthly_price_cents: number | null; min_nights: number; cover_id: string | null; photo_count: number; host_name: string; next_in: string | null; listing_paid_until: string | null; listing_fee_waived: boolean; host_role: string };
 
 export default async function Listings({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
   const u = await requireUser(["host", "admin"], "/host/listings");
   const s = scopeSql(u);
   const rows = await q<Row>(
-    `SELECT p.id, p.slug, p.title, p.city, p.status, p.booking_mode, p.nightly_price_cents, p.min_nights, h.name AS host_name,
+    `SELECT p.id, p.slug, p.title, p.city, p.status, p.booking_mode, p.nightly_price_cents, p.monthly_price_cents, p.min_nights, h.name AS host_name,
             p.listing_paid_until::text, p.listing_fee_waived, h.role AS host_role,
             (SELECT id FROM photos ph WHERE ph.property_id = p.id ORDER BY position LIMIT 1) AS cover_id,
             (SELECT count(*) FROM photos ph WHERE ph.property_id = p.id) AS photo_count,
@@ -42,7 +43,7 @@ export default async function Listings({ searchParams }: { searchParams: Promise
       {rows.length === 0 ? <div className="empty"><p>No listings yet.</p></div> : (
         <div className="tbl-wrap">
           <table className="tbl">
-            <thead><tr><th>Listing</th><th>Status</th><th>Booking</th><th className="num">Price / night</th><th className="num">Photos</th><th>Next arrival</th><th /></tr></thead>
+            <thead><tr><th>Listing</th><th>Status</th><th>Booking</th><th className="num">Price</th><th className="num">Photos</th><th>Next arrival</th><th /></tr></thead>
             <tbody>
               {rows.map(r => (
                 <tr key={r.id}>
@@ -54,7 +55,7 @@ export default async function Listings({ searchParams }: { searchParams: Promise
                   </td>
                   <td>{statusPill(r.status)}{u.role === "host" && fee.enabled && (() => { const st = feeState(r, true); return <div className="hint" style={{ marginTop: 4 }}>{st === "paid" ? `Fee paid until ${fmtShort(r.listing_paid_until!)}` : st === "waived" ? "No listing fee" : "Listing fee due"}</div>; })()}</td>
                   <td>{r.booking_mode === "instant" ? "Instant" : "Request"}</td>
-                  <td className="num">{money(r.nightly_price_cents)}</td>
+                  <td className="num">{money(priceTag(r).cents)}<span className="muted"> / {priceTag(r).unit}</span></td>
                   <td className="num">{r.photo_count}</td>
                   <td>{r.next_in ? new Date(r.next_in + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : <span className="muted">None</span>}</td>
                   <td>

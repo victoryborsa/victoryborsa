@@ -1,3 +1,4 @@
+import { priceTag } from "@/lib/pricing.ts";
 import { requireUser } from "@/lib/auth.ts";
 import Link from "next/link";
 import { q } from "@/lib/db.ts";
@@ -9,12 +10,12 @@ import { feeState } from "@/lib/listing-fee.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { fmtDate } from "@/lib/dates.ts";
 
-type Row = { id: string; slug: string; title: string; city: string; status: string; host_id: string; nightly_price_cents: number; rating: number | null; review_count: number; photos: number; bookings: number; listing_paid_until: string | null; listing_fee_waived: boolean; host_role: string; lat: number | null; geocoded_at: string | null; address: string };
+type Row = { id: string; slug: string; title: string; city: string; status: string; host_id: string; nightly_price_cents: number; monthly_price_cents: number | null; rating: number | null; review_count: number; photos: number; bookings: number; listing_paid_until: string | null; listing_fee_waived: boolean; host_role: string; lat: number | null; geocoded_at: string | null; address: string };
 
 export default async function AdminListings({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
   await requireUser(["admin"], "/admin");
   const [rows, hosts, settings] = await Promise.all([
-    q<Row>(`SELECT p.id, p.slug, p.title, p.city, p.status, p.host_id, p.nightly_price_cents, p.rating, p.review_count,
+    q<Row>(`SELECT p.id, p.slug, p.title, p.city, p.status, p.host_id, p.nightly_price_cents, p.monthly_price_cents, p.rating, p.review_count,
               p.listing_paid_until::text, p.listing_fee_waived, p.lat, p.geocoded_at, p.address, (SELECT role FROM users h WHERE h.id = p.host_id) AS host_role,
               (SELECT count(*) FROM photos ph WHERE ph.property_id = p.id) AS photos,
               (SELECT count(*) FROM bookings b WHERE b.property_id = p.id AND b.status = 'confirmed') AS bookings
@@ -39,7 +40,7 @@ export default async function AdminListings({ searchParams }: { searchParams: Pr
             <article key={r.id} className="al-card" data-listing={r.title}>
               <div className="al-cell al-title">
                 <strong>{r.title}</strong>
-                <span className="hint">{r.city} · {money(r.nightly_price_cents)}/night · {r.photos} photos · {r.bookings} bookings</span>
+                <span className="hint">{r.city} · {money(priceTag(r).cents)}/{priceTag(r).unit} · {r.photos} photos · {r.bookings} bookings</span>
                 <span className="hint">{r.lat !== null ? "📍 On the map (guests see the area, not the address)" : r.geocoded_at ? `⚠️ Address not found on the map${r.address ? "" : " (no address)"}: shown at its neighborhood` : "📍 Not looked up yet"}</span>
                 <div className="row" style={{ gap: 6 }}>
                   <Link className="btn btn-ghost btn-sm" href={`/host/listings/${r.id}`}>Edit</Link>

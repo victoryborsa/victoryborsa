@@ -33,12 +33,6 @@
 h1.h-like-2 { font-size: clamp(22px, 3vw, 28px); font-weight: 650; letter-spacing: -0.01em; }
 /* Buttons give a small press when tapped or clicked. */
 .btn:active:not(:disabled), .chip:active, .linkbtn:active { transform: translateY(1px) scale(.98); }
-/* Loading placeholders in the shape of the real page. */
-.skel { background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 50%, var(--surface) 100%); background-size: 200% 100%; border-radius: 8px; animation: skel 1.3s ease-in-out infinite; }
-@keyframes skel { from { background-position: 100% 0; } to { background-position: -100% 0; } }
-.skel-gallery { display: grid; gap: 8px; margin-top: 20px; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 200px 200px; }
-.skel-gallery > :first-child { grid-row: span 2; }
-@media (max-width: 759px) { .skel-gallery { grid-template-columns: 1fr; grid-template-rows: 240px; } .skel-gallery > :not(:first-child) { display: none; } }
 /* Visitors whose device asks for less motion get none anywhere on the site. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
