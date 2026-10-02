@@ -282,3 +282,25 @@ test("sign-up asks guest or host; host requests wait for admin approval", async 
   await page.goto("/host");
   await expect(page).toHaveURL(/\/host$/);
 });
+
+test("listing pages can be shared by email, text, WhatsApp, Facebook and more; photos can't be right-click saved", async ({ page }) => {
+  await page.goto("/stays/jim-thorpe-mountain-cabin");
+  await page.getByRole("button", { name: "Share" }).click();
+  const menu = page.getByRole("menu", { name: "Share this place" });
+  await expect(menu.getByRole("menuitem", { name: /Email/ })).toHaveAttribute("href", /^mailto:\?subject=.*stays%2Fjim-thorpe-mountain-cabin/);
+  await expect(menu.getByRole("menuitem", { name: /Text message/ })).toHaveAttribute("href", /^sms:/);
+  await expect(menu.getByRole("menuitem", { name: /WhatsApp/ })).toHaveAttribute("href", /^https:\/\/wa\.me\/\?text=/);
+  await expect(menu.getByRole("menuitem", { name: /Facebook/ })).toHaveAttribute("href", /facebook\.com\/sharer/);
+  await expect(menu.getByRole("menuitem", { name: /Instagram/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /Copy link/ })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  // Right-clicking a photo doesn't open the browser's "Save image" menu.
+  const blocked = await page.evaluate(() => {
+    const img = document.querySelector("img")!;
+    const e = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    img.dispatchEvent(e);
+    return e.defaultPrevented;
+  });
+  expect(blocked).toBe(true);
+});

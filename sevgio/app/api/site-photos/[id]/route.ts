@@ -6,5 +6,5 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const size = new URL(req.url).searchParams.get("s") === "thumb" ? "thumb" : "large";
   const row = await one<{ data: Buffer }>(`SELECT ${size} AS data FROM site_photos WHERE id = $1`, [id]);
   if (!row) return new Response("Not found", { status: 404 });
-  return new Response(new Uint8Array(row.data), { headers: { "Content-Type": "image/webp", "Cache-Control": "public, max-age=31536000, immutable" } });
+  return new Response(new Uint8Array(row.data), { headers: { "Content-Type": "image/webp", "Content-Disposition": "inline", "Cache-Control": "public, max-age=31536000, immutable" } });
 }

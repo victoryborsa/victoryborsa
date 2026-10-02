@@ -7,5 +7,5 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const row = await one<{ data: Buffer }>(`SELECT ${size} AS data FROM photos WHERE id = $1`, [id]);
   if (!row) return new Response("Not found", { status: 404 });
   // Photo ids never change content, so browsers and CDNs can cache them for a year.
-  return new Response(new Uint8Array(row.data), { headers: { "Content-Type": "image/webp", "Cache-Control": "public, max-age=31536000, immutable" } });
+  return new Response(new Uint8Array(row.data), { headers: { "Content-Type": "image/webp", "Content-Disposition": "inline", "Cache-Control": "public, max-age=31536000, immutable" } });
 }

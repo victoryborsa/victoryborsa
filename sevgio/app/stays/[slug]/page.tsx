@@ -13,6 +13,8 @@ import { ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, bedLabelLong, par
 import { partyFromParams } from "@/lib/party.ts";
 import { Gallery } from "@/components/Gallery.tsx";
 import { StayChooser } from "@/components/StayChooser.tsx";
+import { ShareButtons } from "@/components/ShareButtons.tsx";
+import { siteUrl } from "@/lib/email.ts";
 import { PET_FEE_PER } from "@/lib/pricing.ts";
 import { money } from "@/lib/money.ts";
 import { AvailabilitySection, BookingPanel, BookingProvider, MobileBookBar } from "@/components/booking.tsx";
@@ -40,7 +42,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title: `${p.title}, ${p.city}`,
     description: p.description.slice(0, 160),
-    openGraph: photos[0] ? { images: [photoUrl(photos[0].id)] } : undefined,
+    openGraph: { title: `${p.title} · Sevgio Stays`, description: p.description.slice(0, 160), url: `/stays/${p.slug}`, type: "website", ...(photos[0] ? { images: [{ url: photoUrl(photos[0].id), alt: p.title }] } : {}) },
+    twitter: { card: photos[0] ? "summary_large_image" : "summary", title: `${p.title} · Sevgio Stays` },
   };
 }
 
@@ -80,6 +83,8 @@ export default async function StayPage({ params, searchParams }: Params) {
             <Rating rating={p.rating} count={p.review_count} />
             <span className="muted">{p.city}{p.area ? `, ${p.area}` : ""}, Pennsylvania</span>
             {p.booking_mode === "instant" ? <span className="pill ok">Instant booking</span> : <span className="pill warn">Request to book</span>}
+            <span className="spacer" />
+            <ShareButtons url={`${siteUrl()}/stays/${p.slug}`} title={p.title} />
           </div>
         </div>
       </div>

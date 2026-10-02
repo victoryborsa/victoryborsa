@@ -498,6 +498,16 @@ tr.row-new td { background: color-mix(in srgb, var(--accent-soft) 55%, transpare
 .set-pw summary { cursor: pointer; font-size: 13px; list-style: none; }
 .set-pw summary::-webkit-details-marker { display: none; }
 .set-pw[open] { padding: 8px 10px; margin-top: 6px; border: 1px solid var(--line); border-radius: var(--r); max-width: 280px; }
+.share { position: relative; }
+.share .btn { gap: 6px; }
+.share-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 240px; padding: 8px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); box-shadow: 0 12px 32px rgba(0,0,0,.45); display: grid; gap: 2px; }
+.share-title { margin: 2px 8px 6px; font-weight: 700; font-size: 14px; }
+.share-menu a, .share-menu button { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; border: 0; background: none; color: var(--ink); font: inherit; font-size: 14px; text-align: left; text-decoration: none; cursor: pointer; }
+.share-menu a:hover, .share-menu button:hover { background: var(--bg); }
+.share-note { margin: 4px 8px; word-break: break-all; }
+@media (max-width: 640px) { .share-menu { position: fixed; left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; z-index: 60; } }
+/* Photos: no long-press "Save image" on phones, no dragging them off the page. */
+img { -webkit-user-drag: none; user-select: none; -webkit-touch-callout: none; }
 .smart-box { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); display: grid; gap: 12px; }
 .slides-over { position: absolute; z-index: 2; pointer-events: none; }
 .slides-over a, .slides-over button { pointer-events: auto; }
