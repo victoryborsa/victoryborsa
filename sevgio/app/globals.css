@@ -529,6 +529,16 @@ tr.row-new td { background: color-mix(in srgb, var(--accent-soft) 55%, transpare
 .share-menu a:hover, .share-menu button:hover { background: var(--bg); }
 .share-note { margin: 4px 8px; word-break: break-all; }
 @media (max-width: 640px) { .share-menu { position: fixed; left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; z-index: 60; } }
+/* Listing activity: views, favourites, interested, shares */
+.lstats { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: -6px 0 16px; }
+.lstats-list { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; padding: 0; list-style: none; flex: 1; min-width: 240px; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.lstats-list li { display: inline-flex; align-items: center; gap: 6px; }
+.lstats svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lstats-actions { display: flex; gap: 8px; }
+.lstats-btn { gap: 6px; }
+.lstats-btn.on { border-color: var(--accent); color: var(--accent); }
+.lstats-btn.on svg { fill: currentColor; }
+@media (max-width: 640px) { .lstats-list { gap: 6px 14px; font-size: 13px; } .lstats-actions { width: 100%; } .lstats-actions .btn { flex: 1; justify-content: center; } }
 /* Public pages can't be selected and copied (form fields still work). Private pages (trips, admin, host) are left alone. */
 html[data-protect="on"] body { -webkit-user-select: none; user-select: none; }
 html[data-protect="on"] :is(input, textarea, select, [contenteditable], .selectable) { -webkit-user-select: text; user-select: text; }

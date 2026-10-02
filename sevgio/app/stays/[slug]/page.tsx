@@ -14,6 +14,9 @@ import { partyFromParams } from "@/lib/party.ts";
 import { Gallery } from "@/components/Gallery.tsx";
 import { StayChooser } from "@/components/StayChooser.tsx";
 import { ShareButtons } from "@/components/ShareButtons.tsx";
+import { ListingStats } from "@/components/ListingStats.tsx";
+import { listingStats, VISITOR_COOKIE } from "@/lib/listing-stats.ts";
+import { cookies } from "next/headers";
 import { siteUrl } from "@/lib/email.ts";
 import { PET_FEE_PER } from "@/lib/pricing.ts";
 import { money } from "@/lib/money.ts";
@@ -53,13 +56,14 @@ export default async function StayPage({ params, searchParams }: Params) {
   const p = await load(slug);
   if (!p) notFound();
   const today = todayLocal();
-  const [photos, taken, settings, host, user, linked] = await Promise.all([
+  const [photos, taken, settings, host, user, linked, stats] = await Promise.all([
     photosFor(p.id),
     unavailableNights(p.id, today, addDays(today, 560)),
     getSettings(),
     one<{ name: string }>("SELECT name FROM users WHERE id = $1", [p.host_id]),
     currentUser(),
     linkedListings(p),
+    listingStats(p.id, (await cookies()).get(VISITOR_COOKIE)?.value),
   ]);
   const demand = p.smart_pricing || linked.rooms.some(r => r.smart_pricing) ? demandForClient(await demandBetween()) : undefined;
   const hostFirst = (host?.name || "your host").split(" ")[0];
@@ -84,10 +88,11 @@ export default async function StayPage({ params, searchParams }: Params) {
             <span className="muted">{p.city}{p.area ? `, ${p.area}` : ""}, Pennsylvania</span>
             {p.booking_mode === "instant" ? <span className="pill ok">Instant booking</span> : <span className="pill warn">Request to book</span>}
             <span className="spacer" />
-            <ShareButtons url={`${siteUrl()}/stays/${p.slug}`} title={p.title} />
+            <ShareButtons url={`${siteUrl()}/stays/${p.slug}`} title={p.title} statsId={bookable ? p.id : undefined} />
           </div>
         </div>
       </div>
+      <ListingStats id={p.id} initial={stats} live={bookable} />
       <StayChooser current={p} house={linked.parent ?? p} rooms={linked.parent ? [...linked.siblings, p].sort((a, b) => a.nightly_price_cents - b.nightly_price_cents) : linked.rooms} sp={sp} />
       <Gallery photos={photos.map(ph => ({ id: ph.id, caption: ph.caption }))} title={p.title} />
 

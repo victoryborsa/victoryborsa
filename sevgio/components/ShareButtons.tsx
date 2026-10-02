@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { statsPost } from "./ListingStats.tsx";
 
 /** "Share" button for a listing: email, text message, WhatsApp, Facebook, X, Instagram (via the phone's share sheet) or copy the link. */
-export function ShareButtons({ url, title }: { url: string; title: string }) {
+export function ShareButtons({ url, title, statsId }: { url: string; title: string; statsId?: string }) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [native, setNative] = useState(false);
@@ -14,12 +15,15 @@ export function ShareButtons({ url, title }: { url: string; title: string }) {
     document.addEventListener("mousedown", close); document.addEventListener("keydown", close);
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", close); };
   }, [open]);
+  // Counts the share on the listing's "times shared" number.
+  const counted = () => { if (statsId) statsPost(statsId, { kind: "share" }).then(r => r && window.dispatchEvent(new CustomEvent("sevgio:shared", { detail: r }))); };
   const text = `${title} on Sevgio Stays`;
   const u = encodeURIComponent(url), t = encodeURIComponent(text), both = encodeURIComponent(`${text}: ${url}`);
   const copy = async (msg = "Link copied.") => {
+    counted();
     try { await navigator.clipboard.writeText(url); setNote(msg); } catch { setNote(url); }
   };
-  const nativeShare = async () => { try { await navigator.share({ title: text, text, url }); } catch { /* closed */ } };
+  const nativeShare = async () => { try { await navigator.share({ title: text, text, url }); counted(); } catch { /* closed */ } };
   const links: [string, string, string][] = [
     ["Email", "✉️", `mailto:?subject=${t}&body=${both}`],
     ["Text message", "💬", `sms:?&body=${both}`],
@@ -38,7 +42,7 @@ export function ShareButtons({ url, title }: { url: string; title: string }) {
         <div className="share-menu" role="menu" aria-label="Share this place">
           <p className="share-title">Share this place</p>
           {links.map(([name, icon, href]) => (
-            <a key={name} role="menuitem" href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" onClick={() => setOpen(false)}><span aria-hidden>{icon}</span>{name}</a>
+            <a key={name} role="menuitem" href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" onClick={() => { counted(); setOpen(false); }}><span aria-hidden>{icon}</span>{name}</a>
           ))}
           <button type="button" role="menuitem" onClick={() => (native ? nativeShare() : copy("Link copied. Paste it in your Instagram story, post or message."))}><span aria-hidden>📸</span>Instagram</button>
           <button type="button" role="menuitem" onClick={() => copy()}><span aria-hidden>🔗</span>Copy link</button>

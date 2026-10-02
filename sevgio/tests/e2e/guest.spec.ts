@@ -329,6 +329,33 @@ test("listing pages can be shared by email, text, WhatsApp, Facebook and more; p
   expect(blocked).toBe(true);
 });
 
+test("listing shows views, favourites, interested and shares; Save and I'm interested switch on and off", async ({ page, browser }) => {
+  await sql("DELETE FROM listing_activity WHERE property_id = (SELECT id FROM properties WHERE slug = 'jim-thorpe-mountain-cabin')");
+  await page.goto("/stays/jim-thorpe-mountain-cabin");
+  const stats = page.getByRole("list", { name: "Listing activity" });
+  await expect(stats).toContainText("1 view");
+  await expect(stats).toContainText("0 times saved as favourite");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(stats).toContainText("1 time saved as favourite");
+  await expect(page.getByRole("button", { name: "Saved" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "I'm interested" }).click();
+  await expect(stats).toContainText("1 interested");
+  await page.getByRole("button", { name: "Share" }).click();
+  await page.getByRole("menuitem", { name: /Copy link/ }).click();
+  await expect(stats).toContainText("1 time shared");
+  // Coming back the same day isn't another view, and the choices are remembered.
+  await page.reload();
+  await expect(stats).toContainText("1 view");
+  await expect(page.getByRole("button", { name: "Saved" })).toBeVisible();
+  await page.getByRole("button", { name: "Saved" }).click();
+  await expect(stats).toContainText("0 times saved as favourite");
+  // A different visitor adds a view.
+  const other = await browser.newPage();
+  await other.goto("/stays/jim-thorpe-mountain-cabin");
+  await expect(other.getByRole("list", { name: "Listing activity" })).toContainText("2 views");
+  await other.close();
+});
+
 test("public pages can't be copied: no right-click, no copy, no save/print shortcuts; copier programs are refused", async ({ page, request }) => {
   await page.goto("/stays/jim-thorpe-mountain-cabin");
   await expect(page.locator("html")).toHaveAttribute("data-protect", "on");
