@@ -5,6 +5,7 @@ import { Calendar, addDaysC } from "./Calendar.tsx";
 import { PET_FEE_PER, baseLabel, priceTag, quote, type Party, type PricingInput } from "@/lib/pricing.ts";
 import { parseServices, servicePrice } from "@/lib/constants.ts";
 import { money } from "@/lib/money.ts";
+import { sendSignal } from "@/lib/signal-client.ts";
 
 type P = PricingInput & { security_deposit_cents?: number; slug: string; min_nights: number; max_nights: number; booking_mode: "instant" | "request"; children_free_age: number };
 type Ctx = { p: P; today: string; taken: Set<string>; taxPercent: number; ci: string; co: string; party: Party; msg: string; pick: (d: string) => void; clear: () => void; setParty: (p: Party) => void; bookable: boolean };
@@ -169,7 +170,7 @@ export function BookingPanel({ paymentNote }: { paymentNote: string }) {
       {!!p.security_deposit_cents && <p className="hint">Plus a refundable security deposit of {money(p.security_deposit_cents)}, collected by your host and returned after check-out. Not included in the total.</p>}
       {!bookable && <div className="notice info">This listing isn't published yet, so it can't be booked.</div>}
       {ready ? (
-        <Link className="btn btn-primary btn-block" href={bookHref(p.slug, ci, co, party)}>{p.booking_mode === "instant" ? "Reserve" : "Request to book"}</Link>
+        <Link className="btn btn-primary btn-block" href={bookHref(p.slug, ci, co, party)} onClick={() => sendSignal(p.slug, "interested")}>{p.booking_mode === "instant" ? "Reserve" : "Request to book"}</Link>
       ) : (
         <button className="btn btn-primary btn-block" disabled>{p.booking_mode === "instant" ? "Reserve" : "Request to book"}</button>
       )}
@@ -189,7 +190,7 @@ export function MobileBookBar() {
       <div style={{ flex: 1, minWidth: 0 }}>
         {pr && !problem ? <><b className="mono">{money(pr.total)}</b> <span className="muted">· {pr.nights} nights</span></> : <><b className="mono">{money(priceTag(p).cents)}</b> <span className="muted">/ {priceTag(p).unit}</span></>}
       </div>
-      {ready ? <Link className="btn btn-primary" href={bookHref(p.slug, ci, co, party)}>{p.booking_mode === "instant" ? "Reserve" : "Request"}</Link> : <a className="btn btn-primary" href="#availability">Check dates</a>}
+      {ready ? <Link className="btn btn-primary" href={bookHref(p.slug, ci, co, party)} onClick={() => sendSignal(p.slug, "interested")}>{p.booking_mode === "instant" ? "Reserve" : "Request"}</Link> : <a className="btn btn-primary" href="#availability">Check dates</a>}
     </div>
   );
 }

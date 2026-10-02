@@ -827,3 +827,11 @@ a.room-card:hover { border-color: var(--gold); }
 .near-list a { font-weight: 600; text-decoration: none; }
 .near-list a:hover { text-decoration: underline; }
 .tip-link { display: inline-block; margin: 2px 8px 2px 0; font-weight: 600; white-space: nowrap; }
+
+/* Listing activity: Save + Share buttons, and "428 views · 93 times saved as favourite · ..." */
+.listing-actions { display: flex; gap: 8px; align-items: center; }
+.save-btn { gap: 6px; }
+.save-btn.on { color: var(--gold); border-color: var(--gold); }
+.listing-stats { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; padding: 0; list-style: none; font-size: 14px; color: var(--muted); }
+.listing-stats li { display: inline-flex; align-items: center; gap: 6px; }
+.listing-stats svg { color: var(--ink); opacity: .8; }

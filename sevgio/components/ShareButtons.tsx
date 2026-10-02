@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 
 /** "Share" button for a listing: email, text message, WhatsApp, Facebook, X, Instagram (via the phone's share sheet) or copy the link. */
-export function ShareButtons({ url, title }: { url: string; title: string }) {
+export function ShareButtons({ url, title, onShare }: { url: string; title: string; onShare?: (channel: string) => void }) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [native, setNative] = useState(false);
@@ -16,10 +16,13 @@ export function ShareButtons({ url, title }: { url: string; title: string }) {
   }, [open]);
   const text = `${title} on Sevgio Stays`;
   const u = encodeURIComponent(url), t = encodeURIComponent(text), both = encodeURIComponent(`${text}: ${url}`);
-  const copy = async (msg = "Link copied.") => {
+  const copy = async (msg = "Link copied.", channel = "copy") => {
+    onShare?.(channel);
     try { await navigator.clipboard.writeText(url); setNote(msg); } catch { setNote(url); }
   };
-  const nativeShare = async () => { try { await navigator.share({ title: text, text, url }); } catch { /* closed */ } };
+  const nativeShare = async (channel = "native") => {
+    try { await navigator.share({ title: text, text, url }); onShare?.(channel); } catch { /* closed */ }
+  };
   const links: [string, string, string][] = [
     ["Email", "✉️", `mailto:?subject=${t}&body=${both}`],
     ["Text message", "💬", `sms:?&body=${both}`],
@@ -38,11 +41,11 @@ export function ShareButtons({ url, title }: { url: string; title: string }) {
         <div className="share-menu" role="menu" aria-label="Share this place">
           <p className="share-title">Share this place</p>
           {links.map(([name, icon, href]) => (
-            <a key={name} role="menuitem" href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" onClick={() => setOpen(false)}><span aria-hidden>{icon}</span>{name}</a>
+            <a key={name} role="menuitem" href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" onClick={() => { onShare?.(name); setOpen(false); }}><span aria-hidden>{icon}</span>{name}</a>
           ))}
-          <button type="button" role="menuitem" onClick={() => (native ? nativeShare() : copy("Link copied. Paste it in your Instagram story, post or message."))}><span aria-hidden>📸</span>Instagram</button>
+          <button type="button" role="menuitem" onClick={() => (native ? nativeShare("Instagram") : copy("Link copied. Paste it in your Instagram story, post or message.", "Instagram"))}><span aria-hidden>📸</span>Instagram</button>
           <button type="button" role="menuitem" onClick={() => copy()}><span aria-hidden>🔗</span>Copy link</button>
-          {native && <button type="button" role="menuitem" onClick={nativeShare}><span aria-hidden>⋯</span>More apps</button>}
+          {native && <button type="button" role="menuitem" onClick={() => nativeShare()}><span aria-hidden>⋯</span>More apps</button>}
           {note && <p className="hint share-note" role="status">{note}</p>}
         </div>
       )}

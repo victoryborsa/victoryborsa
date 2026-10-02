@@ -4,6 +4,7 @@ import { currentUser } from "@/lib/auth.ts";
 import { isEmail, str, type ActionState } from "@/lib/validate.ts";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { getSettings } from "@/lib/settings.ts";
+import { recordSignal, visitorKey } from "@/lib/signals.ts";
 
 async function tooMany(email: string) {
   const r = await one<{ n: number }>("SELECT count(*) AS n FROM messages WHERE lower(email) = lower($1) AND created_at > now() - interval '1 hour'", [email]);
@@ -20,6 +21,7 @@ export async function askHostAction(_: ActionState, fd: FormData): Promise<Actio
   if (!p) return { error: "This listing no longer exists." };
   const u = await currentUser();
   await q("INSERT INTO messages (property_id, user_id, name, email, topic, body) VALUES ($1, $2, $3, $4, $5, $6)", [p.id, u?.id ?? null, name, email, "Question about " + p.title, body]);
+  await recordSignal(p.id, "interested", (await visitorKey(true))!).catch(() => {});
   await sendEmail(p.host_email, `Question about ${p.title} from ${name}`, `${name} (${email}) asked:\n\n${body}\n\nReply directly to ${email}, or see all messages at ${siteUrl()}/host/messages`);
   return { ok: "Question sent. The host usually replies within a few hours." };
 }

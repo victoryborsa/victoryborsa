@@ -369,3 +369,35 @@ test("search results: map with a price pin for each stay, filters panel, entire 
   expect(homes).toBeLessThanOrEqual(cards);
   await expect(page.getByRole("button", { name: /Filters \(1\)/ })).toBeVisible();
 });
+
+test("listings show views, favourites, interest and shares, each visitor counted once", async ({ page }) => {
+  const slug = "rittenhouse-square-loft";
+  await sql("DELETE FROM listing_signals WHERE property_id = (SELECT id FROM properties WHERE slug = $1)", [slug]);
+  const stats = page.getByRole("list", { name: "Listing activity" });
+  await page.goto(`/stays/${slug}`);
+  await expect(stats).toHaveText("1 view");
+  await page.reload(); // same visitor, same day
+  await expect(stats).toHaveText("1 view");
+
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("button", { name: "Saved" })).toHaveAttribute("aria-pressed", "true");
+  await expect(stats).toContainText("1 time saved as favourite");
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Saved" })).toBeVisible();
+  await page.getByRole("button", { name: "Saved" }).click();
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+  await expect(stats).not.toContainText("favourite");
+
+  await page.getByRole("button", { name: "Share" }).click();
+  const copyLink = page.getByRole("menu", { name: "Share this place" }).getByRole("menuitem", { name: /Copy link/ });
+  await copyLink.click();
+  await expect(stats).toContainText("1 time shared");
+  await copyLink.click(); // the same share again today doesn't count twice
+  await expect(stats).toContainText("1 time shared");
+
+  // Reserve and "Send question" mark a visitor as interested; other websites can't add to the numbers.
+  expect((await page.request.post("/api/listing-signal", { data: JSON.stringify({ slug, kind: "interested" }) })).ok()).toBe(true);
+  expect((await page.request.post("/api/listing-signal", { data: JSON.stringify({ slug, kind: "share", channel: "x" }), headers: { origin: "https://evil.example" } })).status()).toBe(403);
+  await page.reload();
+  await expect(stats).toHaveText(/1 view.*1 interested.*1 time shared/);
+});
