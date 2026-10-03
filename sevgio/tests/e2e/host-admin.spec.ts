@@ -1028,3 +1028,36 @@ test("import: the Stowe Township lease file comes in as an unfurnished Corporate
   await expect(page.getByText("Add the monthly rent in the Corporate housing section before publishing this long-term lease.")).toBeVisible();
   await signOut(page);
 });
+
+test("admin exports every listing as a file the Import page reads; nobody else can", async ({ page }) => {
+  expect((await page.request.get("/api/admin/export-listings")).status()).toBe(403);
+  await signIn(page, "guest@demo.sevgio.com", "demo-password-2026");
+  expect((await page.request.get("/api/admin/export-listings")).status()).toBe(403);
+  await signOut(page);
+
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin/listings");
+  const download = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Export listings" }).click();
+  const file = await (await download).path();
+  const data = JSON.parse(fs.readFileSync(file, "utf8"));
+  const [{ n }] = await sql<{ n: number }>("SELECT count(*)::int AS n FROM properties");
+  expect(data.count).toBe(n);
+  const lodge = data.listings.find((l: { title: string }) => l.title === "Lake Harmony Lodge");
+  expect(lodge.photo_urls.length).toBeGreaterThan(0);
+  expect(lodge.photo_urls[0]).toMatch(/\/api\/photos\/[0-9a-f-]{36}$/);
+  expect(lodge.nightly_price).toBeGreaterThan(0);
+
+  // The same file imports straight back in (here just the lodge, renamed, without its photos).
+  const copy = { ...lodge, title: "Lake Harmony Lodge Copy", photo_urls: [] };
+  await page.goto("/host/listings/import");
+  await page.getByText("Or paste the file's text instead").click();
+  await page.locator("textarea[name=json]").fill(JSON.stringify({ listings: [copy] }));
+  await page.getByRole("button", { name: "Import as drafts" }).click();
+  await expect(page.getByText(/Imported 1 listing as drafts: Lake Harmony Lodge Copy/)).toBeVisible();
+  const [row] = await sql<{ nightly_price_cents: number; amenities: string[] }>("SELECT nightly_price_cents, amenities FROM properties WHERE title = 'Lake Harmony Lodge Copy'");
+  expect(row.nightly_price_cents).toBe(Math.round(lodge.nightly_price * 100));
+  expect(row.amenities).toEqual(lodge.amenities);
+  await sql("DELETE FROM properties WHERE title = 'Lake Harmony Lodge Copy'");
+  await signOut(page);
+});

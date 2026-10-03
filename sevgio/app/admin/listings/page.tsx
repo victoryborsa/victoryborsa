@@ -29,6 +29,7 @@ export default async function AdminListings({ searchParams }: { searchParams: Pr
       <div className="row" style={{ marginBottom: 16 }}>
         <p className="muted" style={{ flex: 1 }}>Every listing on the site. Edit details, photos and calendars with the host tools.</p>
         <form action={mapListingsAction}><button className="btn btn-ghost" type="submit">📍 Find listings on the map</button></form>
+        <a className="btn btn-ghost" href="/api/admin/export-listings" download>Export listings</a>
         <Link className="btn btn-ghost" href="/host/listings/import">Import from file</Link>
         <Link className="btn btn-primary" href="/host/listings/new">Add a listing</Link>
       </div>
