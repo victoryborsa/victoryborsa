@@ -2,14 +2,16 @@ import { ImageResponse } from "next/og";
 import sharp from "sharp";
 import { one } from "@/lib/db.ts";
 
-// The picture shown when someone shares a Sevgio Stays link (WhatsApp, Facebook, iMessage, X…).
+// The picture shown when someone shares a Sevgio link (WhatsApp, Facebook, iMessage, X…).
 // Listing pages use their own cover photo; every other page uses this.
-export const alt = "Sevgio Stays · Yinz Are Home in Pittsburgh";
+export const alt = "Sevgio · Yinz Are Home in Pittsburgh";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const dynamic = "force-dynamic";
 
 const GOLD = "#FFB612";
+// The Sevgio house mark (same drawing as app/icon.svg).
+const HOUSE = "data:image/svg+xml;base64," + Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 260"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1AA6A0"/><stop offset="1" stop-color="#0B7A80"/></linearGradient></defs><g transform="translate(0 20)"><path d="M130 34 L214 104 V184 a22 22 0 0 1 -22 22 H68 a22 22 0 0 1 -22 -22 V104 Z" fill="url(#g)"/><path d="M24 108 L130 20 L236 108" fill="none" stroke="#0E7E83" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/><path d="M108 206 V152 a22 22 0 0 1 44 0 V206 Z" fill="#fff"/><path d="M100 118 C 82 104 70 94 70 80 a15 15 0 0 1 30 -4 a15 15 0 0 1 30 4 c0 14 -12 24 -30 38 Z" fill="#F47C6C"/></g></svg>`).toString("base64");
 
 /** The drawn skyline with the three yellow bridges, as a picture (used until a real Pittsburgh photo is uploaded). */
 function skylineSvg(): string {
@@ -65,8 +67,14 @@ export default async function OpenGraphImage() {
         ))}
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 250, display: "flex", background: "linear-gradient(180deg, rgba(11,16,21,0) 0%, rgba(11,16,21,.55) 45%, rgba(11,16,21,.85) 100%)" }} />
         <div style={{ position: "absolute", left: 56, bottom: 48, display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", fontSize: 76, fontWeight: 800, color: "#fff", letterSpacing: -2 }}>
-            sevgio<span style={{ color: GOLD, marginLeft: 18 }}>stays</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <div style={{ display: "flex", width: 104, height: 104, borderRadius: 24, background: "#fff", alignItems: "center", justifyContent: "center" }}>
+              <img src={HOUSE} width={84} height={84} alt="" />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", fontSize: 84, fontWeight: 800, color: "#fff", letterSpacing: -2, lineHeight: 1 }}>Sevgio</div>
+              <div style={{ display: "flex", fontSize: 22, color: "#E8ECEF", letterSpacing: 6, marginTop: 6 }}>STAYS • HOMES • EXPERIENCES</div>
+            </div>
           </div>
           <div style={{ display: "flex", fontSize: 38, fontWeight: 700, color: GOLD, marginTop: 4 }}>Yinz Are Home in Pittsburgh</div>
           <div style={{ display: "flex", fontSize: 26, color: "#E8ECEF", marginTop: 10 }}>Private rooms and whole homes · Book direct with your hosts</div>

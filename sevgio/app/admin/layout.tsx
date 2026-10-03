@@ -33,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ] },
       ]} />
       <div className="dash-main">
-        <div className="dash-head"><div><p className="eyebrow">Admin</p><h1 className="dash-h1">Sevgio Stays operations</h1></div></div>
+        <div className="dash-head"><div><p className="eyebrow">Admin</p><h1 className="dash-h1">Sevgio operations</h1></div></div>
         {children}
       </div>
     </div>

@@ -1169,7 +1169,7 @@ body:has(.ab-home) footer, body:has(.theme-light) footer { background: #F7F7F7; 
   .um-avatar { width: 30px; height: 30px; }
   .um-pop { position: fixed; left: 12px; right: 12px; top: auto; width: auto; margin-top: 10px; max-height: calc(100dvh - 120px); overflow-y: auto; }
 }
-@media (max-width: 479px) { header.site .logo > span { display: none; } }
+/* (logo text stays visible on phones) */
 /* Each picture square fades between its photos. */
 .gt-slide { position: absolute; inset: 0; opacity: 0; transition: opacity .9s ease; }
 .gt-slide.on { opacity: 1; }
@@ -1295,3 +1295,25 @@ body:has(.dash.theme-light) { background: #FFFFFF; }
   .trip-meta { font-size: 13px; }
   .acct-head .btn { display: none; }
 }
+
+/* Sevgio logo: house mark, "sevgio" and the tagline. */
+.brand { display: inline-flex; align-items: center; gap: 10px; }
+.house-mark { flex: none; display: block; }
+.brand-text { display: grid; line-height: 1; }
+.brand-name { font-family: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif; font-size: 34px; font-weight: 700; letter-spacing: -0.035em; color: #14393F; line-height: .9; }
+.brand-tag { margin-top: 4px; font-family: var(--f-body); font-size: 9.5px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: #5C6F75; white-space: nowrap; }
+header.site .logo { flex: none; }
+footer .brand-name { font-size: 26px; }
+footer .brand-tag { font-size: 8px; }
+@media (max-width: 899px) { header.site .brand-tag { display: none; } header.site .brand-name { font-size: 28px; } header.site .house-mark { width: 38px; height: auto; } }
+@media (max-width: 400px) { header.site .brand-name { font-size: 24px; } header.site .house-mark { width: 32px; } header.site .brand { gap: 6px; } }
+@media (max-width: 420px) {
+  header.site .wrap { gap: 8px; }
+  header.site .brand-name { font-size: 22px; }
+  header.site .house-mark { width: 30px; }
+  header.site .lang-menu summary { padding: 5px 8px; font-size: 12px; }
+  .hs-btn { padding: 6px 4px; font-size: 12px; }
+  .um-btn { padding: 0 10px; height: 38px; }
+  .um-btn .um-avatar { display: none; }
+}
+@media (max-width: 340px) { header.site .wrap { gap: 5px; padding-inline: 10px; } header.site .brand-name { font-size: 20px; } header.site .house-mark { width: 26px; } header.site .brand { gap: 4px; } .hs-btn { font-size: 11.5px; padding-inline: 2px; } }

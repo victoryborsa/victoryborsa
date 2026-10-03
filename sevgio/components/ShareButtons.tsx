@@ -17,7 +17,7 @@ export function ShareButtons({ url, title, statsId }: { url: string; title: stri
   }, [open]);
   // Counts the share on the listing's "times shared" number.
   const counted = () => { if (statsId) statsPost(statsId, { kind: "share" }).then(r => r && window.dispatchEvent(new CustomEvent("sevgio:shared", { detail: r }))); };
-  const text = `${title} on Sevgio Stays`;
+  const text = `${title} on Sevgio`;
   const u = encodeURIComponent(url), t = encodeURIComponent(text), both = encodeURIComponent(`${text}: ${url}`);
   const copy = async (msg = "Link copied.") => {
     counted();

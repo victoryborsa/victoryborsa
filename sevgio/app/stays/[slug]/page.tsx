@@ -45,8 +45,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title: `${p.title}, ${p.city}`,
     description: p.description.slice(0, 160),
-    openGraph: { title: `${p.title} · Sevgio Stays`, description: p.description.slice(0, 160), url: `/stays/${p.slug}`, type: "website", ...(photos[0] ? { images: [{ url: photoUrl(photos[0].id), alt: p.title }] } : {}) },
-    twitter: { card: photos[0] ? "summary_large_image" : "summary", title: `${p.title} · Sevgio Stays` },
+    openGraph: { title: `${p.title} · Sevgio`, description: p.description.slice(0, 160), url: `/stays/${p.slug}`, type: "website", ...(photos[0] ? { images: [{ url: photoUrl(photos[0].id), alt: p.title }] } : {}) },
+    twitter: { card: photos[0] ? "summary_large_image" : "summary", title: `${p.title} · Sevgio` },
   };
 }
 

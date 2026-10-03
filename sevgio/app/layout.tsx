@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { after } from "next/server";
 import { maybeRunScheduledJobs } from "@/lib/scheduled.ts";
-import { Logo } from "@/components/Logo.tsx";
+import { BrandLogo } from "@/components/BrandLogo.tsx";
 import { mailUrl, telUrl } from "@/lib/links.ts";
 import { Bricolage_Grotesque, Figtree, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
@@ -20,10 +20,10 @@ const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variabl
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL || "http://localhost:3000"),
-  title: { default: "Sevgio Stays · Yinz Are Home in Pittsburgh", template: "%s · Sevgio Stays" },
+  title: { default: "Sevgio · Yinz Are Home in Pittsburgh", template: "%s · Sevgio" },
   description: "Cozy private rooms and whole houses in Pittsburgh, booked direct with your hosts.",
-  openGraph: { siteName: "Sevgio Stays", type: "website", title: "Sevgio Stays · Yinz Are Home in Pittsburgh", description: "Cozy private rooms and whole houses in Pittsburgh, booked direct with your hosts." },
-  twitter: { card: "summary_large_image", title: "Sevgio Stays · Yinz Are Home in Pittsburgh" },
+  openGraph: { siteName: "Sevgio", type: "website", title: "Sevgio · Yinz Are Home in Pittsburgh", description: "Cozy private rooms and whole houses in Pittsburgh, booked direct with your hosts." },
+  twitter: { card: "summary_large_image", title: "Sevgio · Yinz Are Home in Pittsburgh" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#101820" };
 
@@ -38,7 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {settings.site_notice && <div className="site-notice"><div className="wrap">{settings.site_notice}</div></div>}
         <header className="site">
           <div className="wrap">
-            <Link className="logo logo-badge" href="/" aria-label="Sevgio Stays home"><Logo size={46} title="Sevgio Stays" /><span>sevgio <span className="logo-stays">stays</span></span></Link>
+            <Link className="logo" href="/" aria-label="Sevgio home"><BrandLogo size={46} /></Link>
             <nav className="main" aria-label="Main">
               <Link className="navlink" href="/stays">{t("nav.stays")}</Link>
               <Link className="navlink" href="/events">{t("nav.events")}</Link>
@@ -71,7 +71,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <footer className="site">
           <div className="wrap">
             <div className="stack" style={{ gap: 6 }}>
-              <strong style={{ fontFamily: "var(--f-display)", fontSize: 18 }}>Sevgio Stays</strong>
+              <BrandLogo size={36} />
               <span className="muted">{t("foot.tagline")}</span>
             </div>
             <div className="stack" style={{ gap: 6 }}>
@@ -92,7 +92,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/host">{t("foot.hostSignin")}</Link>
             </div>
           </div>
-          <div className="wrap foot-legal">© {new Date().getFullYear()} Sevgio Stays. All rights reserved. The photos, text, design and layout of this website belong to Sevgio Stays and may not be copied, reproduced or reused without written permission.</div>
+          <div className="wrap foot-legal">© {new Date().getFullYear()} Sevgio. All rights reserved. The photos, text, design and layout of this website belong to Sevgio and may not be copied, reproduced or reused without written permission.</div>
         </footer>
       </body>
     </html>

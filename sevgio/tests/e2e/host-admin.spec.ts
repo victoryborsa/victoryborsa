@@ -496,6 +496,8 @@ test("admin manages guide places: draft, preview, publish, reorder, sponsor with
   await expect(page.getByText(/Published\./)).toBeVisible();
   await page.goto("/admin/guide");
   await page.getByRole("button", { name: "Move Yinzer Coffee Co. to the top" }).click();
+  // Once it's first, its Top button turns off.
+  await expect(page.getByRole("button", { name: "Move Yinzer Coffee Co. to the top" })).toBeDisabled();
   await page.goto("/pittsburgh");
   const first = eat.locator(".gp-card").first();
   await expect(first).toContainText("Yinzer Coffee Co.");

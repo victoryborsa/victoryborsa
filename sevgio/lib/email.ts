@@ -6,7 +6,7 @@ let transport: ReturnType<typeof nodemailer.createTransport> | null = null;
 // Settings pasted into Render often carry stray spaces; Gmail shows app passwords as "abcd efgh ijkl mnop".
 const env = (k: string) => (process.env[k] || "").trim();
 const smtpUser = () => env("SMTP_USER");
-const fromAddress = () => env("EMAIL_FROM") || (smtpUser() ? `Sevgio Stays <${smtpUser()}>` : "Sevgio Stays <no-reply@sevgio.com>");
+const fromAddress = () => env("EMAIL_FROM") || (smtpUser() ? `Sevgio <${smtpUser()}>` : "Sevgio <no-reply@sevgio.com>");
 
 function getTransport() {
   if (!emailReady()) return null;
@@ -50,7 +50,7 @@ function toHtml(text: string): string {
 
 export async function sendEmail(to: string, subject: string, text: string, opts: { force?: boolean } = {}): Promise<{ ok: boolean; error?: string }> {
   const t = getTransport();
-  const body = text + "\n\nSevgio Stays\n" + siteUrl();
+  const body = text + "\n\nSevgio\n" + siteUrl();
   if (!t) {
     console.log(`\n[email not configured] To: ${to}\nSubject: ${subject}\n${body}\n`);
     return { ok: false, error: "not-configured" };

@@ -51,7 +51,7 @@ export async function signUpAction(_: ActionState, fd: FormData): Promise<Action
   if (wantsHost) {
     await logEvent("warn", "Accounts", `Host request from ${name} (${email})`, {}, u!.id);
     const admins = await q<{ email: string }>("SELECT email FROM users WHERE role = 'admin' AND NOT disabled");
-    for (const a of admins) await sendEmail(a.email, `New host request: ${name}`, `${name} (${email}${phone ? `, ${phone}` : ""}) signed up and wants to list their home on Sevgio Stays.\n\nApprove them in Admin → Users & roles: ${siteUrl()}/admin/users?role=requests`);
+    for (const a of admins) await sendEmail(a.email, `New host request: ${name}`, `${name} (${email}${phone ? `, ${phone}` : ""}) signed up and wants to list their home on Sevgio.\n\nApprove them in Admin → Users & roles: ${siteUrl()}/admin/users?role=requests`);
   }
   await createSession(u!.id);
   await sendVerificationCode({ id: u!.id, email, name });
@@ -75,7 +75,7 @@ export async function forgotPasswordAction(_: ActionState, fd: FormData): Promis
     if (!recent || recent.n === 0) {
       const token = linkToken();
       await q("INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '30 minutes')", [sha256(token), u.id]);
-      await sendEmail(email, "Reset your Sevgio Stays password", `Hi ${u.name.split(" ")[0]},\n\nUse this link to choose a new password. It works once and expires in 30 minutes:\n${siteUrl()}/reset/${token}\n\nIf you didn't ask for this, you can ignore this email. Your password hasn't changed.`);
+      await sendEmail(email, "Reset your Sevgio password", `Hi ${u.name.split(" ")[0]},\n\nUse this link to choose a new password. It works once and expires in 30 minutes:\n${siteUrl()}/reset/${token}\n\nIf you didn't ask for this, you can ignore this email. Your password hasn't changed.`);
     }
   }
   // Same message either way, so this form can't be used to find out who has an account.
@@ -157,7 +157,7 @@ export async function requestHostAction(_: ActionState, _fd: FormData): Promise<
   if (r) {
     await logEvent("warn", "Accounts", `Host request from ${u.name} (${u.email})`, {}, u.id);
     const admins = await q<{ email: string }>("SELECT email FROM users WHERE role = 'admin' AND NOT disabled");
-    for (const a of admins) await sendEmail(a.email, `New host request: ${u.name}`, `${u.name} (${u.email}) wants to list their home on Sevgio Stays.\n\nApprove them in Admin → Users & roles: ${siteUrl()}/admin/users?role=requests`);
+    for (const a of admins) await sendEmail(a.email, `New host request: ${u.name}`, `${u.name} (${u.email}) wants to list their home on Sevgio.\n\nApprove them in Admin → Users & roles: ${siteUrl()}/admin/users?role=requests`);
   }
   revalidatePath("/account");
   return { ok: "Request sent. We'll email you when your host tools are ready." };

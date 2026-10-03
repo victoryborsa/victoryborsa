@@ -21,7 +21,7 @@ export default async function Contact() {
         </div>
         <label className="field">
           <span>Topic</span>
-          <select className="input" name="topic"><option>Question before booking</option><option>Existing booking</option><option>Listing my home with Sevgio Stays</option><option>Something else</option></select>
+          <select className="input" name="topic"><option>Question before booking</option><option>Existing booking</option><option>Listing my home with Sevgio</option><option>Something else</option></select>
         </label>
         <label className="field"><span>Message</span><textarea className="input" name="body" required /></label>
         <div style={{ position: "absolute", left: -9999 }} aria-hidden="true"><label>Leave empty<input name="website" tabIndex={-1} autoComplete="off" /></label></div>
