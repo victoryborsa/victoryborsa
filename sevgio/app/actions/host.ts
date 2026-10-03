@@ -58,6 +58,11 @@ function readListing(fd: FormData) {
     smart_pricing: fd.get("smart_pricing") === "on",
     min_price: str(fd, "min_price") ? toCents(str(fd, "min_price")) : null,
     max_price: str(fd, "max_price") ? toCents(str(fd, "max_price")) : null,
+    corp_listed: fd.get("corp_listed") === "on",
+    corp_monthly: str(fd, "corp_monthly") ? toCents(str(fd, "corp_monthly")) : null,
+    corp_deposit: toCents(str(fd, "corp_deposit") || "0"), corp_cleaning: toCents(str(fd, "corp_cleaning") || "0"), corp_pet_fee: toCents(str(fd, "corp_pet_fee") || "0"),
+    corp_available_from: str(fd, "corp_available_from", 10) || null,
+    furnished_finder_url: str(fd, "furnished_finder_url", 500),
   };
   // Monthly rentals don't need a nightly price; keep one (rent ÷ 30) for sorting and the calendar.
   if (v.monthly && !v.nightly) v.nightly = Math.round(v.monthly / 30);
@@ -69,6 +74,12 @@ function readListing(fd: FormData) {
   else if (v.smart_pricing && !(v.min_price && v.max_price && v.min_price > 0 && v.max_price > 0)) error = "Smart pricing needs a lowest and a highest price per night.";
   else if (v.smart_pricing && v.min_price! > v.max_price!) error = "The lowest price per night can't be higher than the highest.";
   else if ((v.min_price !== null && !(v.min_price > 0)) || (v.max_price !== null && !(v.max_price > 0))) error = "Enter the minimum and maximum prices as numbers.";
+  else if (v.corp_monthly !== null && !(v.corp_monthly > 0)) error = "Enter the corporate housing monthly price as a number, or leave it empty.";
+  else if (v.corp_listed && !v.corp_monthly) error = "Add the all-inclusive monthly price to show this home on the Corporate Housing page.";
+  else if (v.corp_listed && v.parent_id) error = "Only entire homes can be shown on the Corporate Housing page.";
+  else if ([v.corp_deposit, v.corp_cleaning, v.corp_pet_fee].some(c => c === null)) error = "Enter the corporate housing deposit and fees as numbers (use 0 for none).";
+  else if (v.corp_available_from && !/^\d{4}-\d{2}-\d{2}$/.test(v.corp_available_from)) error = "Choose a valid Available from date.";
+  else if (v.furnished_finder_url && !/^https:\/\/(www\.)?furnishedfinder\.com\//i.test(v.furnished_finder_url)) error = "The Furnished Finder link should start with https://www.furnishedfinder.com/";
   else if (v.monthly !== null && !(v.monthly > 0)) error = "Enter the monthly rent as a number, or leave it empty.";
   else if (v.monthly && v.min_nights < 28) error = "Monthly rentals need a minimum stay of at least 28 nights. Set Minimum nights to 30.";
   else if (!v.city) error = "Add the town or city.";
@@ -112,6 +123,8 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     pet_fee_cents: v.pet_fee || 0, pet_fee_per: v.pet_fee_per,
     rooms_detail: JSON.stringify(v.rooms), services: JSON.stringify(v.services), security_deposit_cents: v.deposit || 0,
     monthly_price_cents: v.monthly, smart_pricing: v.smart_pricing && !v.monthly, min_price_cents: v.min_price, max_price_cents: v.max_price,
+    corp_listed: v.corp_listed, corp_monthly_cents: v.corp_monthly, corp_deposit_cents: v.corp_deposit || 0, corp_cleaning_cents: v.corp_cleaning || 0,
+    corp_pet_fee_cents: v.corp_pet_fee || 0, corp_available_from: v.corp_available_from, furnished_finder_url: v.furnished_finder_url,
   };
   // Only admins set the management fee; hosts never see or change it.
   if (isAdmin && v.management_fee_percent !== null) cols.management_fee_percent = v.management_fee_percent;
@@ -188,7 +201,8 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
   const plain = ["title", "property_type", "city", "area", "address", "description", "max_guests", "bedrooms", "bathrooms", "half_bathrooms", "bathroom_type",
     "kitchen_access", "laundry_access", "stairs_info", "shared_spaces", "camera_locations", "min_nights", "max_nights", "booking_mode", "cancellation_policy", "check_in_time",
     "check_out_time", "arrival_instructions", "base_occupancy", "fewer_guest_discount_percent", "weekly_discount_percent", "monthly_discount_percent",
-    "children_free_age", "management_fee_percent", "owner_zelle", "owner_venmo", "pet_fee_per", "monthly_price", ...Object.keys(IMPORT_FIELDS)];
+    "children_free_age", "management_fee_percent", "owner_zelle", "owner_venmo", "pet_fee_per", "monthly_price",
+    "corp_monthly", "corp_deposit", "corp_cleaning", "corp_pet_fee", "furnished_finder_url", ...Object.keys(IMPORT_FIELDS)];
   for (const k of plain) set(IMPORT_FIELDS[k] || k, item[k]);
   const isRoom = item.listing_kind === "room" || item.property_type === "room";
   fd.set("listing_kind", isRoom ? "room" : "home");

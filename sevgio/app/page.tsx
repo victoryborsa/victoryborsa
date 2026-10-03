@@ -44,7 +44,7 @@ function MiniCard({ p, saved, eager }: { p: CardProperty; saved: boolean; eager?
   );
 }
 
-const TABS: [string, string, IconName][] = [["/", "All", "all"], ["/stays?kind=home", "Homes", "home"], ["/stays?kind=room", "Rooms", "room"], ["/stays?monthly=1", "Monthly", "calendar"], ["/pittsburgh", "Things to do", "compass"], ["/events", "Events", "ticket"]];
+const TABS: [string, string, IconName][] = [["/", "All", "all"], ["/stays?kind=home", "Homes", "home"], ["/stays?kind=room", "Rooms", "room"], ["/stays?monthly=1", "Monthly", "calendar"], ["/corporate-housing", "Corporate", "briefcase"], ["/pittsburgh", "Things to do", "compass"], ["/events", "Events", "ticket"]];
 
 export default async function Home() {
   const visitor = (await cookies()).get(VISITOR_COOKIE)?.value || "";

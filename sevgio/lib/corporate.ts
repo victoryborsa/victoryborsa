@@ -1,0 +1,25 @@
+import "server-only";
+import { q } from "./db.ts";
+import type { CardProperty } from "./queries.ts";
+import { todayLocal } from "./dates.ts";
+
+export type CorpHome = CardProperty & { corp_monthly_cents: number; corp_deposit_cents: number; corp_cleaning_cents: number; corp_pet_fee_cents: number; corp_available_from: string | null; furnished_finder_url: string };
+
+/** Published homes the host chose to show on the Corporate Housing page, lowest monthly rate first. */
+export async function corporateHomes(): Promise<CorpHome[]> {
+  return q<CorpHome>(`SELECT p.*, to_char(p.corp_available_from, 'YYYY-MM-DD') AS corp_available_from,
+      (SELECT id FROM photos ph WHERE ph.property_id = p.id ORDER BY position, created_at LIMIT 1) AS cover_id,
+      (SELECT u.name FROM users u WHERE u.id = p.host_id) AS host_name
+    FROM properties p WHERE p.status = 'published' AND p.corp_listed AND p.corp_monthly_cents IS NOT NULL
+    ORDER BY p.corp_monthly_cents, p.title`);
+}
+
+/** "Available now" or "Available Nov 1", from the date the home is free for a new monthly guest. */
+export function availableLabel(from: string | null, today = todayLocal()): string {
+  if (!from || from <= today) return "Available now";
+  const d = new Date(from + "T12:00:00");
+  return "Available " + d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(from.slice(0, 4) !== today.slice(0, 4) ? { year: "numeric" } : {}) });
+}
+
+/** Only real Furnished Finder links are shown. */
+export const isFurnishedFinderUrl = (u: string) => /^https:\/\/(www\.)?furnishedfinder\.com\//i.test(u);

@@ -130,6 +130,20 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
         </div>
       </div>
 
+      <div className="box" id="corporate">
+        <h2>Corporate housing page</h2>
+        <p className="muted">Show this home on <a href="/corporate-housing" target="_blank">sevgio.com/corporate-housing</a> for travel nurses, doctors and companies, with one fixed all-inclusive monthly price and its fees. Entire homes only.</p>
+        <label className="chk"><input type="checkbox" name="corp_listed" defaultChecked={!!p?.corp_listed} /><span><b>Show on the Corporate Housing page</b></span></label>
+        <div className="grid-2" style={{ marginTop: 12 }}>
+          <label className="field"><span>Monthly price (USD, all inclusive)</span><input className="input mono" name="corp_monthly" inputMode="decimal" defaultValue={p?.corp_monthly_cents ? dollars(p.corp_monthly_cents) : ""} placeholder="2300" /></label>
+          <label className="field"><span>Available from (empty = available now)</span><input className="input" name="corp_available_from" type="date" defaultValue={p?.corp_available_from || ""} /></label>
+          <label className="field"><span>Security deposit (USD)</span><input className="input mono" name="corp_deposit" inputMode="decimal" defaultValue={dollars(p?.corp_deposit_cents) || "0"} /></label>
+          <label className="field"><span>Cleaning fee (USD, one time)</span><input className="input mono" name="corp_cleaning" inputMode="decimal" defaultValue={dollars(p?.corp_cleaning_cents) || "0"} /></label>
+          <label className="field"><span>Pet fee (USD, non-refundable, 0 = none)</span><input className="input mono" name="corp_pet_fee" inputMode="decimal" defaultValue={dollars(p?.corp_pet_fee_cents) || "0"} /></label>
+          <label className="field"><span>Furnished Finder link (optional)</span><input className="input" name="furnished_finder_url" type="url" defaultValue={p?.furnished_finder_url ?? ""} placeholder="https://www.furnishedfinder.com/property/..." /></label>
+        </div>
+      </div>
+
       <div className="box">
         <h2>Owner's payment accounts (optional)</h2>
         <p className="muted">If this home's owner wants guests to pay them directly, add their Zelle and/or Venmo. Guests of this listing then see these instead of Sevgio's accounts. Leave empty to use the accounts in Admin → Settings.</p>

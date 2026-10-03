@@ -16,7 +16,7 @@ export type Lang = (typeof LANGS)[number]["code"];
 export const LANGS_AZ = [...LANGS].sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
 
 const en = {
-  "nav.menu": "Menu", "nav.becomeHost": "Become a host", "nav.toHosting": "Switch to hosting", "nav.toTraveling": "Switch to traveling", "nav.close": "Close", "nav.explore": "Explore", "nav.yourAccount": "Your account", "nav.stays": "Stays", "nav.events": "Events", "nav.guide": "Pittsburgh guide", "nav.contact": "Contact", "nav.host": "Host dashboard", "nav.admin": "Admin", "nav.trips": "My trips",
+  "nav.menu": "Menu", "nav.becomeHost": "Become a host", "nav.toHosting": "Switch to hosting", "nav.toTraveling": "Switch to traveling", "nav.close": "Close", "nav.explore": "Explore", "nav.yourAccount": "Your account", "nav.stays": "Stays", "nav.events": "Events", "nav.guide": "Pittsburgh guide", "nav.corporate": "Corporate housing", "nav.contact": "Contact", "nav.host": "Host dashboard", "nav.admin": "Admin", "nav.trips": "My trips",
   "nav.account": "Account", "nav.signout": "Sign out", "nav.signin": "Sign in", "nav.signup": "Create account", "nav.language": "Language",
   "foot.tagline": "Homes and private rooms in Pittsburgh, booked direct.", "foot.guests": "Guests", "foot.find": "Find a stay", "foot.help": "Help", "foot.contact": "Contact us", "foot.hosts": "Hosts", "foot.hostSignin": "Host sign in",
   "home.eyebrow": "Welcome, yinz!", "home.h1": "From wherever yinz call home,\nto right here in the ’Burgh.", "home.welcome": "Come on in. Yinz are home.",
@@ -38,7 +38,7 @@ export type Key = keyof typeof en;
 type Dict = Partial<Record<Key, string>>;
 
 const tr: Dict = {
-  "nav.menu": "Menü", "nav.becomeHost": "Ev sahibi olun", "nav.toHosting": "Ev sahibi moduna geç", "nav.toTraveling": "Misafir moduna geç", "nav.close": "Kapat", "nav.explore": "Keşfet", "nav.yourAccount": "Hesabınız", "nav.stays": "Konaklamalar", "nav.events": "Etkinlikler", "nav.guide": "Pittsburgh rehberi", "nav.contact": "İletişim", "nav.host": "Ev sahibi paneli", "nav.admin": "Yönetim", "nav.trips": "Rezervasyonlarım",
+  "nav.menu": "Menü", "nav.becomeHost": "Ev sahibi olun", "nav.toHosting": "Ev sahibi moduna geç", "nav.toTraveling": "Misafir moduna geç", "nav.close": "Kapat", "nav.explore": "Keşfet", "nav.yourAccount": "Hesabınız", "nav.stays": "Konaklamalar", "nav.events": "Etkinlikler", "nav.guide": "Pittsburgh rehberi", "nav.corporate": "Kurumsal konaklama", "nav.contact": "İletişim", "nav.host": "Ev sahibi paneli", "nav.admin": "Yönetim", "nav.trips": "Rezervasyonlarım",
   "nav.account": "Hesabım", "nav.signout": "Çıkış yap", "nav.signin": "Giriş yap", "nav.signup": "Hesap oluştur", "nav.language": "Dil",
   "foot.tagline": "Pittsburgh'da evler ve özel odalar, doğrudan rezervasyon.", "foot.guests": "Misafirler", "foot.find": "Konaklama bul", "foot.help": "Yardım", "foot.contact": "Bize ulaşın", "foot.hosts": "Ev sahipleri", "foot.hostSignin": "Ev sahibi girişi",
   "home.eyebrow": "Hoş geldiniz!", "home.welcome": "Buyurun, içeri gelin. Burası sizin eviniz.", "home.h1": "Dünyanın her yerinden Pittsburgh'daki evinize.",
@@ -58,7 +58,7 @@ const tr: Dict = {
 };
 
 const es: Dict = {
-  "nav.menu": "Menú", "nav.close": "Cerrar", "nav.explore": "Explorar", "nav.yourAccount": "Tu cuenta", "nav.stays": "Alojamientos", "nav.events": "Eventos", "nav.guide": "Guía de Pittsburgh", "nav.contact": "Contacto", "nav.host": "Panel del anfitrión", "nav.admin": "Administración", "nav.trips": "Mis viajes",
+  "nav.menu": "Menú", "nav.close": "Cerrar", "nav.explore": "Explorar", "nav.yourAccount": "Tu cuenta", "nav.stays": "Alojamientos", "nav.events": "Eventos", "nav.guide": "Guía de Pittsburgh", "nav.corporate": "Vivienda corporativa", "nav.contact": "Contacto", "nav.host": "Panel del anfitrión", "nav.admin": "Administración", "nav.trips": "Mis viajes",
   "nav.account": "Mi cuenta", "nav.signout": "Cerrar sesión", "nav.signin": "Iniciar sesión", "nav.signup": "Crear cuenta", "nav.language": "Idioma",
   "foot.tagline": "Casas y habitaciones privadas en Pittsburgh, reserva directa.", "foot.guests": "Huéspedes", "foot.find": "Buscar alojamiento", "foot.help": "Ayuda", "foot.contact": "Contáctanos", "foot.hosts": "Anfitriones", "foot.hostSignin": "Acceso anfitriones",
   "home.eyebrow": "¡Bienvenidos!", "home.welcome": "Pasen, están en casa.", "home.h1": "Desde cualquier parte del mundo a un hogar en Pittsburgh.",
@@ -78,7 +78,7 @@ const es: Dict = {
 };
 
 const fr: Dict = {
-  "nav.menu": "Menu", "nav.close": "Fermer", "nav.explore": "Explorer", "nav.yourAccount": "Votre compte", "nav.stays": "Logements", "nav.events": "Événements", "nav.guide": "Guide de Pittsburgh", "nav.contact": "Contact", "nav.host": "Espace hôte", "nav.admin": "Administration", "nav.trips": "Mes voyages",
+  "nav.menu": "Menu", "nav.close": "Fermer", "nav.explore": "Explorer", "nav.yourAccount": "Votre compte", "nav.stays": "Logements", "nav.events": "Événements", "nav.guide": "Guide de Pittsburgh", "nav.corporate": "Logement d’entreprise", "nav.contact": "Contact", "nav.host": "Espace hôte", "nav.admin": "Administration", "nav.trips": "Mes voyages",
   "nav.account": "Mon compte", "nav.signout": "Se déconnecter", "nav.signin": "Se connecter", "nav.signup": "Créer un compte", "nav.language": "Langue",
   "foot.tagline": "Maisons et chambres privées à Pittsburgh, en réservation directe.", "foot.guests": "Voyageurs", "foot.find": "Trouver un logement", "foot.help": "Aide", "foot.contact": "Nous contacter", "foot.hosts": "Hôtes", "foot.hostSignin": "Connexion hôte",
   "home.eyebrow": "Bienvenue !", "home.welcome": "Entrez donc, vous êtes chez vous.", "home.h1": "De partout dans le monde, jusqu'à votre maison à Pittsburgh.",
@@ -98,7 +98,7 @@ const fr: Dict = {
 };
 
 const de: Dict = {
-  "nav.menu": "Menü", "nav.close": "Schließen", "nav.explore": "Entdecken", "nav.yourAccount": "Ihr Konto", "nav.stays": "Unterkünfte", "nav.events": "Veranstaltungen", "nav.guide": "Pittsburgh-Guide", "nav.contact": "Kontakt", "nav.host": "Gastgeber-Bereich", "nav.admin": "Verwaltung", "nav.trips": "Meine Reisen",
+  "nav.menu": "Menü", "nav.close": "Schließen", "nav.explore": "Entdecken", "nav.yourAccount": "Ihr Konto", "nav.stays": "Unterkünfte", "nav.events": "Veranstaltungen", "nav.guide": "Pittsburgh-Guide", "nav.corporate": "Firmenwohnungen", "nav.contact": "Kontakt", "nav.host": "Gastgeber-Bereich", "nav.admin": "Verwaltung", "nav.trips": "Meine Reisen",
   "nav.account": "Konto", "nav.signout": "Abmelden", "nav.signin": "Anmelden", "nav.signup": "Konto erstellen", "nav.language": "Sprache",
   "foot.tagline": "Häuser und Privatzimmer in Pittsburgh, direkt gebucht.", "foot.guests": "Gäste", "foot.find": "Unterkunft finden", "foot.help": "Hilfe", "foot.contact": "Kontakt", "foot.hosts": "Gastgeber", "foot.hostSignin": "Gastgeber-Anmeldung",
   "home.eyebrow": "Willkommen!", "home.welcome": "Kommt herein. Ihr seid zu Hause.", "home.h1": "Von überall auf der Welt in ein Zuhause in Pittsburgh.",
@@ -118,7 +118,7 @@ const de: Dict = {
 };
 
 const it: Dict = {
-  "nav.menu": "Menu", "nav.close": "Chiudi", "nav.explore": "Esplora", "nav.yourAccount": "Il tuo account", "nav.stays": "Alloggi", "nav.events": "Eventi", "nav.guide": "Guida di Pittsburgh", "nav.contact": "Contatti", "nav.host": "Area host", "nav.admin": "Amministrazione", "nav.trips": "I miei viaggi",
+  "nav.menu": "Menu", "nav.close": "Chiudi", "nav.explore": "Esplora", "nav.yourAccount": "Il tuo account", "nav.stays": "Alloggi", "nav.events": "Eventi", "nav.guide": "Guida di Pittsburgh", "nav.corporate": "Alloggi aziendali", "nav.contact": "Contatti", "nav.host": "Area host", "nav.admin": "Amministrazione", "nav.trips": "I miei viaggi",
   "nav.account": "Account", "nav.signout": "Esci", "nav.signin": "Accedi", "nav.signup": "Crea account", "nav.language": "Lingua",
   "foot.tagline": "Case e camere private a Pittsburgh, prenotazione diretta.", "foot.guests": "Ospiti", "foot.find": "Trova un alloggio", "foot.help": "Aiuto", "foot.contact": "Contattaci", "foot.hosts": "Host", "foot.hostSignin": "Accesso host",
   "home.eyebrow": "Benvenuti!", "home.welcome": "Entrate pure, siete a casa.", "home.h1": "Da ogni parte del mondo a una casa a Pittsburgh.",
@@ -138,7 +138,7 @@ const it: Dict = {
 };
 
 const pt: Dict = {
-  "nav.menu": "Menu", "nav.close": "Fechar", "nav.explore": "Explorar", "nav.yourAccount": "Sua conta", "nav.stays": "Hospedagens", "nav.events": "Eventos", "nav.guide": "Guia de Pittsburgh", "nav.contact": "Contato", "nav.host": "Painel do anfitrião", "nav.admin": "Administração", "nav.trips": "Minhas viagens",
+  "nav.menu": "Menu", "nav.close": "Fechar", "nav.explore": "Explorar", "nav.yourAccount": "Sua conta", "nav.stays": "Hospedagens", "nav.events": "Eventos", "nav.guide": "Guia de Pittsburgh", "nav.corporate": "Moradia corporativa", "nav.contact": "Contato", "nav.host": "Painel do anfitrião", "nav.admin": "Administração", "nav.trips": "Minhas viagens",
   "nav.account": "Minha conta", "nav.signout": "Sair", "nav.signin": "Entrar", "nav.signup": "Criar conta", "nav.language": "Idioma",
   "foot.tagline": "Casas e quartos privativos em Pittsburgh, com reserva direta.", "foot.guests": "Hóspedes", "foot.find": "Encontrar hospedagem", "foot.help": "Ajuda", "foot.contact": "Fale conosco", "foot.hosts": "Anfitriões", "foot.hostSignin": "Entrada de anfitriões",
   "home.eyebrow": "Bem-vindos!", "home.welcome": "Entrem, vocês estão em casa.", "home.h1": "De qualquer lugar do mundo para uma casa em Pittsburgh.",
@@ -158,7 +158,7 @@ const pt: Dict = {
 };
 
 const ja: Dict = {
-  "nav.menu": "メニュー", "nav.close": "閉じる", "nav.explore": "さがす", "nav.yourAccount": "アカウント", "nav.stays": "宿泊先", "nav.events": "イベント", "nav.guide": "ピッツバーグガイド", "nav.contact": "お問い合わせ", "nav.host": "ホスト管理", "nav.admin": "管理", "nav.trips": "予約一覧",
+  "nav.menu": "メニュー", "nav.close": "閉じる", "nav.explore": "さがす", "nav.yourAccount": "アカウント", "nav.stays": "宿泊先", "nav.events": "イベント", "nav.guide": "ピッツバーグガイド", "nav.corporate": "法人向け住宅", "nav.contact": "お問い合わせ", "nav.host": "ホスト管理", "nav.admin": "管理", "nav.trips": "予約一覧",
   "nav.account": "アカウント", "nav.signout": "ログアウト", "nav.signin": "ログイン", "nav.signup": "アカウント作成", "nav.language": "言語",
   "foot.tagline": "ピッツバーグの一軒家と個室を直接予約。", "foot.guests": "ゲスト", "foot.find": "宿泊先を探す", "foot.help": "ヘルプ", "foot.contact": "お問い合わせ", "foot.hosts": "ホスト", "foot.hostSignin": "ホストログイン",
   "home.eyebrow": "ようこそ！", "home.welcome": "どうぞお入りください。ここがあなたの家です。", "home.h1": "世界中から、ピッツバーグのわが家へ。",
@@ -178,7 +178,7 @@ const ja: Dict = {
 };
 
 const zh: Dict = {
-  "nav.menu": "菜单", "nav.close": "关闭", "nav.explore": "探索", "nav.yourAccount": "你的账户", "nav.stays": "住宿", "nav.events": "活动", "nav.guide": "匹兹堡指南", "nav.contact": "联系我们", "nav.host": "房东后台", "nav.admin": "管理", "nav.trips": "我的行程",
+  "nav.menu": "菜单", "nav.close": "关闭", "nav.explore": "探索", "nav.yourAccount": "你的账户", "nav.stays": "住宿", "nav.events": "活动", "nav.guide": "匹兹堡指南", "nav.corporate": "企业住房", "nav.contact": "联系我们", "nav.host": "房东后台", "nav.admin": "管理", "nav.trips": "我的行程",
   "nav.account": "我的账户", "nav.signout": "退出", "nav.signin": "登录", "nav.signup": "注册", "nav.language": "语言",
   "foot.tagline": "匹兹堡整栋房屋和独立房间，直接预订。", "foot.guests": "房客", "foot.find": "查找住宿", "foot.help": "帮助", "foot.contact": "联系我们", "foot.hosts": "房东", "foot.hostSignin": "房东登录",
   "home.eyebrow": "欢迎！", "home.welcome": "请进，这里就是你的家。", "home.h1": "从世界各地，来到你在匹兹堡的家。",
@@ -198,7 +198,7 @@ const zh: Dict = {
 };
 
 const hi: Dict = {
-  "nav.menu": "मेनू", "nav.close": "बंद करें", "nav.explore": "खोजें", "nav.yourAccount": "आपका खाता", "nav.stays": "ठहरने की जगहें", "nav.events": "कार्यक्रम", "nav.guide": "पिट्सबर्ग गाइड", "nav.contact": "संपर्क", "nav.host": "होस्ट डैशबोर्ड", "nav.admin": "एडमिन", "nav.trips": "मेरी यात्राएँ",
+  "nav.menu": "मेनू", "nav.close": "बंद करें", "nav.explore": "खोजें", "nav.yourAccount": "आपका खाता", "nav.stays": "ठहरने की जगहें", "nav.events": "कार्यक्रम", "nav.guide": "पिट्सबर्ग गाइड", "nav.corporate": "कॉर्पोरेट आवास", "nav.contact": "संपर्क", "nav.host": "होस्ट डैशबोर्ड", "nav.admin": "एडमिन", "nav.trips": "मेरी यात्राएँ",
   "nav.account": "खाता", "nav.signout": "साइन आउट", "nav.signin": "साइन इन", "nav.signup": "खाता बनाएँ", "nav.language": "भाषा",
   "foot.tagline": "पिट्सबर्ग में पूरे घर और निजी कमरे, सीधे बुक करें।", "foot.guests": "मेहमान", "foot.find": "जगह खोजें", "foot.help": "सहायता", "foot.contact": "हमसे संपर्क करें", "foot.hosts": "होस्ट", "foot.hostSignin": "होस्ट साइन इन",
   "home.eyebrow": "स्वागत है!", "home.welcome": "आइए, अंदर आइए। यह आपका घर है।", "home.h1": "दुनिया के किसी भी कोने से, पिट्सबर्ग में अपने घर तक।",

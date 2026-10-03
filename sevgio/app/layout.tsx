@@ -43,6 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link className="navlink" href="/stays">{t("nav.stays")}</Link>
               <Link className="navlink" href="/events">{t("nav.events")}</Link>
               <Link className="navlink" href="/pittsburgh">{t("nav.guide")}</Link>
+              <Link className="navlink" href="/corporate-housing">{t("nav.corporate")}</Link>
               {!user && (
                 <>
                   <Link className="navlink" href="/signin">{t("nav.signin")}</Link>
@@ -53,7 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <LangMenu current={lang} label={t("nav.language")} langs={LANGS_AZ.map(l => ({ code: l.code, name: l.name }))} />
             <HostSwitch role={user?.role ?? null} labels={{ become: t("nav.becomeHost"), toHosting: t("nav.toHosting"), toTraveling: t("nav.toTraveling") }} />
             <UserMenu
-              main={[{ href: "/stays", label: t("nav.stays") }, { href: "/events", label: t("nav.events") }, { href: "/pittsburgh", label: t("nav.guide") }]}
+              main={[{ href: "/stays", label: t("nav.stays") }, { href: "/events", label: t("nav.events") }, { href: "/pittsburgh", label: t("nav.guide") }, { href: "/corporate-housing", label: t("nav.corporate") }]}
               items={[
                 { href: "/contact", label: t("nav.contact") },
                 ...(user?.role === "admin" ? [{ href: "/admin", label: t("nav.admin") }] : []),
@@ -79,6 +80,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/stays">{t("foot.find")}</Link>
               <Link href="/events">{t("nav.events")}</Link>
               <Link href="/pittsburgh">{t("nav.guide")}</Link>
+              <Link href="/corporate-housing">{t("nav.corporate")}</Link>
               <Link href="/trips">{t("nav.trips")}</Link>
             </div>
             <div className="stack" style={{ gap: 6 }}>

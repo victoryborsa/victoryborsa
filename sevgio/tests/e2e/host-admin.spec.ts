@@ -863,3 +863,60 @@ test("admin can look up all listings on the map; each listing says whether it's 
   await expect(page.getByText(/on the map|couldn't be found/).first()).toBeVisible();
   await signOut(page);
 });
+
+test("corporate housing: host shows a home with its monthly rate and fees; companies send a request", async ({ page }) => {
+  const [p] = await sql<{ id: string; title: string }>("SELECT id, title FROM properties WHERE slug = 'mount-washington-view-house'");
+  await page.goto("/corporate-housing");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("A furnished home for your next assignment");
+  await expect(page.locator(".ch-home")).toHaveCount(0);
+
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto(`/host/listings/${p.id}`);
+  await page.getByLabel("Show on the Corporate Housing page").check();
+  await page.getByLabel("Monthly price (USD, all inclusive)").fill("4500");
+  await page.getByLabel("Security deposit (USD)").fill("100");
+  await page.getByLabel("Cleaning fee (USD, one time)").fill("450");
+  await page.getByLabel("Pet fee (USD, non-refundable, 0 = none)").fill("750");
+  await page.getByLabel("Furnished Finder link (optional)").fill("https://www.furnishedfinder.com/property/123456_1");
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/^Saved\./)).toBeVisible();
+
+  // The page lists the home with its fixed monthly price and every fee; it's in the top bar and the ☰ menu.
+  await page.goto("/");
+  await page.getByRole("banner").getByRole("link", { name: "Corporate housing" }).click();
+  const card = page.locator(".ch-home", { hasText: p.title });
+  await expect(card).toContainText("$4,500");
+  await expect(card).toContainText("Fixed price, all inclusive");
+  await expect(card).toContainText("Security deposit$100");
+  await expect(card).toContainText("Cleaning fee");
+  await expect(card).toContainText("$450");
+  await expect(card).toContainText("Pet fee");
+  await expect(card).toContainText("$750");
+  await expect(card).toContainText("Available now");
+  await expect(card.getByRole("link", { name: /Furnished Finder/ })).toHaveAttribute("href", "https://www.furnishedfinder.com/property/123456_1");
+
+  // "Request this home" picks it in the form; the request lands in Admin messages.
+  await card.getByRole("link", { name: "Request this home" }).click();
+  await expect(page.locator("#request select[name=home]")).toHaveValue(p.id);
+  await page.getByLabel("Company or agency (optional)").fill("Three Rivers Staffing");
+  await page.getByLabel("Phone (optional)").fill("(412) 555-0142");
+  await page.getByLabel("Move-in date").fill(iso(20));
+  await page.getByLabel("Length of stay").selectOption("3 months (13 weeks)");
+  await page.getByLabel("Hospital, workplace or area (optional)").fill("UPMC Mercy");
+  await page.getByRole("button", { name: "Send request" }).click();
+  await expect(page.getByText(/Request sent\. We'll reply to admin@demo\.sevgio\.com/)).toBeVisible();
+  const [m] = await sql<{ topic: string; body: string; property_id: string }>("SELECT topic, body, property_id FROM messages ORDER BY created_at DESC LIMIT 1");
+  expect(m.topic).toBe("Corporate housing request (Three Rivers Staffing)");
+  expect(m.property_id).toBe(p.id);
+  expect(m.body).toContain("Length of stay: 3 months (13 weeks)");
+  expect(m.body).toContain("Area or workplace: UPMC Mercy");
+
+  // Switching it off removes it from the page.
+  await page.goto(`/host/listings/${p.id}`);
+  await page.getByLabel("Show on the Corporate Housing page").uncheck();
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/^Saved\./)).toBeVisible();
+  await page.goto("/corporate-housing");
+  await expect(page.locator(".ch-home")).toHaveCount(0);
+  await signOut(page);
+});
