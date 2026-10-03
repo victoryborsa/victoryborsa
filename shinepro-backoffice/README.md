@@ -15,6 +15,11 @@ Lead capture, website chat and admin for **pghshinepro.com**. Built so no potent
 | **Employees** | Add or edit cleaners, mark them inactive, see each person's jobs. |
 | **Bookings & calendar** | Book a job from a lead or client and assign cleaners. They're emailed the details, and each has a Google Voice text button. The week calendar highlights jobs with no cleaner. |
 | **Alerts log** | Every email shows as sent or failed. There's a "Send test alert" button and dashboard warnings if something isn't set up. |
+| **Client portal** (`/portal`) | Your clients log in with their email and a password. They see their next cleaning, upcoming and past bookings (date, time, service, address, status, cleaner's first name), and can ask to **reschedule** or **cancel**, or **request a new cleaning**. They see their **invoices**, print them and press **Pay now**. They can update their phone, address and email preferences, and change their password. |
+| **Host portal** (`/host`) | For Airbnb / short-term-rental owners. They add their **properties** (address, size, lockbox/door code, checkout and check-in times), **request turnovers**, see upcoming and past turnovers, and read each turnover's **report**: cleaning notes, damage, low supplies and photos. |
+| **Requests inbox** | Every reschedule, cancel and turnover request lands in Admin → Requests and emails you. Approve it (the booking is moved, cancelled or created) or decline it with a note. The client gets an email either way. |
+| **Invoices** | Create an invoice from a booking (amount filled in) or a blank one. Mark it sent, paid or void, add a **Stripe Payment Link**, and email it to the client in one click. Clients never see drafts. |
+| **Turnover reports** | On any booking, press "Report & photos" to write notes, damage and inventory, and upload photos from your phone. Only that host and you can see the photos. |
 
 ## Try it on your computer
 
@@ -27,6 +32,23 @@ npm test
 npm start
 ```
 Open http://localhost:3000/admin (dev password: `changeme123`) and http://localhost:3000/quote.
+The client portal is at http://localhost:3000/portal/login and the host portal at http://localhost:3000/host/login.
+
+## Give a client access to the portal
+
+1. Admin → **Clients** → open the client. They need an **email address** on their record (it becomes their login).
+2. In the **Client portal** box press **Turn on & email link** (or **Turn on as host (Airbnb)** for a rental owner).
+3. They get an email with a link to choose their password (it works once and expires in 72 hours). Lost it? Press **Email set-password link** again.
+
+Clients can also sign themselves up at `/portal/register`, but only with an email that is already on a client record. The link always goes to that email, so nobody can see someone else's account. **Turn off access** logs them out right away.
+
+## Invoices and online payment
+
+1. Admin → **Invoices** → **New invoice**, or open a booking and press **Create invoice**.
+2. To let the client pay by card, create a **Payment Link** in your Stripe dashboard (Payment Links → New, with the invoice amount) and paste it into **Pay link**.
+3. Press **Save & email to client**. They get the amount, due date, the **Pay now** link and a link to view or print the invoice in their portal.
+4. When Stripe shows the payment, press **Mark paid**. (The back office does not talk to Stripe directly, so this step is manual.)
+
 
 ## Put it online
 
@@ -66,5 +88,6 @@ Your website's prices stay exactly as they are (`PRICE_SOURCE=site`, the default
 
 - Chat: email codes are 6 digits, expire in 10 minutes, can be used once, and lock after 5 wrong tries. Phone numbers are verified by Firebase, and the server checks Google's signature. Chats are rate-limited.
 - Admin: password login with a signed, HttpOnly cookie. Login attempts are rate-limited, and forms are protected against cross-site requests.
+- Portals: passwords are stored hashed (scrypt with a separate salt per person), never in plain text. Password links work once and expire. Logins are rate-limited. Every page only ever shows the logged-in client's own bookings, invoices, properties, reports and photos (this is tested). Changing a password logs out other devices.
 - Quote form: spam honeypot, rate limit, validation. The server recalculates prices.
 - CSV export is protected against spreadsheet formula injection.

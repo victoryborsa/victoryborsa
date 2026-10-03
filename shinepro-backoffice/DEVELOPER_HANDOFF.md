@@ -15,8 +15,9 @@ It's a small, self-contained Node.js service. Run it on a subdomain next to the 
 4. The owner **replies from the admin**: email is sent directly, texts go through the owner's **Google Voice number (412) 447-8047**, and replies can also be sent into the website chat. **The owner does not want Twilio.**
 5. Emails and phones are collected with a marketing opt-in, exportable to CSV.
 6. Book jobs, **assign cleaners** (emailed automatically), and **add or edit customers and employees**.
+7. **Client portal** and **host portal** (Airbnb / short-term rentals) with their own logins, bookings, requests, invoices with pay links, properties and turnover reports with photos.
 
-All of the above is covered by `npm test` (19 integration tests, including the chat verification rules).
+All of the above is covered by `npm test` (32 integration tests, including the chat verification rules and the portal access-control rules).
 
 ## Stack
 
@@ -39,12 +40,15 @@ src/firebase.js    Firebase ID-token verification (no firebase-admin needed)
 src/service.js     leads, customers, messages, employees, jobs
 src/notifier.js    email delivery, every attempt logged to `notifications`
 src/auth.js        admin login, signed HttpOnly cookie, rate limit
-src/db.js          schema (created automatically)
+src/db.js          schema (created automatically; new columns are added by migrate() on startup)
+src/accounts.js    portal logins: scrypt passwords, one-time set/reset links, portal session cookie, rate limit
+src/portal.js      client/host portal API (/api/portal) + admin invoices, properties, requests, reports
 knowledge.md       what the chat assistant knows. The OWNER edits this.
 public/chat.js     chat widget (one <script> tag)
 public/embed.js    quote-form widget
 public/pricing.js  price table, used by browser, server and AI
 public/admin.*     admin app
+public/portal.*    client portal (/portal) and host portal (/host): one page, screen chosen from the URL
 WEBSITE_SNIPPET.html  exactly what to paste into the website
 ```
 
@@ -113,20 +117,62 @@ See **`SEO_KIT.md`**. It covers finding and fixing site errors, a technical SEO 
 | `GET /messages?after=ID` | Bearer token. The widget polls this every 5 s to show replies sent from the admin. |
 | `POST /callback {note, best_time}` | Bearer token. Flags the lead as a call back and emails the owner urgently. |
 
+## Client & host portals
+
+**URLs** (the public website links to the first five, so keep them exactly):
+
+| Page | URL |
+|---|---|
+| Client login | `/portal/login` (also `/portal/register`, `/portal/forgot`, `/portal/set-password?token=…`) |
+| Client dashboard | `/portal` |
+| My bookings | `/portal/bookings` |
+| My invoices | `/portal/invoices` (printable invoice: `/portal/invoices/:id`) |
+| Profile | `/portal/profile` |
+| Host login | `/host/login` (same register / forgot / set-password pages under `/host`) |
+| Host dashboard, properties, turnovers, invoices, profile | `/host`, `/host/properties`, `/host/turnovers` (report: `/host/turnovers/:id`), `/host/invoices`, `/host/profile` |
+
+On the website, point the "Client Login" menu item at `https://admin.pghshinepro.com/portal/login`, and "My Bookings" / "My Invoices" at `/portal/bookings` and `/portal/invoices` on the same host. A host login link can go to `/host/login`.
+
+**Accounts.** One login per customer (`portal_accounts`, linked to `customers`). The login is the customer's email. `is_host = 1` makes them a host (a customer with rental properties). No SMS or codes: access is given by emailing a one-time link.
+- *Admin gives access:* client page → Client portal → "Turn on & email link". The `set` link expires in 72 h; a `reset` link (forgot password) in 2 h. Only the newest link works.
+- *Self sign-up:* `/portal/register` sends the same link, but only if the email is already on a customer record. It always answers with the same message, so it can't be used to check who is a client. A disabled account stays disabled.
+- Passwords: `crypto.scrypt`, 16-byte random salt per user, stored as `scrypt$salt$hash`. Minimum 8 characters.
+- Session: `sp_portal` cookie (HttpOnly, SameSite=Lax so links from pghshinepro.com keep you logged in, Secure in production), HMAC-signed with a key derived from `SESSION_SECRET`, separate from the admin cookie. It contains the account's `session_version`, which goes up when the password changes (logs out other devices). Disabling the account ends sessions immediately.
+- Login: 10 wrong passwords per IP per 15 minutes, then 429 (same rule as the admin). Mutations must be JSON (CSRF protection).
+
+**Access control.** Every `/api/portal` query is filtered by the logged-in account's `customer_id`; no route takes a customer id from the browser. Other customers' rows answer 404. Cleaners are shown by first name only. Drafts are never shown to clients. Tests in `test/portal.test.js` check that one customer can't read another's jobs, invoices, properties, reports or photos.
+
+**Requests.** Reschedule / cancel (client) and turnover (host) requests go into `portal_requests` and email `ALERT_EMAILS`. In Admin → Requests: *Approve* moves the job (and tells assigned cleaners), cancels it, or creates a turnover job on the property (start = checkout time, address and access notes from the property); *Decline* takes a note. The client is emailed either way, unless they turned off "booking and request updates" on their profile. "Request a cleaning" in the portal creates a normal lead, exactly like `/api/leads`.
+
+**Invoices.** `invoices` table: customer, optional job, number (auto `SP-1001`…, editable, unique), amount, status `draft | sent | paid | void`, due date, `pay_url`, notes, `sent_at`, `paid_at`. Creating from a job fills in the client and the job's price. `pay_url` must be `https://` (meant for a **Stripe Payment Link**; any secure payment page works). "Save & email to client" marks a draft as sent and emails the amount, due date, pay link and the portal link. The "Pay now" button shows only while the invoice is `sent`. Payment is not reconciled automatically: mark it paid when Stripe shows the payment. (A Stripe webhook could do this later; it would need `STRIPE_WEBHOOK_SECRET` and the Payment Link's metadata.)
+
+**Properties and turnover reports.** `properties` (owner customer, name, address, bedrooms, bathrooms, access notes, default checkout / check-in times, notes); hosts add and edit their own, the admin can too. `jobs.property_id` (nullable) links a turnover to a property; it is added to existing databases by `migrate()` in `src/db.js`. `job_reports` holds notes, damage notes, inventory notes and a JSON list of photos. Photos are uploaded by the admin (booking → "Report & photos"), sent as base64 JSON so the JSON-only CSRF rule still applies, checked by their actual bytes (JPEG, PNG, WebP or GIF only), limited to `UPLOAD_MAX_MB` (default 8 MB, browsers shrink big phone photos to 2000 px first) and 40 per report. Files are stored in `UPLOADS_DIR/jobs/<job id>/<random>.jpg`, by default an `uploads` folder next to `DATABASE_FILE` (so on the persistent disk; include it in backups). They are served only through `/api/portal/photos/…` (owning host) and `/api/admin/photos/…` (admin), never as static files.
+
+**Portal API (`/api/portal`, portal cookie, JSON bodies):**
+`POST /login {email,password}` · `POST /logout` · `GET /session` · `POST /register {email}` · `POST /forgot {email}` · `GET /password-link?token` · `POST /set-password {token,password}`
+`GET /dashboard` · `GET /bookings` · `POST /bookings/:id/reschedule {scheduled_at,note}` · `POST /bookings/:id/cancel {note}` · `POST /bookings/new {service_type,frequency,preferred_date,address,message}`
+`GET /invoices` · `GET /invoices/:id` · `GET|PUT /profile` · `POST /password {current_password,new_password}`
+Hosts only: `GET|POST /properties` · `GET|PUT /properties/:id` · `GET|POST /turnovers {property_id,date,checkout_time,checkin_time,note}` · `GET /turnovers/:id` (report) · `GET /photos/:jobId/:file`
+
 ## Admin API (`/api/admin`, cookie session, JSON bodies)
 
 `POST /login` · `POST /logout` · `GET /stats` · `GET /meta` · `GET /notifications` · `POST /test-alert`
 `GET|POST /leads` · `GET|PATCH|DELETE /leads/:id` · `POST /leads/:id/messages {channel: email|gvoice|sms_in|chat|note, subject?, body}`
 `GET|POST /customers` · `GET|PUT|DELETE /customers/:id` · `POST /customers/:id/messages` · `GET /customers/export.csv?opted_in=1`
 `GET|POST /employees` · `GET|PUT|DELETE /employees/:id`
-`GET|POST /jobs?from&to&status&employee_id&customer_id` · `GET|PUT|DELETE /jobs/:id`
+`GET|POST /jobs?from&to&status&employee_id&customer_id&property_id` · `GET|PUT|DELETE /jobs/:id` (jobs accept `property_id`)
+`PUT /customers/:id/portal {enabled,is_host,send_link}` · `POST /customers/:id/portal/invite`
+`GET|POST /invoices?status=all|draft|open|paid|void&customer_id` · `GET|PUT|DELETE /invoices/:id` · `POST /invoices/:id/send`
+`GET|POST /properties?customer_id` · `GET|PUT|DELETE /properties/:id`
+`GET /requests?status=pending|approved|declined|all` · `POST /requests/:id/approve {scheduled_at?,price?,duration_hours?,employee_ids?,admin_note?}` · `POST /requests/:id/decline {admin_note}`
+`GET|PUT /jobs/:id/report {notes,damage_notes,inventory_notes}` · `POST /jobs/:id/report/photos {name,data(base64)}` · `DELETE /jobs/:id/report/photos/:file` · `GET /photos/:jobId/:file`
 
 ## Operations
 
-- **Backups:** the DB is one file (`shinepro.db*`). Snapshot the disk daily (Render does this).
+- **Backups:** the DB is one file (`shinepro.db*`), and turnover photos are in `UPLOADS_DIR` (default `uploads/` next to it). Snapshot the disk daily (Render does this).
 - **Health check:** `GET /health`. Failed emails appear in Admin → Alerts and as a dashboard warning.
 - **Costs to watch:** Firebase SMS (set a budget alert), Anthropic usage (set a spend limit in the console).
-- **Not included:** payments, gift cards, job applications. These stay on the existing site.
+- **Not included:** taking card payments directly (invoices link to a Stripe Payment Link instead, and are marked paid by hand), gift cards, job applications. These stay on the existing site.
 
 ## Go-live checklist
 
@@ -147,4 +193,7 @@ See **`SEO_KIT.md`**. It covers finding and fixing site errors, a technical SEO 
 - [ ] On a lead, "Text via Google Voice" opens (412) 447-8047
 - [ ] Owner reviewed `knowledge.md` (all `[CONFIRM]` lines)
 - [ ] Existing Back Office tiles link to the new admin
+- [ ] Website "Client Login", "My Bookings" and "My Invoices" links point to `/portal/login`, `/portal/bookings`, `/portal/invoices` on the back office host
+- [ ] Portal test: turn on access for a test client, the set-password email arrives, log in, request a reschedule, approve it in Admin → Requests, the client email arrives
+- [ ] Invoice test: create an invoice with a Stripe Payment Link, email it, "Pay now" opens Stripe
 - [ ] Worked through `SEO_KIT.md` section 8 ("Done when")
