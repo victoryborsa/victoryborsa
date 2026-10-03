@@ -441,8 +441,9 @@ test("admin can send a test email and sees a plain explanation when email isn't 
 
 test("admin adds a real photo to a place in the Pittsburgh guide", async ({ page }) => {
   await page.goto("/pittsburgh#see");
-  const card = page.locator(".guide-card", { hasText: "Duquesne Incline & Mount Washington" });
-  await expect(card.locator(".guide-icon")).toBeVisible();
+  const card = page.locator(".gp-card", { hasText: "Duquesne Incline & Mount Washington" });
+  // Until a photo is added, the place has a drawn picture.
+  await expect(card.locator(".gp-art")).toBeVisible();
   await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
   await page.goto("/admin/guide");
   const f = path.join(process.cwd(), "test-results", "incline.png");
@@ -461,7 +462,7 @@ test("admin adds a real photo to a place in the Pittsburgh guide", async ({ page
   await row.getByRole("button", { name: "Remove photo" }).click();
   await expect(row.getByRole("button", { name: "Remove photo" })).toHaveCount(0);
   await page.goto("/pittsburgh#see");
-  await expect(card.locator(".guide-icon")).toBeVisible();
+  await expect(card.locator(".gp-art")).toBeVisible();
   await signOut(page);
 });
 

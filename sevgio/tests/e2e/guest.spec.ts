@@ -234,30 +234,29 @@ test("tapping a greeting switches the site language, and back", async ({ page })
   expect(r.headers()["location"]).toBe("/");
 });
 
-test("Pittsburgh guide: categories fold open and closed; places have map links", async ({ page }) => {
+test("Pittsburgh guide: rows of places with pictures and directions; tabs jump to a row; search narrows the cards", async ({ page }) => {
   await page.goto("/pittsburgh");
-  // Every category starts as a tidy closed row.
-  const see = page.locator("details#see");
-  await expect(page.getByRole("heading", { name: "Must-see & historic Pittsburgh" })).toBeVisible();
-  await expect(see).not.toHaveAttribute("open", "");
-  await expect(page.getByRole("heading", { name: "Primanti Bros." })).toBeHidden();
-  // Tapping a row opens it.
-  await page.locator("details#eat > summary").click();
-  await expect(page.getByRole("heading", { name: "Primanti Bros." })).toBeVisible();
-  await expect(page.locator("details#eat a.guide-map").first()).toHaveAttribute("href", /google\.com\/maps\/dir\/\?api=1&destination=/);
-  // The category buttons open their section and jump to it.
-  await page.locator(".guide-toc").getByRole("link", { name: /Near our homes/ }).click();
-  await expect(page.locator(".near-list a", { hasText: "Mayfly Market" })).toHaveAttribute("href", /maps\/dir\/.*Mayfly%20Market/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your Pittsburgh guide");
+  const see = page.getByRole("region", { name: "Must-see & historic Pittsburgh" });
+  await expect(see.locator(".ab-card", { hasText: "Duquesne Incline" })).toBeVisible();
+  await expect(see.locator(".ab-card").first().locator(".ab-ph")).toBeVisible();
+  const eat = page.getByRole("region", { name: "What to eat" });
+  await expect(eat.locator(".ab-card a", { hasText: "Primanti Bros." })).toHaveAttribute("href", /google\.com\/maps\/dir\/\?api=1&destination=/);
+  // A tab jumps to its row.
+  await page.getByRole("navigation", { name: "Guide sections" }).getByRole("link", { name: /Near our homes/ }).click();
   await expect(page).toHaveURL(/#near$/);
-  // Open all / Close all.
-  await page.getByRole("button", { name: "Open all" }).click();
-  await expect(page.getByRole("link", { name: /Directions to the airport/ })).toHaveAttribute("href", /Pittsburgh%20International%20Airport/);
-  await expect(page.getByText("Yinz", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Close all" }).click();
-  await expect(page.getByRole("heading", { name: "Primanti Bros." })).toBeHidden();
-  // A link straight to a section opens it.
-  await page.goto("/pittsburgh#drink");
-  await expect(page.locator("details#drink")).toHaveAttribute("open", "");
+  await expect(page.locator(".gp-near a", { hasText: "Mayfly Market" })).toHaveAttribute("href", /maps\/dir\/.*Mayfly%20Market/);
+  await expect(page.getByRole("region", { name: "Talk like a Yinzer" }).getByText("Yinz", { exact: true })).toBeVisible();
+  await expect(page.locator(".ab-promo", { hasText: /airport/i })).toHaveAttribute("href", /Pittsburgh%20International%20Airport/);
+  // Searching keeps only matching places; rows with none disappear.
+  await page.getByLabel("What", { exact: true }).fill("pierog");
+  await expect(eat.locator(".ab-card", { hasText: "Pierogies" })).toBeVisible();
+  await expect(eat.locator(".ab-card", { hasText: "Primanti Bros." })).toBeHidden();
+  await expect(see).toBeHidden();
+  await page.getByLabel("What", { exact: true }).fill("");
+  await page.getByLabel("Neighborhood").selectOption("North Side");
+  await expect(page.getByRole("region", { name: "Museums & gardens" }).locator(".ab-card", { hasText: "National Aviary" })).toBeVisible();
+  await expect(eat).toBeHidden();
 });
 
 test("a house with rooms lets guests choose the whole house or a room", async ({ page }) => {

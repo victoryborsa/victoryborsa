@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { statsPost } from "./ListingStats.tsx";
 
 /** A titled row of cards that scrolls sideways, with ‹ › buttons on computers (swipe on phones). */
-export function CardRow({ title, href, children }: { title: string; href: string; children: React.ReactNode }) {
+export function CardRow({ title, sub, href, children }: { title: string; sub?: string; href: string; children: React.ReactNode }) {
   const track = useRef<HTMLDivElement>(null);
   const [edge, setEdge] = useState({ start: true, end: false });
   const update = () => {
@@ -16,7 +16,10 @@ export function CardRow({ title, href, children }: { title: string; href: string
   return (
     <section className="ab-row" aria-label={title}>
       <div className="ab-row-head">
-        <h2><Link href={href}>{title}<span aria-hidden className="ab-row-arrow">›</span></Link></h2>
+        <div>
+          <h2><Link href={href}>{title}<span aria-hidden className="ab-row-arrow">›</span></Link></h2>
+          {sub && <p className="ab-row-sub">{sub}</p>}
+        </div>
         <span className="ab-row-nav">
           <button type="button" aria-label={`Scroll ${title} back`} disabled={edge.start} onClick={() => go(-1)}>‹</button>
           <button type="button" aria-label={`Scroll ${title} forward`} disabled={edge.end} onClick={() => go(1)}>›</button>
