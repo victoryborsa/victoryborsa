@@ -52,7 +52,7 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
   const unit = view === "day" ? "day" : view;
 
   return (
-    <div className="wrap events" style={{ paddingBottom: 56 }}>
+    <div className="wrap events theme-light" style={{ paddingBottom: 56 }}>
       <section className="guide-hero">
         <p className="eyebrow">What's on, yinz?</p>
         <h1>{t("nav.events")}: Pittsburgh this {view === "day" ? "day" : view}</h1>

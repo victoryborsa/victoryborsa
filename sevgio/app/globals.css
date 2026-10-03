@@ -969,16 +969,16 @@ a.cs-card:hover { border-color: var(--accent); }
 }
 
 /* ============ Home page: Airbnb-style layout in Sevgio black and gold, on white ============ */
-body:has(.ab-home) {
+body:has(.ab-home), body:has(.theme-light) {
   --bg: #FFFFFF; --surface: #FFFFFF; --surface-2: #F7F7F7; --ink: #101820; --muted: #6A6A6A; --line: #DDDDDD;
   --accent: #FFB612; --accent-hover: #F2A900; --accent-ink: #101820; --accent-soft: #FFF4D6; --gold: #B98500;
   --shadow: 0 1px 2px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.08);
   background: #FFFFFF; color: var(--ink);
 }
-body:has(.ab-home) header.site { background: #FFFFFF; border-bottom: 0; }
-body:has(.ab-home) a { color: inherit; }
-body:has(.ab-home) .muted, body:has(.ab-home) .hint { color: var(--muted); }
-body:has(.ab-home) footer { background: #F7F7F7; color: var(--ink); border-top: 1px solid var(--line); }
+body:has(.ab-home) header.site, body:has(.theme-light) header.site { background: #FFFFFF; border-bottom: 0; }
+body:has(.ab-home) a, body:has(.theme-light) a { color: inherit; }
+body:has(.ab-home) .muted, body:has(.ab-home) .hint, body:has(.theme-light) .muted, body:has(.theme-light) .hint { color: var(--muted); }
+body:has(.ab-home) footer, body:has(.theme-light) footer { background: #F7F7F7; color: var(--ink); border-top: 1px solid var(--line); }
 .ab-home { padding-bottom: 32px; }
 .ab-band { display: grid; justify-items: center; gap: 18px; padding: 4px 16px 24px; border-bottom: 1px solid #EBEBEB; background: linear-gradient(#FFFFFF, #FAFAFA); }
 .ab-tabs { display: flex; gap: 28px; justify-content: center; flex-wrap: wrap; }
@@ -1135,3 +1135,10 @@ body:has(.ab-home) footer { background: #F7F7F7; color: var(--ink); border-top: 
 .ab-more { margin-left: auto; flex: none; padding: 8px 16px; border: 1px solid var(--ink); border-radius: 999px; background: #FFFFFF; color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s ease; }
 .ab-more:hover { background: #F7F7F7; }
 .ab-row-head { align-items: flex-start; }
+
+/* Events: white, black and gold like the home page; cards lift gently on hover. */
+.theme-light .event-card, .theme-light .guide-card { border-color: #EBEBEB; box-shadow: 0 1px 2px rgba(16,24,32,.06); transition: transform .28s cubic-bezier(.16, 1, .3, 1), box-shadow .28s cubic-bezier(.16, 1, .3, 1), border-color .2s ease; }
+.theme-light .event-card:hover, .theme-light a.guide-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(16,24,32,.12); border-color: #DDDDDD; }
+.theme-light .event-body .muted { color: #6A6A6A; }
+@media (prefers-reduced-motion: reduce) { .theme-light .event-card:hover, .theme-light a.guide-card:hover { transform: none; } }
+.theme-light .guide-toc a.on { background: var(--accent); border-color: var(--accent); color: #101820; }
