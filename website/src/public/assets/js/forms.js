@@ -22,6 +22,16 @@
       submit.disabled = true;
       var fields = F.collect(form);
       var who = fields["Name"] || fields["Full name"] || fields["Your name"] || fields["First name"] || "";
+      // Gift cards with a Stripe Payment Link: send the order details, then go to Stripe to pay.
+      var payLink = form.hasAttribute("data-gift") && (cfg.giftCardLinks || {})[fields["Amount"]];
+      if (payLink) {
+        var go = function () {
+          window.location.href = payLink + (payLink.indexOf("?") === -1 ? "?" : "&") + "prefilled_email=" + encodeURIComponent(fields["Your email"]);
+        };
+        if (cfg.formEndpoint) F.send("Gift card order from " + who, fields).then(go, go);
+        else go();
+        return;
+      }
       F.send(form.getAttribute("data-form") + (who ? " from " + who : ""), fields)
         .then(function () {
           F.showSuccess(form);

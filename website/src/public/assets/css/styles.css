@@ -2497,3 +2497,5 @@ img { max-width: 100%; }
   .footer-grid { grid-template-columns: repeat(3, 1fr); }
 }
 .newsletter .zip-row { flex-direction: column; }
+.follow-links { display: grid; gap: 10px; margin-top: 18px; }
+.side-call a.link-arrow { font-family: var(--font-body); font-size: 0.98rem; font-weight: 700; }

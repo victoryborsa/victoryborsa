@@ -63,6 +63,19 @@ window.SHINE = {
     { id: "dishes", label: "Dishes", price: "+$30" }
   ],
 
+  // Gift card checkout. In Stripe, create a Payment Link for each amount
+  // (Stripe dashboard > Payment Links > New) and paste each link here, e.g.
+  // "$100": "https://buy.stripe.com/abc123". Buyers then pay by card on Stripe's
+  // secure page. While a link is empty, the order is sent to you instead.
+  giftCardLinks: {
+    "$50": "",
+    "$75": "",
+    "$100": "",
+    "$150": "",
+    "$200": "",
+    "$250": ""
+  },
+
   // ZIP check: any ZIP starting with these digits counts as served, plus the
   // extra ZIPs listed (Washington, Irwin, Cranberry Township).
   zipPrefixes: ["150", "151", "152"],
