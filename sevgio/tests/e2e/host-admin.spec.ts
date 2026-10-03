@@ -924,6 +924,7 @@ test("corporate housing: host shows a home with its monthly rate and fees; compa
   expect(m.body).toContain("Area or workplace: UPMC Mercy");
 
   // Private rooms can be listed too, and say which house they are in.
+  await sql("UPDATE properties SET parent_id = (SELECT id FROM properties WHERE slug = 'lake-harmony-lodge') WHERE slug = 'lancaster-county-farmhouse-suite' AND NOT EXISTS (SELECT 1 FROM properties WHERE parent_id IS NOT NULL AND status = 'published')");
   const [room] = await sql<{ id: string; title: string; parent: string }>("UPDATE properties r SET corp_listed = true, corp_monthly_cents = 170000, corp_deposit_cents = 50000, corp_cleaning_cents = 15000, corp_pet_fee_cents = 50000 FROM properties h WHERE h.id = r.parent_id AND r.id = (SELECT id FROM properties WHERE parent_id IS NOT NULL AND status = 'published' ORDER BY slug LIMIT 1) RETURNING r.id, r.title, h.title AS parent");
   await page.goto("/corporate-housing");
   const roomCard = page.locator(".ch-home", { hasText: room.title });
@@ -940,5 +941,69 @@ test("corporate housing: host shows a home with its monthly rate and fees; compa
   await expect(page.getByText(/^Saved\./)).toBeVisible();
   await page.goto("/corporate-housing");
   await expect(page.locator(".ch-home")).toHaveCount(0);
+  await signOut(page);
+});
+
+test("corporate housing: an unfurnished long-term lease is created, gets photos, is published, and shows last with Request and Apply", async ({ page }) => {
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/host/listings/new");
+  await page.getByLabel("Listing title").fill("Stowe Township 3BR House");
+  await page.getByLabel("Town or city").fill("Pittsburgh");
+  await page.getByLabel(/Area or region/).fill("Stowe Township");
+  await page.locator("textarea[name=description]").fill("A three-bedroom single family house overlooking McKees Rocks, minutes from downtown, with a covered patio and a full basement.");
+  await page.getByLabel("Show on the Corporate Housing page").check();
+  await page.getByLabel(/Long-term lease only/).check();
+  await page.getByLabel("Furnishing").selectOption("no");
+  await page.getByLabel("Monthly price (USD, all inclusive)").fill("1450");
+  await page.getByLabel("Security deposit (USD)").fill("1450");
+  await page.getByLabel("Application fee (USD, 0 = none)").fill("30");
+  await page.getByLabel("Line under the price (optional)").fill("Utilities paid by tenant");
+  await page.getByLabel("Application link (optional)").fill("/docs/brands-capital-rental-application.pdf");
+  await page.getByRole("button", { name: "Save and add photos" }).click();
+  await expect(page.getByText("Listing saved as a draft.")).toBeVisible();
+
+  // Photos are added after the listing is set up.
+  const png = path.join(process.cwd(), "test-results", "lease.png");
+  fs.mkdirSync(path.dirname(png), { recursive: true });
+  const sharp = (await import("sharp")).default;
+  await sharp({ create: { width: 1200, height: 900, channels: 3, background: "#6a8" } }).png().toFile(png);
+  await page.locator('input[type="file"]').setInputFiles(png);
+  await page.getByRole("button", { name: "Upload" }).click();
+  await expect(page.getByText("1 photo added.")).toBeVisible();
+  await page.getByRole("link", { name: "Details" }).click();
+  await page.getByLabel("Visibility").selectOption("published");
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/^Saved\./)).toBeVisible();
+
+  // On the Corporate Housing page it comes after every furnished home.
+  await sql("UPDATE properties SET corp_listed = true, corp_monthly_cents = 200000 WHERE slug = 'mount-washington-view-house'");
+  await page.goto("/corporate-housing");
+  await expect(page.locator(".ch-home h3").last()).toHaveText("Stowe Township 3BR House");
+  const card = page.locator(".ch-home", { hasText: "Stowe Township 3BR House" });
+  await expect(card).toContainText("Unfurnished home");
+  await expect(card).toContainText("$1,450");
+  await expect(card).toContainText("Utilities paid by tenant");
+  await expect(card).toContainText("Application fee");
+  await expect(card).toContainText("$30");
+  await expect(card.getByRole("link", { name: "Download application (PDF)" })).toHaveAttribute("href", "/docs/brands-capital-rental-application.pdf");
+  const pdf = await page.request.get("/docs/brands-capital-rental-application.pdf");
+  expect(pdf.status()).toBe(200);
+  expect(pdf.headers()["content-type"]).toContain("application/pdf");
+
+  // Its page offers Request / Apply instead of dates, and it isn't in Stays search or bookable by link.
+  await card.getByRole("link", { name: "View home" }).click();
+  await expect(page.locator("#availability")).toHaveCount(0);
+  const panel = page.locator(".lease-panel");
+  await expect(panel).toContainText("$1,450");
+  await expect(panel).toContainText("Utilities paid by tenant");
+  await expect(panel.getByRole("link", { name: "Download application (PDF)" })).toHaveAttribute("download", "");
+  await panel.getByRole("link", { name: "Request this home" }).click();
+  const [lease] = await sql<{ id: string; slug: string }>("SELECT id, slug FROM properties WHERE title = 'Stowe Township 3BR House'");
+  await expect(page.locator("#request select[name=home]")).toHaveValue(lease.id);
+  await page.goto("/stays?loc=Stowe");
+  await expect(page.getByRole("heading", { name: "No stays match your search" })).toBeVisible();
+  await page.goto(`/book/${lease.slug}?ci=${iso(30)}&co=${iso(60)}&guests=2`);
+  await expect(page).toHaveURL(new RegExp(`/stays/${lease.slug}$`));
+  await sql("UPDATE properties SET corp_listed = false WHERE slug = 'mount-washington-view-house'");
   await signOut(page);
 });

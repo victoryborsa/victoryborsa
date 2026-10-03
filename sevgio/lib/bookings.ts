@@ -17,7 +17,8 @@ export type Property = {
   beds_detail: unknown; half_bathrooms: number; kitchen_access: string; laundry_access: string; stairs_info: string; has_exterior_cameras: boolean; camera_locations: string;
   base_occupancy: number | null; extra_guest_fee_cents: number; fewer_guest_discount_percent: number; weekly_discount_percent: number; monthly_discount_percent: number;
   children_free_age: number; management_fee_percent: number; shared_spaces: string; owner_zelle: string; owner_venmo: string; pet_fee_cents: number; pet_fee_per: string; rooms_detail: unknown; services: unknown; security_deposit_cents: number; lat: number | null; lng: number | null; monthly_price_cents: number | null; smart_pricing: boolean;
-  corp_listed?: boolean; corp_monthly_cents?: number | null; corp_deposit_cents?: number; corp_cleaning_cents?: number; corp_pet_fee_cents?: number; corp_available_from?: string | null; furnished_finder_url?: string; corp_position?: number | null; min_price_cents: number | null; max_price_cents: number | null; demand?: Demand;
+  corp_listed?: boolean; corp_monthly_cents?: number | null; corp_deposit_cents?: number; corp_cleaning_cents?: number; corp_pet_fee_cents?: number; corp_available_from?: string | null; furnished_finder_url?: string; corp_position?: number | null;
+  corp_furnished?: boolean; corp_lease_only?: boolean; corp_app_fee_cents?: number; corp_apply_url?: string; corp_price_note?: string; min_price_cents: number | null; max_price_cents: number | null; demand?: Demand;
 };
 
 export type Booking = {
@@ -113,7 +114,7 @@ export async function createBooking(b: NewBooking): Promise<CreateResult> {
   try {
     return await tx(async c => {
       await lockProperty(c, b.propertyId);
-      const p = await one<Property>("SELECT * FROM properties WHERE id = $1 AND status = 'published'", [b.propertyId], c);
+      const p = await one<Property>("SELECT * FROM properties WHERE id = $1 AND status = 'published' AND NOT corp_lease_only", [b.propertyId], c);
       if (!p) return { ok: false, error: "This home isn't taking bookings right now.", reason: "not_found" } as const;
       const problem = stayProblem(p, b.ci, b.co, b.party);
       if (problem) return { ok: false, error: problem, reason: "invalid" } as const;

@@ -24,6 +24,35 @@ import { AvailabilitySection, BookingPanel, BookingProvider, MobileBookBar } fro
 import { Check, Rating } from "@/components/ui.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { askHostAction } from "@/app/actions/messages.ts";
+import { priceNote, isWebUrl, isPdf } from "@/lib/corporate.ts";
+import type { Property } from "@/lib/bookings.ts";
+
+/** Long-term lease homes: rent, fees and Request / Apply buttons in place of the booking calendar. */
+function LeasePanel({ p, phone }: { p: Property; phone: string }) {
+  const fees: [string, number, string][] = [
+    ["Security deposit", p.corp_deposit_cents || 0, ""],
+    ["Application fee", p.corp_app_fee_cents || 0, "per household"],
+    ["Cleaning fee", p.corp_cleaning_cents || 0, "one time"],
+    ["Pet fee", p.corp_pet_fee_cents || 0, "non-refundable, if you bring a pet"],
+  ];
+  const apply = p.corp_apply_url && isWebUrl(p.corp_apply_url) ? p.corp_apply_url : "";
+  return (
+    <aside className="panel sticky lease-panel" aria-label="Rent this home" id="book">
+      <div className="panel-price"><b>{money(p.corp_monthly_cents || 0)}</b><span className="muted">/ month</span></div>
+      <p className="lease-note">{priceNote(p)}</p>
+      <dl className="ch-fees">
+        {fees.filter(([, c]) => c > 0).map(([k, c, sub]) => <div key={k}><dt>{k}{sub && <small>{sub}</small>}</dt><dd>{money(c)}</dd></div>)}
+      </dl>
+      <div className="lease-actions">
+        <Link className="btn btn-primary" href={`/corporate-housing?home=${p.id}#request`}>Request this home</Link>
+        {apply && (isPdf(apply)
+          ? <a className="btn btn-ghost" href={apply} download>Download application (PDF)</a>
+          : <a className="btn btn-ghost" href={apply} target="_blank" rel="noopener noreferrer">Apply now</a>)}
+      </div>
+      {phone && <p className="hint">Questions? Text or call <a href={`tel:${phone.replace(/[^\d+]/g, "")}`}>{phone}</a></p>}
+    </aside>
+  );
+}
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | undefined>> };
@@ -87,7 +116,7 @@ export default async function StayPage({ params, searchParams }: Params) {
             <Rating rating={p.rating} count={p.review_count} />
             <span className="muted">{placeFull(p.city, p.area)}</span>
             {host?.name && <span className="muted">Hosted by <b style={{ color: "var(--ink)" }}>{hostFirst}</b></span>}
-            {p.booking_mode === "instant" ? <span className="pill ok">Instant booking</span> : <span className="pill warn">Request to book</span>}
+            {p.corp_lease_only ? <span className="pill neutral">Long-term lease</span> : p.booking_mode === "instant" ? <span className="pill ok">Instant booking</span> : <span className="pill warn">Request to book</span>}
             <span className="spacer" />
             <ShareButtons url={`${siteUrl()}/stays/${p.slug}`} title={p.title} statsId={bookable ? p.id : undefined} />
           </div>
@@ -116,7 +145,7 @@ export default async function StayPage({ params, searchParams }: Params) {
               {rooms.length > 0
                 ? <a className="fact fact-link" href="#rooms" title="See each bedroom"><b>{p.bedrooms}</b><span>bedroom{p.bedrooms === 1 ? "" : "s"} ›</span></a>
                 : <div className="fact"><b>{p.bedrooms}</b><span>bedroom{p.bedrooms === 1 ? "" : "s"}</span></div>}
-              <div className="fact"><b>{p.beds}</b><span>bed{p.beds === 1 ? "" : "s"}</span></div>
+              {p.corp_furnished === false ? <div className="fact"><b className="fact-word">Unfurnished</b><span>bring your own furniture</span></div> : <div className="fact"><b>{p.beds}</b><span>bed{p.beds === 1 ? "" : "s"}</span></div>}
               <div className="fact"><b>{p.bathrooms}{p.half_bathrooms ? ` + ${p.half_bathrooms} half` : ""}</b><span>{p.bathroom_type === "shared" ? "shared" : "private"} bathroom{p.bathrooms + p.half_bathrooms === 1 ? "" : "s"}</span></div>
             </div>
             {linked.parent && (
@@ -127,9 +156,9 @@ export default async function StayPage({ params, searchParams }: Params) {
             <section>
               <h2>About this {(PROPERTY_TYPES[p.property_type] || "home").toLowerCase()}</h2>
               <p className="prose">{p.description}</p>
-              <p className="muted">Hosted by {host?.name}. {placeFull(p.city, p.area)}. The exact address is shared once your booking is confirmed.</p>
+              <p className="muted">Hosted by {host?.name}. {placeFull(p.city, p.area)}. The exact address is shared once your {p.corp_lease_only ? "application is approved" : "booking is confirmed"}.</p>
             </section>
-            {(rooms.length > 0 || beds.length > 0) && (
+            {p.corp_furnished !== false && (rooms.length > 0 || beds.length > 0) && (
               <section id="rooms" className="rooms-section">
                 <h2>Where you'll sleep</h2>
                 {rooms.length > 0 && (
@@ -162,7 +191,7 @@ export default async function StayPage({ params, searchParams }: Params) {
                 <dt>Laundry</dt><dd>{ACCESS[p.laundry_access]}</dd>
                 {p.stairs_info && <><dt>Stairs</dt><dd style={{ fontWeight: 400 }}>{p.stairs_info}</dd></>}
                 <dt>Security cameras</dt><dd style={{ fontWeight: 400 }}>{p.has_exterior_cameras ? `Exterior cameras: ${p.camera_locations || "see host for locations"}. No cameras inside.` : "No security cameras on the property."}</dd>
-                <dt>Children</dt><dd style={{ fontWeight: 400 }}>{p.children_free_age > 0 ? `Children aged ${p.children_free_age} and under stay free.` : "Infants under 1 stay free."}</dd>
+                {!p.corp_lease_only && <><dt>Children</dt><dd style={{ fontWeight: 400 }}>{p.children_free_age > 0 ? `Children aged ${p.children_free_age} and under stay free.` : "Infants under 1 stay free."}</dd></>}
               </dl>
             </section>
             {p.amenities.length > 0 && (
@@ -179,8 +208,8 @@ export default async function StayPage({ params, searchParams }: Params) {
                 })}
               </section>
             )}
-            <AvailabilitySection />
-            {linked.rooms.length > 0 && (
+            {!p.corp_lease_only && <AvailabilitySection />}
+            {linked.rooms.length > 0 && !p.corp_lease_only && (
               <section>
                 <h2>Just need a room?</h2>
                 <p className="muted">You can also book individual rooms in this home. When a room is booked, the whole home isn't available for those dates.</p>
@@ -199,20 +228,21 @@ export default async function StayPage({ params, searchParams }: Params) {
             <section>
               <h2>House rules</h2>
               <dl className="kv">
+                {p.corp_lease_only ? <><dt>Lease</dt><dd>Long-term lease{p.corp_furnished === false ? ", unfurnished" : ""}</dd></> : <>
                 <dt>Check-in</dt><dd>After {p.check_in_time}</dd>
                 <dt>Check-out</dt><dd>Before {p.check_out_time}</dd>
-                <dt>Minimum stay</dt><dd>{p.min_nights} night{p.min_nights > 1 ? "s" : ""}</dd>
+                <dt>Minimum stay</dt><dd>{p.min_nights} night{p.min_nights > 1 ? "s" : ""}</dd></>}
                 <dt>Maximum guests</dt><dd>{p.max_guests}</dd>
-                {p.security_deposit_cents > 0 && <><dt>Security deposit</dt><dd>{money(p.security_deposit_cents)}, refundable after check-out</dd></>}
+                {!p.corp_lease_only && p.security_deposit_cents > 0 && <><dt>Security deposit</dt><dd>{money(p.security_deposit_cents)}, refundable after check-out</dd></>}
                 <dt>Pets</dt><dd>{!p.amenities.includes("pets") ? "Not allowed" : p.pet_fee_cents ? `Allowed · ${money(p.pet_fee_cents)} ${PET_FEE_PER[p.pet_fee_per]}` : "Allowed · free"}</dd>
               </dl>
               {p.house_rules.length > 0 && <ul className="rules">{p.house_rules.map((r, i) => <li key={i}>{r}</li>)}</ul>}
             </section>
-            <section>
+            {!p.corp_lease_only && <section>
               <h2>Cancellation policy</h2>
               <p><span className="pill neutral">{CANCELLATION[p.cancellation_policy]?.label}</span></p>
               <p className="prose">{CANCELLATION[p.cancellation_policy]?.text}</p>
-            </section>
+            </section>}
             <section>
               <h2>Questions about this home?</h2>
               <ActionForm action={askHostAction} className="stack" resetOnOk>
@@ -227,9 +257,11 @@ export default async function StayPage({ params, searchParams }: Params) {
               </ActionForm>
             </section>
           </div>
-          <BookingPanel paymentNote={settings.payment_note} />
+          {p.corp_lease_only ? <LeasePanel p={p} phone={settings.contact_phone} /> : <BookingPanel paymentNote={settings.payment_note} />}
         </div>
-        <MobileBookBar />
+        {p.corp_lease_only
+          ? <div className="mobile-book"><div style={{ flex: 1, minWidth: 0 }}><b className="mono">{money(p.corp_monthly_cents || 0)}</b> <span className="muted">/ month</span></div><Link className="btn btn-primary" href={`/corporate-housing?home=${p.id}#request`}>Request this home</Link></div>
+          : <MobileBookBar />}
       </BookingProvider>
     </div>
   );

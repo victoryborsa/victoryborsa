@@ -31,6 +31,8 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   const u = await requireUser(undefined, `/book/${slug}?${qs}`);
   const p = await propertyBySlug(slug);
   if (!p || p.status !== "published") notFound();
+  // Long-term leases are requested or applied for on the property page, not booked by date.
+  if (p.corp_lease_only) redirect(`/stays/${p.slug}`);
   const problem = stayProblem(p, ci, co, party) || (!(await isRangeFree(p.id, ci, co)) ? "Some of these nights were just booked. Please choose different dates." : null);
   if (problem) {
     return (

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { corporateHomes, availableLabel, isFurnishedFinderUrl, type CorpHome } from "@/lib/corporate.ts";
+import { corporateHomes, availableLabel, isFurnishedFinderUrl, isWebUrl, isPdf, priceNote, type CorpHome } from "@/lib/corporate.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { money } from "@/lib/money.ts";
 import { getSettings } from "@/lib/settings.ts";
@@ -54,19 +54,23 @@ function HomeCard({ p, today }: { p: CorpHome; today: string }) {
         <p className="muted">{[p.area, p.city].filter(Boolean).join(", ")}</p>
         {isRoom(p)
           ? <p className="ch-facts">Private room{p.parent_title ? ` in ${p.parent_title}` : ""} <span aria-hidden="true">/</span> {p.bathroom_type === "shared" ? "shared bath" : "private bath"} <span aria-hidden="true">/</span> sleeps {p.max_guests}</p>
-          : <p className="ch-facts">Entire home <span aria-hidden="true">/</span> {p.bedrooms} bedroom{p.bedrooms === 1 ? "" : "s"} <span aria-hidden="true">/</span> {bathText(p)} <span aria-hidden="true">/</span> sleeps {p.max_guests}</p>}
+          : <p className="ch-facts">{p.corp_furnished ? "Entire home" : "Unfurnished home"} <span aria-hidden="true">/</span> {p.bedrooms} bedroom{p.bedrooms === 1 ? "" : "s"} <span aria-hidden="true">/</span> {bathText(p)}{p.corp_furnished && <> <span aria-hidden="true">/</span> sleeps {p.max_guests}</>}</p>}
         <div className="ch-rate">
           <p><b>{money(p.corp_monthly_cents)}</b> <span>per month</span></p>
-          <p className="ch-incl">Fixed price, all inclusive</p>
+          <p className="ch-incl">{priceNote(p)}</p>
         </div>
         <dl className="ch-fees">
           <div><dt>Security deposit</dt><dd>{p.corp_deposit_cents ? money(p.corp_deposit_cents) : "None"}</dd></div>
-          <div><dt>Cleaning fee <small>one time</small></dt><dd>{p.corp_cleaning_cents ? money(p.corp_cleaning_cents) : "None"}</dd></div>
+          {p.corp_app_fee_cents > 0 && <div><dt>Application fee <small>per household</small></dt><dd>{money(p.corp_app_fee_cents)}</dd></div>}
+          {(p.corp_furnished || p.corp_cleaning_cents > 0) && <div><dt>Cleaning fee <small>one time</small></dt><dd>{p.corp_cleaning_cents ? money(p.corp_cleaning_cents) : "None"}</dd></div>}
           {p.corp_pet_fee_cents > 0 && <div><dt>Pet fee <small>non-refundable, if you bring a pet</small></dt><dd>{money(p.corp_pet_fee_cents)}</dd></div>}
         </dl>
         <div className="ch-links">
           <Link className="btn btn-primary btn-sm" href={`/stays/${p.slug}`}>View home</Link>
           <a className="btn btn-ghost btn-sm" href="#request" data-home={p.id}>Request this {isRoom(p) ? "room" : "home"}</a>
+          {p.corp_apply_url && isWebUrl(p.corp_apply_url) && (isPdf(p.corp_apply_url)
+            ? <a className="ch-ff" href={p.corp_apply_url} download>Download application (PDF)</a>
+            : <a className="ch-ff" href={p.corp_apply_url} target="_blank" rel="noopener noreferrer">Apply now <Icon name="out" size={14} /></a>)}
           {ff && <a className="ch-ff" href={ff} target="_blank" rel="noopener noreferrer">Furnished Finder <Icon name="out" size={14} /></a>}
         </div>
       </div>
@@ -74,8 +78,10 @@ function HomeCard({ p, today }: { p: CorpHome; today: string }) {
   );
 }
 
-export default async function CorporateHousing() {
-  const [homes, s, u] = await Promise.all([corporateHomes(), getSettings(), currentUser()]);
+export default async function CorporateHousing({ searchParams }: { searchParams: Promise<{ home?: string }> }) {
+  const [homes, s, u, sp] = await Promise.all([corporateHomes(), getSettings(), currentUser(), searchParams]);
+  const picked = homes.some(h => h.id === sp.home) ? sp.home : "";
+  const anyUnfurnished = homes.some(h => !h.corp_furnished);
   const today = todayLocal();
   const pageUrl = siteUrl() + "/corporate-housing";
   return (
@@ -84,7 +90,9 @@ export default async function CorporateHousing() {
         <div className="ch-hero-text">
           <p className="eyebrow">Furnished and corporate housing</p>
           <h1>A furnished home for your next assignment</h1>
-          <p className="lede">Monthly homes in Pittsburgh and Indiana, PA. One fixed price covers rent, utilities and Wi-Fi.</p>
+          <p className="lede">{anyUnfurnished
+            ? "Furnished monthly homes with one all-inclusive price, plus unfurnished homes for longer leases, in Pittsburgh and Indiana, PA."
+            : "Monthly homes in Pittsburgh and Indiana, PA. One fixed price covers rent, utilities and Wi-Fi."}</p>
           <div className="ch-cta">
             <a className="btn btn-primary" href="#request">Request housing</a>
             <a className="btn btn-ghost" href="#homes">See homes and rooms</a>
@@ -99,7 +107,9 @@ export default async function CorporateHousing() {
 
       <section className="wrap" id="homes">
         <h2 className="ch-h2">Available homes and rooms</h2>
-        <p className="muted ch-sub">Entire homes and private rooms, ready to move in. The monthly price is all you pay each month.</p>
+        <p className="muted ch-sub">{anyUnfurnished
+          ? "Furnished homes and private rooms with one all-inclusive monthly price, plus unfurnished homes for longer leases."
+          : "Entire homes and private rooms, ready to move in. The monthly price is all you pay each month."}</p>
         {homes.length ? (
           <div className="ch-homes">{homes.map(p => <HomeCard key={p.id} p={p} today={today} />)}</div>
         ) : (
@@ -110,7 +120,7 @@ export default async function CorporateHousing() {
       <section className="ch-band">
         <div className="wrap">
           <h2 className="ch-h2">One fixed price. All inclusive.</h2>
-          <p className="ch-sub">No utility bills, no setup, no surprises. Just the monthly price.</p>
+          <p className="ch-sub">{anyUnfurnished ? "Every furnished home and room includes all of this in the monthly price." : "No utility bills, no setup, no surprises. Just the monthly price."}</p>
           <ul className="ch-inc">
             {INCLUDED.map(([ic, t, d]) => <li key={t}><span className="ch-inc-ic"><Icon name={ic} size={22} /></span><span><b>{t}</b><span>{d}</span></span></li>)}
           </ul>
@@ -146,7 +156,7 @@ export default async function CorporateHousing() {
             <select className="input" name="who"><option>Travel nurse or medical staff</option><option>Doctor or resident</option><option>Corporate housing company</option><option>Company HR or relocation</option><option>Contractor or crew</option><option>Other</option></select>
           </label>
           <label className="field"><span>Home or room</span>
-            <select className="input" name="home" id="ch-home"><option value="">Any home or room that fits</option>{homes.map(p => <option key={p.id} value={p.id}>{p.title} ({money(p.corp_monthly_cents)}/mo)</option>)}</select>
+            <select className="input" name="home" id="ch-home" defaultValue={picked}><option value="">Any home or room that fits</option>{homes.map(p => <option key={p.id} value={p.id}>{p.title} ({money(p.corp_monthly_cents)}/mo)</option>)}</select>
           </label>
           <label className="field"><span>Move-in date</span><input className="input" name="movein" type="date" min={today} required /></label>
           <label className="field"><span>Length of stay</span><select className="input" name="length">{LENGTHS.map(l => <option key={l}>{l}</option>)}</select></label>

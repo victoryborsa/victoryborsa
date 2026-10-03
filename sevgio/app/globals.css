@@ -1414,3 +1414,11 @@ footer .brand-tag { font-size: 8px; }
 .cal-legend .lg-sel { background: var(--accent); }
 .cal-legend .lg-free { background: #FFFFFF; border: 1px solid var(--line); }
 .cal-legend .lg-taken { background: #FDECEC; border: 1px solid #F4B4AE; }
+
+/* ============ Long-term lease panel on the property page ============ */
+.lease-panel .lease-note { margin: 4px 0 0; font-size: 13px; font-weight: 700; color: var(--gold); }
+.lease-panel .ch-fees { margin-top: 14px; }
+.lease-actions { display: grid; gap: 8px; margin: 18px 0 10px; }
+.lease-actions .btn { width: 100%; border-radius: 999px; }
+.lease-panel .hint a { font-weight: 700; color: var(--gold) !important; }
+.fact b.fact-word { font-size: clamp(13px, 3.4vw, 22px); white-space: nowrap; }

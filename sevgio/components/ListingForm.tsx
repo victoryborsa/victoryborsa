@@ -134,12 +134,19 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
         <h2>Corporate housing page</h2>
         <p className="muted">Show this home on <a href="/corporate-housing" target="_blank">sevgio.com/corporate-housing</a> for travel nurses, doctors and companies, with one fixed all-inclusive monthly price and its fees. Works for entire homes and private rooms.</p>
         <label className="chk"><input type="checkbox" name="corp_listed" defaultChecked={!!p?.corp_listed} /><span><b>Show on the Corporate Housing page</b></span></label>
+        <label className="chk" style={{ marginTop: 8 }}><input type="checkbox" name="corp_lease_only" defaultChecked={!!p?.corp_lease_only} /><span><b>Long-term lease only</b><span className="hint" style={{ display: "block" }}>People request the home or apply instead of booking dates online. The listing then shows only on the Corporate Housing page, not in Stays search. The nightly price can stay empty.</span></span></label>
         <div className="grid-2" style={{ marginTop: 12 }}>
+          <label className="field"><span>Furnishing</span>
+            <select className="input" name="corp_furnished" defaultValue={p?.corp_furnished === false ? "no" : "yes"}><option value="yes">Furnished</option><option value="no">Unfurnished</option></select>
+          </label>
+          <label className="field"><span>Line under the price (optional)</span><input className="input" name="corp_price_note" maxLength={80} defaultValue={p?.corp_price_note ?? ""} placeholder="e.g. Utilities paid by tenant" /><span className="hint">Empty: “Fixed price, all inclusive” (furnished) or “Unfurnished, long-term lease”.</span></label>
           <label className="field"><span>Monthly price (USD, all inclusive)</span><input className="input mono" name="corp_monthly" inputMode="decimal" defaultValue={p?.corp_monthly_cents ? dollars(p.corp_monthly_cents) : ""} placeholder="2300" /></label>
           <label className="field"><span>Available from (empty = available now)</span><input className="input" name="corp_available_from" type="date" defaultValue={p?.corp_available_from || ""} /></label>
           <label className="field"><span>Security deposit (USD)</span><input className="input mono" name="corp_deposit" inputMode="decimal" defaultValue={dollars(p?.corp_deposit_cents) || "0"} /></label>
           <label className="field"><span>Cleaning fee (USD, one time)</span><input className="input mono" name="corp_cleaning" inputMode="decimal" defaultValue={dollars(p?.corp_cleaning_cents) || "0"} /></label>
           <label className="field"><span>Pet fee (USD, non-refundable, 0 = none)</span><input className="input mono" name="corp_pet_fee" inputMode="decimal" defaultValue={dollars(p?.corp_pet_fee_cents) || "0"} /></label>
+          <label className="field"><span>Application fee (USD, 0 = none)</span><input className="input mono" name="corp_app_fee" inputMode="decimal" defaultValue={dollars(p?.corp_app_fee_cents) || "0"} /></label>
+          <label className="field"><span>Application link (optional)</span><input className="input" name="corp_apply_url" defaultValue={p?.corp_apply_url ?? ""} placeholder="https://..." /><span className="hint">Shows an “Apply” button. A PDF link becomes a “Download application” button.</span></label>
           <label className="field"><span>Order on the page (1 = first, optional)</span><input className="input mono" name="corp_position" type="number" min={1} max={999} defaultValue={p?.corp_position ?? ""} placeholder="Empty = by price" /></label>
           <label className="field"><span>Furnished Finder link (optional)</span><input className="input" name="furnished_finder_url" type="url" defaultValue={p?.furnished_finder_url ?? ""} placeholder="https://www.furnishedfinder.com/property/..." /></label>
         </div>

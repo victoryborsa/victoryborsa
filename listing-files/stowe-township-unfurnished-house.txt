@@ -1,0 +1,139 @@
+SEVGIO LISTING COPY
+Stowe Township 3-Bedroom House (unfurnished, long-term lease)
+=============================================================
+
+How to use this file
+--------------------
+1. Sign in, then go to Host dashboard > Listings > New listing.
+2. Copy each part below into the box with the same name.
+3. Anything in [square brackets] is something only you know. Fill it in, or delete it.
+4. Press "Save and add photos", upload the photos, then open "Details",
+   set Visibility to "Published" and press "Save listing".
+
+
+-------------------------------------------------------------
+BASICS
+-------------------------------------------------------------
+
+Listing title:
+Stowe Township 3BR House with Covered Patio and City Views
+
+Property type:   House
+Listing kind:    Entire home
+Town or city:    Pittsburgh
+Area or region:  Stowe Township
+Address:         [street address, shared with tenants only]
+
+Maximum guests:  [6]
+Bedrooms:        3
+Full bathrooms:  [1]
+Half bathrooms:  [1, the basement Pittsburgh bathroom]
+
+
+-------------------------------------------------------------
+DESCRIPTION  (copy everything between the lines)
+-------------------------------------------------------------
+
+A bright three-bedroom single family house in Stowe Township, on a quiet street overlooking McKees Rocks. Downtown Pittsburgh is only minutes away, even at rush hour, which makes this an easy base for hospital staff, project teams and families relocating to the city.
+
+The spacious, well-lit kitchen is the heart of the home and opens to a great-room layout made for everyday living. A sunroom brings in extra light, and a converted former porch gives you a flexible extra room. It has an unusual shape, but it works well as a fourth bedroom, a home office or a playroom.
+
+Out back there is a private yard with a large covered patio for cookouts, get-togethers or a quiet evening outside. The full basement has laundry hookups and a second bathroom (a classic Pittsburgh bathroom), plus plenty of storage.
+
+The home is freshly painted and comes unfurnished, with a stove and refrigerator included, so you can make it your own for a longer stay.
+
+Highlights
+- Single family house on a quiet street
+- 3 bedrooms, plus a flexible fourth room
+- Nice views over McKees Rocks
+- Spacious, well-lit kitchen and great-room layout
+- Sunroom
+- Back yard with a covered patio
+- Full basement with a second bathroom and laundry hookups
+- Fresh paint throughout
+- Stove and refrigerator included
+- Minutes from downtown Pittsburgh
+
+
+-------------------------------------------------------------
+HOUSE RULES  (one rule per line)
+-------------------------------------------------------------
+
+No smoking indoors
+Every adult (18+) living in the home completes their own rental application
+[Pets: allowed / not allowed, and any pet rules]
+[Utilities: which ones the tenant pays]
+
+
+-------------------------------------------------------------
+AMENITIES TO TICK
+-------------------------------------------------------------
+
+Kitchen & dining:   Full kitchen, Refrigerator, Stove
+Outdoor:            Patio, Backyard
+Parking & access:   [Free street parking / Free driveway parking / Private garage]
+Do NOT tick "Washer" or "Dryer". The home has hookups only.
+Do NOT tick Wi-Fi unless you provide it.
+
+
+-------------------------------------------------------------
+PRICING AND BOOKING
+-------------------------------------------------------------
+
+Nightly price:      leave empty
+Monthly rent:       leave empty (the rent goes in the Corporate housing section below)
+Minimum nights:     [30, or your minimum lease length in nights]
+Maximum nights:     365
+
+
+-------------------------------------------------------------
+CORPORATE HOUSING PAGE SECTION
+-------------------------------------------------------------
+
+[x] Show on the Corporate Housing page
+[x] Long-term lease only
+Furnishing:                          Unfurnished
+Line under the price:                [Utilities paid by tenant]
+Monthly price:                       [monthly rent]
+Available from:                      [move-in date, or empty for "Available now"]
+Security deposit:                    [deposit, equal to one month's rent per the application]
+Cleaning fee:                        0
+Pet fee:                             [0, or the pet fee]
+Application fee:                     30
+Application link:                    /docs/brands-capital-rental-application.pdf
+                                     (type it exactly like this. It becomes a
+                                     "Download application (PDF)" button on this listing only)
+Order on the page:                   leave empty (unfurnished homes always show last)
+Furnished Finder link:               leave empty
+
+
+-------------------------------------------------------------
+HOW TO APPLY  (optional: paste at the end of the Description)
+-------------------------------------------------------------
+
+How to apply
+Every person 18 or older who will live in the home fills out their own application. The application fee is $30 per household, no matter how many applications you send.
+
+1. Download the rental application (the "Download application (PDF)" button on this page).
+2. Fill it out by hand and scan it or take a clear phone photo, or fill it out on your device in Adobe Acrobat.
+3. Email the completed application to info@brandscapital.com.
+4. Pay the $30 application fee. See the payment options at brandscapital.com/paymentoptions.php.
+5. Let us know once you have sent the application and paid the fee, so we can match your payment to your application.
+
+No printer? We can mail you an application. You can also mail a completed application to Brands Capital Corp, P.O. Box 8221, Pittsburgh, PA 15217 (this adds a few days).
+
+Once your application is processed, we will contact you to let you know if you are approved or if we need more information.
+
+For the fastest reply, text (412) 223-6653. To talk on the phone, text that number to set up a call time.
+
+Minimum requirements for acceptance
+- Every adult occupant submits a complete application
+- Gross monthly income of about three times the monthly rent or more
+- A favorable credit history
+- Good references, housekeeping and property care from previous landlords
+- No prior evictions or landlord-tenant complaint filings
+- Applicants who fall short may still qualify with compensating factors, such as a double deposit or rent paid in advance
+
+Move-in costs: the first full month's rent plus a security deposit equal to one month's rent, paid before the lease is signed. Once approved, a holding deposit secures the home.
+
+All homes are offered without regard to race, color, religion, national origin, sex, disability or familial status.

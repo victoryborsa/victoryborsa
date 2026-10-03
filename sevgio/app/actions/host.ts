@@ -64,7 +64,17 @@ function readListing(fd: FormData) {
     corp_available_from: str(fd, "corp_available_from", 10) || null,
     furnished_finder_url: str(fd, "furnished_finder_url", 500),
     corp_position: str(fd, "corp_position") ? Number(str(fd, "corp_position")) : null,
+    corp_furnished: str(fd, "corp_furnished") !== "no",
+    corp_lease_only: fd.get("corp_lease_only") === "on",
+    corp_app_fee: toCents(str(fd, "corp_app_fee") || "0"),
+    corp_apply_url: str(fd, "corp_apply_url", 500),
+    corp_price_note: str(fd, "corp_price_note", 80),
   };
+  // Long-term leases are listed on the Corporate Housing page and need no nightly price; keep one (rent ÷ 30) for sorting.
+  if (v.corp_lease_only) {
+    v.corp_listed = true;
+    if (!v.nightly && v.corp_monthly) v.nightly = Math.round(v.corp_monthly / 30);
+  }
   // Monthly rentals don't need a nightly price; keep one (rent ÷ 30) for sorting and the calendar.
   if (v.monthly && !v.nightly) v.nightly = Math.round(v.monthly / 30);
   let error = "";
@@ -79,6 +89,9 @@ function readListing(fd: FormData) {
   else if (v.corp_listed && !v.corp_monthly) error = "Add the all-inclusive monthly price to show this home on the Corporate Housing page.";
   else if ([v.corp_deposit, v.corp_cleaning, v.corp_pet_fee].some(c => c === null)) error = "Enter the corporate housing deposit and fees as numbers (use 0 for none).";
   else if (v.corp_available_from && !/^\d{4}-\d{2}-\d{2}$/.test(v.corp_available_from)) error = "Choose a valid Available from date.";
+  else if (v.corp_lease_only && !v.corp_monthly) error = "Add the monthly rent in the Corporate housing section for a long-term lease.";
+  else if (v.corp_app_fee === null) error = "Enter the application fee as a number (use 0 for none).";
+  else if (v.corp_apply_url && !/^https:\/\/\S+$/i.test(v.corp_apply_url) && !/^\/docs\/[\w.-]+$/.test(v.corp_apply_url)) error = "The application link should be a full web address starting with https://, or a file on this site like /docs/brands-capital-rental-application.pdf";
   else if (v.corp_position !== null && !(Number.isInteger(v.corp_position) && v.corp_position >= 1 && v.corp_position <= 999)) error = "The order on the Corporate Housing page must be a whole number from 1 to 999, or empty.";
   else if (v.furnished_finder_url && !/^https:\/\/(www\.)?furnishedfinder\.com\//i.test(v.furnished_finder_url)) error = "The Furnished Finder link should start with https://www.furnishedfinder.com/";
   else if (v.monthly !== null && !(v.monthly > 0)) error = "Enter the monthly rent as a number, or leave it empty.";
@@ -126,6 +139,7 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     monthly_price_cents: v.monthly, smart_pricing: v.smart_pricing && !v.monthly, min_price_cents: v.min_price, max_price_cents: v.max_price,
     corp_listed: v.corp_listed, corp_monthly_cents: v.corp_monthly, corp_deposit_cents: v.corp_deposit || 0, corp_cleaning_cents: v.corp_cleaning || 0,
     corp_pet_fee_cents: v.corp_pet_fee || 0, corp_available_from: v.corp_available_from, furnished_finder_url: v.furnished_finder_url, corp_position: v.corp_position,
+    corp_furnished: v.corp_furnished, corp_lease_only: v.corp_lease_only, corp_app_fee_cents: v.corp_app_fee || 0, corp_apply_url: v.corp_apply_url, corp_price_note: v.corp_price_note,
   };
   // Only admins set the management fee; hosts never see or change it.
   if (isAdmin && v.management_fee_percent !== null) cols.management_fee_percent = v.management_fee_percent;

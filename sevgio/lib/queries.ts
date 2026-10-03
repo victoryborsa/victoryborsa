@@ -17,7 +17,7 @@ export type SearchFilters = {
 };
 
 export async function searchProperties(f: SearchFilters): Promise<CardProperty[]> {
-  const where = ["p.status = 'published'"];
+  const where = ["p.status = 'published'", "NOT p.corp_lease_only"];
   const params: unknown[] = [];
   const add = (v: unknown) => { params.push(v); return "$" + params.length; };
   if (f.loc) f = { ...f, loc: LOC_ALIASES[f.loc.toLowerCase()] ?? f.loc };
@@ -52,12 +52,12 @@ export async function searchProperties(f: SearchFilters): Promise<CardProperty[]
 
 /** Every published listing for the home page: whole homes first, each followed by its rooms. */
 export async function allPublished() {
-  return q<CardProperty>(`SELECT p.*, ${COVER} FROM properties p WHERE p.status = 'published'
+  return q<CardProperty>(`SELECT p.*, ${COVER} FROM properties p WHERE p.status = 'published' AND NOT p.corp_lease_only
     ORDER BY coalesce((SELECT h.title FROM properties h WHERE h.id = p.parent_id), p.title), p.parent_id IS NOT NULL, p.title`);
 }
 
 export async function featuredProperties(limit = 6) {
-  return q<CardProperty>(`SELECT p.*, ${COVER} FROM properties p WHERE p.status = 'published' ORDER BY coalesce(p.rating, 4.6) * ln(p.review_count + 2) DESC, p.created_at DESC LIMIT $1`, [limit]);
+  return q<CardProperty>(`SELECT p.*, ${COVER} FROM properties p WHERE p.status = 'published' AND NOT p.corp_lease_only ORDER BY coalesce(p.rating, 4.6) * ln(p.review_count + 2) DESC, p.created_at DESC LIMIT $1`, [limit]);
 }
 
 export async function propertyBySlug(slug: string) {
@@ -74,12 +74,12 @@ export async function photosFor(propertyId: string) {
 }
 
 export async function publishedCities() {
-  return (await q<{ city: string }>("SELECT DISTINCT city FROM properties WHERE status = 'published' ORDER BY city")).map(r => r.city);
+  return (await q<{ city: string }>("SELECT DISTINCT city FROM properties WHERE status = 'published' AND NOT corp_lease_only ORDER BY city")).map(r => r.city);
 }
 
 /** Neighborhoods/areas that have published stays, for the "Where" dropdown. */
 export async function publishedAreas() {
-  return (await q<{ area: string }>("SELECT DISTINCT area FROM properties WHERE status = 'published' AND area <> '' ORDER BY area")).map(r => r.area);
+  return (await q<{ area: string }>("SELECT DISTINCT area FROM properties WHERE status = 'published' AND NOT corp_lease_only AND area <> '' ORDER BY area")).map(r => r.area);
 }
 
 /** Search words that mean a wider place: every Pittsburgh stay is a short drive from downtown. */
