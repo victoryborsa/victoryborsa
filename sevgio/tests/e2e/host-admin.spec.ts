@@ -895,6 +895,18 @@ test("corporate housing: host shows a home with its monthly rate and fees; compa
   await expect(card).toContainText("Available now");
   await expect(card.getByRole("link", { name: /Furnished Finder/ })).toHaveAttribute("href", "https://www.furnishedfinder.com/property/123456_1");
 
+  // Homes are cheapest first, unless the host gives one a place in the order.
+  const [other] = await sql<{ title: string }>("UPDATE properties SET corp_listed = true, corp_monthly_cents = 150000 WHERE id = (SELECT id FROM properties WHERE status = 'published' AND parent_id IS NULL AND id <> $1 ORDER BY slug LIMIT 1) RETURNING title", [p.id]);
+  await page.reload();
+  await expect(page.locator(".ch-home h3").first()).toHaveText(other.title);
+  await page.goto(`/host/listings/${p.id}`);
+  await page.getByLabel("Order on the page (1 = first, optional)").fill("1");
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText(/^Saved\./)).toBeVisible();
+  await page.goto("/corporate-housing");
+  await expect(page.locator(".ch-home h3").first()).toHaveText(p.title);
+  await sql("UPDATE properties SET corp_listed = false WHERE title = $1", [other.title]);
+
   // "Request this home" picks it in the form; the request lands in Admin messages.
   await card.getByRole("link", { name: "Request this home" }).click();
   await expect(page.locator("#request select[name=home]")).toHaveValue(p.id);

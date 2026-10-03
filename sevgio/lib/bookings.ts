@@ -17,7 +17,7 @@ export type Property = {
   beds_detail: unknown; half_bathrooms: number; kitchen_access: string; laundry_access: string; stairs_info: string; has_exterior_cameras: boolean; camera_locations: string;
   base_occupancy: number | null; extra_guest_fee_cents: number; fewer_guest_discount_percent: number; weekly_discount_percent: number; monthly_discount_percent: number;
   children_free_age: number; management_fee_percent: number; shared_spaces: string; owner_zelle: string; owner_venmo: string; pet_fee_cents: number; pet_fee_per: string; rooms_detail: unknown; services: unknown; security_deposit_cents: number; lat: number | null; lng: number | null; monthly_price_cents: number | null; smart_pricing: boolean;
-  corp_listed?: boolean; corp_monthly_cents?: number | null; corp_deposit_cents?: number; corp_cleaning_cents?: number; corp_pet_fee_cents?: number; corp_available_from?: string | null; furnished_finder_url?: string; min_price_cents: number | null; max_price_cents: number | null; demand?: Demand;
+  corp_listed?: boolean; corp_monthly_cents?: number | null; corp_deposit_cents?: number; corp_cleaning_cents?: number; corp_pet_fee_cents?: number; corp_available_from?: string | null; furnished_finder_url?: string; corp_position?: number | null; min_price_cents: number | null; max_price_cents: number | null; demand?: Demand;
 };
 
 export type Booking = {

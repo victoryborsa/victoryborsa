@@ -63,6 +63,7 @@ function readListing(fd: FormData) {
     corp_deposit: toCents(str(fd, "corp_deposit") || "0"), corp_cleaning: toCents(str(fd, "corp_cleaning") || "0"), corp_pet_fee: toCents(str(fd, "corp_pet_fee") || "0"),
     corp_available_from: str(fd, "corp_available_from", 10) || null,
     furnished_finder_url: str(fd, "furnished_finder_url", 500),
+    corp_position: str(fd, "corp_position") ? Number(str(fd, "corp_position")) : null,
   };
   // Monthly rentals don't need a nightly price; keep one (rent ÷ 30) for sorting and the calendar.
   if (v.monthly && !v.nightly) v.nightly = Math.round(v.monthly / 30);
@@ -79,6 +80,7 @@ function readListing(fd: FormData) {
   else if (v.corp_listed && v.parent_id) error = "Only entire homes can be shown on the Corporate Housing page.";
   else if ([v.corp_deposit, v.corp_cleaning, v.corp_pet_fee].some(c => c === null)) error = "Enter the corporate housing deposit and fees as numbers (use 0 for none).";
   else if (v.corp_available_from && !/^\d{4}-\d{2}-\d{2}$/.test(v.corp_available_from)) error = "Choose a valid Available from date.";
+  else if (v.corp_position !== null && !(Number.isInteger(v.corp_position) && v.corp_position >= 1 && v.corp_position <= 999)) error = "The order on the Corporate Housing page must be a whole number from 1 to 999, or empty.";
   else if (v.furnished_finder_url && !/^https:\/\/(www\.)?furnishedfinder\.com\//i.test(v.furnished_finder_url)) error = "The Furnished Finder link should start with https://www.furnishedfinder.com/";
   else if (v.monthly !== null && !(v.monthly > 0)) error = "Enter the monthly rent as a number, or leave it empty.";
   else if (v.monthly && v.min_nights < 28) error = "Monthly rentals need a minimum stay of at least 28 nights. Set Minimum nights to 30.";
@@ -124,7 +126,7 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     rooms_detail: JSON.stringify(v.rooms), services: JSON.stringify(v.services), security_deposit_cents: v.deposit || 0,
     monthly_price_cents: v.monthly, smart_pricing: v.smart_pricing && !v.monthly, min_price_cents: v.min_price, max_price_cents: v.max_price,
     corp_listed: v.corp_listed, corp_monthly_cents: v.corp_monthly, corp_deposit_cents: v.corp_deposit || 0, corp_cleaning_cents: v.corp_cleaning || 0,
-    corp_pet_fee_cents: v.corp_pet_fee || 0, corp_available_from: v.corp_available_from, furnished_finder_url: v.furnished_finder_url,
+    corp_pet_fee_cents: v.corp_pet_fee || 0, corp_available_from: v.corp_available_from, furnished_finder_url: v.furnished_finder_url, corp_position: v.corp_position,
   };
   // Only admins set the management fee; hosts never see or change it.
   if (isAdmin && v.management_fee_percent !== null) cols.management_fee_percent = v.management_fee_percent;

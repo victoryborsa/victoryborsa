@@ -5,13 +5,13 @@ import { todayLocal } from "./dates.ts";
 
 export type CorpHome = CardProperty & { corp_monthly_cents: number; corp_deposit_cents: number; corp_cleaning_cents: number; corp_pet_fee_cents: number; corp_available_from: string | null; furnished_finder_url: string };
 
-/** Published homes the host chose to show on the Corporate Housing page, lowest monthly rate first. */
+/** Published homes the host chose to show on the Corporate Housing page: numbered ones first, then the lowest monthly rate. */
 export async function corporateHomes(): Promise<CorpHome[]> {
   return q<CorpHome>(`SELECT p.*, to_char(p.corp_available_from, 'YYYY-MM-DD') AS corp_available_from,
       (SELECT id FROM photos ph WHERE ph.property_id = p.id ORDER BY position, created_at LIMIT 1) AS cover_id,
       (SELECT u.name FROM users u WHERE u.id = p.host_id) AS host_name
     FROM properties p WHERE p.status = 'published' AND p.corp_listed AND p.corp_monthly_cents IS NOT NULL
-    ORDER BY p.corp_monthly_cents, p.title`);
+    ORDER BY p.corp_position NULLS LAST, p.corp_monthly_cents, p.title`);
 }
 
 /** "Available now" or "Available Nov 1", from the date the home is free for a new monthly guest. */

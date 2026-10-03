@@ -140,6 +140,7 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
           <label className="field"><span>Security deposit (USD)</span><input className="input mono" name="corp_deposit" inputMode="decimal" defaultValue={dollars(p?.corp_deposit_cents) || "0"} /></label>
           <label className="field"><span>Cleaning fee (USD, one time)</span><input className="input mono" name="corp_cleaning" inputMode="decimal" defaultValue={dollars(p?.corp_cleaning_cents) || "0"} /></label>
           <label className="field"><span>Pet fee (USD, non-refundable, 0 = none)</span><input className="input mono" name="corp_pet_fee" inputMode="decimal" defaultValue={dollars(p?.corp_pet_fee_cents) || "0"} /></label>
+          <label className="field"><span>Order on the page (1 = first, optional)</span><input className="input mono" name="corp_position" type="number" min={1} max={999} defaultValue={p?.corp_position ?? ""} placeholder="Empty = by price" /></label>
           <label className="field"><span>Furnished Finder link (optional)</span><input className="input" name="furnished_finder_url" type="url" defaultValue={p?.furnished_finder_url ?? ""} placeholder="https://www.furnishedfinder.com/property/..." /></label>
         </div>
       </div>
