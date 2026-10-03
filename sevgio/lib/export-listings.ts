@@ -3,18 +3,17 @@ import { q } from "./db.ts";
 import { siteUrl } from "./email.ts";
 import type { Property } from "./bookings.ts";
 
-type Row = Property & { parent_title: string | null; host_name: string | null; photo_ids: string[] | null };
+type Row = Property & { parent_title: string | null; host_name: string | null };
 const dollars = (c: number | null | undefined) => (c ? c / 100 : 0);
 
 /**
- * Every listing, in the same format the Import page reads (rooms name their house with "part_of",
- * photos come as links the importer downloads). Nothing is changed; this only reads.
+ * Every listing, in the same format the Import page reads (rooms name their house with "part_of").
+ * Text and settings only, no photos. Nothing is changed; this only reads.
  */
 export async function exportListings() {
   const rows = await q<Row>(`SELECT p.*, to_char(p.corp_available_from, 'YYYY-MM-DD') AS corp_available_from,
       (SELECT h.title FROM properties h WHERE h.id = p.parent_id) AS parent_title,
-      (SELECT u.name FROM users u WHERE u.id = p.host_id) AS host_name,
-      (SELECT array_agg(ph.id ORDER BY ph.position, ph.created_at) FROM photos ph WHERE ph.property_id = p.id) AS photo_ids
+      (SELECT u.name FROM users u WHERE u.id = p.host_id) AS host_name
     FROM properties p ORDER BY coalesce((SELECT h.title FROM properties h WHERE h.id = p.parent_id), p.title), p.parent_id IS NOT NULL, p.title`);
   const base = siteUrl();
   return rows.map(p => {
@@ -42,7 +41,6 @@ export async function exportListings() {
       corp_apply_url: p.corp_apply_url || "", corp_price_note: p.corp_price_note || "", corp_position: p.corp_position ?? null,
       corp_available_from: p.corp_available_from || null, furnished_finder_url: p.furnished_finder_url || "",
       lat: p.lat, lng: p.lng,
-      photo_urls: (p.photo_ids || []).map(id => `${base}/api/photos/${id}`),
     };
   });
 }

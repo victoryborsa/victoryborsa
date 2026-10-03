@@ -1029,7 +1029,7 @@ test("import: the Stowe Township lease file comes in as an unfurnished Corporate
   await signOut(page);
 });
 
-test("admin exports every listing as a file the Import page reads; nobody else can", async ({ page }) => {
+test("admin exports every listing (no photos) as a file the Import page reads; nobody else can", async ({ page }) => {
   expect((await page.request.get("/api/admin/export-listings")).status()).toBe(403);
   await signIn(page, "guest@demo.sevgio.com", "demo-password-2026");
   expect((await page.request.get("/api/admin/export-listings")).status()).toBe(403);
@@ -1044,12 +1044,12 @@ test("admin exports every listing as a file the Import page reads; nobody else c
   const [{ n }] = await sql<{ n: number }>("SELECT count(*)::int AS n FROM properties");
   expect(data.count).toBe(n);
   const lodge = data.listings.find((l: { title: string }) => l.title === "Lake Harmony Lodge");
-  expect(lodge.photo_urls.length).toBeGreaterThan(0);
-  expect(lodge.photo_urls[0]).toMatch(/\/api\/photos\/[0-9a-f-]{36}$/);
+  expect(lodge.photo_urls).toBeUndefined();
+  expect(JSON.stringify(data)).not.toContain("/api/photos/");
   expect(lodge.nightly_price).toBeGreaterThan(0);
 
-  // The same file imports straight back in (here just the lodge, renamed, without its photos).
-  const copy = { ...lodge, title: "Lake Harmony Lodge Copy", photo_urls: [] };
+  // The same file imports straight back in (here just the lodge, renamed).
+  const copy = { ...lodge, title: "Lake Harmony Lodge Copy" };
   await page.goto("/host/listings/import");
   await page.getByText("Or paste the file's text instead").click();
   await page.locator("textarea[name=json]").fill(JSON.stringify({ listings: [copy] }));
