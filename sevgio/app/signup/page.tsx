@@ -8,8 +8,10 @@ import { PasswordInput } from "@/components/PasswordInput.tsx";
 
 export const metadata: Metadata = { title: "Create an account" };
 
-export default async function SignUp({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const next = safeNext((await searchParams).next, "");
+export default async function SignUp({ searchParams }: { searchParams: Promise<{ next?: string; host?: string }> }) {
+  const sp = await searchParams;
+  const next = safeNext(sp.next, "");
+  const host = sp.host === "1";
   if (await currentUser()) redirect(next || "/trips");
   return (
     <div className="wrap">
@@ -20,8 +22,8 @@ export default async function SignUp({ searchParams }: { searchParams: Promise<{
         <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
           <legend style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>I want to</legend>
           <div className="choice-row">
-            <label className="choice"><input type="radio" name="want" value="guest" defaultChecked /><span><b>Book stays</b><small>Guest account</small></span></label>
-            <label className="choice"><input type="radio" name="want" value="host" /><span><b>List my home</b><small>Host account, approved by us</small></span></label>
+            <label className="choice"><input type="radio" name="want" value="guest" defaultChecked={!host} /><span><b>Book stays</b><small>Guest account</small></span></label>
+            <label className="choice"><input type="radio" name="want" value="host" defaultChecked={host} /><span><b>List my home</b><small>Host account, approved by us</small></span></label>
           </div>
         </fieldset>
         <label className="field"><span>Full name</span><input className="input" name="name" autoComplete="name" required /></label>

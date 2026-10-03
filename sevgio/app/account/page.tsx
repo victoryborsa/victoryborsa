@@ -22,9 +22,9 @@ export default async function Account({ searchParams }: { searchParams: Promise<
         {u.role === "admin" ? <>You're an administrator. <Link href="/admin">Open the admin dashboard</Link>.</> : u.role === "host" ? <>You're a host. <Link href="/host">Open your host dashboard</Link>.</> : <>See your bookings in <Link href="/trips">My trips</Link>.</>}
       </p>
       {reset && <div className="notice ok" style={{ marginBottom: 16 }}>Your password has been changed and you're signed in.</div>}
-      {u.role === "customer" && (hostReq
+      {u.role === "customer" && <div id="become-host" style={{ scrollMarginTop: 90 }}>{hostReq
         ? <div className="notice info" style={{ marginBottom: 16 }}><b>Your host request is being reviewed.</b> We'll email you when your host tools are ready, usually within a day.</div>
-        : <ActionForm action={requestHostAction} className="row box" ><span style={{ flex: 1, minWidth: 220 }}><b>Have a home in Pittsburgh?</b> List it on Sevgio Stays.</span><SubmitButton className="btn btn-ghost btn-sm" pendingText="Sending…">Become a host</SubmitButton></ActionForm>)}
+        : <ActionForm action={requestHostAction} className="row box" ><span style={{ flex: 1, minWidth: 220 }}><b>Have a home in Pittsburgh?</b> List it on Sevgio Stays.</span><SubmitButton className="btn btn-ghost btn-sm" pendingText="Sending…">Become a host</SubmitButton></ActionForm>}</div>}
       {!u.verified && verificationRequired() && (
         <div className="box" style={{ marginBottom: 20 }}>
           <h2>Confirm your email</h2>

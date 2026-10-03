@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { iso, pickDates, sql, signIn, signOut } from "./helpers.ts";
+import { fromMenu, iso, pickDates, sql, signIn, signOut } from "./helpers.ts";
 
 test.describe.configure({ mode: "serial" });
 const email = `guest-${Date.now()}@example.com`;
@@ -115,7 +115,7 @@ test("guest books instantly: sign up mid-booking, confirmation, My trips", async
   expect(arr.arrival_time).toBe("5:00 pm - 6:00 pm");
   await expect(page.getByText("Confirmed").first()).toBeVisible();
   await expect(page.getByText("Getting there")).toBeVisible();
-  await page.getByRole("link", { name: "My trips" }).first().click();
+  await fromMenu(page, "My trips");
   await expect(page.getByText("Lake Harmony Lodge")).toBeVisible();
 });
 
@@ -457,20 +457,53 @@ test("search results: map with a price pin for each stay, filters panel, entire 
   await expect(page.getByRole("button", { name: /Filters \(1\)/ })).toBeVisible();
 });
 
-test("phones: a Menu button opens every link as a big row (no sideways-scrolling strip)", async ({ browser }) => {
+test("top bar: ☰ menu in the corner holds Contact, Admin, My trips, Account and Sign out; host switch button beside it (phones and computers)", async ({ browser, page }) => {
+  // Signed out: Become a host is visible; the menu has Contact; it closes on a click outside.
+  await page.goto("/");
+  const bar = page.getByRole("banner");
+  await expect(bar.getByRole("link", { name: "Become a host" })).toHaveAttribute("href", "/signup?host=1");
+  await bar.getByRole("button", { name: "Menu" }).click();
+  const menu = page.getByRole("menu", { name: "Menu" });
+  await expect(menu.getByRole("menuitem", { name: "Contact" })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "Admin" })).toHaveCount(0);
+  await page.mouse.click(20, 400);
+  await expect(menu).toHaveCount(0);
+  // A guest sees no Admin; Become a host goes to their account.
+  await signIn(page, "guest@demo.sevgio.com", "demo-password-2026");
+  await expect(bar.getByRole("link", { name: "Become a host" })).toHaveAttribute("href", "/account#become-host");
+  for (const name of ["Contact", "Admin", "My trips", "Account", "Sign out"]) await expect(bar.getByRole("link", { name, exact: true })).toHaveCount(0);
+  await bar.getByRole("button", { name: "Menu" }).click();
+  for (const name of ["Contact", "My trips", "Account", "Sign out"]) await expect(menu.getByRole("menuitem", { name, exact: true })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "Admin" })).toHaveCount(0);
+  // Picking an option goes there and closes the menu.
+  await menu.getByRole("menuitem", { name: "Account" }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(menu).toHaveCount(0);
+  await signOut(page);
+  // An admin sees Admin, and the button switches between hosting and traveling.
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await expect(bar.getByRole("link", { name: "Switch to traveling" })).toBeVisible();
+  await bar.getByRole("link", { name: "Switch to traveling" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await bar.getByRole("link", { name: "Switch to hosting" }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await fromMenu(page, "Admin");
+  await expect(page).toHaveURL(/\/admin$/);
+  await signOut(page);
+
+  // Phones: the same menu also lists the main pages.
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await ctx.newPage();
-  await page.goto("/pittsburgh");
-  await expect(page.locator("nav.main")).toBeHidden();
-  const menu = page.getByRole("button", { name: "Menu" });
-  await expect(menu).toBeVisible();
-  await menu.click();
-  const panel = page.getByRole("navigation", { name: "Menu" });
-  for (const name of ["Stays", "Events", "Pittsburgh guide", "Contact", "Sign in", "Create account"]) await expect(panel.getByRole("link", { name })).toBeVisible();
-  await expect(panel.getByRole("link", { name: "Pittsburgh guide" })).toHaveAttribute("aria-current", "page");
-  await panel.getByRole("link", { name: "Events" }).click();
-  await expect(page).toHaveURL(/\/events$/);
-  await expect(panel).toBeHidden();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  const phone = await ctx.newPage();
+  await phone.goto("/pittsburgh");
+  await expect(phone.locator("nav.main")).toBeHidden();
+  await expect(phone.getByRole("banner").getByRole("link", { name: "Become a host" })).toBeVisible();
+  await phone.getByRole("banner").getByRole("button", { name: "Menu" }).click();
+  const pm = phone.getByRole("menu", { name: "Menu" });
+  for (const name of ["Stays", "Events", "Pittsburgh guide", "Contact", "Sign in", "Create account"]) await expect(pm.getByRole("menuitem", { name, exact: true })).toBeVisible();
+  await expect(pm.getByRole("menuitem", { name: "Pittsburgh guide" })).toHaveAttribute("aria-current", "page");
+  await pm.getByRole("menuitem", { name: "Events" }).click();
+  await expect(phone).toHaveURL(/\/events$/);
+  await expect(pm).toHaveCount(0);
+  expect(await phone.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await ctx.close();
 });

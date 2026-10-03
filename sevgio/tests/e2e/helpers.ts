@@ -18,11 +18,17 @@ export async function signIn(page: Page, email: string, password: string) {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+  await expect(page.locator("header.site .um-avatar.in")).toBeVisible();
+}
+
+/** Opens the ☰ menu in the top-right corner and picks an option. */
+export async function fromMenu(page: Page, name: string) {
+  await page.getByRole("banner").getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("menu", { name: "Menu" }).getByRole("menuitem", { name, exact: true }).click();
 }
 
 export async function signOut(page: Page) {
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await fromMenu(page, "Sign out");
   await expect(page.getByRole("banner").getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
 }
 

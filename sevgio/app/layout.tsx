@@ -11,7 +11,7 @@ import { getSettings } from "@/lib/settings.ts";
 import { signOutAction } from "./actions/auth.ts";
 import { getT, LANGS } from "@/lib/i18n.ts";
 import { LangMenu } from "@/components/LangMenu.tsx";
-import { MobileMenu } from "@/components/MobileMenu.tsx";
+import { HostSwitch, UserMenu } from "@/components/UserMenu.tsx";
 import { ProtectPage } from "@/components/ProtectPage.tsx";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-display", display: "swap" });
@@ -43,34 +43,27 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link className="navlink" href="/stays">{t("nav.stays")}</Link>
               <Link className="navlink" href="/events">{t("nav.events")}</Link>
               <Link className="navlink" href="/pittsburgh">{t("nav.guide")}</Link>
-              <Link className="navlink" href="/contact">{t("nav.contact")}</Link>
-              {user?.role === "host" && <Link className="navlink" href="/host">{t("nav.host")}</Link>}
-              {user?.role === "admin" && <Link className="navlink" href="/admin">{t("nav.admin")}</Link>}
-              {user ? (
-                <>
-                  <Link className="navlink" href="/trips">{t("nav.trips")}</Link>
-                  <Link className="navlink" href="/account">{t("nav.account")}</Link>
-                  <form action={signOutAction} className="inline-form"><button className="btn btn-ghost btn-sm" type="submit">{t("nav.signout")}</button></form>
-                </>
-              ) : (
+              {!user && (
                 <>
                   <Link className="navlink" href="/signin">{t("nav.signin")}</Link>
                   <Link className="btn btn-primary btn-sm" href="/signup">{t("nav.signup")}</Link>
                 </>
               )}
             </nav>
-            <MobileMenu
-              explore={[{ href: "/stays", label: t("nav.stays") }, { href: "/events", label: t("nav.events") }, { href: "/pittsburgh", label: t("nav.guide") }, { href: "/contact", label: t("nav.contact") }]}
-              account={[
-                ...(user?.role === "host" ? [{ href: "/host", label: t("nav.host") }] : []),
+            <LangMenu current={lang} label={t("nav.language")} langs={LANGS.map(l => ({ code: l.code, name: l.name }))} />
+            <HostSwitch role={user?.role ?? null} labels={{ become: t("nav.becomeHost"), toHosting: t("nav.toHosting"), toTraveling: t("nav.toTraveling") }} />
+            <UserMenu
+              main={[{ href: "/stays", label: t("nav.stays") }, { href: "/events", label: t("nav.events") }, { href: "/pittsburgh", label: t("nav.guide") }]}
+              items={[
+                { href: "/contact", label: t("nav.contact") },
                 ...(user?.role === "admin" ? [{ href: "/admin", label: t("nav.admin") }] : []),
-                { href: "/trips", label: t("nav.trips") }, { href: "/account", label: t("nav.account") },
+                ...(user ? [{ href: "/trips", label: t("nav.trips") }, { href: "/account", label: t("nav.account") }] : []),
               ]}
               signedIn={!!user}
+              initial={(user?.name || user?.email || "?").trim().charAt(0).toUpperCase()}
               signOut={signOutAction}
-              labels={{ menu: t("nav.menu"), close: t("nav.close"), explore: t("nav.explore"), account: t("nav.yourAccount"), signout: t("nav.signout"), signin: t("nav.signin"), signup: t("nav.signup") }}
+              labels={{ menu: t("nav.menu"), signout: t("nav.signout"), signin: t("nav.signin"), signup: t("nav.signup") }}
             />
-            <LangMenu current={lang} label={t("nav.language")} langs={LANGS.map(l => ({ code: l.code, name: l.name }))} />
           </div>
         </header>
         <main id="main">{children}</main>

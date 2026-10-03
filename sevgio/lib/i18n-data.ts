@@ -14,7 +14,7 @@ export const LANGS = [
 export type Lang = (typeof LANGS)[number]["code"];
 
 const en = {
-  "nav.menu": "Menu", "nav.close": "Close", "nav.explore": "Explore", "nav.yourAccount": "Your account", "nav.stays": "Stays", "nav.events": "Events", "nav.guide": "Pittsburgh guide", "nav.contact": "Contact", "nav.host": "Host dashboard", "nav.admin": "Admin", "nav.trips": "My trips",
+  "nav.menu": "Menu", "nav.becomeHost": "Become a host", "nav.toHosting": "Switch to hosting", "nav.toTraveling": "Switch to traveling", "nav.close": "Close", "nav.explore": "Explore", "nav.yourAccount": "Your account", "nav.stays": "Stays", "nav.events": "Events", "nav.guide": "Pittsburgh guide", "nav.contact": "Contact", "nav.host": "Host dashboard", "nav.admin": "Admin", "nav.trips": "My trips",
   "nav.account": "Account", "nav.signout": "Sign out", "nav.signin": "Sign in", "nav.signup": "Create account", "nav.language": "Language",
   "foot.tagline": "Homes and private rooms in Pittsburgh, booked direct.", "foot.guests": "Guests", "foot.find": "Find a stay", "foot.help": "Help", "foot.contact": "Contact us", "foot.hosts": "Hosts", "foot.hostSignin": "Host sign in",
   "home.eyebrow": "Welcome, yinz!", "home.h1": "From wherever yinz call home,\nto right here in the ’Burgh.", "home.welcome": "Come on in. Yinz are home.",
@@ -36,7 +36,7 @@ export type Key = keyof typeof en;
 type Dict = Partial<Record<Key, string>>;
 
 const tr: Dict = {
-  "nav.menu": "Menü", "nav.close": "Kapat", "nav.explore": "Keşfet", "nav.yourAccount": "Hesabınız", "nav.stays": "Konaklamalar", "nav.events": "Etkinlikler", "nav.guide": "Pittsburgh rehberi", "nav.contact": "İletişim", "nav.host": "Ev sahibi paneli", "nav.admin": "Yönetim", "nav.trips": "Rezervasyonlarım",
+  "nav.menu": "Menü", "nav.becomeHost": "Ev sahibi olun", "nav.toHosting": "Ev sahibi moduna geç", "nav.toTraveling": "Misafir moduna geç", "nav.close": "Kapat", "nav.explore": "Keşfet", "nav.yourAccount": "Hesabınız", "nav.stays": "Konaklamalar", "nav.events": "Etkinlikler", "nav.guide": "Pittsburgh rehberi", "nav.contact": "İletişim", "nav.host": "Ev sahibi paneli", "nav.admin": "Yönetim", "nav.trips": "Rezervasyonlarım",
   "nav.account": "Hesabım", "nav.signout": "Çıkış yap", "nav.signin": "Giriş yap", "nav.signup": "Hesap oluştur", "nav.language": "Dil",
   "foot.tagline": "Pittsburgh'da evler ve özel odalar, doğrudan rezervasyon.", "foot.guests": "Misafirler", "foot.find": "Konaklama bul", "foot.help": "Yardım", "foot.contact": "Bize ulaşın", "foot.hosts": "Ev sahipleri", "foot.hostSignin": "Ev sahibi girişi",
   "home.eyebrow": "Hoş geldiniz!", "home.welcome": "Buyurun, içeri gelin. Burası sizin eviniz.", "home.h1": "Dünyanın her yerinden Pittsburgh'daki evinize.",

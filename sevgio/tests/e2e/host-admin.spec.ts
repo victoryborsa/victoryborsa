@@ -772,7 +772,9 @@ test("admin sets a new password for a locked-out person; they can sign in right 
   await expect(page.getByText(/New password saved for/)).toBeVisible();
   await signOut(page);
   await signIn(page, o.email, "olivia-pass-2026");
-  await expect(page.getByRole("link", { name: "Account" }).first()).toBeVisible();
+  await page.getByRole("banner").getByRole("button", { name: "Menu" }).click();
+  await expect(page.getByRole("menu", { name: "Menu" }).getByRole("menuitem", { name: "Account" })).toBeVisible();
+  await page.keyboard.press("Escape");
   await signOut(page);
 });
 
