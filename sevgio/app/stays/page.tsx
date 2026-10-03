@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Icon, type IconName } from "@/components/Icon.tsx";
 import type { Metadata } from "next";
 import { searchProperties, publishedCities } from "@/lib/queries.ts";
 import { getSettings } from "@/lib/settings.ts";
@@ -52,11 +53,11 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
     if (u.getAll(key).includes(value)) { const rest = u.getAll(key).filter(x => x !== value); u.delete(key); rest.forEach(x => u.append(key, x)); } else if (key === "amen") u.append(key, value); else u.set(key, value);
     return "/stays?" + u.toString();
   };
-  const chips: [string, string, string, string][] = [
-    ["kind", "home", "Entire home", "🏠"], ["kind", "room", "Private room", "🛏️"], ["amen", "pets", "Allows pets", "🐾"], ["amen", "selfcheckin", "Self check-in", "🔑"],
-    ["amen", "parking", "Free parking", "🚗"], ["cancel", "1", "Free cancellation", "✅"], ["amen", "wifi", "Wifi", "📶"], ["amen", "kitchen", "Kitchen", "🍳"],
-    ["amen", "washer", "Washer", "🧺"], ["amen", "ac", "Air conditioning", "❄️"], ["amen", "workspace", "Workspace", "💻"], ["amen", "hottub", "Hot tub", "🛁"],
-    ["amen", "fireplace", "Fireplace", "🔥"], ["instant", "1", "Instant book", "⚡"], ["pbath", "1", "Private bathroom", "🚿"], ["monthly", "1", "Monthly stays", "📅"],
+  const chips: [string, string, string, IconName][] = [
+    ["kind", "home", "Entire home", "home"], ["kind", "room", "Private room", "room"], ["amen", "pets", "Allows pets", "pets"], ["amen", "selfcheckin", "Self check-in", "key"],
+    ["amen", "parking", "Free parking", "car"], ["cancel", "1", "Free cancellation", "check"], ["amen", "wifi", "Wifi", "wifi"], ["amen", "kitchen", "Kitchen", "kitchen"],
+    ["amen", "washer", "Washer", "washer"], ["amen", "ac", "Air conditioning", "ac"], ["amen", "workspace", "Workspace", "laptop"], ["amen", "hottub", "Hot tub", "bath"],
+    ["amen", "fireplace", "Fireplace", "fire"], ["instant", "1", "Instant book", "bolt"], ["pbath", "1", "Private bathroom", "shower"], ["monthly", "1", "Monthly stays", "calendar"],
   ];
   const pins: MapPin[] = list.flatMap(p => {
     const pos = approxPosition(p);
@@ -124,7 +125,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
         </FilterDrawer>
         {chips.map(([k, v, label, icon]) => {
           const on = params().getAll(k).includes(v);
-          return <Link key={k + v} href={toggle(k, v)} className={`chip${on ? " on" : ""}`} aria-pressed={on} scroll={false}><span aria-hidden>{icon}</span>{label}</Link>;
+          return <Link key={k + v} href={toggle(k, v)} className={`chip${on ? " on" : ""}`} aria-pressed={on} scroll={false}><Icon name={icon} />{label}</Link>;
         })}
       </nav>
       <div className="results-split">

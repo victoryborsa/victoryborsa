@@ -8,7 +8,7 @@ export default async function HostLayout({ children }: { children: React.ReactNo
   const u = await requireUser(["host", "admin"], "/host");
   const fresh = await unseenBookings(u);
   return (
-    <div className="dash wrap wrap-wide">
+    <div className="dash wrap wrap-wide theme-light">
       <DashNav label="Host menu" groups={[
         { items: [
           { href: "/host", label: "Dashboard", icon: "dashboard" },

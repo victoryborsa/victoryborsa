@@ -12,7 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     one<{ n: number }>("SELECT count(*)::int AS n FROM event_log WHERE level = 'error' AND resolved_at IS NULL"),
   ]);
   return (
-    <div className="dash wrap wrap-wide">
+    <div className="dash wrap wrap-wide theme-light">
       <DashNav label="Admin menu" groups={[
         { items: [
           { href: "/admin", label: "Dashboard", icon: "dashboard" },

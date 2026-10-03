@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Icon, type IconName } from "@/components/Icon.tsx";
 import { q } from "@/lib/db.ts";
 import { PictureTrio } from "@/components/PictureTrio.tsx";
 import { CardRow } from "@/components/HomeRows.tsx";
@@ -67,13 +68,13 @@ export default async function PittsburghGuide() {
   const sec = (id: Section["id"]) => SECTIONS.find(s => s.id === id)!;
   const uploaded = [...rows.filter(r => r.slot === "guide-banner"), ...rows.filter(r => r.slot === null)];
   const areas = [...new Set(SECTIONS.flatMap(s => s.places.map(p => p.area.split(/ & | and |, /)[0])).filter(a => !/all over|away/i.test(a)))].sort();
-  const tabs: [string, string, string][] = [["#guide-rows", "All", "✨"], ["#see", "Must-see", "🏛️"], ["#museums", "Museums", "🎨"], ["#eat", "Eat", "🥪"], ["#drink", "Drinks", "🍺"], ["#do", "Things to do", "🎢"], ["#near", "Near our homes", "📍"], ["#yinzer", "Yinzer talk", "🗣️"], ["#tips", "Getting around", "🚌"]];
+  const tabs: [string, string, IconName][] = [["#guide-rows", "All", "all"], ["#see", "Must-see", "museum"], ["#museums", "Museums", "art"], ["#eat", "Eat", "food"], ["#drink", "Drinks", "drink"], ["#do", "Things to do", "ticket"], ["#near", "Near our homes", "pin"], ["#yinzer", "Yinzer talk", "talk"], ["#tips", "Getting around", "bus"]];
 
   return (
     <div className="ab-home ab-guide">
       <div className="ab-band">
         <nav className="ab-tabs" aria-label="Guide sections">
-          {tabs.map(([href, label, icon], i) => <a key={href} href={href} aria-current={i === 0 ? "page" : undefined}><span className="ab-tab-ico" aria-hidden>{icon}</span>{label}</a>)}
+          {tabs.map(([href, label, icon], i) => <a key={href} href={href} aria-current={i === 0 ? "page" : undefined}><Icon name={icon} size={24} className="ab-tab-ico" />{label}</a>)}
         </nav>
         <GuideFilter areas={areas} target="guide-rows" />
       </div>
@@ -117,9 +118,9 @@ export default async function PittsburghGuide() {
         <section id="tips" className="gp-anchor gp-tips" aria-labelledby="tips-h">
           <h2 id="tips-h" className="gp-big">{t("guide.tips")}</h2>
           <div className="ab-promos">
-            <a className="ab-promo" href={mapLink({ name: "Pittsburgh International Airport", q: "Pittsburgh International Airport (PIT)" })} target="_blank" rel="noopener noreferrer"><span className="ab-promo-ico" aria-hidden>✈️</span><span>{t("guide.tip1")}</span><span className="ab-pill">Directions</span></a>
-            <a className="ab-promo" href="https://www.rideprt.org/" target="_blank" rel="noopener noreferrer"><span className="ab-promo-ico" aria-hidden>🚇</span><span>{t("guide.tip2")}</span><span className="ab-pill">Schedules</span></a>
-            <a className="ab-promo" href="https://www.google.com/maps/dir/?api=1&travelmode=transit" target="_blank" rel="noopener noreferrer"><span className="ab-promo-ico" aria-hidden>🚌</span><span>{t("guide.tip3")}</span><span className="ab-pill">Plan a trip</span></a>
+            <a className="ab-promo" href={mapLink({ name: "Pittsburgh International Airport", q: "Pittsburgh International Airport (PIT)" })} target="_blank" rel="noopener noreferrer"><span className="ab-promo-ico"><Icon name="plane" size={30} /></span><span>{t("guide.tip1")}</span><span className="ab-pill">Directions</span></a>
+            <a className="ab-promo" href="https://www.rideprt.org/" target="_blank" rel="noopener noreferrer"><span className="ab-promo-ico"><Icon name="train" size={30} /></span><span>{t("guide.tip2")}</span><span className="ab-pill">Schedules</span></a>
+            <a className="ab-promo" href="https://www.google.com/maps/dir/?api=1&travelmode=transit" target="_blank" rel="noopener noreferrer"><span className="ab-promo-ico"><Icon name="bus" size={30} /></span><span>{t("guide.tip3")}</span><span className="ab-pill">Plan a trip</span></a>
           </div>
           <ul className="gp-tiplist"><li>{t("guide.tip4")}</li><li>{t("guide.tip5")}</li></ul>
         </section>

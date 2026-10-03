@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Icon, type IconName } from "@/components/Icon.tsx";
 import { CATEGORIES, TEAMS, eventsBetween, timeLabel, type Ev } from "@/lib/events.ts";
 import { addDays, fmtDate, fmtShort, isIsoDate, nightsBetween, todayLocal } from "@/lib/dates.ts";
 import { getT } from "@/lib/i18n.ts";
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 
 const VIEWS = [["day", "Day"], ["week", "Week"], ["month", "Month"]] as const;
 type View = (typeof VIEWS)[number][0];
+const TEAM_ICON: Record<string, IconName> = { steelers: "football", pirates: "baseball", penguins: "hockey" };
 const ICON: Record<string, string> = { steelers: "🏈", pirates: "⚾", penguins: "🏒", Sports: "🏟️", Music: "🎵", "Arts & Theatre": "🎭", Family: "🎈", Festivals: "🎪", "Food & Drink": "🍻", Other: "📅" };
 const TONE: Record<string, string> = { steelers: "#101820", pirates: "#27251F", penguins: "#FCB514", Sports: "#0B2A5B", Music: "#7A3E9D", "Arts & Theatre": "#B3262B", Family: "#0A6B66", Festivals: "#C47A00", "Food & Drink": "#8A4B12", Other: "#29353F" };
 const OFFICIAL = [
@@ -69,7 +71,7 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
       </div>
       <nav className="guide-toc" aria-label="Filter events" style={{ marginTop: 12 }}>
         <Link href={link({ show: "" }).replace(/&show=[^&]*/, "")} className={!show ? "on" : undefined}>All events</Link>
-        {TEAMS.map(x => <Link key={x.key} href={link({ show: x.key })} className={show === x.key ? "on" : undefined}>{ICON[x.key]} {x.name}</Link>)}
+        {TEAMS.map(x => <Link key={x.key} href={link({ show: x.key })} className={show === x.key ? "on" : undefined}><Icon name={TEAM_ICON[x.key] ?? "ticket"} />{x.name}</Link>)}
         {CATEGORIES.filter(c => c !== "Other").map(c => <Link key={c} href={link({ show: c })} className={show === c ? "on" : undefined}>{c}</Link>)}
       </nav>
       <h2 className="mc-period" style={{ marginTop: 18 }}>{period}</h2>

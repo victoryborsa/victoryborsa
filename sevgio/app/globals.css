@@ -1191,3 +1191,29 @@ body:has(.ab-home) footer, body:has(.theme-light) footer { background: #F7F7F7; 
 body:has(.photo-page) { background: transparent; }
 body:has(.photo-page) footer { position: relative; }
 .photo-page { min-height: calc(100dvh - 72px); }
+
+/* Icons: black (the text color), bold lines, easy to see. */
+.ic { flex: none; color: var(--ink); }
+.chip .ic { width: 17px; height: 17px; }
+.chip.on .ic { color: #101820; }
+.ab-tabs a .ab-tab-ico { color: var(--ink); width: 24px; height: 24px; }
+.ab-promo-ico { color: #101820; }
+.dn-ic { stroke-width: 2.3; }
+.lstats svg { stroke-width: 2.4; }
+.um-bars { stroke-width: 2.6; }
+.cs-chev { stroke-width: 2.6; }
+.ps-mag { stroke-width: 3; }
+@media (max-width: 743px) { .ab-tabs a .ab-tab-ico { width: 22px; height: 22px; } }
+
+/* Light pages (home colors): status colors that read on white. Host and admin pages use these too. */
+body:has(.theme-light), body:has(.ab-home) {
+  --ok: #1E7F45; --ok-soft: #E7F6EC; --warn: #9A5B00; --warn-soft: #FFF4D6; --danger: #C62828; --danger-soft: #FDECEA;
+}
+body:has(.dash.theme-light) { background: #FFFFFF; }
+.theme-light .dn a[aria-current="page"] { background: var(--accent-soft); color: #101820; }
+.theme-light .dn a[aria-current="page"]::before { background: var(--accent); }
+.theme-light .dn a[aria-current="page"] .dn-ic { color: #101820; }
+.theme-light .dn a:hover { background: var(--surface-2); }
+.theme-light .cs-tabs button[aria-selected="true"] { color: #101820; border-bottom-color: var(--accent); }
+.theme-light .stat { background: #FFFFFF; box-shadow: 0 1px 2px rgba(16,24,32,.06); }
+.guide-toc a { display: inline-flex; align-items: center; gap: 6px; }
