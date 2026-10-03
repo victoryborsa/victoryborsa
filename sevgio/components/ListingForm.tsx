@@ -132,7 +132,7 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
 
       <div className="box" id="corporate">
         <h2>Corporate housing page</h2>
-        <p className="muted">Show this home on <a href="/corporate-housing" target="_blank">sevgio.com/corporate-housing</a> for travel nurses, doctors and companies, with one fixed all-inclusive monthly price and its fees. Entire homes only.</p>
+        <p className="muted">Show this home on <a href="/corporate-housing" target="_blank">sevgio.com/corporate-housing</a> for travel nurses, doctors and companies, with one fixed all-inclusive monthly price and its fees. Works for entire homes and private rooms.</p>
         <label className="chk"><input type="checkbox" name="corp_listed" defaultChecked={!!p?.corp_listed} /><span><b>Show on the Corporate Housing page</b></span></label>
         <div className="grid-2" style={{ marginTop: 12 }}>
           <label className="field"><span>Monthly price (USD, all inclusive)</span><input className="input mono" name="corp_monthly" inputMode="decimal" defaultValue={p?.corp_monthly_cents ? dollars(p.corp_monthly_cents) : ""} placeholder="2300" /></label>

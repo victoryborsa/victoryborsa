@@ -50,7 +50,7 @@ export async function corporateRequestAction(_: ActionState, fd: FormData): Prom
   const home = /^[0-9a-f-]{36}$/i.test(f.home) ? await one<{ id: string; title: string }>("SELECT id, title FROM properties WHERE id = $1 AND corp_listed", [f.home]) : null;
   const body = [
     ["I am", f.who], ["Company or agency", f.company], ["Phone", f.phone], ["Guests", f.guests], ["Move-in date", f.movein], ["Length of stay", f.length],
-    ["Home", home?.title || "Any home that fits"], ["Area or workplace", f.area], ["Monthly budget", f.budget], ["Pets", f.pets],
+    ["Home", home?.title || "Any home or room that fits"], ["Area or workplace", f.area], ["Monthly budget", f.budget], ["Pets", f.pets],
   ].filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join("\n") + (f.notes ? `\n\n${f.notes}` : "");
   const topic = "Corporate housing request" + (f.company ? ` (${f.company})` : "");
   const u = await currentUser();

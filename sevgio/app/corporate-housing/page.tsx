@@ -33,6 +33,8 @@ const INCLUDED: [IconName, string, string][] = [
 
 const LENGTHS = ["1 month", "2 months", "3 months (13 weeks)", "6 months", "12 months", "Not sure yet"];
 
+const isRoom = (p: CorpHome) => !!p.parent_id || p.property_type === "room";
+
 function bathText(p: CorpHome) {
   const full = Number(p.bathrooms), half = Number(p.half_bathrooms || 0);
   return `${full} bath${full === 1 ? "" : "s"}${half ? ` + ${half} half` : ""}`;
@@ -50,7 +52,9 @@ function HomeCard({ p, today }: { p: CorpHome; today: string }) {
         <p className={`ch-avail${avail === "Available now" ? " now" : ""}`}>{avail}</p>
         <h3><Link href={`/stays/${p.slug}`}>{p.title}</Link></h3>
         <p className="muted">{[p.area, p.city].filter(Boolean).join(", ")}</p>
-        <p className="ch-facts">{p.bedrooms} bedroom{p.bedrooms === 1 ? "" : "s"} <span aria-hidden="true">/</span> {bathText(p)} <span aria-hidden="true">/</span> sleeps {p.max_guests}</p>
+        {isRoom(p)
+          ? <p className="ch-facts">Private room{p.parent_title ? ` in ${p.parent_title}` : ""} <span aria-hidden="true">/</span> {p.bathroom_type === "shared" ? "shared bath" : "private bath"} <span aria-hidden="true">/</span> sleeps {p.max_guests}</p>
+          : <p className="ch-facts">Entire home <span aria-hidden="true">/</span> {p.bedrooms} bedroom{p.bedrooms === 1 ? "" : "s"} <span aria-hidden="true">/</span> {bathText(p)} <span aria-hidden="true">/</span> sleeps {p.max_guests}</p>}
         <div className="ch-rate">
           <p><b>{money(p.corp_monthly_cents)}</b> <span>per month</span></p>
           <p className="ch-incl">Fixed price, all inclusive</p>
@@ -62,7 +66,7 @@ function HomeCard({ p, today }: { p: CorpHome; today: string }) {
         </dl>
         <div className="ch-links">
           <Link className="btn btn-primary btn-sm" href={`/stays/${p.slug}`}>View home</Link>
-          <a className="btn btn-ghost btn-sm" href="#request" data-home={p.id}>Request this home</a>
+          <a className="btn btn-ghost btn-sm" href="#request" data-home={p.id}>Request this {isRoom(p) ? "room" : "home"}</a>
           {ff && <a className="ch-ff" href={ff} target="_blank" rel="noopener noreferrer">Furnished Finder <Icon name="out" size={14} /></a>}
         </div>
       </div>
@@ -83,7 +87,7 @@ export default async function CorporateHousing() {
           <p className="lede">Monthly homes in Pittsburgh and Indiana, PA. One fixed price covers rent, utilities and Wi-Fi.</p>
           <div className="ch-cta">
             <a className="btn btn-primary" href="#request">Request housing</a>
-            <a className="btn btn-ghost" href="#homes">See the homes</a>
+            <a className="btn btn-ghost" href="#homes">See homes and rooms</a>
           </div>
         </div>
         <img className="ch-hero-img" src="/img/pittsburgh-skyline.jpg" alt="The Pittsburgh skyline over the rivers" width={1600} height={1067} fetchPriority="high" />
@@ -94,8 +98,8 @@ export default async function CorporateHousing() {
       </section>
 
       <section className="wrap" id="homes">
-        <h2 className="ch-h2">Available homes</h2>
-        <p className="muted ch-sub">Entire homes, ready to move in. The monthly price is all you pay each month.</p>
+        <h2 className="ch-h2">Available homes and rooms</h2>
+        <p className="muted ch-sub">Entire homes and private rooms, ready to move in. The monthly price is all you pay each month.</p>
         {homes.length ? (
           <div className="ch-homes">{homes.map(p => <HomeCard key={p.id} p={p} today={today} />)}</div>
         ) : (
@@ -141,8 +145,8 @@ export default async function CorporateHousing() {
           <label className="field"><span>I am a</span>
             <select className="input" name="who"><option>Travel nurse or medical staff</option><option>Doctor or resident</option><option>Corporate housing company</option><option>Company HR or relocation</option><option>Contractor or crew</option><option>Other</option></select>
           </label>
-          <label className="field"><span>Home</span>
-            <select className="input" name="home" id="ch-home"><option value="">Any home that fits</option>{homes.map(p => <option key={p.id} value={p.id}>{p.title} ({money(p.corp_monthly_cents)}/mo)</option>)}</select>
+          <label className="field"><span>Home or room</span>
+            <select className="input" name="home" id="ch-home"><option value="">Any home or room that fits</option>{homes.map(p => <option key={p.id} value={p.id}>{p.title} ({money(p.corp_monthly_cents)}/mo)</option>)}</select>
           </label>
           <label className="field"><span>Move-in date</span><input className="input" name="movein" type="date" min={today} required /></label>
           <label className="field"><span>Length of stay</span><select className="input" name="length">{LENGTHS.map(l => <option key={l}>{l}</option>)}</select></label>

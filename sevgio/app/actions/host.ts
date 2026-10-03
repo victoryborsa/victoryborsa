@@ -77,7 +77,6 @@ function readListing(fd: FormData) {
   else if ((v.min_price !== null && !(v.min_price > 0)) || (v.max_price !== null && !(v.max_price > 0))) error = "Enter the minimum and maximum prices as numbers.";
   else if (v.corp_monthly !== null && !(v.corp_monthly > 0)) error = "Enter the corporate housing monthly price as a number, or leave it empty.";
   else if (v.corp_listed && !v.corp_monthly) error = "Add the all-inclusive monthly price to show this home on the Corporate Housing page.";
-  else if (v.corp_listed && v.parent_id) error = "Only entire homes can be shown on the Corporate Housing page.";
   else if ([v.corp_deposit, v.corp_cleaning, v.corp_pet_fee].some(c => c === null)) error = "Enter the corporate housing deposit and fees as numbers (use 0 for none).";
   else if (v.corp_available_from && !/^\d{4}-\d{2}-\d{2}$/.test(v.corp_available_from)) error = "Choose a valid Available from date.";
   else if (v.corp_position !== null && !(Number.isInteger(v.corp_position) && v.corp_position >= 1 && v.corp_position <= 999)) error = "The order on the Corporate Housing page must be a whole number from 1 to 999, or empty.";

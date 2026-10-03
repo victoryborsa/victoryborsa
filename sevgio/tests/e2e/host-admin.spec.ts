@@ -923,6 +923,16 @@ test("corporate housing: host shows a home with its monthly rate and fees; compa
   expect(m.body).toContain("Length of stay: 3 months (13 weeks)");
   expect(m.body).toContain("Area or workplace: UPMC Mercy");
 
+  // Private rooms can be listed too, and say which house they are in.
+  const [room] = await sql<{ id: string; title: string; parent: string }>("UPDATE properties r SET corp_listed = true, corp_monthly_cents = 170000, corp_deposit_cents = 50000, corp_cleaning_cents = 15000, corp_pet_fee_cents = 50000 FROM properties h WHERE h.id = r.parent_id AND r.id = (SELECT id FROM properties WHERE parent_id IS NOT NULL AND status = 'published' ORDER BY slug LIMIT 1) RETURNING r.id, r.title, h.title AS parent");
+  await page.goto("/corporate-housing");
+  const roomCard = page.locator(".ch-home", { hasText: room.title });
+  await expect(roomCard).toContainText(`Private room in ${room.parent}`);
+  await expect(roomCard).toContainText("$1,700");
+  await expect(roomCard).toContainText("$150");
+  await expect(roomCard.getByRole("link", { name: "Request this room" })).toBeVisible();
+  await sql("UPDATE properties SET corp_listed = false WHERE id = $1", [room.id]);
+
   // Switching it off removes it from the page.
   await page.goto(`/host/listings/${p.id}`);
   await page.getByLabel("Show on the Corporate Housing page").uncheck();
