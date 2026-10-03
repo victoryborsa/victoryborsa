@@ -65,7 +65,7 @@ export default async function PittsburghGuide() {
   const rows = await q<{ id: string; slot: string | null; caption: string }>("SELECT id, slot, caption FROM site_photos ORDER BY position, created_at");
   const photos = new Map(rows.filter(r => r.slot).map(r => [r.slot!, r.id]));
   const sec = (id: Section["id"]) => SECTIONS.find(s => s.id === id)!;
-  const uploaded = [...rows.filter(r => r.slot === "guide-banner"), ...rows.filter(r => r.slot === null)].slice(0, 3);
+  const uploaded = [...rows.filter(r => r.slot === "guide-banner"), ...rows.filter(r => r.slot === null)];
   const areas = [...new Set(SECTIONS.flatMap(s => s.places.map(p => p.area.split(/ & | and |, /)[0])).filter(a => !/all over|away/i.test(a)))].sort();
   const tabs: [string, string, string][] = [["#guide-rows", "All", "✨"], ["#see", "Must-see", "🏛️"], ["#museums", "Museums", "🎨"], ["#eat", "Eat", "🥪"], ["#drink", "Drinks", "🍺"], ["#do", "Things to do", "🎢"], ["#near", "Near our homes", "📍"], ["#yinzer", "Yinzer talk", "🗣️"], ["#tips", "Getting around", "🚌"]];
 
