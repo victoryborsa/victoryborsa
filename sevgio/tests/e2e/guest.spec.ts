@@ -124,6 +124,8 @@ test("booked nights can't be booked again (calendar and direct link)", async ({ 
   await page.goto("/stays/lake-harmony-lodge");
   for (let i = 0; i < 18 && !(await page.locator(`[data-day="${ci}"]`).isVisible()); i++) await page.getByRole("button", { name: "Next month" }).click();
   await expect(page.locator(`[data-day="${ci}"]`)).toBeDisabled();
+  await expect(page.locator(`[data-day="${ci}"]`)).toHaveClass(/\btaken\b/);
+  await expect(page.locator(".cal-legend")).toContainText("Booked / unavailable");
   await page.goto(`/stays?ci=${iso(21)}&co=${iso(22)}&loc=Lake`);
   await expect(page.getByRole("heading", { name: "No stays match your search" })).toBeVisible();
 });

@@ -1403,3 +1403,14 @@ footer .brand-tag { font-size: 8px; }
   .ch-band .ch-h2, .ch-band .ch-sub, .ch-inc li > span:last-child span { color: var(--ink); }
   .ch-home { break-inside: avoid; }
 }
+
+/* ============ Booking calendar: booked nights stand out clearly ============ */
+.cal button.taken:disabled { background: #FDECEC; color: #B42318; opacity: 1; text-decoration: line-through; text-decoration-thickness: 2px; font-weight: 600; }
+.cal button.taken.checkout-ok { background: linear-gradient(135deg, transparent 50%, #FDECEC 50%); }
+.cal button:disabled:not(.taken):not(.booked-host):not(.blocked-host) { opacity: .35; text-decoration: none; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cal-legend i { display: inline-block; width: 16px; height: 16px; border-radius: 4px; }
+.cal-legend .lg-sel { background: var(--accent); }
+.cal-legend .lg-free { background: #FFFFFF; border: 1px solid var(--line); }
+.cal-legend .lg-taken { background: #FDECEC; border: 1px solid #F4B4AE; }

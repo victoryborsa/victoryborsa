@@ -61,8 +61,8 @@ export function AvailabilitySection() {
     const isTaken = taken.has(d);
     let canCheckout = false;
     if (choosingCheckout && d > ci) { canCheckout = true; for (let x = ci; x < d; x = addDaysC(x, 1)) if (taken.has(x)) { canCheckout = false; break; } }
-    const className = d === ci || d === co ? "sel" : ci && co && d > ci && d < co ? "in" : "";
-    return { disabled: past || (isTaken && !canCheckout), className, note: isTaken ? "unavailable" : undefined };
+    const className = d === ci || d === co ? "sel" : ci && co && d > ci && d < co ? "in" : !past && isTaken ? (canCheckout ? "taken checkout-ok" : "taken") : "";
+    return { disabled: past || (isTaken && !canCheckout), className, note: isTaken ? (canCheckout ? "booked that night, available as check-out day" : "unavailable") : undefined };
   };
   return (
     <section id="availability">
@@ -72,7 +72,7 @@ export function AvailabilitySection() {
       </p>
       {msg && <div className="notice error" role="alert">{msg}</div>}
       <Calendar today={today} startMonth={ci || today} dayState={dayState} onPick={pick} />
-      <div className="legend"><span><i style={{ background: "var(--accent)" }} />Your dates</span><span><i style={{ background: "var(--surface-2)", border: "1px solid var(--line)" }} />Unavailable (crossed out)</span></div>
+      <div className="legend cal-legend"><span><i className="lg-sel" />Your dates</span><span><i className="lg-free" />Available</span><span><i className="lg-taken" />Booked / unavailable</span></div>
     </section>
   );
 }

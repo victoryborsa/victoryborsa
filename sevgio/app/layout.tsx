@@ -67,7 +67,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             />
           </div>
         </header>
-        <main id="main">{children}</main>
+        <main id="main" className="theme-light">{children}</main>
         <ProtectPage />
         <footer className="site">
           <div className="wrap">
