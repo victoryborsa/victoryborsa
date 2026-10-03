@@ -67,7 +67,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
   });
 
   return (
-    <div className="wrap wrap-wide" style={{ paddingTop: 22 }}>
+    <div className="wrap wrap-wide theme-light" style={{ paddingTop: 22 }}>
       <SearchBar loc={loc} ci={ci} co={co} guests={guests} cities={cities} compact />
       <nav className="chips-row" aria-label="Quick filters">
         <FilterDrawer active={activeCount}>
