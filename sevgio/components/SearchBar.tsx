@@ -5,13 +5,9 @@ import { WherePicker, type Place } from "./WherePicker.tsx";
 import { AutoAdvance } from "./AutoAdvance.tsx";
 import { DateRangeField } from "./DateRangeField.tsx";
 
-/** GET form, so results are shareable links. "Where" opens a list of suggested places as soon as it's tapped. */
-export async function SearchBar({ loc = "", ci = "", co = "", guests = 2, compact = false }: { loc?: string; ci?: string; co?: string; guests?: number; cities?: string[]; compact?: boolean }) {
-  const today = todayLocal();
-  const [{ t }, rows] = await Promise.all([
-    getT(),
-    q<{ city: string; area: string; n: number }>("SELECT city, area, count(*)::int AS n FROM properties WHERE status = 'published' GROUP BY city, area ORDER BY city, area"),
-  ]);
+/** The places offered under "Where": Pittsburgh, Downtown, Indiana, then every neighborhood and town with a stay. */
+export async function searchPlaces(): Promise<Place[]> {
+  const rows = await q<{ city: string; area: string; n: number }>("SELECT city, area, count(*)::int AS n FROM properties WHERE status = 'published' GROUP BY city, area ORDER BY city, area");
   const inCity = (c: string) => rows.filter(r => r.city.toLowerCase() === c).reduce((n, r) => n + r.n, 0);
   const count = (n: number) => (n ? ` · ${n} stay${n === 1 ? "" : "s"}` : "");
   const places: Place[] = [
@@ -28,6 +24,13 @@ export async function SearchBar({ loc = "", ci = "", co = "", guests = 2, compac
       places.push({ value, label: value, sub: sub + count(n), icon: sub.startsWith("Neighborhood") ? "🏘️" : "📍" });
     }
   }
+  return places;
+}
+
+/** GET form, so results are shareable links. "Where" opens a list of suggested places as soon as it's tapped. */
+export async function SearchBar({ loc = "", ci = "", co = "", guests = 2, compact = false }: { loc?: string; ci?: string; co?: string; guests?: number; cities?: string[]; compact?: boolean }) {
+  const today = todayLocal();
+  const [{ t }, places] = await Promise.all([getT(), searchPlaces()]);
   return (
     <form className="searchbar" action="/stays" method="get" role="search" style={compact ? { marginTop: 0 } : undefined}>
       <AutoAdvance />

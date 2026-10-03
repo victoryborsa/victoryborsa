@@ -4,41 +4,55 @@ import { iso, pickDates, sql, signIn, signOut } from "./helpers.ts";
 test.describe.configure({ mode: "serial" });
 const email = `guest-${Date.now()}@example.com`;
 
-test("homepage shows search and property cards", async ({ page }) => {
+test("homepage: rows of stays, each card shows its host, and the heart saves a favourite", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("right here in the ’Burgh");
   await expect(page.getByRole("search")).toBeVisible();
-  await expect(page.locator("a.card")).toHaveCount(6);
-  await expect(page.locator("a.card").first().locator("img")).toBeVisible();
+  const pgh = page.getByRole("region", { name: "Popular homes in Pittsburgh" });
+  await expect(pgh.locator(".ab-card", { hasText: "Mount Washington" })).toBeVisible();
+  await expect(page.locator(".ab-card").first().locator("img")).toBeVisible();
   // Every card shows who hosts it.
-  await expect(page.locator("a.card .card-host")).toHaveCount(6);
-  await expect(page.locator("a.card", { hasText: "Jim Thorpe" }).locator(".card-host")).toHaveText(/^Hosted by \w+$/);
+  const cards = page.locator(".ab-card");
+  expect(await cards.count()).toBeGreaterThanOrEqual(6);
+  expect(await cards.evaluateAll(els => els.every(e => /Hosted by \w+/.test(e.textContent || "")))).toBe(true);
+  const card = page.getByRole("region", { name: "More places in Pennsylvania" }).locator(".ab-card", { hasText: "Jim Thorpe" });
+  await card.getByRole("button", { name: "Save to favourites" }).click();
+  await expect(card.getByRole("button", { name: "Saved to favourites" })).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(page.getByRole("region", { name: "More places in Pennsylvania" }).locator(".ab-card", { hasText: "Jim Thorpe" }).getByRole("button", { name: "Saved to favourites" })).toBeVisible();
+  await page.getByRole("region", { name: "More places in Pennsylvania" }).locator(".ab-card", { hasText: "Jim Thorpe" }).getByRole("button", { name: "Saved to favourites" }).click();
 });
 
-test("search form moves on by itself: Where, then check-in, check-out, guests; listing dates move on to guests", async ({ page }) => {
+test("search moves on by itself: Where, then check-in, check-out, guests (home and Stays pages); listing dates move on to guests", async ({ page }) => {
   await page.goto("/");
-  const form = page.getByRole("search");
-  await form.getByRole("combobox", { name: "Where" }).click();
+  await page.getByRole("combobox", { name: "Where" }).click();
   await page.getByRole("option", { name: /Poconos/ }).click();
-  // The calendar opens for check-in by itself; picking it moves straight on to check-out.
-  const cal = page.getByRole("dialog", { name: "Choose check-in" });
-  await expect(cal).toBeVisible();
-  await cal.locator(`[data-day="${iso(30)}"]`).click();
+  // The calendar opens for check-in by itself; picking it moves straight on to check-out, then to who's coming.
+  await page.getByRole("dialog", { name: "Choose check-in" }).locator(`[data-day="${iso(30)}"]`).click();
   const out = page.getByRole("dialog", { name: "Choose check-out" });
-  await expect(out).toBeVisible();
-  // Days before check-in can't be picked as check-out.
-  const ci = iso(30);
-  expect(await out.locator("[data-day]").evaluateAll((els, c) => els.filter(e => (e.getAttribute("data-day") || "") < c).every(e => (e as HTMLButtonElement).disabled), ci)).toBe(true);
-  await expect(out.locator(`[data-day="${ci}"]`)).toHaveClass(/sel/);
+  await expect(out.locator(`[data-day="${iso(30)}"]`)).toHaveClass(/sel/);
   await out.locator(`[data-day="${iso(33)}"]`).click();
-  await expect(out).toHaveCount(0);
+  const who = page.getByRole("dialog", { name: "Who's coming" });
+  for (let i = 0; i < 3; i++) await who.getByRole("button", { name: "More adults" }).click();
+  await page.locator(".ps-go").click();
+  await expect(page).toHaveURL(new RegExp(`loc=Poconos&ci=${iso(30)}&co=${iso(33)}&guests=3`));
+
+  // The Stays page search works the same way.
+  const form = page.getByRole("search");
+  await expect(form.getByRole("button", { name: /Check-in/ })).toContainText(/\w{3} \d+/);
+  await form.getByRole("combobox", { name: "Where" }).click();
+  await page.getByRole("option", { name: /Poconos/ }).first().click();
+  await page.getByRole("dialog", { name: "Choose check-in" }).locator(`[data-day="${iso(31)}"]`).click();
+  const out2 = page.getByRole("dialog", { name: "Choose check-out" });
+  expect(await out2.locator("[data-day]").evaluateAll((els, c) => els.filter(e => (e.getAttribute("data-day") || "") < c).every(e => (e as HTMLButtonElement).disabled), iso(31))).toBe(true);
+  await out2.locator(`[data-day="${iso(34)}"]`).click();
+  await expect(out2).toHaveCount(0);
   await expect(form.getByLabel("Guests")).toBeFocused();
-  await form.getByLabel("Guests").selectOption("3");
+  await form.getByLabel("Guests").selectOption("2");
   await expect(form.getByRole("button", { name: "Search stays" })).toBeFocused();
   await form.getByRole("button", { name: "Search stays" }).click();
-  await expect(page).toHaveURL(new RegExp(`ci=${iso(30)}&co=${iso(33)}&guests=3`));
-  // On the results page the dates are kept, and picking new ones works the same way.
-  await expect(page.getByRole("search").getByRole("button", { name: /Check-in/ })).toContainText(/\w{3} \d+/);
+  await expect(page).toHaveURL(new RegExp(`ci=${iso(31)}&co=${iso(34)}&guests=2`));
+
   // On a listing, picking check-out moves to who's coming.
   await page.goto("/stays/jim-thorpe-mountain-cabin");
   await pickDates(page, iso(40), iso(43));
@@ -49,7 +63,7 @@ test("search by area, filter, sort and empty state", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("combobox", { name: "Where" }).fill("Pocon");
   await page.getByRole("option", { name: /Poconos/ }).click();
-  await page.getByRole("button", { name: "Search stays" }).click();
+  await page.locator(".ps-go").click();
   await expect(page.getByRole("heading", { name: /2 stays in Poconos/ })).toBeVisible();
   // Quick filter buttons across the top switch a filter on and off.
   await page.getByRole("link", { name: /Hot tub/ }).click();
@@ -295,9 +309,9 @@ test("Where offers preset places; Downtown Pittsburgh finds Pittsburgh stays; up
   const where = page.getByRole("combobox", { name: "Where" });
   await where.click();
   for (const label of ["Anywhere", "Pittsburgh, PA", "Downtown Pittsburgh", "Indiana, PA"]) await expect(page.getByRole("option", { name: new RegExp(label) }).first()).toBeVisible();
-  await expect(page.getByLabel("Guests").locator("option")).toHaveCount(10);
   await page.getByRole("option", { name: /Downtown Pittsburgh/ }).click();
-  await page.getByRole("button", { name: "Search stays" }).click();
+  await page.locator(".ps-go").click();
+  await expect(page.getByRole("search").getByLabel("Guests").locator("option")).toHaveCount(10);
   await expect(page.locator("a.card", { hasText: "Mount Washington View House" })).toBeVisible();
   await expect(page.locator("a.card", { hasText: "Jim Thorpe" })).toHaveCount(0);
   await expect(page.getByRole("combobox", { name: "Where" })).toHaveValue("Downtown Pittsburgh");
