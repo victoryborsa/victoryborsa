@@ -214,7 +214,21 @@ textarea { min-height: 90px; resize: vertical; }
 .st-pending { background: #fdecc8; color: #8a5a00; }
 .st-declined { background: var(--danger-soft); color: var(--danger); }
 
+/* More nav items since the portals were added: keep the admin bar on one line on desktop. */
+.brand { white-space: nowrap; }
+.nav a { padding: 6px 8px; }
+
 /* ---------- client & host portals ---------- */
+.portal .grid-2 { margin-bottom: 16px; }
+.portal .grid-2 > .card { margin-bottom: 0; }
+.modal .photo-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+.item.booking .sub { overflow: visible; }
+.item.booking .status { white-space: normal; }
+.inline-status { display: none; margin-bottom: 4px; }
+@media (max-width: 600px) {
+  .item.booking > .right { display: none; }
+  .inline-status { display: block; }
+}
 body.portal { display: flex; flex-direction: column; min-height: 100vh; }
 body.portal .container { flex: 1; width: 100%; }
 .portal-footer { border-top: 1px solid var(--border); background: #fff; padding: 18px 16px; text-align: center; font-size: 0.88rem; color: var(--muted); display: grid; gap: 4px; }
@@ -231,7 +245,8 @@ body.portal .container { flex: 1; width: 100%; }
 .readonly { padding: 10px 12px; border: 1px dashed #cfd5d4; border-radius: 10px; background: #f8f9f9; word-break: break-all; }
 .prop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
 .prop-grid .card { margin-bottom: 0; }
-.prop h2 { margin: 0; }
+.prop h2 { margin: 0; flex: 1; min-width: 0; }
+.prop .row.between { flex-wrap: nowrap; align-items: flex-start; }
 .pre { white-space: pre-wrap; margin: 0; }
 .card.damage { border-color: #f3c1bb; background: #fffafa; }
 .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }

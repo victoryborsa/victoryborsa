@@ -135,7 +135,7 @@ function createApp({
 
   admin.get('/stats', (req, res) => res.json(svc.stats()));
   admin.get('/meta', (req, res) => res.json({
-    pricing: PRICING, leadStatuses: svc.LEAD_STATUSES, jobStatuses: svc.JOB_STATUSES,
+    pricing: PRICING, leadStatuses: svc.LEAD_STATUSES, jobStatuses: svc.JOB_STATUSES, invoiceStatuses: portal.INVOICE_STATUSES,
     smsConfigured: notifier.senders.smsEnabled, googleVoiceNumber: config.googleVoiceNumber,
     chat: { aiEnabled: Boolean(ai), phoneVerification: config.requirePhoneVerification, phoneVerificationReady: Boolean(verifyPhoneToken) },
   }));

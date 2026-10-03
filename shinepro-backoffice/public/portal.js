@@ -226,6 +226,7 @@
     return `<div class="item booking">
       <div class="date-badge"><span class="m">${esc(new Date(j.scheduled_at).toLocaleDateString(undefined, { month: 'short' }))}</span><span class="d">${new Date(j.scheduled_at).getDate()}</span></div>
       <div class="main">
+        <div class="inline-status">${status(j.status)}</div>
         <div class="title">${esc(fmtWhen(j.scheduled_at))}</div>
         <div class="sub">${esc([j.property && j.property.name, j.service_type].filter(Boolean).join(' · ') || 'Cleaning')}</div>
         ${j.address ? `<div class="sub">📍 ${esc(j.address)}</div>` : ''}
@@ -512,7 +513,7 @@
         <div class="row between"><h2>🏠 ${esc(p.name)}</h2><button class="btn sm secondary" data-edit="${p.id}">Edit</button></div>
         <div class="muted">📍 ${esc(p.address)}</div>
         <dl class="kv" style="margin-top:10px">
-          <dt>Size</dt><dd>${p.bedrooms ?? '?'} bed · ${p.bathrooms ?? '?'} bath</dd>
+          <dt>Size</dt><dd>${p.bedrooms == null && p.bathrooms == null ? '—' : `${p.bedrooms ?? '?'} bed · ${p.bathrooms ?? '?'} bath`}</dd>
           <dt>Checkout</dt><dd>${esc(fmtClock(p.checkout_time)) || '—'}</dd>
           <dt>Check-in</dt><dd>${esc(fmtClock(p.checkin_time)) || '—'}</dd>
           <dt>Next turnover</dt><dd>${p.next_turnover ? esc(fmtWhen(p.next_turnover)) : 'None booked'}</dd>
