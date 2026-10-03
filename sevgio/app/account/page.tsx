@@ -6,6 +6,7 @@ import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { changePasswordAction, requestHostAction, resendCodeAction, updateProfileAction, verifyCodeAction } from "@/app/actions/auth.ts";
 import { one } from "@/lib/db.ts";
 import { PasswordInput } from "@/components/PasswordInput.tsx";
+import { Icon } from "@/components/Icon.tsx";
 
 export const metadata: Metadata = { title: "Account" };
 export const dynamic = "force-dynamic";
@@ -15,16 +16,24 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const reset = (await searchParams).reset === "1";
   const hostReq = u.role === "customer" ? !!(await one("SELECT 1 FROM users WHERE id = $1 AND host_requested_at IS NOT NULL", [u.id])) : false;
   return (
-    <div className="wrap page-pad" style={{ maxWidth: 760 }}>
-      <p className="eyebrow">Your account</p>
-      <h1 style={{ fontSize: "clamp(26px,4vw,36px)", marginBottom: 8 }}>Hi, {u.name.split(" ")[0]}</h1>
-      <p className="muted" style={{ marginBottom: 20 }}>
-        {u.role === "admin" ? <>You're an administrator. <Link href="/admin">Open the admin dashboard</Link>.</> : u.role === "host" ? <>You're a host. <Link href="/host">Open your host dashboard</Link>.</> : <>See your bookings in <Link href="/trips">My trips</Link>.</>}
-      </p>
+    <div className="wrap page-pad theme-light acct acct-narrow">
+      <header className="acct-head acct-profile">
+        <span className="acct-avatar" aria-hidden>{(u.name || u.email).trim().charAt(0).toUpperCase()}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 className="acct-h1">Hi, {u.name.split(" ")[0]}</h1>
+          <p className="muted acct-email">{u.email}{u.role !== "customer" ? ` · ${u.role === "admin" ? "Administrator" : "Host"}` : ""}</p>
+        </div>
+      </header>
+      <nav className="acct-links" aria-label="Your account">
+        <Link href="/trips" className="acct-link"><Icon name="calendar" size={22} /><span><b>My trips</b><small>Bookings, receipts and arrival details</small></span></Link>
+        {u.role === "admin" && <Link href="/admin" className="acct-link"><Icon name="key" size={22} /><span><b>Admin dashboard</b><small>Listings, bookings, finance and settings</small></span></Link>}
+        {u.role === "host" && <Link href="/host" className="acct-link"><Icon name="home" size={22} /><span><b>Host dashboard</b><small>Your listings, calendar and payouts</small></span></Link>}
+        <Link href="/contact" className="acct-link"><Icon name="talk" size={22} /><span><b>Contact us</b><small>Questions about a stay or your account</small></span></Link>
+      </nav>
       {reset && <div className="notice ok" style={{ marginBottom: 16 }}>Your password has been changed and you're signed in.</div>}
       {u.role === "customer" && <div id="become-host" style={{ scrollMarginTop: 90 }}>{hostReq
         ? <div className="notice info" style={{ marginBottom: 16 }}><b>Your host request is being reviewed.</b> We'll email you when your host tools are ready, usually within a day.</div>
-        : <ActionForm action={requestHostAction} className="row box" ><span style={{ flex: 1, minWidth: 220 }}><b>Have a home in Pittsburgh?</b> List it on Sevgio Stays.</span><SubmitButton className="btn btn-ghost btn-sm" pendingText="Sending…">Become a host</SubmitButton></ActionForm>}</div>}
+        : <ActionForm action={requestHostAction} className="row box acct-host" ><span style={{ flex: 1, minWidth: 220 }}><b>Have a home in Pittsburgh?</b> List it on Sevgio Stays.</span><SubmitButton className="btn btn-ghost btn-sm" pendingText="Sending…">Become a host</SubmitButton></ActionForm>}</div>}
       {!u.verified && verificationRequired() && (
         <div className="box" style={{ marginBottom: 20 }}>
           <h2>Confirm your email</h2>

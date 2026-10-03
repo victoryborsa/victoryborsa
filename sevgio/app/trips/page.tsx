@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PhotoBackdrop } from "@/components/PhotoBackdrop.tsx";
+import { Icon } from "@/components/Icon.tsx";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
@@ -25,27 +25,41 @@ export default async function Trips() {
   const today = todayLocal();
   const upcoming = rows.filter(r => r.check_out >= today && ["pending", "awaiting_payment", "confirmed"].includes(r.status));
   const other = rows.filter(r => !upcoming.includes(r)).reverse();
+  // Trip cards in the home page style: photo on top, then the stay, dates, booking code and total.
   const card = (r: Row) => (
-    <Link key={r.id} href={`/trips/${r.code}`} className="box" style={{ flexDirection: "row", flexWrap: "wrap", gap: 16, alignItems: "center", padding: 16, textDecoration: "none", color: "inherit" }}>
-      <div style={{ width: 110, borderRadius: "var(--r)", overflow: "hidden", aspectRatio: "4/3", flex: "none" }}>{r.cover_id ? <img src={photoUrl(r.cover_id, "thumb")} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div className="noph" style={{ minHeight: 0 }} />}</div>
-      <div className="stack" style={{ gap: 4, flex: 1, minWidth: 200 }}>
-        <div className="row" style={{ gap: 8 }}><strong>{r.title}</strong><StatusPill status={r.status} /></div>
-        <span className="muted">{fmtDate(r.check_in)} - {fmtDate(r.check_out)} · {r.guests} guest{r.guests > 1 ? "s" : ""} · <span className="mono">{r.code}</span></span>
-        <span style={{ fontSize: 14 }}>{r.city} · {money(r.total_cents)}</span>
-      </div>
-      <span className="btn btn-ghost btn-sm">View</span>
+    <Link key={r.id} href={`/trips/${r.code}`} className="trip-card">
+      <span className="trip-ph">
+        {r.cover_id ? <img src={photoUrl(r.cover_id, "thumb")} alt="" loading="lazy" /> : <span className="noph">Photos coming soon</span>}
+        <span className="trip-status"><StatusPill status={r.status} /></span>
+      </span>
+      <span className="trip-body">
+        <b className="trip-title">{r.title}</b>
+        <span className="trip-meta"><Icon name="calendar" size={16} />{fmtDate(r.check_in)} - {fmtDate(r.check_out)}</span>
+        <span className="trip-meta"><Icon name="pin" size={16} />{r.city} · {r.guests} guest{r.guests > 1 ? "s" : ""}</span>
+        <span className="trip-foot"><span className="mono hint">{r.code}</span><b>{money(r.total_cents)}</b></span>
+      </span>
     </Link>
   );
   return (
-    <div className="wrap page-pad">
-      <PhotoBackdrop />
-      <p className="eyebrow">Your account</p>
-      <h1 style={{ fontSize: "clamp(26px,4vw,36px)", marginBottom: 20 }}>My trips</h1>
-      <h3 style={{ marginBottom: 12 }}>Upcoming</h3>
-      <div className="stack">
-        {upcoming.length ? upcoming.map(card) : <div className="empty"><p>No upcoming trips yet.</p><Link className="btn btn-primary" href="/stays">Find a stay</Link></div>}
-      </div>
-      {other.length > 0 && <><h3 style={{ margin: "28px 0 12px" }}>Past and cancelled</h3><div className="stack">{other.map(card)}</div></>}
+    <div className="wrap page-pad theme-light acct">
+      <header className="acct-head">
+        <div>
+          <h1 className="acct-h1">My trips</h1>
+          <p className="muted">{upcoming.length ? `${upcoming.length} upcoming trip${upcoming.length === 1 ? "" : "s"}` : "No upcoming trips yet"}{other.length ? ` · ${other.length} past or cancelled` : ""}</p>
+        </div>
+        <Link className="btn btn-ghost" href="/account">Account</Link>
+      </header>
+      <section aria-labelledby="up-h">
+        <h2 id="up-h" className="acct-h2">Upcoming</h2>
+        {upcoming.length ? <div className="trip-grid">{upcoming.map(card)}</div> : (
+          <div className="acct-empty">
+            <span className="acct-empty-ico"><Icon name="home" size={28} /></span>
+            <div><b>No trips booked... yet!</b><p className="muted">Time to dust off your bags and find a cozy place in the 'Burgh.</p></div>
+            <Link className="btn btn-primary" href="/stays">Find a stay</Link>
+          </div>
+        )}
+      </section>
+      {other.length > 0 && <section aria-labelledby="past-h"><h2 id="past-h" className="acct-h2">Past and cancelled</h2><div className="trip-grid">{other.map(card)}</div></section>}
     </div>
   );
 }

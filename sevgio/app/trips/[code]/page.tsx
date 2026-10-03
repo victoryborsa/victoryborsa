@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { PhotoBackdrop } from "@/components/PhotoBackdrop.tsx";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth.ts";
@@ -52,8 +51,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
     awaiting_payment: ["Complete your payment below to confirm the booking.", "Once it's paid, you'll get a confirmation email with the address and arrival details."],
   };
   return (
-    <div className="wrap page-pad">
-      <PhotoBackdrop />
+    <div className="wrap page-pad theme-light acct">
       <div className="crumbs" style={{ paddingTop: 0 }}><Link href="/trips">← My trips</Link></div>
       <div className="checkout-grid" style={{ paddingTop: 8 }}>
         <div className="box">
