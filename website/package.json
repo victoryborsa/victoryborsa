@@ -1,0 +1,11 @@
+{
+  "name": "pghshinepro-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PGH Shine Pro website. Builds to plain static files for GoDaddy hosting.",
+  "scripts": {
+    "build": "node build.mjs",
+    "preview": "node build.mjs && npx --yes http-server dist -p 8080 -c-1",
+    "screenshots": "node scripts/screenshots.mjs"
+  }
+}
