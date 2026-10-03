@@ -291,6 +291,7 @@ function createService({ db, notifier, config }) {
     job.employees = q(`SELECT e.id, e.name, e.phone, e.email FROM job_assignments a JOIN employees e ON e.id = a.employee_id
                        WHERE a.job_id = ? ORDER BY e.name`).all(job.id);
     job.customer = q('SELECT id, name, phone, email, address FROM customers WHERE id = ?').get(job.customer_id) || null;
+    job.property = job.property_id ? q('SELECT id, name, address FROM properties WHERE id = ?').get(job.property_id) || null : null;
     return job;
   }
 
@@ -311,9 +312,15 @@ function createService({ db, notifier, config }) {
     const employee_ids = [...new Set((Array.isArray(body.employee_ids) ? body.employee_ids : []).map(Number).filter(Boolean))];
     for (const eid of employee_ids) getEmployee(eid);
     if (num(body.lead_id)) getLead(num(body.lead_id));
+    // Turnover jobs belong to one of the host's rental properties.
+    const property_id = num(body.property_id);
+    if (property_id && !q('SELECT 1 FROM properties WHERE id = ? AND customer_id = ?').get(property_id, customer_id)) {
+      throw new HttpError(400, "That property doesn't belong to this client");
+    }
     return {
       customer_id,
       lead_id: num(body.lead_id),
+      property_id,
       scheduled_at,
       duration_hours: num(body.duration_hours) || 3,
       address: str(body.address, 250),
@@ -325,17 +332,17 @@ function createService({ db, notifier, config }) {
     };
   }
 
-  async function notifyAssigned(job, employeeIds) {
+  async function notifyAssigned(job, employeeIds, { changed = false } = {}) {
     const when = new Date(job.scheduled_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     const address = job.address || (job.customer && job.customer.address) || 'address TBD';
-    const text = `${config.businessName}: You're assigned a cleaning job ${when} at ${address}`
+    const text = `${config.businessName}: ${changed ? 'Schedule change: your cleaning job is now' : "You're assigned a cleaning job"} ${when} at ${address}`
       + ` for ${job.customer ? job.customer.name : 'a customer'}${job.service_type ? ` (${job.service_type})` : ''}.`
       + `${job.notes ? ` Notes: ${job.notes}` : ''}`;
     const results = [];
     for (const eid of employeeIds) {
       const e = getEmployee(eid);
       if (e.phone && notifier.senders.smsEnabled) results.push(await notifier.deliver({ kind: 'job_assigned', channel: 'sms', to: e.phone, payload: { body: text } }));
-      if (e.email) results.push(await notifier.deliver({ kind: 'job_assigned', channel: 'email', to: e.email, payload: { subject: `New job assignment — ${when}`, text } }));
+      if (e.email) results.push(await notifier.deliver({ kind: 'job_assigned', channel: 'email', to: e.email, payload: { subject: `${changed ? 'Job moved' : 'New job assignment'} — ${when}`, text } }));
     }
     return results;
   }
@@ -351,9 +358,11 @@ function createService({ db, notifier, config }) {
   async function createJob(body) {
     const d = jobInput(body);
     const cust = getCustomer(d.customer_id);
-    const r = q(`INSERT INTO jobs (customer_id, lead_id, scheduled_at, duration_hours, address, service_type, price, status, notes)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(d.customer_id, d.lead_id, d.scheduled_at, d.duration_hours, d.address || cust.address, d.service_type, d.price, d.status, d.notes);
+    const prop = d.property_id ? q('SELECT address FROM properties WHERE id = ?').get(d.property_id) : null;
+    const r = q(`INSERT INTO jobs (customer_id, lead_id, property_id, scheduled_at, duration_hours, address, service_type, price, status, notes)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(d.customer_id, d.lead_id, d.property_id, d.scheduled_at, d.duration_hours, d.address || (prop && prop.address) || cust.address,
+        d.service_type, d.price, d.status, d.notes);
     const id = r.lastInsertRowid;
     const added = saveAssignments(id, d.employee_ids);
     if (d.lead_id) q(`UPDATE leads SET status = 'booked', updated_at = datetime('now') WHERE id = ?`).run(d.lead_id);
@@ -365,22 +374,23 @@ function createService({ db, notifier, config }) {
   async function updateJob(id, body) {
     getJob(id);
     const d = jobInput(body);
-    q(`UPDATE jobs SET customer_id=?, lead_id=?, scheduled_at=?, duration_hours=?, address=?, service_type=?, price=?, status=?, notes=?,
+    q(`UPDATE jobs SET customer_id=?, lead_id=?, property_id=?, scheduled_at=?, duration_hours=?, address=?, service_type=?, price=?, status=?, notes=?,
        updated_at=datetime('now') WHERE id=?`)
-      .run(d.customer_id, d.lead_id, d.scheduled_at, d.duration_hours, d.address, d.service_type, d.price, d.status, d.notes, id);
+      .run(d.customer_id, d.lead_id, d.property_id, d.scheduled_at, d.duration_hours, d.address, d.service_type, d.price, d.status, d.notes, id);
     const added = saveAssignments(id, d.employee_ids);
     const job = getJob(id);
     if (body.notify_employees !== false && added.length) job.notifications = await notifyAssigned(job, added);
     return job;
   }
 
-  function listJobs({ from, to, employee_id, status, customer_id } = {}) {
+  function listJobs({ from, to, employee_id, status, customer_id, property_id } = {}) {
     const where = [];
     const params = [];
     if (from) { where.push('j.scheduled_at >= ?'); params.push(from); }
     if (to) { where.push('j.scheduled_at < ?'); params.push(to); }
     if (status && status !== 'all') { where.push('j.status = ?'); params.push(status); }
     if (customer_id) { where.push('j.customer_id = ?'); params.push(Number(customer_id)); }
+    if (property_id) { where.push('j.property_id = ?'); params.push(Number(property_id)); }
     if (employee_id) { where.push('j.id IN (SELECT job_id FROM job_assignments WHERE employee_id = ?)'); params.push(Number(employee_id)); }
     return q(`SELECT j.* FROM jobs j ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY j.scheduled_at LIMIT 2000`)
       .all(...params).map(hydrateJob);
@@ -399,6 +409,8 @@ function createService({ db, notifier, config }) {
       unassigned_jobs: one(`SELECT COUNT(*) FROM jobs j WHERE status = 'scheduled' AND NOT EXISTS (SELECT 1 FROM job_assignments a WHERE a.job_id = j.id)`),
       active_employees: one('SELECT COUNT(*) FROM employees WHERE active = 1'),
       unread_replies: one(`SELECT COUNT(*) FROM messages m WHERE direction = 'in' AND created_at >= datetime('now', '-7 days')`),
+      pending_requests: one(`SELECT COUNT(*) FROM portal_requests WHERE status = 'pending'`),
+      open_invoices: one(`SELECT COUNT(*) FROM invoices WHERE status = 'sent'`),
       failed_alerts: one(`SELECT COUNT(*) FROM notifications WHERE status IN ('failed', 'skipped') AND kind = 'new_lead' AND created_at >= datetime('now', '-7 days')`),
       alerts: {
         email_configured: notifier.senders.emailEnabled,
@@ -416,7 +428,7 @@ function createService({ db, notifier, config }) {
     createLead, updateLead, getLead, listLeads,
     sendMessage, listMessages, recordInboundSms,
     createEmployee, updateEmployee, getEmployee, listEmployees,
-    createJob, updateJob, getJob, listJobs,
+    createJob, updateJob, getJob, listJobs, notifyAssigned,
     stats,
   };
 }

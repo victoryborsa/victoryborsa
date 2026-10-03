@@ -141,6 +141,8 @@
     [/^\/jobs$/, jobsPage],
     [/^\/calendar$/, calendarPage],
     [/^\/alerts$/, alertsPage],
+    [/^\/invoices$/, invoicesPage],
+    [/^\/requests$/, requestsPage],
   ];
 
   async function render() {
@@ -166,6 +168,9 @@
       const b = $('#new-leads-badge');
       b.textContent = s.new_leads;
       b.classList.toggle('hidden', !s.new_leads);
+      const rb = $('#requests-badge');
+      rb.textContent = s.pending_requests;
+      rb.classList.toggle('hidden', !s.pending_requests);
       document.title = `${s.new_leads ? `(${s.new_leads}) ` : ''}Back Office · Shine Pro Cleaning`;
     } catch { /* ignore */ }
   }
@@ -185,6 +190,7 @@
       <h1>Back Office</h1>
       ${alertProblems.length ? `<div class="banner warn"><strong>Lead alerts need attention:</strong> ${esc(alertProblems.join('; '))}. New leads are still saved here. <a href="#/alerts">See alert settings →</a></div>` : ''}
       ${s.callbacks ? `<div class="banner danger"><strong>📞 ${s.callbacks} customer(s) asked you to call them back.</strong> <a href="#/leads?status=new">Call them now →</a></div>` : ''}
+      ${s.pending_requests ? `<div class="banner warn"><strong>📅 ${s.pending_requests} client request(s) waiting</strong> (reschedule, cancel or turnover). <a href="#/requests">Answer them →</a></div>` : ''}
       ${s.failed_alerts ? `<div class="banner danger"><strong>${s.failed_alerts} lead alert(s) failed or were skipped this week.</strong> Check the <a href="#/leads">Leads</a> list so nobody is missed. <a href="#/alerts">Details →</a></div>` : ''}
       <div class="tiles">
         ${tile('#/leads', '📈', 'i-gold', 'Leads', `${s.new_leads} new · ${s.open_leads} open`)}
@@ -192,6 +198,8 @@
         ${tile('#/calendar', '🗓', 'i-teal', 'Calendar', 'Week view')}
         ${tile('#/customers', '👤', 'i-green', 'Clients', 'Search & manage')}
         ${tile('#/employees', '🧹', 'i-cyan', 'Employees', `${s.active_employees} active`)}
+        ${tile('#/requests', '📨', 'i-red', 'Requests', `${s.pending_requests} waiting`)}
+        ${tile('#/invoices', '🧾', 'i-gold', 'Invoices', `${s.open_invoices} unpaid`)}
         ${tile('#/alerts', '🔔', 'i-purple', 'Alerts', 'Email & text log')}
       </div>
       <div class="stats">
@@ -439,15 +447,25 @@
             </dl>
             <div style="margin-top:14px">${contactLinks(c)}</div>
           </div>
+          ${portalCard(c)}
+          ${c.portal_account && c.portal_account.is_host || c.properties.length ? propertiesCard(c) : ''}
+          <div class="card"><div class="row between"><h3>Invoices</h3><button class="btn sm secondary" id="new-invoice">+ Invoice</button></div>
+            <div class="list">${c.invoices.length ? c.invoices.map(invoiceItem).join('') : '<div class="empty small">No invoices yet</div>'}</div></div>
           <div class="card"><h3>Jobs</h3><div class="list">${c.jobs.length ? c.jobs.slice().reverse().map(jobItem).join('') : '<div class="empty small">No jobs yet</div>'}</div></div>
+          ${c.requests.length ? `<div class="card"><h3>Portal requests</h3><div class="list">${c.requests.map((r) => requestItem(r, { compact: true })).join('')}</div></div>` : ''}
           <div class="card"><h3>Quote requests</h3><div class="list">${c.leads.length ? c.leads.map(leadItem).join('') : '<div class="empty small">None</div>'}</div></div>
         </div>
         ${conversationCard(c.messages, c)}
       </div>`;
     $('#edit').onclick = () => customerForm(c);
     $('#book').onclick = () => jobForm({ customer_id: c.id, address: [c.address, c.city, c.zip].filter(Boolean).join(', ') });
+    $('#new-invoice').onclick = () => invoiceForm({ customer_id: c.id });
+    bindPortalCard(c);
     bindConversation(`/customers/${c.id}/messages`);
     bindJobItems();
+    bindInvoiceItems();
+    REQUESTS = c.requests;
+    bindRequestItems();
   }
 
   // ---------- employees ----------
@@ -501,7 +519,7 @@
   // ---------- jobs ----------
   const jobItem = (j) => `<a class="item" href="#" data-job="${j.id}">
       <div class="main"><div class="title">${esc(fmtWhen(j.scheduled_at))} — ${esc(j.customer ? j.customer.name : '')}</div>
-      <div class="sub">${esc([j.service_type, j.address].filter(Boolean).join(' · '))}</div>
+      <div class="sub">${esc([j.property && `🏠 ${j.property.name}`, j.service_type, j.address].filter(Boolean).join(' · '))}</div>
       <div class="sub">${j.employees.length ? `🧹 ${esc(j.employees.map((e) => e.name).join(', '))}` : '<span style="color:var(--warn)">⚠️ No cleaner assigned</span>'}</div></div>
       <div style="text-align:right">${status(j.status)}<div class="sub small">${money(j.price)}</div></div></a>`;
 
@@ -529,19 +547,21 @@
   }
 
   async function jobForm(job) {
-    const [customers, employees] = await Promise.all([api('/customers'), api('/employees')]);
+    const [customers, employees, properties] = await Promise.all([api('/customers'), api('/employees'), api('/properties')]);
     if (!customers.length) { toast('Add a client first', true); location.hash = '#/customers'; return; }
     const existing = Boolean(job.id);
     const assigned = new Set((job.employees || []).map((e) => e.id));
     const defaultTime = new Date(); defaultTime.setDate(defaultTime.getDate() + 1); defaultTime.setHours(9, 0, 0, 0);
-    const services = [...new Set([...Object.values(META.pricing.services).map((s) => s.label), job.service_type].filter(Boolean))];
+    const services = [...new Set([...Object.values(META.pricing.services).map((s) => s.label), 'Airbnb / STR Turnover', job.service_type].filter(Boolean))];
     const form = modal(existing ? 'Edit job' : 'Book a job', `<div class="form-grid">
       ${select('customer_id', 'Client *', [['', '— Choose client —'], ...customers.map((c) => [c.id, `${c.name}${c.phone ? ` · ${fmtPhone(c.phone)}` : ''}`])], job.customer_id, { full: true })}
       ${input('scheduled_at', 'Date & time *', job.scheduled_at || localISO(defaultTime), { type: 'datetime-local' })}
       ${input('duration_hours', 'Duration (hours)', job.duration_hours || 3, { type: 'number', attrs: 'step="0.5" min="0.5"' })}
       ${select('service_type', 'Service', [['', '—'], ...services.map((s) => [s, s])], job.service_type)}
       ${input('price', 'Price ($)', job.price ?? '', { type: 'number', attrs: 'step="1"' })}
-      ${input('address', 'Address (defaults to client address)', job.address, { full: true })}
+      <div class="field full" id="property-field"><label for="f-property_id">Rental property (turnovers)</label><select id="f-property_id" name="property_id"></select></div>
+      ${input('address', 'Address (defaults to client or property address)', job.address, { full: true })}
+      ${existing ? `<div class="field full"><div class="row"><button type="button" class="btn sm secondary" id="job-report">📝 Report & photos</button><button type="button" class="btn sm secondary" id="job-invoice">🧾 Create invoice</button></div></div>` : ''}
       ${existing ? select('status', 'Status', META.jobStatuses.map((s) => [s, s]), job.status, { full: true }) : ''}
       <div class="field full"><label>Assign cleaner(s)</label>
         ${employees.filter((e) => e.active || assigned.has(e.id)).map((e) => `<label class="check"><input type="checkbox" name="employee_ids" data-multi="1" value="${e.id}" ${assigned.has(e.id) ? 'checked' : ''}> ${esc(e.name)} <span class="muted small">${esc(fmtPhone(e.phone))}</span></label>`).join('') || '<div class="muted small">No employees yet — <a href="#/employees">add one</a>.</div>'}
@@ -561,11 +581,28 @@
     }, { submitLabel: existing ? 'Save job' : 'Book job', danger: existing ? { label: 'Delete job', confirm: 'Delete this job?', action: async () => { await api(`/jobs/${job.id}`, { method: 'DELETE' }); render(); } } : null });
     const jobText = `Shine Pro Cleaning job: ${fmtWhen(job.scheduled_at || '')} at ${job.address || ''}${job.customer ? ` for ${job.customer.name}` : ''}${job.service_type ? ` (${job.service_type})` : ''}.${job.notes ? ` Notes: ${job.notes}` : ''}`;
     $$('[data-gv]', form).forEach((b) => (b.onclick = () => { openGoogleVoice(b.dataset.gv, jobText); toast('Job details copied — paste in Google Voice'); }));
+    // Property list follows the chosen client (only hosts have properties).
+    const syncProperties = () => {
+      const mine = properties.filter((p) => String(p.customer_id) === form.customer_id.value);
+      form.property_id.innerHTML = [['', '— Not a turnover —'], ...mine.map((p) => [p.id, p.name])]
+        .map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(job.property_id ?? '') ? 'selected' : ''}>${esc(l)}</option>`).join('');
+      $('#property-field', form).classList.toggle('hidden', !mine.length);
+    };
+    syncProperties();
+    form.property_id.addEventListener('change', () => {
+      const p = properties.find((x) => String(x.id) === form.property_id.value);
+      if (p) { form.address.value = p.address || ''; if (!form.service_type.value) form.service_type.value = form.service_type.querySelector('option[value="Airbnb / STR Turnover"]') ? 'Airbnb / STR Turnover' : ''; }
+    });
     // Auto-fill address from selected client
     form.customer_id.addEventListener('change', () => {
+      syncProperties();
       const c = customers.find((x) => String(x.id) === form.customer_id.value);
       if (c && !form.address.value) form.address.value = [c.address, c.city, c.zip].filter(Boolean).join(', ');
     });
+    if (existing) {
+      $('#job-report', form).onclick = () => { form.closest('.modal-backdrop').remove(); reportForm(job); };
+      $('#job-invoice', form).onclick = () => { form.closest('.modal-backdrop').remove(); invoiceForm({ customer_id: job.customer_id, job_id: job.id, amount: job.price }); };
+    }
   }
 
   // ---------- calendar ----------
@@ -627,6 +664,298 @@
       } catch (err) { toast(err.message, true); } finally { e.target.disabled = false; }
     };
   }
+
+  // ---------- client portal access (on the client page) ----------
+  function portalCard(c) {
+    const a = c.portal_account;
+    const portalUrl = `${location.origin}/${a && a.is_host ? 'host' : 'portal'}`;
+    if (!a) {
+      return `<div class="card"><h3>Client portal</h3>
+        <p class="muted small">${c.email ? `Lets ${esc(c.name.split(' ')[0])} log in to see bookings, request changes and pay invoices. We email them a link to set their password.` : 'Add an email address to this client first. It becomes their portal login.'}</p>
+        ${c.email ? `<div class="row"><button class="btn sm" data-portal="enable">Turn on & email link</button><button class="btn sm secondary" data-portal="enable-host">Turn on as host (Airbnb)</button></div>` : ''}</div>`;
+    }
+    return `<div class="card"><div class="row between"><h3>Client portal</h3>${a.enabled ? '<span class="status st-booked">on</span>' : '<span class="status st-cancelled">off</span>'}</div>
+      <dl class="kv">
+        <dt>Login</dt><dd>${esc(a.email)}</dd>
+        <dt>Type</dt><dd>${a.is_host ? '🏠 Host (rental properties)' : '👤 Client'}</dd>
+        <dt>Password</dt><dd>${a.has_password ? 'Set' : '<span style="color:var(--warn)">Not set yet</span>'}</dd>
+        <dt>Last login</dt><dd>${a.last_login_at ? esc(fmtAgo(a.last_login_at)) : 'Never'}</dd>
+        <dt>Email updates</dt><dd>${a.email_updates ? 'On' : 'Off (client turned them off)'}</dd>
+        <dt>Portal</dt><dd><a href="${esc(portalUrl)}" target="_blank" rel="noopener">${esc(portalUrl)}</a></dd>
+      </dl>
+      <div class="row" style="margin-top:12px">
+        ${a.enabled ? `<button class="btn sm" data-portal="invite">✉️ Email set-password link</button>` : ''}
+        <button class="btn sm secondary" data-portal="${a.is_host ? 'unhost' : 'host'}">${a.is_host ? 'Remove host' : 'Mark as host'}</button>
+        <button class="btn sm ${a.enabled ? 'danger' : 'secondary'}" data-portal="${a.enabled ? 'disable' : 'reenable'}">${a.enabled ? 'Turn off access' : 'Turn access back on'}</button>
+      </div></div>`;
+  }
+
+  function bindPortalCard(c) {
+    const put = (body) => api(`/customers/${c.id}/portal`, { method: 'PUT', body });
+    const actions = {
+      enable: async () => { const r = await put({ enabled: true, send_link: true }); return r.email && r.email.ok ? 'Portal on. Set-password link emailed ✅' : `Portal on, but the email failed: ${r.email ? r.email.error : ''}`; },
+      'enable-host': async () => { const r = await put({ enabled: true, is_host: true, send_link: true }); return r.email && r.email.ok ? 'Host portal on. Link emailed ✅' : `Host portal on, but the email failed: ${r.email ? r.email.error : ''}`; },
+      invite: async () => { await api(`/customers/${c.id}/portal/invite`, { method: 'POST', body: {} }); return 'Set-password link emailed ✅'; },
+      host: async () => { await put({ is_host: true }); return 'Marked as host'; },
+      unhost: async () => { await put({ is_host: false }); return 'No longer a host'; },
+      disable: async () => { if (!confirm('Turn off portal access? They will be logged out right away.')) return null; await put({ enabled: false }); return 'Portal access turned off'; },
+      reenable: async () => { await put({ enabled: true }); return 'Portal access turned back on'; },
+    };
+    $$('[data-portal]').forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      try { const msg = await actions[b.dataset.portal](); if (msg) { toast(msg, /failed/.test(msg)); render(); } } catch (err) { toast(err.message, true); } finally { b.disabled = false; }
+    }));
+    $$('[data-property]').forEach((b) => (b.onclick = () => propertyForm(c.id, c.properties.find((p) => String(p.id) === b.dataset.property))));
+    const add = $('#add-property');
+    if (add) add.onclick = () => propertyForm(c.id);
+  }
+
+  // ---------- properties (hosts) ----------
+  const clock = (hhmm) => (hhmm ? new Date(`2000-01-01T${hhmm}`).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '');
+  function propertiesCard(c) {
+    return `<div class="card"><div class="row between"><h3>🏠 Rental properties</h3><button class="btn sm secondary" id="add-property">+ Property</button></div>
+      <div class="list">${c.properties.length ? c.properties.map((p) => `<a class="item" href="#" data-property="${p.id}">
+        <div class="main"><div class="title">${esc(p.name)}</div>
+        <div class="sub">${esc([p.address, p.bedrooms != null ? `${p.bedrooms} bd / ${p.bathrooms ?? '?'} ba` : '', p.checkout_time ? `out ${clock(p.checkout_time)}` : '', p.checkin_time ? `in ${clock(p.checkin_time)}` : ''].filter(Boolean).join(' · '))}</div>
+        ${p.access_notes ? `<div class="sub">🔑 ${esc(p.access_notes)}</div>` : ''}</div>
+        <div class="sub small">${p.next_turnover ? `Next: ${esc(fmtWhen(p.next_turnover))}` : `${p.turnover_count} turnover(s)`}</div></a>`).join('') : '<div class="empty small">No properties yet. The host can add them in their portal, or add one here.</div>'}</div></div>`;
+  }
+
+  function propertyForm(customerId, p) {
+    const d = p || { checkout_time: '11:00', checkin_time: '16:00' };
+    modal(p ? 'Edit property' : 'Add property', `<div class="form-grid">
+      ${input('name', 'Name *', d.name, { full: true })}
+      ${input('address', 'Address *', d.address, { full: true })}
+      ${input('bedrooms', 'Bedrooms', d.bedrooms, { type: 'number' })}${input('bathrooms', 'Bathrooms', d.bathrooms, { type: 'number', attrs: 'step="0.5"' })}
+      ${input('checkout_time', 'Usual checkout', d.checkout_time, { type: 'time' })}${input('checkin_time', 'Usual check-in', d.checkin_time, { type: 'time' })}
+      ${textarea('access_notes', 'Access (lockbox, codes, parking)', d.access_notes)}
+      ${textarea('notes', 'Notes', d.notes)}
+      </div>`, async (data) => {
+      if (p) await api(`/properties/${p.id}`, { method: 'PUT', body: data });
+      else await api('/properties', { method: 'POST', body: { ...data, customer_id: customerId } });
+      toast(p ? 'Property saved' : 'Property added');
+      render();
+    }, p ? { danger: { label: 'Delete', confirm: 'Delete this property? Its turnover jobs are kept.', action: async () => { await api(`/properties/${p.id}`, { method: 'DELETE' }); render(); } } } : {});
+  }
+
+  // ---------- invoices ----------
+  const invStatus = (i) => (i.status === 'sent' ? status(i.overdue ? 'failed' : 'new').replace(/>(failed|new)</, `>${i.overdue ? 'overdue' : 'sent'}<`) : status(i.status));
+  const invoiceItem = (i) => `<a class="item" href="#" data-invoice="${i.id}">
+      <div class="main"><div class="title">${esc(i.number)} · ${esc(i.customer ? i.customer.name : '')}</div>
+      <div class="sub">${esc([i.job && `${i.job.service_type || 'Job'} ${fmtWhen(i.job.scheduled_at)}`, i.due_date && `due ${i.due_date}`, i.pay_url && '💳 pay link', !i.job && i.notes && i.notes.slice(0, 60)].filter(Boolean).join(' · '))}</div></div>
+      <div style="text-align:right">${invStatus(i)}<div class="sub small">${moneyCents(i.amount)}</div></div></a>`;
+  const moneyCents = (n) => `$${Number(n || 0).toFixed(2)}`;
+
+  function bindInvoiceItems() {
+    $$('[data-invoice]').forEach((a) => (a.onclick = async (e) => {
+      e.preventDefault();
+      try { invoiceForm(await api(`/invoices/${a.dataset.invoice}`)); } catch (err) { toast(err.message, true); }
+    }));
+  }
+
+  async function invoicesPage(params) {
+    const st = params.get('status') || 'all';
+    const list = await api(`/invoices?status=${encodeURIComponent(st)}`);
+    const total = list.filter((i) => i.status === 'sent').reduce((sum, i) => sum + i.amount, 0);
+    app.innerHTML = `
+      <div class="row between"><h1>Invoices</h1><button class="btn" id="add">+ New invoice</button></div>
+      <div class="tabs">${[['all', 'All'], ['draft', 'Draft'], ['open', 'Unpaid'], ['paid', 'Paid'], ['void', 'Void']].map(([v, l]) => `<button data-st="${v}" class="${v === st ? 'active' : ''}">${l}</button>`).join('')}</div>
+      <p class="muted small">${list.length} invoice(s)${total ? ` · ${moneyCents(total)} unpaid` : ''}. Tip: open a booking and press “Create invoice” to bill a job.</p>
+      <div class="list">${list.length ? list.map(invoiceItem).join('') : '<div class="empty">No invoices here</div>'}</div>`;
+    $$('.tabs button').forEach((b) => (b.onclick = () => { location.hash = `#/invoices?status=${b.dataset.st}`; }));
+    $('#add').onclick = () => invoiceForm({});
+    bindInvoiceItems();
+  }
+
+  async function invoiceForm(inv) {
+    const existing = Boolean(inv.id);
+    const customers = existing ? [] : await api('/customers');
+    if (!existing && !customers.length) { toast('Add a client first', true); return; }
+    const due = new Date(); due.setDate(due.getDate() + 7);
+    const jobOptions = async (customerId) => (customerId ? (await api(`/jobs?customer_id=${customerId}`)).reverse() : []);
+    const jobs = await jobOptions(inv.customer_id);
+    const jobSelect = (list, value) => [['', '— No job (blank invoice) —'], ...list.map((j) => [j.id, `${fmtWhen(j.scheduled_at)} · ${j.service_type || 'Job'}${j.price != null ? ` · ${money(j.price)}` : ''}`])]
+      .map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(value ?? '') ? 'selected' : ''}>${esc(l)}</option>`).join('');
+    const form = modal(existing ? `Invoice ${inv.number}` : 'New invoice', `<div class="form-grid">
+      ${existing ? `<div class="field full"><label>Client</label><div>${esc(inv.customer.name)} <span class="muted small">${esc(inv.customer.email || 'no email on file')}</span></div></div>`
+        : select('customer_id', 'Client *', [['', '— Choose client —'], ...customers.map((c) => [c.id, `${c.name}${c.email ? ` · ${c.email}` : ''}`])], inv.customer_id, { full: true })}
+      <div class="field full"><label for="f-job_id">Job</label><select id="f-job_id" name="job_id">${jobSelect(jobs, inv.job_id)}</select></div>
+      ${input('amount', 'Amount ($) *', inv.amount ?? '', { type: 'number', attrs: 'step="0.01" min="0"' })}
+      ${input('due_date', 'Due date', inv.due_date || (existing ? '' : localISO(due).slice(0, 10)), { type: 'date' })}
+      ${existing ? input('number', 'Invoice number', inv.number) : ''}
+      ${select('status', 'Status', META.invoiceStatuses.map((x) => [x, x]), inv.status || 'draft')}
+      ${input('pay_url', 'Pay link (Stripe Payment Link, https://…)', inv.pay_url, { type: 'url', full: true, attrs: 'placeholder="https://buy.stripe.com/…"' })}
+      ${textarea('notes', 'Notes shown on the invoice', inv.notes)}
+      ${existing ? `<div class="field full"><div class="row">
+        <button type="button" class="btn sm" data-inv="send">✉️ Save & email to client</button>
+        ${inv.status !== 'paid' ? '<button type="button" class="btn sm secondary" data-inv="paid">✅ Mark paid</button>' : ''}
+        ${inv.status !== 'void' ? '<button type="button" class="btn sm secondary" data-inv="void">Void</button>' : ''}
+        <a class="btn sm secondary" href="/admin/invoices/${inv.id}" target="_blank" rel="noopener">🖨 Printable</a>
+      </div><div class="muted small" style="margin-top:6px">${inv.sent_at ? `Sent ${esc(fmtAgo(inv.sent_at))}. ` : ''}${inv.paid_at ? `Paid ${esc(fmtAgo(inv.paid_at))}. ` : ''}The email has the amount, due date, Pay link and a link to view the invoice in the client portal.</div></div>` : ''}
+      </div>`, async (data) => {
+      if (data.job_id === '') data.job_id = null;
+      if (existing) await api(`/invoices/${inv.id}`, { method: 'PUT', body: data });
+      else await api('/invoices', { method: 'POST', body: data });
+      toast(existing ? 'Invoice saved' : 'Invoice created');
+      render();
+    }, { submitLabel: existing ? 'Save' : 'Create invoice', danger: existing ? { label: 'Delete', confirm: 'Delete this invoice? (Tip: use Void to keep a record.)', action: async () => { await api(`/invoices/${inv.id}`, { method: 'DELETE' }); render(); } } : null });
+    // Picking a job fills in the amount from the job's price.
+    const fillFromJob = (list) => {
+      const j = list.find((x) => String(x.id) === form.job_id.value);
+      if (j && j.price != null && !form.amount.value) form.amount.value = j.price;
+    };
+    let current = jobs;
+    form.job_id.onchange = () => fillFromJob(current);
+    if (!existing) {
+      form.customer_id.onchange = async () => {
+        current = await jobOptions(form.customer_id.value);
+        form.job_id.innerHTML = jobSelect(current, '');
+      };
+    }
+    $$('[data-inv]', form).forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      try {
+        const data = formData(form);
+        if (data.job_id === '') data.job_id = null;
+        if (b.dataset.inv === 'paid') data.status = 'paid';
+        if (b.dataset.inv === 'void') { if (!confirm('Void this invoice? The client will see it as void.')) return; data.status = 'void'; }
+        await api(`/invoices/${inv.id}`, { method: 'PUT', body: data });
+        if (b.dataset.inv === 'send') { await api(`/invoices/${inv.id}/send`, { method: 'POST', body: {} }); toast('Invoice emailed to the client ✅'); }
+        else toast(b.dataset.inv === 'paid' ? 'Marked paid ✅' : 'Invoice voided');
+        form.closest('.modal-backdrop').remove();
+        render();
+      } catch (err) { toast(err.message, true); } finally { b.disabled = false; }
+    }));
+  }
+
+  // ---------- requests inbox ----------
+  const kindLabel = { reschedule: '🔁 Reschedule', cancel: '✖️ Cancel', turnover: '🏠 Turnover' };
+  function requestSummary(r) {
+    if (r.kind === 'turnover') return `${r.property ? r.property.name : 'Property'} · ${r.requested_at}${r.checkout_time ? ` · checkout ${clock(r.checkout_time)}` : ''}${r.checkin_time ? ` · next check-in ${clock(r.checkin_time)}` : ''}`;
+    const when = r.job ? fmtWhen(r.job.scheduled_at) : 'job deleted';
+    return r.kind === 'reschedule' ? `${when} → ${fmtWhen(r.requested_at)}` : when;
+  }
+  const requestItem = (r, { compact = false } = {}) => `<div class="item" style="align-items:flex-start">
+      <div class="main"><div class="title">${kindLabel[r.kind]}${compact ? '' : ` · <a href="#/customers/${r.customer_id}">${esc(r.customer ? r.customer.name : '')}</a>`}</div>
+      <div class="sub">${esc(requestSummary(r))}</div>
+      ${r.note ? `<div class="sub">“${esc(r.note)}”</div>` : ''}
+      ${r.admin_note ? `<div class="sub">Your reply: ${esc(r.admin_note)}</div>` : ''}
+      <div class="sub small">${esc(fmtAgo(r.created_at))}${!compact && r.customer && r.customer.phone ? ` · ${esc(fmtPhone(r.customer.phone))}` : ''}</div>
+      ${r.status === 'pending' ? `<div class="row" style="margin-top:8px"><button class="btn sm" data-approve="${r.id}">Approve</button><button class="btn sm danger" data-decline="${r.id}">Decline</button></div>` : ''}</div>
+      ${status(r.status === 'pending' ? 'new' : r.status === 'approved' ? 'booked' : 'cancelled').replace(/>(new|booked|cancelled)</, `>${r.status}<`)}</div>`;
+
+  let REQUESTS = [];
+  function bindRequestItems() {
+    const find = (id) => REQUESTS.find((r) => String(r.id) === id);
+    $$('[data-approve]').forEach((b) => (b.onclick = () => approveForm(find(b.dataset.approve))));
+    $$('[data-decline]').forEach((b) => (b.onclick = () => declineForm(find(b.dataset.decline))));
+  }
+
+  async function requestsPage(params) {
+    const st = params.get('status') || 'pending';
+    REQUESTS = await api(`/requests?status=${encodeURIComponent(st)}`);
+    app.innerHTML = `
+      <h1>Client requests</h1>
+      <p class="muted small">Reschedule, cancel and turnover requests from the client and host portals. Approving updates or creates the booking; the client is emailed either way.</p>
+      <div class="tabs">${['pending', 'approved', 'declined', 'all'].map((v) => `<button data-st="${v}" class="${v === st ? 'active' : ''}">${v}</button>`).join('')}</div>
+      <div class="list">${REQUESTS.length ? REQUESTS.map((r) => requestItem(r)).join('') : `<div class="empty">${st === 'pending' ? 'No requests waiting 🎉' : 'Nothing here'}</div>`}</div>`;
+    $$('.tabs button').forEach((b) => (b.onclick = () => { location.hash = `#/requests?status=${b.dataset.st}`; }));
+    bindRequestItems();
+  }
+
+  async function approveForm(r) {
+    let fields = '';
+    if (r.kind === 'reschedule') {
+      fields = input('scheduled_at', 'New date & time (change it if you agreed another time)', r.requested_at, { type: 'datetime-local', full: true });
+    } else if (r.kind === 'turnover') {
+      const employees = await api('/employees');
+      fields = `${input('scheduled_at', 'Cleaning starts', `${r.requested_at}T${r.checkout_time || (r.property && r.property.checkout_time) || '11:00'}`, { type: 'datetime-local' })}
+        ${input('duration_hours', 'Duration (hours)', 3, { type: 'number', attrs: 'step="0.5" min="0.5"' })}
+        ${input('price', 'Price ($)', '', { type: 'number', attrs: 'step="1"' })}
+        <div class="field full"><label>Assign cleaner(s)</label>${employees.filter((e) => e.active).map((e) => `<label class="check"><input type="checkbox" name="employee_ids" data-multi="1" value="${e.id}"> ${esc(e.name)}</label>`).join('') || '<div class="muted small">No employees yet.</div>'}</div>`;
+    }
+    modal(`Approve: ${kindLabel[r.kind]}`, `<p><strong>${esc(r.customer ? r.customer.name : '')}</strong><br><span class="muted">${esc(requestSummary(r))}</span></p>
+      ${r.note ? `<p class="muted">“${esc(r.note)}”</p>` : ''}
+      <div class="form-grid">${fields}${textarea('admin_note', 'Message to the client (optional, included in their email)', '')}</div>
+      <p class="muted small">${r.kind === 'cancel' ? 'The booking is marked cancelled.' : r.kind === 'reschedule' ? 'The booking moves and assigned cleaners are told.' : 'A turnover booking is created for this property.'}</p>`, async (data) => {
+      const res = await api(`/requests/${r.id}/approve`, { method: 'POST', body: data });
+      toast(res.email && res.email.ok ? 'Approved. Client emailed ✅' : `Approved. Client not emailed: ${res.email ? res.email.error : ''}`, !(res.email && res.email.ok));
+      render();
+    }, { submitLabel: 'Approve' });
+  }
+
+  function declineForm(r) {
+    modal(`Decline: ${kindLabel[r.kind]}`, `<p><strong>${esc(r.customer ? r.customer.name : '')}</strong><br><span class="muted">${esc(requestSummary(r))}</span></p>
+      <div class="form-grid">${textarea('admin_note', 'Reason / message to the client', '')}</div>`, async (data) => {
+      const res = await api(`/requests/${r.id}/decline`, { method: 'POST', body: data });
+      toast(res.email && res.email.ok ? 'Declined. Client emailed' : `Declined. Client not emailed: ${res.email ? res.email.error : ''}`, !(res.email && res.email.ok));
+      render();
+    }, { submitLabel: 'Decline' });
+  }
+
+  // ---------- job / turnover report with photos ----------
+  // Big phone photos are shrunk in the browser before upload (max 2000px, JPEG).
+  function readPhoto(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error(`Couldn't read ${file.name}`));
+      reader.onload = () => {
+        if (file.size < 1.5 * 1024 * 1024 || !/^image\/(jpeg|png|webp)$/.test(file.type)) return resolve(reader.result);
+        const img = new Image();
+        img.onerror = () => resolve(reader.result);
+        img.onload = () => {
+          const scale = Math.min(1, 2000 / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function reportForm(job) {
+    let report = await api(`/jobs/${job.id}/report`);
+    const photosHtml = () => (report.photos.length ? `<div class="photo-grid">${report.photos.map((p) => `<a href="/api/admin/photos/${job.id}/${esc(p.file)}" target="_blank" rel="noopener"><img src="/api/admin/photos/${job.id}/${esc(p.file)}" alt="${esc(p.name)}"><button type="button" class="btn sm danger photo-del" data-del="${esc(p.file)}" title="Delete photo">✕</button></a>`).join('')}</div>` : '<div class="muted small">No photos yet.</div>');
+    const form = modal(`Report · ${fmtWhen(job.scheduled_at)}${job.property ? ` · ${job.property.name}` : ''}`, `<div class="form-grid">
+      ${textarea('notes', 'Cleaning notes (what was done)', report.notes)}
+      ${textarea('damage_notes', 'Damage found', report.damage_notes)}
+      ${textarea('inventory_notes', 'Inventory / supplies (low or missing items)', report.inventory_notes)}
+      <div class="field full"><label>Photos</label><div id="photos">${photosHtml()}</div>
+        <label class="btn sm secondary" style="margin-top:10px;width:auto">📷 Add photos<input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="hidden"></label>
+        <span class="muted small" id="photo-status"></span></div>
+      </div><p class="muted small">${job.property ? 'The host sees this report and the photos in their portal.' : 'Saved with the booking.'} Photos upload right away; press Save for the notes.</p>`, async (data) => {
+      await api(`/jobs/${job.id}/report`, { method: 'PUT', body: data });
+      toast('Report saved ✅');
+      render();
+    }, { submitLabel: 'Save report' });
+    const refresh = () => {
+      $('#photos', form).innerHTML = photosHtml();
+      $$('[data-del]', form).forEach((b) => (b.onclick = async (e) => {
+        e.preventDefault();
+        if (!confirm('Delete this photo?')) return;
+        try { report = await api(`/jobs/${job.id}/report/photos/${encodeURIComponent(b.dataset.del)}`, { method: 'DELETE' }); refresh(); } catch (err) { toast(err.message, true); }
+      }));
+    };
+    refresh();
+    $('#photo-input', form).onchange = async (e) => {
+      const files = [...e.target.files];
+      const statusEl = $('#photo-status', form);
+      for (const [i, file] of files.entries()) {
+        statusEl.textContent = `Uploading ${i + 1} of ${files.length}…`;
+        try {
+          report = await api(`/jobs/${job.id}/report/photos`, { method: 'POST', body: { name: file.name, data: await readPhoto(file) } });
+          refresh();
+        } catch (err) { toast(`${file.name}: ${err.message}`, true); }
+      }
+      statusEl.textContent = '';
+      e.target.value = '';
+    };
+  }
+
 
   // ---------- boot ----------
   async function start() {

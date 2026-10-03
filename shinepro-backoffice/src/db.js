@@ -128,13 +128,113 @@ CREATE TABLE IF NOT EXISTS notifications (
   lead_id INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- ---------- client & host portals ----------
+-- One login per customer. A host is a customer with is_host = 1 (they own rental properties).
+CREATE TABLE IF NOT EXISTS portal_accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  customer_id INTEGER NOT NULL UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT,               -- "scrypt$<salt hex>$<hash hex>", NULL until the client sets one
+  enabled INTEGER NOT NULL DEFAULT 1,
+  is_host INTEGER NOT NULL DEFAULT 0,
+  email_updates INTEGER NOT NULL DEFAULT 1,   -- booking / request updates by email
+  session_version INTEGER NOT NULL DEFAULT 1, -- bumped on password change: logs out other devices
+  last_login_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- One-time links for "set your password" (invite) and "forgot password" (reset).
+CREATE TABLE IF NOT EXISTS password_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id INTEGER NOT NULL REFERENCES portal_accounts(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,  -- sha256 of the token; the token itself is only in the email
+  purpose TEXT NOT NULL,            -- set | reset
+  expires_at INTEGER NOT NULL,      -- unix ms
+  used_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS properties (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  address TEXT,
+  bedrooms INTEGER,
+  bathrooms REAL,
+  access_notes TEXT,
+  checkout_time TEXT,               -- "HH:MM"
+  checkin_time TEXT,                -- "HH:MM"
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_properties_customer ON properties(customer_id);
+
+CREATE TABLE IF NOT EXISTS invoices (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  job_id INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
+  number TEXT NOT NULL UNIQUE,
+  amount REAL NOT NULL,
+  status TEXT NOT NULL DEFAULT 'draft',   -- draft | sent | paid | void
+  due_date TEXT,                    -- "YYYY-MM-DD"
+  pay_url TEXT,                     -- e.g. a Stripe Payment Link
+  notes TEXT,
+  sent_at TEXT,
+  paid_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer_id);
+
+-- Reschedule / cancel / turnover requests from the portals. The admin approves or declines them.
+CREATE TABLE IF NOT EXISTS portal_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,               -- reschedule | cancel | turnover
+  job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE,
+  property_id INTEGER REFERENCES properties(id) ON DELETE CASCADE,
+  requested_at TEXT,                -- reschedule: new "YYYY-MM-DDTHH:MM"; turnover: the cleaning date "YYYY-MM-DD"
+  checkout_time TEXT,
+  checkin_time TEXT,
+  note TEXT,
+  status TEXT NOT NULL DEFAULT 'pending', -- pending | approved | declined
+  admin_note TEXT,
+  resolved_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_requests_status ON portal_requests(status);
+
+CREATE TABLE IF NOT EXISTS job_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  job_id INTEGER NOT NULL UNIQUE REFERENCES jobs(id) ON DELETE CASCADE,
+  notes TEXT,
+  damage_notes TEXT,
+  inventory_notes TEXT,
+  photos TEXT NOT NULL DEFAULT '[]',  -- JSON [{file, name, type, size, uploaded_at}]; files live in UPLOADS_DIR/jobs/<job_id>/
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `;
+
+// Columns added after the first release. SQLite has no "ADD COLUMN IF NOT EXISTS", so check first.
+function migrate(db) {
+  const has = (table, col) => db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
+  if (!has('jobs', 'property_id')) {
+    db.exec('ALTER TABLE jobs ADD COLUMN property_id INTEGER REFERENCES properties(id) ON DELETE SET NULL');
+  }
+  db.exec('CREATE INDEX IF NOT EXISTS idx_jobs_customer ON jobs(customer_id); CREATE INDEX IF NOT EXISTS idx_jobs_property ON jobs(property_id);');
+}
 
 function openDb(file) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
 

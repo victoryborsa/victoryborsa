@@ -1,4 +1,6 @@
 const crypto = require('node:crypto');
+const os = require('node:os');
+const path = require('node:path');
 
 function loadConfig(env = process.env) {
   const isProd = env.NODE_ENV === 'production';
@@ -7,6 +9,9 @@ function loadConfig(env = process.env) {
     port: Number(env.PORT) || 3000,
     publicUrl: (env.PUBLIC_URL || `http://localhost:${Number(env.PORT) || 3000}`).replace(/\/$/, ''),
     dbFile: env.DATABASE_FILE || './data/shinepro.db',
+    // Turnover report photos. Defaults to an "uploads" folder next to the database (same persistent disk).
+    uploadsDir: '',
+    uploadMaxMb: Number(env.UPLOAD_MAX_MB) || 8,
     businessName: env.BUSINESS_NAME || 'Shine Pro Cleaning',
     businessPhone: env.BUSINESS_PHONE || '(412) 447-8047',
     // Texting with customers happens in Google Voice (no API), so the admin opens it for you.
@@ -49,6 +54,10 @@ function loadConfig(env = process.env) {
     // Only turn this off for local testing. The owner requires verified phone numbers.
     requirePhoneVerification: env.REQUIRE_PHONE_VERIFICATION !== 'false',
   };
+
+  config.uploadsDir = path.resolve(env.UPLOADS_DIR || (config.dbFile === ':memory:'
+    ? path.join(os.tmpdir(), 'shinepro-uploads')
+    : path.join(path.dirname(config.dbFile), 'uploads')));
 
   if (isProd) {
     if (config.adminPassword.length < 10) throw new Error('ADMIN_PASSWORD must be set (10+ characters) in production');

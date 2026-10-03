@@ -8,8 +8,10 @@ const { createService } = require('./service');
 const { createChatRouter } = require('./chat');
 const { createAi } = require('./ai');
 const { createPhoneVerifier } = require('./firebase');
+const { createAccounts } = require('./accounts');
+const { createPortal } = require('./portal');
 const { PRICING } = require('../public/pricing');
-const { HttpError, formatPhone } = require('./util');
+const { HttpError, formatPhone, normalizeEmail } = require('./util');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -47,6 +49,8 @@ function createApp({
   const notifier = createNotifier({ db, config, senders });
   const svc = createService({ db, notifier, config });
   const auth = createAuth(config);
+  const accounts = createAccounts({ db, config, notifier });
+  const portal = createPortal({ db, config, svc, notifier, accounts });
 
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
@@ -58,6 +62,8 @@ function createApp({
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     next();
   });
+  // Turnover photos are uploaded as base64 JSON (keeps the "JSON only" CSRF rule), so this one route takes bigger bodies.
+  app.use('/api/admin/jobs/:id/report/photos', express.json({ limit: `${Math.ceil(config.uploadMaxMb * 1.4) + 1}mb` }));
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 
@@ -115,6 +121,9 @@ function createApp({
     next();
   });
 
+  // Client & host portals (their own login, separate from the admin)
+  app.use('/api/portal', portal.createPortalRouter({ rateLimit, h }));
+
   // ---------------- admin auth ----------------
   app.post('/api/admin/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }), auth.login);
   app.post('/api/admin/logout', auth.logout);
@@ -126,7 +135,7 @@ function createApp({
 
   admin.get('/stats', (req, res) => res.json(svc.stats()));
   admin.get('/meta', (req, res) => res.json({
-    pricing: PRICING, leadStatuses: svc.LEAD_STATUSES, jobStatuses: svc.JOB_STATUSES,
+    pricing: PRICING, leadStatuses: svc.LEAD_STATUSES, jobStatuses: svc.JOB_STATUSES, invoiceStatuses: portal.INVOICE_STATUSES,
     smsConfigured: notifier.senders.smsEnabled, googleVoiceNumber: config.googleVoiceNumber,
     chat: { aiEnabled: Boolean(ai), phoneVerification: config.requirePhoneVerification, phoneVerificationReady: Boolean(verifyPhoneToken) },
   }));
@@ -190,9 +199,24 @@ function createApp({
       leads: db.prepare('SELECT * FROM leads WHERE customer_id = ? ORDER BY created_at DESC').all(c.id),
       jobs: svc.listJobs({ customer_id: c.id }),
       messages: svc.listMessages({ customerId: c.id }),
+      portal_account: accounts.publicAccount(accounts.accountForCustomer(c.id)),
+      invoices: portal.listInvoices({ customer_id: c.id }),
+      properties: portal.listProperties({ customer_id: c.id }),
+      requests: portal.listRequests({ status: 'all', customer_id: c.id }),
     });
   });
-  admin.put('/customers/:id', (req, res) => res.json(svc.updateCustomer(id(req), req.body)));
+  admin.put('/customers/:id', (req, res) => {
+    // Their portal login follows the email on the client record, so check it's free first.
+    const newEmail = normalizeEmail(req.body && req.body.email);
+    const taken = newEmail && accounts.accountByEmail(newEmail);
+    if (taken && taken.customer_id !== id(req) && accounts.accountForCustomer(id(req))) {
+      throw new HttpError(409, 'Another client already uses this email for the portal');
+    }
+    const c = svc.updateCustomer(id(req), req.body);
+    const account = accounts.accountForCustomer(c.id);
+    if (account && c.email && c.email !== account.email) accounts.ensureAccount(c);
+    res.json(c);
+  });
   admin.delete('/customers/:id', (req, res) => {
     svc.getCustomer(id(req));
     db.prepare('DELETE FROM customers WHERE id = ?').run(id(req));
@@ -224,10 +248,16 @@ function createApp({
     res.json({ ok: true });
   });
 
+  portal.mountAdmin(admin, { h });
+
   app.use('/api/admin', admin);
 
   // ---------------- pages ----------------
   app.get('/admin', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
+  // Client portal (linked from pghshinepro.com) and host portal. One page; portal.js picks the screen from the URL.
+  const portalPages = /^\/(portal|host)(\/(login|register|forgot|set-password|bookings|invoices(\/\d+)?|profile|properties|turnovers(\/\d+)?))?\/?$/;
+  app.get(portalPages, (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'portal.html')));
+  app.get(/^\/admin\/invoices\/\d+$/, (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'portal.html')));
   app.get('/', (req, res) => res.redirect('/quote'));
   app.get('/quote', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'quote.html')));
   app.get('/embed.js', cors, (req, res, next) => {
@@ -244,7 +274,7 @@ function createApp({
     res.status(status).json({ error: status >= 500 && status !== 502 ? 'Something went wrong' : err.message, message_record: err.message_record });
   });
 
-  Object.assign(app.locals, { db, svc, notifier });
+  Object.assign(app.locals, { db, svc, notifier, accounts, portal });
   return app;
 }
 

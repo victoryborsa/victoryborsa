@@ -209,3 +209,77 @@ textarea { min-height: 90px; resize: vertical; }
   h1 { font-size: 1.6rem; }
 }
 .st-gvoice { background: var(--ok-soft); color: var(--ok); }
+.st-draft, .st-void { background: #eef0f0; color: var(--muted); }
+.st-paid, .st-approved { background: var(--ok-soft); color: var(--ok); }
+.st-pending { background: #fdecc8; color: #8a5a00; }
+.st-declined { background: var(--danger-soft); color: var(--danger); }
+
+/* More nav items since the portals were added: keep the admin bar on one line on desktop. */
+.brand { white-space: nowrap; }
+.nav a { padding: 6px 8px; }
+
+/* ---------- client & host portals ---------- */
+.portal .grid-2 { margin-bottom: 16px; }
+.portal .grid-2 > .card { margin-bottom: 0; }
+.modal .photo-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+.item.booking .sub { overflow: visible; }
+.item.booking .status { white-space: normal; }
+.inline-status { display: none; margin-bottom: 4px; }
+@media (max-width: 600px) {
+  .item.booking > .right { display: none; }
+  .inline-status { display: block; }
+}
+body.portal { display: flex; flex-direction: column; min-height: 100vh; }
+body.portal .container { flex: 1; width: 100%; }
+.portal-footer { border-top: 1px solid var(--border); background: #fff; padding: 18px 16px; text-align: center; font-size: 0.88rem; color: var(--muted); display: grid; gap: 4px; }
+.auth-title { font-size: 1.4rem; margin: 6px 0 12px; }
+.help-line { margin-top: 18px; }
+.hero-card .label { text-transform: uppercase; letter-spacing: 0.04em; font-weight: 650; margin-bottom: 6px; }
+.hero-card .big { font-size: 1.6rem; font-weight: 800; line-height: 1.2; color: var(--text); }
+.hero-card .mid { font-size: 1.05rem; font-weight: 600; margin: 2px 0 6px; }
+.item .right { text-align: right; flex: none; }
+.item.booking { align-items: flex-start; }
+.date-badge { flex: none; width: 54px; border-radius: 12px; background: var(--brand-soft); color: var(--brand); text-align: center; padding: 6px 0; line-height: 1.1; }
+.date-badge .m { display: block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+.date-badge .d { display: block; font-size: 1.4rem; font-weight: 800; }
+.readonly { padding: 10px 12px; border: 1px dashed #cfd5d4; border-radius: 10px; background: #f8f9f9; word-break: break-all; }
+.prop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.prop-grid .card { margin-bottom: 0; }
+.prop h2 { margin: 0; flex: 1; min-width: 0; }
+.prop .row.between { flex-wrap: nowrap; align-items: flex-start; }
+.pre { white-space: pre-wrap; margin: 0; }
+.card.damage { border-color: #f3c1bb; background: #fffafa; }
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.photo-grid a { display: block; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #eef0f0; position: relative; }
+.photo-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-grid .photo-del { position: absolute; top: 6px; right: 6px; }
+
+/* invoice (screen + print) */
+.invoice-sheet { max-width: 800px; margin: 0 auto; padding: 32px; }
+.inv-head { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; border-bottom: 2px solid var(--brand); padding-bottom: 18px; margin-bottom: 18px; }
+.inv-biz { font-size: 1.1rem; color: var(--navy); }
+.inv-meta { text-align: right; }
+.inv-title { font-size: 1.6rem; font-weight: 800; letter-spacing: 0.08em; color: var(--brand); }
+.inv-to { margin-bottom: 18px; }
+.inv-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+.inv-table th, .inv-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.inv-table th { font-size: 0.8rem; text-transform: uppercase; color: var(--muted); letter-spacing: 0.04em; }
+.inv-table .num { text-align: right; white-space: nowrap; }
+.inv-table tfoot td { font-weight: 700; border-bottom: none; }
+.inv-table tfoot tr:first-child td { font-size: 1.15rem; border-top: 2px solid var(--text); }
+.inv-notes { margin-top: 6px; white-space: pre-wrap; }
+@media (max-width: 600px) {
+  .invoice-sheet { padding: 18px; }
+  .inv-meta { text-align: left; }
+  .item.invoice-row { flex-wrap: wrap; }
+  .item.invoice-row .right { width: 100%; text-align: left; display: flex; align-items: center; justify-content: space-between; }
+  .item.invoice-row .right .row { margin-top: 0 !important; }
+  .prop-grid { grid-template-columns: 1fr; }
+  .hero-card .big { font-size: 1.35rem; }
+}
+@media print {
+  .topbar, .portal-footer, .no-print, .toast { display: none !important; }
+  body, body.portal { background: #fff; }
+  .container { padding: 0; max-width: none; }
+  .invoice-sheet { border: none; box-shadow: none; padding: 0; max-width: none; }
+}
