@@ -2,46 +2,97 @@
   <div class="wrap">
     <div class="footer-grid">
       <div class="footer-about">
-        <a class="brand" href="index.html">
+        <a class="brand" href="/">
           <svg class="brand-mark" aria-hidden="true"><use href="#i-logo" /></svg>
-          <span class="brand-text">PGH Shine Pro<small>Cleaning services</small></span>
+          <span class="brand-text">PGH Shine Pro<small>Cleaning Services</small></span>
         </a>
-        <p>Friendly, background-checked house cleaners serving Pittsburgh and the surrounding 20 miles.</p>
+        <p>Pittsburgh's trusted house cleaning service. Insured, background-checked, and supplies included.</p>
+        <ul class="footer-trust">
+          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check" /></svg> Insured &amp; bonded</li>
+          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check" /></svg> Background-checked cleaners</li>
+          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check" /></svg> Supplies included</li>
+        </ul>
       </div>
       <div>
         <h3>Services</h3>
         <ul>
-          <li><a href="book.html?service=standard">House cleaning</a></li>
-          <li><a href="book.html?service=deep">Deep cleaning</a></li>
-          <li><a href="book.html?service=move">Move-in / move-out</a></li>
-          <li><a href="book.html?service=airbnb">Airbnb turnover</a></li>
-          <li><a href="book.html?service=apartment">Apartment &amp; condo</a></li>
-          <li><a href="book.html?service=event">Event cleanup</a></li>
+          <li><a href="/house-cleaning">House Cleaning</a></li>
+          <li><a href="/deep-cleaning">Deep Cleaning</a></li>
+          <li><a href="/move-in-out-cleaning">Move-In / Move-Out</a></li>
+          <li><a href="/airbnb-cleaning">Airbnb / STR Turnover</a></li>
+          <li><a href="/apartment-condo-cleaning">Apartment &amp; Condo</a></li>
+          <li><a href="/event-cleanup">Event Cleanup</a></li>
+          <li><a href="/services">All Services &amp; Pricing →</a></li>
         </ul>
       </div>
       <div>
         <h3>Company</h3>
         <ul>
-          <li><a href="index.html#pricing">Pricing</a></li>
-          <li><a href="index.html#reviews">Reviews</a></li>
-          <li><a href="index.html#areas">Areas we serve</a></li>
-          <li><a href="index.html#faq">FAQ</a></li>
-          <li><a href="book.html">Book online</a></li>
+          <li><a href="/about">About Us</a></li>
+          <li><a href="/cleaning-tips">Blog</a></li>
+          <li><a href="/faq">FAQ</a></li>
+          <li><a href="/careers">Careers</a></li>
+          <li><a href="/contact">Contact</a></li>
+          <li><a href="/guarantee">Guarantee</a></li>
+          <li><a href="/portal/login">Client Login</a></li>
+          <li><a href="/portal/bookings">My Bookings</a></li>
+          <li><a href="/portal/invoices">My Invoices</a></li>
+          <li><a href="/careers">Apply Now</a></li>
         </ul>
+      </div>
+      <div>
+        <h3>Service Area</h3>
+        <p class="footer-note">Pittsburgh metro · within 20 miles of Downtown</p>
+        <ul>
+          <li><a href="/free-estimate?city=Shadyside">Shadyside</a></li>
+          <li><a href="/free-estimate?city=Lawrenceville">Lawrenceville</a></li>
+          <li><a href="/free-estimate?city=Squirrel%20Hill">Squirrel Hill</a></li>
+          <li><a href="/free-estimate?city=South%20Side">South Side</a></li>
+          <li><a href="/free-estimate?city=North%20Side">North Side</a></li>
+          <li><a href="/free-estimate?city=Oakland">Oakland</a></li>
+          <li><a href="/service-areas">View all service areas →</a></li>
+        </ul>
+        <form class="zip-check zip-check-sm" data-zip-check novalidate>
+          <label for="footer-zip">Check if we serve your ZIP:</label>
+          <div class="zip-row">
+            <input class="input" id="footer-zip" inputmode="numeric" maxlength="5" placeholder="ZIP" autocomplete="postal-code" />
+            <button class="btn btn-light btn-sm" type="submit">Check</button>
+          </div>
+          <p class="zip-result" role="status" aria-live="polite"></p>
+        </form>
       </div>
       <div>
         <h3>Contact</h3>
         <ul>
           <li><a href="tel:+14124478047">(412) 447-8047</a></li>
-          <li><a href="mailto:info@pghshinepro.com" data-email>info@pghshinepro.com</a></li>
-          <li>Mon – Sat, 8am – 6pm</li>
-          <li>Pittsburgh, PA 15222</li>
+          <li><a href="mailto:pghshinepro@gmail.com">pghshinepro@gmail.com</a></li>
+          <li>Mon–Sat, 8am–6pm</li>
+          <li>Pittsburgh, PA 15222 &amp; surrounding areas</li>
         </ul>
+        <form class="newsletter" data-newsletter novalidate>
+          <h3>Cleaning tips and Pittsburgh offers</h3>
+          <p class="footer-note">Occasional tips and local deals. No spam.</p>
+          <label class="sr-only" for="nl-email">Email address</label>
+          <div class="zip-row">
+            <input class="input" id="nl-email" type="email" name="email" placeholder="Email address" autocomplete="email" required />
+            <button class="btn btn-light btn-sm" type="submit">Subscribe</button>
+          </div>
+          <label class="consent consent-dark">
+            <input type="checkbox" name="consent" required />
+            <span>I agree to receive emails and promotional messages from PGH Shine Pro Cleaning Services. I can unsubscribe at any time.</span>
+          </label>
+          <p class="zip-result" role="status" aria-live="polite"></p>
+        </form>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© <span data-year>2026</span> PGH Shine Pro Cleaning Services</span>
-      <span>Insured &amp; bonded · Background-checked cleaners</span>
+      <span>© <span data-year>2026</span> PGH Shine Pro Cleaning Services. All rights reserved.</span>
+      <span class="socials">
+        <a href="https://www.instagram.com/pghshinepro" aria-label="Instagram" rel="noopener" target="_blank"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-instagram" /></svg></a>
+        <a href="https://www.facebook.com/PGHShineProCleaning" aria-label="Facebook" rel="noopener" target="_blank"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-facebook" /></svg></a>
+        <a href="https://x.com/pghshinepro" aria-label="X (Twitter)" rel="noopener" target="_blank"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-x" /></svg></a>
+      </span>
+      <span class="footer-legal"><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Use</a></span>
     </div>
   </div>
 </footer>

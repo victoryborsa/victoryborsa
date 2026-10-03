@@ -4,17 +4,22 @@ A fast, mobile-friendly website for PGH Shine Pro Cleaning Services. It builds t
 
 ## What's in it
 
-- **Home page** (`index.html`): instant price calculator, services, how it works, pricing by home size, what's included, reviews, the Shine Guarantee, service-area checker, FAQ and a contact form.
-- **Booking page** (`book.html`): a 5-step booking request (service, date and arrival window, address with autocomplete, contact details, review) with a live price summary.
-- **404 page**, `robots.txt`, `sitemap.xml`, a social sharing image and an `.htaccess` file for GoDaddy.
+A page-for-page rebuild of the current pghshinepro.com, at the same web addresses (`/services`, `/house-cleaning`, `/free-estimate`, ...), so existing links and Google results keep working.
+
+- `src/pages/`: one file per page. The comment at the top holds the page's address, title and description.
+- `src/partials/`: pieces shared by every page (header, footer, mobile action bar, icons).
+- `src/public/`: CSS, JavaScript, fonts, images, `robots.txt` and the `.htaccess` file for GoDaddy.
+- Forms (free estimate, contact, careers, event quote, gift cards, newsletter) send through `formEndpoint` in `config.js`.
+
+Not rebuilt yet: the client, host and admin portals (`/portal/...`) and the neighborhood pages (`/cleaning-services/...`). They need a server and database, which basic GoDaddy hosting does not provide.
 
 ## Change prices, phone, email or discounts
 
 Everything you are likely to change is in one file: `src/public/assets/js/config.js` (or `assets/js/config.js` in the uploaded site). Edit the numbers or text, rebuild, and upload again.
 
-## Get booking requests in your inbox
+## Get form requests in your inbox
 
-By default, booking and contact requests open the visitor's email app with everything filled in. To receive them automatically instead:
+By default, estimate and contact requests open the visitor's email app with everything filled in. To receive them automatically instead:
 
 1. Create a free form at [formspree.io](https://formspree.io) using your business email.
 2. Copy its endpoint, e.g. `https://formspree.io/f/abcdwxyz`.
@@ -27,6 +32,7 @@ Requires Node.js 18 or newer. No packages to install.
 ```sh
 npm run build        # writes dist/ and pghshinepro-website.zip
 npm run preview      # builds and serves it at http://localhost:8080
+node build.mjs --preview  # writes dist-preview/, which opens straight from the files (no server)
 npm run screenshots  # desktop and phone screenshots into screenshots/ (needs Playwright)
 ```
 

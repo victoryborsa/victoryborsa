@@ -2,3 +2,4 @@ dist/
 *.zip
 screenshots/
 node_modules/
+dist-preview/

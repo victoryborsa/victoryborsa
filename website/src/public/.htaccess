@@ -3,6 +3,14 @@
 ErrorDocument 404 /404.html
 DirectoryIndex index.html
 
+# Old pages that showed the same content as another page.
+<IfModule mod_alias.c>
+  Redirect 301 /post-construction-cleaning /deep-cleaning
+  Redirect 301 /special-event-cleaning /event-cleanup
+  Redirect 301 /eco-friendly-cleaning /house-cleaning
+  Redirect 301 /upholstery-cleaning /services
+</IfModule>
+
 # Send visitors to the secure https:// address.
 # Remove the four lines below if your GoDaddy plan has no SSL certificate yet.
 <IfModule mod_rewrite.c>
@@ -22,4 +30,5 @@ DirectoryIndex index.html
   ExpiresByType application/javascript "access plus 7 days"
   ExpiresByType image/svg+xml "access plus 30 days"
   ExpiresByType image/png "access plus 30 days"
+  ExpiresByType font/woff2 "access plus 1 year"
 </IfModule>

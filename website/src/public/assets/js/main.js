@@ -1,4 +1,4 @@
-/* Shared behaviour for every page, plus the home page widgets. */
+/* Shared behaviour for every page: menus, price helpers, form sending, ZIP check. */
 (function () {
   var cfg = window.SHINE;
   var $ = function (sel, root) {
@@ -15,44 +15,23 @@
     return list[0];
   }
 
-  function quote(serviceId, sizeId, freqId) {
+  // Price for a service and home size; null when it needs a custom quote.
+  function price(serviceId, sizeId) {
     var service = findById(cfg.services, serviceId);
-    var size = findById(cfg.sizes, sizeId);
-    var freq = findById(cfg.frequencies, freqId || "once");
-    if (service.quoteOnly) {
-      return { service: service, size: size, freq: freq, quoteOnly: true };
-    }
-    var base = Math.max(service.from || 0, size.price + (service.add || 0));
-    var total = Math.round(base * (1 - freq.discount));
-    return { service: service, size: size, freq: freq, base: base, total: total, saved: base - total };
+    if (service.quoteOnly) return null;
+    var i = Math.max(0, cfg.sizes.map(function (s) { return s.id; }).indexOf(sizeId));
+    var p = service.prices[i];
+    return p == null ? null : p;
   }
 
   function money(n) {
     return "$" + n.toLocaleString("en-US");
   }
 
-  function maxDiscount() {
-    return cfg.frequencies.reduce(function (m, f) {
-      return Math.max(m, f.discount);
-    }, 0);
-  }
-
   function fillSelect(sel, list, selected) {
     sel.innerHTML = list
       .map(function (o) {
         return '<option value="' + o.id + '"' + (o.id === selected ? " selected" : "") + ">" + o.label + "</option>";
-      })
-      .join("");
-  }
-
-  function fillFrequencies(wrap, name, selected) {
-    wrap.innerHTML = cfg.frequencies
-      .map(function (f) {
-        var off = f.discount ? "<small>Save " + Math.round(f.discount * 100) + "%</small>" : "";
-        return (
-          '<label><input type="radio" name="' + name + '" value="' + f.id + '"' +
-          (f.id === selected ? " checked" : "") + "><span>" + f.label + off + "</span></label>"
-        );
       })
       .join("");
   }
@@ -80,53 +59,95 @@
       });
     }
 
-    var href =
+    window.location.href =
       "mailto:" + cfg.email +
       "?subject=" + encodeURIComponent(subject) +
       "&body=" + encodeURIComponent(lines.join("\n"));
-    window.location.href = href;
     return Promise.resolve({ method: "email" });
   }
 
-  function validate(form) {
+  // Checks required fields inside `root`; marks errors and focuses the first.
+  function validate(root) {
     var ok = true;
     var first = null;
-    $$("[required]", form).forEach(function (el) {
-      var valid = el.type === "checkbox" ? el.checked : el.value.trim() !== "";
-      if (valid && el.type === "email") valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value.trim());
-      if (valid && el.type === "tel") valid = el.value.replace(/\D/g, "").length >= 10;
-      var field = el.closest(".field");
+    var seenGroups = {};
+    function mark(el, field, valid) {
       if (field) field.classList.toggle("has-error", !valid);
-      el.setAttribute("aria-invalid", valid ? "false" : "true");
       if (!valid) {
         ok = false;
         if (!first) first = el;
       }
+    }
+    $$("[required]", root).forEach(function (el) {
+      if (el.type === "radio") {
+        if (seenGroups[el.name]) return;
+        seenGroups[el.name] = true;
+        var checked = $$('input[name="' + el.name + '"]', root).some(function (r) { return r.checked; });
+        mark(el, el.closest(".field"), checked);
+        return;
+      }
+      var valid = el.type === "checkbox" ? el.checked : el.value.trim() !== "";
+      if (valid && el.type === "email") valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value.trim());
+      if (valid && el.type === "tel") valid = el.value.replace(/\D/g, "").length >= 10;
+      el.setAttribute("aria-invalid", valid ? "false" : "true");
+      mark(el, el.closest(".field") || el.closest(".consent"), valid);
+    });
+    $$("[data-group-required]", root).forEach(function (group) {
+      var any = $$("input", group).some(function (i) { return i.checked; });
+      mark($("input", group), group, any);
     });
     if (first) first.focus();
     return ok;
   }
 
-  window.ShinePrice = {
-    quote: quote,
-    money: money,
-    fillSelect: fillSelect,
-    fillFrequencies: fillFrequencies,
-    findById: findById
-  };
-  window.ShineForm = { send: send, validate: validate };
+  // Collects named fields into {name: value}; checkboxes with the same name are joined.
+  function collect(form) {
+    var out = {};
+    $$("input, select, textarea", form).forEach(function (el) {
+      if (!el.name || el.disabled) return;
+      if ((el.type === "radio" || el.type === "checkbox") && !el.checked) return;
+      var v = el.value.trim();
+      if (!v) return;
+      out[el.name] = out[el.name] ? out[el.name] + ", " + v : v;
+    });
+    return out;
+  }
+
+  function clearErrorOnInput(form) {
+    form.addEventListener("input", function (e) {
+      var field = e.target.closest(".has-error");
+      if (field) field.classList.remove("has-error");
+      e.target.setAttribute("aria-invalid", "false");
+    });
+    form.addEventListener("change", function (e) {
+      var field = e.target.closest(".has-error");
+      if (field) field.classList.remove("has-error");
+    });
+  }
+
+  function showSuccess(form) {
+    $$(".form-body, .book-step, .stepper", form).forEach(function (el) {
+      el.hidden = true;
+      el.classList.remove("active");
+    });
+    var ok = $(".form-success", form);
+    ok.classList.add("show");
+    ok.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function zipServed(zip) {
+    if (!/^\d{5}$/.test(zip)) return null;
+    if ((cfg.extraZips || []).indexOf(zip) !== -1) return true;
+    return cfg.zipPrefixes.indexOf(zip.slice(0, 3)) !== -1;
+  }
+
+  window.ShinePrice = { price: price, money: money, fillSelect: fillSelect, findById: findById };
+  window.ShineForm = { send: send, validate: validate, collect: collect, clearErrorOnInput: clearErrorOnInput, showSuccess: showSuccess, zipServed: zipServed };
 
   /* ---------- Shared page chrome ---------- */
 
   $$("[data-year]").forEach(function (el) {
     el.textContent = new Date().getFullYear();
-  });
-  $$("[data-email]").forEach(function (el) {
-    el.href = "mailto:" + cfg.email;
-    if (!el.children.length) el.textContent = cfg.email;
-  });
-  $$("[data-email-text]").forEach(function (el) {
-    el.textContent = cfg.email;
   });
 
   var header = $(".site-header");
@@ -134,11 +155,37 @@
   function onScroll() {
     var y = window.scrollY;
     if (header) header.classList.toggle("scrolled", y > 8);
-    if (mobileBar) mobileBar.classList.toggle("show", y > 480);
+    if (mobileBar) mobileBar.classList.toggle("show", y > 360);
   }
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
 
+  // Services dropdown (desktop)
+  $$(".nav-drop").forEach(function (drop) {
+    var btn = $(".nav-drop-btn", drop);
+    var set = function (open) {
+      drop.classList.toggle("open", open);
+      btn.setAttribute("aria-expanded", String(open));
+    };
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      set(!drop.classList.contains("open"));
+    });
+    drop.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        set(false);
+        btn.focus();
+      }
+    });
+    drop.addEventListener("focusout", function (e) {
+      if (!drop.contains(e.relatedTarget)) set(false);
+    });
+    document.addEventListener("click", function () {
+      set(false);
+    });
+  });
+
+  // Mobile menu
   var toggle = $(".menu-toggle");
   var menu = $("#mobile-menu");
   if (toggle && menu) {
@@ -162,6 +209,15 @@
     });
   }
 
+  // "Chat With Us": opens the chat link if set, otherwise a text message.
+  $$("[data-chat]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      if (cfg.chatUrl) window.open(cfg.chatUrl, "_blank", "noopener");
+      else window.location.href = "sms:" + cfg.phoneHref;
+    });
+  });
+
+  // Fade-in on scroll
   var reveals = $$(".reveal");
   if ("IntersectionObserver" in window) {
     var io = new IntersectionObserver(
@@ -184,156 +240,92 @@
     });
   }
 
-  /* ---------- Home: instant price ---------- */
+  /* ---------- Home: instant price estimate ---------- */
 
   var quoteForm = $("#quote");
   if (quoteForm) {
-    var qService = $("[data-services]", quoteForm);
-    var qSize = $("[data-sizes]", quoteForm);
-    var qFreq = $("[data-frequencies]", quoteForm);
-    fillSelect(qService, cfg.services, "standard");
+    var qService = $("[data-quote-services]", quoteForm);
+    var qSize = $("[data-quote-sizes]", quoteForm);
+    fillSelect(qService, cfg.services.filter(function (s) { return !s.hidden; }), "standard");
     fillSelect(qSize, cfg.sizes, "2");
-    fillFrequencies(qFreq, "frequency", "once");
-
     var updateQuote = function () {
-      var freqInput = $("input[name=frequency]:checked", quoteForm);
-      var q = quote(qService.value, qSize.value, freqInput ? freqInput.value : "once");
-      var amount = $("[data-q-amount]", quoteForm);
-      var label = $("[data-q-label]", quoteForm);
-      if (q.quoteOnly) {
-        amount.textContent = "Custom";
-        label.textContent = "We'll send a quote the same day";
-        $("[data-q-was]", quoteForm).textContent = "";
-        $("[data-q-save]", quoteForm).textContent = "";
-        qSize.disabled = true;
-        return;
-      }
-      qSize.disabled = false;
-      amount.innerHTML = money(q.total) + "<small>/ visit</small>";
-      label.textContent = q.freq.id === "once" ? "Estimated price" : "Estimated price, " + q.freq.label.toLowerCase();
-      $("[data-q-was]", quoteForm).textContent = q.saved ? money(q.base) : "";
-      $("[data-q-save]", quoteForm).textContent = q.saved ? "You save " + money(q.saved) : "";
+      var service = findById(cfg.services, qService.value);
+      var p = price(qService.value, qSize.value);
+      qSize.disabled = !!service.quoteOnly;
+      $("[data-q-amount]", quoteForm).innerHTML = p == null ? "Custom" : money(p) + (service.unit ? "<small>/ turn</small>" : "");
+      $("[data-q-label]", quoteForm).textContent = p == null ? "We'll send a personalized quote" : "Estimated price";
     };
     quoteForm.addEventListener("change", updateQuote);
     updateQuote();
   }
 
-  /* ---------- Home: pricing table ---------- */
+  /* ---------- ZIP checker ---------- */
 
-  var tabs = $("[data-price-tabs]");
-  var rows = $("[data-price-rows]");
-  if (tabs && rows) {
-    var priced = cfg.services.filter(function (s) {
-      return !s.quoteOnly && ["standard", "deep", "move"].indexOf(s.id) !== -1;
-    });
-    var shortNames = { standard: "Standard", deep: "Deep", move: "Move in/out" };
-    tabs.innerHTML = priced
-      .map(function (s, i) {
-        return (
-          '<button type="button" role="tab" id="tab-' + s.id + '" aria-selected="' + (i === 0) +
-          '" aria-controls="price-panel" data-id="' + s.id + '">' + (shortNames[s.id] || s.label) + "</button>"
-        );
-      })
-      .join("");
-    rows.id = "price-panel";
-    rows.setAttribute("role", "tabpanel");
-
-    var showTab = function (id) {
-      $$("button", tabs).forEach(function (b) {
-        var on = b.getAttribute("data-id") === id;
-        b.setAttribute("aria-selected", String(on));
-        b.tabIndex = on ? 0 : -1;
-      });
-      rows.setAttribute("aria-labelledby", "tab-" + id);
-      rows.innerHTML = cfg.sizes
-        .map(function (size) {
-          var q = quote(id, size.id, "once");
-          return "<li><span>" + size.label + '</span><span class="amt">' + money(q.total) + "</span></li>";
-        })
-        .join("");
-    };
-    tabs.addEventListener("click", function (e) {
-      var b = e.target.closest("button");
-      if (b) showTab(b.getAttribute("data-id"));
-    });
-    tabs.addEventListener("keydown", function (e) {
-      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      var buttons = $$("button", tabs);
-      var i = buttons.indexOf(document.activeElement);
-      var next = buttons[(i + (e.key === "ArrowRight" ? 1 : -1) + buttons.length) % buttons.length];
-      next.focus();
-      showTab(next.getAttribute("data-id"));
-    });
-    showTab(priced[0].id);
-
-    var top = maxDiscount();
-    var note = $("[data-discount-note]");
-    var answer = $("[data-discount-answer]");
-    var parts = cfg.frequencies
-      .filter(function (f) {
-        return f.discount;
-      })
-      .map(function (f) {
-        return Math.round(f.discount * 100) + "% off " + f.label.toLowerCase();
-      });
-    if (top) {
-      if (note) note.textContent = "Recurring visits save up to " + Math.round(top * 100) + "%: " + parts.join(", ") + ".";
-      if (answer) answer.textContent = "Yes. Recurring visits are discounted automatically: " + parts.join(", ") + ". You can pause or change your schedule any time.";
-    } else if (note) {
-      note.parentNode.hidden = true;
-    }
-  }
-
-  /* ---------- Home: service area checker ---------- */
-
-  var areaRoot = $("#areas [data-autocomplete]");
-  if (areaRoot && window.ShineAddress) {
-    var result = $("[data-area-result]");
-    ShineAddress.attach(areaRoot, {
-      onInput: function () {
-        result.className = "area-result";
-      },
-      onSelect: function (place) {
-        var d = ShineAddress.describeArea(place);
-        result.className = "area-result show " + (d.ok ? "ok" : "far");
-        result.innerHTML =
-          '<svg class="icon icon-sm" aria-hidden="true"><use href="#' + (d.ok ? "i-check-circle" : "i-pin") + '" /></svg><span>' +
-          d.text + (d.ok ? ' <a href="book.html?address=' + encodeURIComponent(place.label) + '">Book now</a>' : "") +
-          "</span>";
-      }
-    });
-  }
-
-  /* ---------- Home: contact form ---------- */
-
-  var contact = $("#contact-form");
-  if (contact) {
-    contact.addEventListener("submit", function (e) {
+  $$("[data-zip-check]").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
       e.preventDefault();
-      if (!validate(contact)) return;
-      var btn = $("button[type=submit]", contact);
-      btn.disabled = true;
-      send("Website message from " + contact.name.value.trim(), {
-        Name: contact.name.value.trim(),
-        Phone: contact.phone.value.trim(),
-        Email: contact.email.value.trim(),
-        Message: contact.message.value.trim()
-      })
-        .then(function () {
-          $(".form-body", contact).hidden = true;
-          $(".form-success", contact).classList.add("show");
-        })
-        .catch(function () {
-          btn.disabled = false;
-          alert("Sorry, something went wrong. Please call us at " + cfg.phone + ".");
-        });
-    });
-    contact.addEventListener("input", function (e) {
-      var field = e.target.closest(".field");
-      if (field && field.classList.contains("has-error")) {
-        field.classList.remove("has-error");
-        e.target.setAttribute("aria-invalid", "false");
+      var input = $("input", form);
+      var out = $(".zip-result", form);
+      var zip = input.value.trim();
+      var served = zipServed(zip);
+      if (served === null) {
+        out.className = "zip-result bad";
+        out.textContent = "Please enter a 5-digit ZIP code.";
+      } else if (served) {
+        out.className = "zip-result good";
+        out.innerHTML = "Yes! We serve " + zip + '. <a href="' + linkTo("free-estimate") + "?zip=" + zip + '">Get a free estimate →</a>';
+      } else {
+        out.className = "zip-result bad";
+        out.innerHTML = "That ZIP may be outside our usual area. Call <a href=\"tel:" + cfg.phoneHref + "\">" + cfg.phone + "</a> and we'll check.";
       }
     });
+  });
+
+  // Builds a link to a page that works both on the live site and in the file preview.
+  function linkTo(page) {
+    var a = $('a[href*="' + page + '"]');
+    return a ? a.getAttribute("href").split("?")[0] : "/" + page;
   }
+
+  /* ---------- Newsletter ---------- */
+
+  $$("[data-newsletter]").forEach(function (form) {
+    clearErrorOnInput(form);
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var out = $(".zip-result", form);
+      var email = $("input[type=email]", form);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+        out.className = "zip-result bad";
+        out.textContent = "Please enter a valid email address.";
+        email.focus();
+        return;
+      }
+      if (!$("input[type=checkbox]", form).checked) {
+        out.className = "zip-result bad";
+        out.textContent = "Please tick the box to agree to receive emails.";
+        return;
+      }
+      send("Newsletter signup", { Email: email.value.trim(), Consent: "Yes" }).then(function () {
+        out.className = "zip-result good";
+        out.textContent = "Thanks! You're on the list.";
+        form.reset();
+      });
+    });
+  });
+
+  /* ---------- Checklist tabs (mobile shows one column at a time) ---------- */
+
+  $$("[data-checklist]").forEach(function (box) {
+    var table = $("table", box);
+    var buttons = $$("[role=tab]", box);
+    buttons.forEach(function (b) {
+      b.addEventListener("click", function () {
+        buttons.forEach(function (o) {
+          o.setAttribute("aria-selected", String(o === b));
+        });
+        table.setAttribute("data-show", b.getAttribute("data-col"));
+      });
+    });
+  });
 })();
