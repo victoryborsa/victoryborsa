@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function Contact() {
   const [u, s] = await Promise.all([currentUser(), getSettings()]);
   return (
-    <div className="wrap">
+    <div className="wrap photo-page theme-light">
       <ActionForm action={contactAction} className="auth box" resetOnOk>
         <h1 style={{ fontSize: 30 }}>Contact us</h1>
         <p className="muted">We reply within a few hours, every day. For an existing booking, include your reference (it starts with SV-).</p>

@@ -15,7 +15,7 @@ export default async function Verify({ searchParams }: { searchParams: Promise<{
   const u = await requireUser(undefined, "/verify?next=" + encodeURIComponent(next), { allowUnverified: true });
   if (u.verified || !verificationRequired()) redirect(next);
   return (
-    <div className="wrap">
+    <div className="wrap photo-page theme-light">
       <div className="auth box">
         <p className="eyebrow">One last step</p>
         <h1 style={{ fontSize: 30 }}>Confirm your email</h1>

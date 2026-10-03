@@ -14,7 +14,7 @@ export default async function SignUp({ searchParams }: { searchParams: Promise<{
   const host = sp.host === "1";
   if (await currentUser()) redirect(next || "/trips");
   return (
-    <div className="wrap">
+    <div className="wrap photo-page theme-light">
       <ActionForm action={signUpAction} className="auth box">
         <h1 style={{ fontSize: 30 }}>Create your account</h1>
         <p className="muted">Book in a few taps, see all your trips in one place, and message hosts.</p>

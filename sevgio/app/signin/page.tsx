@@ -12,7 +12,7 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<{
   const next = safeNext((await searchParams).next, "");
   if (await currentUser()) redirect(next || "/trips");
   return (
-    <div className="wrap">
+    <div className="wrap photo-page theme-light">
       <ActionForm action={signInAction} className="auth box">
         <h1 style={{ fontSize: 30 }}>Sign in</h1>
         {next.startsWith("/book/") && <div className="notice info">Sign in or create an account to finish your booking. Your dates are saved.</div>}

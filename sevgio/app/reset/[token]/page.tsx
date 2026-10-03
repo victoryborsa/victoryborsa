@@ -15,7 +15,7 @@ export default async function Reset({ params }: { params: Promise<{ token: strin
   const ok = await one("SELECT 1 FROM password_resets WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()", [sha256(token)]);
   if (!ok) return <LinkProblem />;
   return (
-    <div className="wrap">
+    <div className="wrap photo-page theme-light">
       <ActionForm action={resetPasswordAction} className="auth box">
         <h1 style={{ fontSize: 30 }}>Choose a new password</h1>
         <input type="hidden" name="token" value={token} />
