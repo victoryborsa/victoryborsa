@@ -11,7 +11,9 @@ A page-for-page rebuild of the current pghshinepro.com, at the same web addresse
 - `src/public/`: CSS, JavaScript, fonts, images, `robots.txt` and the `.htaccess` file for GoDaddy.
 - Forms (free estimate, contact, careers, event quote, gift cards, newsletter) send through `formEndpoint` in `config.js`.
 
-Not rebuilt yet: the client, host and admin portals (`/portal/...`) and the neighborhood pages (`/cleaning-services/...`). They need a server and database, which basic GoDaddy hosting does not provide.
+The client portal (`/portal/...`), host portal (`/host/...`) and admin dashboard need a server and database, so they run in the back office app (`shinepro-backoffice/`, planned at admin.pghshinepro.com). `.htaccess` forwards `/portal` and `/host` there; change that address if the back office lives elsewhere.
+
+The 24 local pages (`/cleaning-services/...`) are generated: edit `scripts/neighborhood-pages.mjs`, run it, then build.
 
 ## Change prices, phone, email or discounts
 

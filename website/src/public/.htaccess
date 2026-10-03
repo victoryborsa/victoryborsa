@@ -9,6 +9,11 @@ DirectoryIndex index.html
   Redirect 301 /special-event-cleaning /event-cleanup
   Redirect 301 /eco-friendly-cleaning /house-cleaning
   Redirect 301 /upholstery-cleaning /services
+
+  # Client and host portals run on the back office server.
+  # Change the address below if the back office lives somewhere else.
+  Redirect 302 /portal https://admin.pghshinepro.com/portal
+  Redirect 302 /host https://admin.pghshinepro.com/host
 </IfModule>
 
 # Send visitors to the secure https:// address.
