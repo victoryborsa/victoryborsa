@@ -240,6 +240,12 @@ test("Pittsburgh guide: rows of places with pictures and directions; tabs jump t
   const see = page.getByRole("region", { name: "Must-see & historic Pittsburgh" });
   await expect(see.locator(".ab-card", { hasText: "Duquesne Incline" })).toBeVisible();
   await expect(see.locator(".ab-card").first().locator(".ab-ph")).toBeVisible();
+  // Each row shows four places first; See more shows the rest, Show less goes back to four.
+  await expect(see.locator(".ab-card:visible")).toHaveCount(4);
+  await see.getByRole("button", { name: /See more \(4\)/ }).click();
+  await expect(see.locator(".ab-card:visible")).toHaveCount(8);
+  await see.getByRole("button", { name: "Show less" }).click();
+  await expect(see.locator(".ab-card:visible")).toHaveCount(4);
   const eat = page.getByRole("region", { name: "What to eat" });
   await expect(eat.locator(".ab-card a", { hasText: "Primanti Bros." })).toHaveAttribute("href", /google\.com\/maps\/dir\/\?api=1&destination=/);
   // A tab jumps to its row.
@@ -255,7 +261,9 @@ test("Pittsburgh guide: rows of places with pictures and directions; tabs jump t
   await expect(see).toBeHidden();
   await page.getByLabel("What", { exact: true }).fill("");
   await page.getByLabel("Neighborhood").selectOption("North Side");
+  // While searching, matches past the first four show too.
   await expect(page.getByRole("region", { name: "Museums & gardens" }).locator(".ab-card", { hasText: "National Aviary" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Museums & gardens" }).locator(".ab-card", { hasText: "Mattress Factory" })).toBeVisible();
   await expect(eat).toBeHidden();
 });
 

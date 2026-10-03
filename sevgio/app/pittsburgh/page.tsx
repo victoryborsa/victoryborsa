@@ -84,7 +84,7 @@ export default async function PittsburghGuide() {
           return (
             <div key={id} id={id} className="gp-anchor">
               {ri === 2 && <h2 className="gp-big">Eat, drink and play like a Pittsburgher</h2>}
-              <CardRow title={t(key)} sub={sub} href={`#${id}`}>
+              <CardRow title={t(key)} sub={sub} href={`#${id}`} limit={4}>
                 {s.places.map((p, i) => <PlaceCard key={p.name} p={p} tone={s.tone} photo={photos.get(slugOf(p.name))} badge={i < 3 ? badge : undefined} map={t("guide.map")} />)}
               </CardRow>
             </div>
@@ -92,7 +92,7 @@ export default async function PittsburghGuide() {
         })}
 
         <div id="near" className="gp-anchor">
-          <CardRow title={t("guide.near")} sub="What's around the corner from each of our homes" href="#near">
+          <CardRow title={t("guide.near")} sub="What's around the corner from each of our homes" href="#near" limit={4}>
             {NEAR.map(n => (
               <div key={n.home} className="ab-card gp-near" data-gsearch={`${n.home} ${n.area} ${n.places.map(x => x.name).join(" ")}`.toLowerCase()}>
                 <p className="ab-c2">{n.area}</p>
@@ -104,7 +104,7 @@ export default async function PittsburghGuide() {
         </div>
 
         <div id="yinzer" className="gp-anchor">
-          <CardRow title={t("guide.yinzer")} sub={t("guide.yinzerIntro")} href="#yinzer">
+          <CardRow title={t("guide.yinzer")} sub={t("guide.yinzerIntro")} href="#yinzer" limit={4}>
             {YINZER.map(([w, m]) => (
               <div key={w} className="ab-card gp-word" data-gsearch={`${w} ${m} yinzer`.toLowerCase()}>
                 <span className="gp-word-w">{w}</span>

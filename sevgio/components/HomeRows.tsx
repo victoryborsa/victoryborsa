@@ -1,31 +1,52 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Children, useEffect, useRef, useState } from "react";
 import { statsPost } from "./ListingStats.tsx";
 
-/** A titled row of cards that scrolls sideways, with ‹ › buttons on computers (swipe on phones). */
-export function CardRow({ title, sub, href, children }: { title: string; sub?: string; href: string; children: React.ReactNode }) {
+/**
+ * A titled row of cards. Normally it scrolls sideways, with ‹ › buttons on computers (swipe on phones).
+ * With `limit`, it's a grid that shows that many cards first, with See more / Show less beside the title.
+ */
+export function CardRow({ title, sub, href, limit, children }: { title: string; sub?: string; href: string; limit?: number; children: React.ReactNode }) {
   const track = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLElement>(null);
   const [edge, setEdge] = useState({ start: true, end: false });
+  const [more, setMore] = useState(false);
+  const total = Children.count(children);
   const update = () => {
     const t = track.current;
     if (t) setEdge({ start: t.scrollLeft < 4, end: t.scrollLeft + t.clientWidth >= t.scrollWidth - 4 });
   };
-  useEffect(() => { update(); window.addEventListener("resize", update); return () => window.removeEventListener("resize", update); }, []);
+  useEffect(() => { if (limit) return; update(); window.addEventListener("resize", update); return () => window.removeEventListener("resize", update); }, [limit]);
   const go = (dir: number) => track.current?.scrollBy({ left: dir * track.current.clientWidth * 0.9, behavior: "smooth" });
+  const less = () => {
+    setMore(false);
+    // Back to the row's title if it has scrolled out of view.
+    const top = box.current?.getBoundingClientRect().top ?? 0;
+    if (top < 0) box.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  };
+  const hidden = limit ? Math.max(0, total - limit) : 0;
   return (
-    <section className="ab-row" aria-label={title}>
+    <section ref={box} className={`ab-row${limit ? " ab-row-grid" : ""}${limit && !more ? " collapsed" : ""}`} aria-label={title}>
       <div className="ab-row-head">
         <div>
           <h2><Link href={href}>{title}<span aria-hidden className="ab-row-arrow">›</span></Link></h2>
           {sub && <p className="ab-row-sub">{sub}</p>}
         </div>
-        <span className="ab-row-nav">
-          <button type="button" aria-label={`Scroll ${title} back`} disabled={edge.start} onClick={() => go(-1)}>‹</button>
-          <button type="button" aria-label={`Scroll ${title} forward`} disabled={edge.end} onClick={() => go(1)}>›</button>
-        </span>
+        {limit ? (
+          hidden > 0 && (
+            <button type="button" className="ab-more" aria-expanded={more} onClick={() => (more ? less() : setMore(true))}>
+              {more ? "Show less" : `See more (${hidden})`}
+            </button>
+          )
+        ) : (
+          <span className="ab-row-nav">
+            <button type="button" aria-label={`Scroll ${title} back`} disabled={edge.start} onClick={() => go(-1)}>‹</button>
+            <button type="button" aria-label={`Scroll ${title} forward`} disabled={edge.end} onClick={() => go(1)}>›</button>
+          </span>
+        )}
       </div>
-      <div className="ab-track" ref={track} onScroll={update}>{children}</div>
+      <div className={limit ? "ab-grid" : "ab-track"} ref={track} onScroll={limit ? undefined : update}>{children}</div>
     </section>
   );
 }

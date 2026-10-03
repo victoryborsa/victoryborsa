@@ -1126,3 +1126,12 @@ body:has(.ab-home) footer { background: #F7F7F7; color: var(--ink); border-top: 
 .gf-area select { border: 0; background: none; padding: 0; font: inherit; font-size: 14px; color: var(--ink); outline: 0; cursor: pointer; min-width: 0; }
 .gf .ps-seg:focus-within { background: #FFFFFF; box-shadow: 0 6px 20px rgba(0,0,0,.18); }
 @media (max-width: 743px) { .gf { grid-template-columns: 1fr; } .gf-area { padding-left: 18px; } .ab-tabs a { font-size: 12px; } }
+
+/* Guide rows: four cards first, See more / Show less beside the title. */
+.ab-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px 16px; }
+@media (max-width: 743px) { .ab-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 12px; } }
+.ab-body:not([data-filtering]) .ab-row-grid.collapsed .ab-grid > :nth-child(n+5) { display: none; }
+[data-filtering] .ab-more { display: none; }
+.ab-more { margin-left: auto; flex: none; padding: 8px 16px; border: 1px solid var(--ink); border-radius: 999px; background: #FFFFFF; color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s ease; }
+.ab-more:hover { background: #F7F7F7; }
+.ab-row-head { align-items: flex-start; }

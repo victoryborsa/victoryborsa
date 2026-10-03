@@ -18,6 +18,8 @@ export function GuideFilter({ areas, target }: { areas: string[]; target: string
       if (ok) shown++;
     });
     root.querySelectorAll<HTMLElement>(".ab-row").forEach(r => { r.hidden = !!(q || area) && !r.querySelector("[data-gsearch]:not([hidden])"); });
+    // While searching, every match shows (not just the first four of each row).
+    root.toggleAttribute("data-filtering", !!(q || area));
     setCount(q || area ? shown : null);
   }, [text, area, target]);
   return (
