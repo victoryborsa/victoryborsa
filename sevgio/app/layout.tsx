@@ -9,7 +9,7 @@ import "./globals.css";
 import { currentUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { signOutAction } from "./actions/auth.ts";
-import { getT, LANGS } from "@/lib/i18n.ts";
+import { getT, LANGS_AZ } from "@/lib/i18n.ts";
 import { LangMenu } from "@/components/LangMenu.tsx";
 import { HostSwitch, UserMenu } from "@/components/UserMenu.tsx";
 import { ProtectPage } from "@/components/ProtectPage.tsx";
@@ -50,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </>
               )}
             </nav>
-            <LangMenu current={lang} label={t("nav.language")} langs={LANGS.map(l => ({ code: l.code, name: l.name }))} />
+            <LangMenu current={lang} label={t("nav.language")} langs={LANGS_AZ.map(l => ({ code: l.code, name: l.name }))} />
             <HostSwitch role={user?.role ?? null} labels={{ become: t("nav.becomeHost"), toHosting: t("nav.toHosting"), toTraveling: t("nav.toTraveling") }} />
             <UserMenu
               main={[{ href: "/stays", label: t("nav.stays") }, { href: "/events", label: t("nav.events") }, { href: "/pittsburgh", label: t("nav.guide") }]}

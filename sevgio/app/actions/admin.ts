@@ -14,9 +14,9 @@ import { withMsg } from "@/components/Flash.tsx";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { processPhoto } from "@/lib/photos.ts";
 import { moveListingFamily } from "@/lib/homes.ts";
-import { SECTIONS, slugOf } from "@/lib/guide.ts";
 
-const GUIDE_SLUGS = new Set(["guide-banner", ...SECTIONS.flatMap(s => s.places.map(p => slugOf(p.name)))]);
+// The guide page banner photo (place photos are managed in app/actions/guide.ts).
+const GUIDE_SLUGS = new Set(["guide-banner"]);
 
 export async function setRoleAction(_: ActionState, fd: FormData): Promise<ActionState> {
   const admin = await requireUser(["admin"]);

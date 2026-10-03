@@ -12,6 +12,8 @@ export const LANGS = [
   { code: "hi", name: "हिन्दी", hello: "स्वागत है" },
 ] as const;
 export type Lang = (typeof LANGS)[number]["code"];
+/** The languages in A to Z order by the name visitors see (Latin-alphabet names first), for every language menu. */
+export const LANGS_AZ = [...LANGS].sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
 
 const en = {
   "nav.menu": "Menu", "nav.becomeHost": "Become a host", "nav.toHosting": "Switch to hosting", "nav.toTraveling": "Switch to traveling", "nav.close": "Close", "nav.explore": "Explore", "nav.yourAccount": "Your account", "nav.stays": "Stays", "nav.events": "Events", "nav.guide": "Pittsburgh guide", "nav.contact": "Contact", "nav.host": "Host dashboard", "nav.admin": "Admin", "nav.trips": "My trips",

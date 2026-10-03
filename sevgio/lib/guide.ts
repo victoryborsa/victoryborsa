@@ -1,4 +1,4 @@
-// Places in the Pittsburgh guide. Each has an emoji picture until an admin uploads a real photo (Admin → Guide photos).
+// The Pittsburgh guide's categories (ids and colors), the starting places (copied into the database by migration 025; manage them now in Admin → Pittsburgh guide), "Near our homes" and Yinzer words.
 export type Place = { name: string; area: string; text: string; icon: string; q?: string };
 export type Section = { id: "see" | "museums" | "eat" | "drink" | "do"; tone: string; places: Place[] };
 

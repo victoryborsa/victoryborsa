@@ -13,7 +13,7 @@ import { money } from "@/lib/money.ts";
 import { priceTag } from "@/lib/pricing.ts";
 import { PROPERTY_TYPES } from "@/lib/constants.ts";
 import { VISITOR_COOKIE } from "@/lib/listing-stats.ts";
-import { getT, LANGS } from "@/lib/i18n.ts";
+import { getT, LANGS_AZ } from "@/lib/i18n.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +98,7 @@ export default async function Home() {
               <p className="lede">{t("home.lede")}</p>
               <p className="home-welcome">{t("home.welcome")}</p>
               <nav className="hello" aria-label={t("home.pickLang")}>
-                {[...LANGS.slice(1), LANGS[0]].map(l => (
+                {LANGS_AZ.map(l => (
                   <a key={l.code} href={`/lang/${l.code}?next=/`} lang={l.code} hrefLang={l.code} className={l.code === lang ? "on" : undefined} aria-current={l.code === lang ? "true" : undefined} title={l.name}>{l.hello}</a>
                 ))}
               </nav>

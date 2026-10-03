@@ -113,7 +113,7 @@ test("host creates a listing as a draft; it can't be published without photos", 
   await page.getByLabel("Listing title").fill("Presque Isle Beach Cottage");
   await page.getByLabel("Town or city").fill("Erie");
   await page.getByLabel(/Area or region/).fill("Lake Erie");
-  await page.getByLabel("Description").fill("A bright cottage two minutes from the Presque Isle beaches, with a screened porch and bikes for guests.");
+  await page.locator("textarea[name=description]").fill("A bright cottage two minutes from the Presque Isle beaches, with a screened porch and bikes for guests.");
   await page.getByLabel("Nightly price (USD)").fill("140");
   await page.getByRole("button", { name: "Save and add photos" }).click();
   await expect(page.getByText("Listing saved as a draft.")).toBeVisible();
@@ -446,24 +446,99 @@ test("admin adds a real photo to a place in the Pittsburgh guide", async ({ page
   await expect(card.locator(".gp-art")).toBeVisible();
   await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
   await page.goto("/admin/guide");
+  await page.getByRole("link", { name: "Duquesne Incline & Mount Washington" }).click();
   const f = path.join(process.cwd(), "test-results", "incline.png");
   fs.mkdirSync(path.dirname(f), { recursive: true });
   const sharp = (await import("sharp")).default;
   await sharp({ create: { width: 1600, height: 900, channels: 3, background: "#B3262B" } }).png().toFile(f);
-  const row = page.locator(".guide-admin-row", { hasText: "Duquesne Incline & Mount Washington" });
-  await row.locator('input[type="file"]').setInputFiles(f);
-  await row.getByRole("button", { name: "Add photo" }).click();
-  await expect(row.getByText("1 photo added.")).toBeVisible();
+  const photos = page.locator("#photos");
+  await photos.locator('input[type="file"]').setInputFiles(f);
+  await photos.getByRole("button", { name: "Add photos" }).click();
+  await expect(photos.getByText("1 photo added.")).toBeVisible();
   await page.goto("/pittsburgh#see");
   await expect(card.locator("img")).toBeVisible();
   // Guide photos never show up in the home page slideshow.
   expect(await sql("SELECT 1 FROM site_photos WHERE slot IS NULL")).toHaveLength(0);
   await page.goto("/admin/guide");
-  await row.getByRole("button", { name: "Remove photo" }).click();
-  await expect(row.getByRole("button", { name: "Remove photo" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Duquesne Incline & Mount Washington" }).click();
+  await photos.getByRole("button", { name: "Remove" }).click();
+  await expect(photos.locator("img")).toHaveCount(0);
   await page.goto("/pittsburgh#see");
   await expect(card.locator(".gp-art")).toBeVisible();
   await signOut(page);
+});
+
+test("admin manages guide places: draft, preview, publish, reorder, sponsor with dates, hide and delete", async ({ page }) => {
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin/guide");
+  await page.getByRole("link", { name: "Add a place" }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Yinzer Coffee Co.");
+  await page.locator("select[name=section]").selectOption({ label: "What to eat" });
+  await page.getByLabel(/Neighborhood/).fill("Lawrenceville");
+  await page.locator("textarea[name=description]").fill("Locally roasted coffee and pastries on Butler Street.");
+  await page.getByLabel(/Address/).fill("3700 Butler St, Pittsburgh, PA 15201");
+  await page.getByLabel(/Website/).fill("yinzercoffee.example.com");
+  await page.getByLabel(/Phone/).fill("(412) 555-0199");
+  await page.getByRole("button", { name: "Save as draft" }).click();
+  await expect(page.getByText("Saved as a draft.")).toBeVisible();
+  const editUrl = page.url().split("?")[0];
+  // A draft isn't on the public guide, but Preview shows it.
+  const eat = page.getByRole("region", { name: "What to eat" });
+  await page.goto("/pittsburgh");
+  await expect(eat.locator(".gp-card", { hasText: "Yinzer Coffee Co." })).toHaveCount(0);
+  await page.goto("/pittsburgh?preview=1");
+  await expect(page.getByText(/Preview\./)).toBeVisible();
+  const draftCard = eat.locator(".gp-card", { hasText: "Yinzer Coffee Co." });
+  await expect(draftCard).toContainText("Draft: not published yet");
+  // Publish, then move it to the top so it's one of the first four.
+  await page.goto(editUrl);
+  await page.getByRole("button", { name: "Save and publish" }).click();
+  await expect(page.getByText(/Published\./)).toBeVisible();
+  await page.goto("/admin/guide");
+  await page.getByRole("button", { name: "Move Yinzer Coffee Co. to the top" }).click();
+  await page.goto("/pittsburgh");
+  const first = eat.locator(".gp-card").first();
+  await expect(first).toContainText("Yinzer Coffee Co.");
+  await expect(first.locator(".ab-card-link")).toHaveAttribute("href", /3700%20Butler%20St/);
+  await expect(first.getByRole("link", { name: "Website ↗" })).toHaveAttribute("href", "https://yinzercoffee.example.com");
+  await expect(first.getByRole("link", { name: "(412) 555-0199" })).toHaveAttribute("href", "tel:4125550199");
+  // Sponsored: a saved draft doesn't change the public page until it's published.
+  await page.goto(editUrl);
+  await page.getByLabel(/Sponsored listing/).check();
+  await page.getByLabel("Sponsorship ends").fill(iso(30));
+  await page.getByRole("button", { name: "Save draft (not public yet)" }).click();
+  await expect(page.getByText(/Changes saved as a draft/)).toBeVisible();
+  await page.goto("/pittsburgh");
+  await expect(eat.locator(".gp-card").first().locator(".gp-sponsor-badge")).toHaveCount(0);
+  await page.goto(editUrl);
+  await page.getByRole("button", { name: "Publish changes" }).first().click();
+  await page.goto("/pittsburgh");
+  await expect(eat.locator(".gp-card").first().locator(".gp-sponsor-badge")).toHaveText("Sponsored");
+  // The sponsorship ends by itself after its end date.
+  await sql("UPDATE guide_places SET sponsor_end = current_date - 1 WHERE name = 'Yinzer Coffee Co.'");
+  await page.reload();
+  await expect(eat.locator(".gp-card").first().locator(".gp-sponsor-badge")).toHaveCount(0);
+  // Hide, then delete.
+  await page.goto("/admin/guide");
+  await page.getByRole("button", { name: "Hide Yinzer Coffee Co." }).click();
+  await expect(page.getByText("“Yinzer Coffee Co.” is hidden from visitors.")).toBeVisible();
+  await page.goto("/pittsburgh");
+  await expect(eat.locator(".gp-card", { hasText: "Yinzer Coffee Co." })).toHaveCount(0);
+  await page.goto(editUrl);
+  await page.getByRole("button", { name: "Delete Yinzer Coffee Co." }).click();
+  await expect(page.getByText("“Yinzer Coffee Co.” was deleted.")).toBeVisible();
+  expect(await sql("SELECT 1 FROM guide_places WHERE name = 'Yinzer Coffee Co.'")).toHaveLength(0);
+  // Bad website or dates are refused.
+  await page.goto("/admin/guide/new");
+  await page.getByLabel("Name", { exact: true }).fill("Test Place");
+  await page.getByLabel("Sponsorship starts").fill(iso(10));
+  await page.getByLabel("Sponsorship ends").fill(iso(5));
+  await page.getByRole("button", { name: "Save as draft" }).click();
+  await expect(page.getByText("The sponsorship can't end before it starts.")).toBeVisible();
+  // Visitors can't use preview.
+  await signOut(page);
+  await page.goto("/pittsburgh?preview=1");
+  await expect(page.getByText(/Preview\./)).toHaveCount(0);
 });
 
 test("calendar: week starts today and month is a whole wall calendar", async ({ page }) => {

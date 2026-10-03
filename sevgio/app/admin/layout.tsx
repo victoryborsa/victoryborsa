@@ -25,7 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { title: "Website", items: [
           { href: "/admin/users", label: "Users & roles", icon: "users" },
           { href: "/admin/events", label: "Events", icon: "events" },
-          { href: "/admin/guide", label: "Guide photos", icon: "photos" },
+          { href: "/admin/guide", label: "Pittsburgh guide", icon: "photos" },
         ] },
         { title: "System", items: [
           { href: "/admin/log", label: "Errors & activity", icon: "activity", badge: errs?.n || 0 },

@@ -5,7 +5,10 @@ import { q } from "@/lib/db.ts";
 import { PictureTrio } from "@/components/PictureTrio.tsx";
 import { CardRow } from "@/components/HomeRows.tsx";
 import { GuideFilter } from "@/components/GuideFilter.tsx";
-import { NEAR, SECTIONS, YINZER, mapLink, slugOf, type Place, type Section } from "@/lib/guide.ts";
+import { NEAR, YINZER, mapLink } from "@/lib/guide.ts";
+import { SECTION_TONE, guideSections, placeMapLink, sponsorActive, type GuidePlace } from "@/lib/guide-places.ts";
+import { currentUser } from "@/lib/auth.ts";
+import { todayLocal } from "@/lib/dates.ts";
 import { getT } from "@/lib/i18n.ts";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +28,7 @@ const ROWS = [
 ] as const;
 
 /** A drawn picture for a place without an uploaded photo: its section's color, hills and skyline, and its icon. */
-function PlaceArt({ p, tone }: { p: Place; tone: string }) {
+function PlaceArt({ p, tone }: { p: { name: string; icon: string }; tone: string }) {
   const seed = [...p.name].reduce((n, c) => n + c.charCodeAt(0), 0);
   const sunX = 60 + (seed % 220);
   return (
@@ -44,34 +47,45 @@ function PlaceArt({ p, tone }: { p: Place; tone: string }) {
   );
 }
 
-function PlaceCard({ p, tone, photo, badge, map }: { p: Place; tone: string; photo?: string; badge?: string; map: string }) {
+function PlaceCard({ p, badge, sponsored, map }: { p: GuidePlace & { previewNote?: string }; badge?: string; sponsored: boolean; map: string }) {
+  const tel = p.phone.replace(/[^0-9+]/g, "");
   return (
-    <div className="ab-card gp-card" data-gsearch={`${p.name} ${p.area} ${p.text}`.toLowerCase()}>
-      <a href={mapLink(p)} target="_blank" rel="noopener noreferrer" className="ab-card-link">
+    <div className={`ab-card gp-card${sponsored ? " gp-sponsored" : ""}`} data-gsearch={`${p.name} ${p.area} ${p.description}`.toLowerCase()}>
+      <a href={placeMapLink(p)} target="_blank" rel="noopener noreferrer" className="ab-card-link">
         <span className="ab-ph">
-          {photo ? <img src={`/api/site-photos/${photo}`} alt={p.name} loading="lazy" /> : <PlaceArt p={p} tone={tone} />}
-          {badge && <span className="ab-badge">{badge}</span>}
+          {p.photos[0] ? <img src={`/api/site-photos/${p.photos[0]}`} alt={p.name} loading="lazy" /> : <PlaceArt p={p} tone={SECTION_TONE[p.section]} />}
+          {sponsored ? <span className="ab-badge gp-sponsor-badge">Sponsored</span> : badge && <span className="ab-badge">{badge}</span>}
+          {p.previewNote && <span className="gp-preview-note">{p.previewNote}</span>}
         </span>
         <span className="ab-c1 gp-name">{p.name}</span>
         <span className="ab-c2">{p.area}</span>
-        <span className="ab-c3 gp-text">{p.text}</span>
+        <span className="ab-c3 gp-text">{p.description}</span>
         <span className="gp-map">📍 {map} ↗</span>
       </a>
+      {(p.website || tel) && (
+        <span className="gp-contact">
+          {p.website && <a href={p.website} target="_blank" rel="noopener noreferrer sponsored">Website ↗</a>}
+          {tel && <a href={`tel:${tel}`}>{p.phone}</a>}
+        </span>
+      )}
     </div>
   );
 }
 
-export default async function PittsburghGuide() {
+export default async function PittsburghGuide({ searchParams }: { searchParams: Promise<{ preview?: string }> }) {
   const { lang, t } = await getT();
-  const rows = await q<{ id: string; slot: string | null; caption: string }>("SELECT id, slot, caption FROM site_photos ORDER BY position, created_at");
-  const photos = new Map(rows.filter(r => r.slot).map(r => [r.slot!, r.id]));
-  const sec = (id: Section["id"]) => SECTIONS.find(s => s.id === id)!;
+  // Preview (admins only): drafts, hidden places and unpublished changes, exactly as they would look.
+  const preview = (await searchParams).preview === "1" && (await currentUser())?.role === "admin";
+  const today = todayLocal();
+  const places = await guideSections(preview);
+  const rows = await q<{ id: string; slot: string | null; caption: string }>("SELECT id, slot, caption FROM site_photos WHERE slot IS NULL OR slot = 'guide-banner' ORDER BY position, created_at");
   const uploaded = [...rows.filter(r => r.slot === "guide-banner"), ...rows.filter(r => r.slot === null)];
-  const areas = [...new Set(SECTIONS.flatMap(s => s.places.map(p => p.area.split(/ & | and |, /)[0])).filter(a => !/all over|away/i.test(a)))].sort();
+  const areas = [...new Set(Object.values(places).flat().map(p => p.area.split(/ & | and |, /)[0]).filter(a => a && !/all over|away/i.test(a)))].sort();
   const tabs: [string, string, IconName][] = [["#guide-rows", "All", "all"], ["#see", "Must-see", "museum"], ["#museums", "Museums", "art"], ["#eat", "Eat", "food"], ["#drink", "Drinks", "drink"], ["#do", "Things to do", "ticket"], ["#near", "Near our homes", "pin"], ["#yinzer", "Yinzer talk", "talk"], ["#tips", "Getting around", "bus"]];
 
   return (
     <div className="ab-home ab-guide">
+      {preview && <div className="gp-preview-bar" role="status"><b>Preview.</b> Drafts, hidden places and unpublished changes are shown with a label. Visitors don't see them. <Link href="/admin/guide">Back to Admin</Link></div>}
       <div className="ab-band">
         <nav className="ab-tabs" aria-label="Guide sections">
           {tabs.map(([href, label, icon], i) => <a key={href} href={href} aria-current={i === 0 ? "page" : undefined}><Icon name={icon} size={24} className="ab-tab-ico" />{label}</a>)}
@@ -81,12 +95,13 @@ export default async function PittsburghGuide() {
 
       <div className="ab-body" id="guide-rows">
         {ROWS.map(([id, key, sub, badge], ri) => {
-          const s = sec(id);
+          const list = places[id];
+          if (!list.length) return null;
           return (
             <div key={id} id={id} className="gp-anchor">
               {ri === 2 && <h2 className="gp-big">Eat, drink and play like a Pittsburgher</h2>}
               <CardRow title={t(key)} sub={sub} href={`#${id}`} limit={4}>
-                {s.places.map((p, i) => <PlaceCard key={p.name} p={p} tone={s.tone} photo={photos.get(slugOf(p.name))} badge={i < 3 ? badge : undefined} map={t("guide.map")} />)}
+                {list.map((p, i) => <PlaceCard key={p.id} p={p} sponsored={sponsorActive(p, today)} badge={i < 3 ? badge : undefined} map={t("guide.map")} />)}
               </CardRow>
             </div>
           );

@@ -223,6 +223,8 @@ test("tapping a greeting switches the site language, and back", async ({ page })
   await page.goto("/pittsburgh");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Pittsburgh rehberiniz");
   await page.locator(".lang-menu summary").click();
+  // Languages are listed A to Z.
+  expect(await page.locator(".lang-menu li a").allTextContents()).toEqual(["Deutsch", "English", "Español", "Français", "Italiano", "Português", "Türkçe", "हिन्दी", "中文", "日本語"]);
   await page.locator(".lang-menu").getByRole("link", { name: "Deutsch" }).click();
   await expect(page).toHaveURL(/\/pittsburgh$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ihr Pittsburgh-Guide");

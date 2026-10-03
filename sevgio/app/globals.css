@@ -662,7 +662,7 @@ img { -webkit-user-drag: none; user-select: none; -webkit-touch-callout: none; }
 .hello a { font-size: 13px; padding: 3px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); text-decoration: none; }
 .hello a:hover { border-color: var(--ink); color: var(--ink); }
 .hello a.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
-.hello a:last-child:not(.on) { background: #FFB612; border-color: #FFB612; color: #101820; font-weight: 700; }
+.hello a[lang="en"]:not(.on) { background: #FFB612; border-color: #FFB612; color: #101820; font-weight: 700; }
 .lang-menu { position: relative; }
 /* Phones and tablets: the one-line menu becomes a "Menu" button with a full-width panel of big rows. */
 .mm { display: none; }
@@ -1217,3 +1217,31 @@ body:has(.dash.theme-light) { background: #FFFFFF; }
 .theme-light .cs-tabs button[aria-selected="true"] { color: #101820; border-bottom-color: var(--accent); }
 .theme-light .stat { background: #FFFFFF; box-shadow: 0 1px 2px rgba(16,24,32,.06); }
 .guide-toc a { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Admin → Pittsburgh guide */
+.pill.gold { background: var(--accent-soft); color: #7A5600; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); }
+.ga-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ga-row { display: grid; grid-template-columns: 28px 72px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); scroll-margin-top: 90px; }
+.ga-row.off { background: var(--surface-2); }
+.ga-num { font-weight: 700; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+.ga-pic { width: 72px; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; display: grid; place-items: center; font-size: 28px; background: var(--tone); }
+.ga-pic img { width: 100%; height: 100%; object-fit: cover; }
+.ga-main { display: grid; gap: 4px; min-width: 0; }
+.ga-name { font-weight: 700; text-decoration: none; }
+.ga-name:hover { text-decoration: underline; }
+.ga-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ga-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.ga-actions form { margin: 0; }
+@media (max-width: 760px) { .ga-row { grid-template-columns: 24px 60px minmax(0, 1fr); } .ga-pic { width: 60px; } .ga-actions { grid-column: 1 / -1; justify-content: flex-start; } }
+.ga-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.ga-photo { margin: 0; display: grid; gap: 6px; }
+.ga-photo img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; }
+.ga-photo form { margin: 0; }
+.gp-sponsor { border: 1px solid var(--line); }
+
+/* Public guide: Sponsored label, contact links, preview labels */
+.gp-sponsor-badge { background: #101820; color: #FFB612; }
+.gp-contact { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: 13px; font-weight: 600; }
+.gp-contact a { color: var(--ink); }
+.gp-preview-note { position: absolute; right: 10px; bottom: 10px; padding: 4px 10px; border-radius: 999px; background: #9A5B00; color: #FFFFFF; font-size: 12px; font-weight: 700; }
+.gp-preview-bar { padding: 10px 16px; background: #FFF4D6; border-bottom: 1px solid #F2D68A; text-align: center; font-size: 14px; }

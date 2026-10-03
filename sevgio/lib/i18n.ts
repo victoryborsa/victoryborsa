@@ -1,8 +1,8 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { DICTS, EN, LANGS, type Key, type Lang } from "./i18n-data.ts";
+import { DICTS, EN, LANGS, LANGS_AZ, type Key, type Lang } from "./i18n-data.ts";
 
-export { LANGS, type Lang };
+export { LANGS, LANGS_AZ, type Lang };
 export const isLang = (s: unknown): s is Lang => LANGS.some(l => l.code === s);
 
 /** The visitor's chosen language (from the "lang" cookie), English by default. */
