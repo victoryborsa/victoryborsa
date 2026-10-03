@@ -1007,3 +1007,24 @@ test("corporate housing: an unfurnished long-term lease is created, gets photos,
   await sql("UPDATE properties SET corp_listed = false WHERE slug = 'mount-washington-view-house'");
   await signOut(page);
 });
+
+test("import: the Stowe Township lease file comes in as an unfurnished Corporate Housing draft with its application", async ({ page }) => {
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin/listings");
+  await page.getByRole("link", { name: "Import from file" }).click();
+  await page.getByLabel("Listing file").setInputFiles(path.join(process.cwd(), "../listing-files/stowe-township-unfurnished-house.json"));
+  await page.getByRole("button", { name: "Import as drafts" }).click();
+  await expect(page.getByText(/Imported 1 listing as a draft|Imported 1 listing/)).toBeVisible();
+  const [row] = await sql<{ id: string; status: string; corp_listed: boolean; corp_lease_only: boolean; corp_furnished: boolean; corp_app_fee_cents: number; corp_apply_url: string }>(
+    "SELECT id, status, corp_listed, corp_lease_only, corp_furnished, corp_app_fee_cents, corp_apply_url FROM properties WHERE title = 'Stowe Township 3BR House with Covered Patio and City Views'");
+  expect(row).toMatchObject({ status: "draft", corp_listed: true, corp_lease_only: true, corp_furnished: false, corp_app_fee_cents: 3000, corp_apply_url: "/docs/brands-capital-rental-application.pdf" });
+
+  // The form shows the options; publishing waits for the rent.
+  await page.goto(`/host/listings/${row.id}`);
+  await expect(page.getByLabel(/Long-term lease only/)).toBeChecked();
+  await expect(page.getByLabel("Furnishing")).toHaveValue("no");
+  await page.getByLabel("Visibility").selectOption("published");
+  await page.getByRole("button", { name: "Save listing" }).click();
+  await expect(page.getByText("Add the monthly rent in the Corporate housing section before publishing this long-term lease.")).toBeVisible();
+  await signOut(page);
+});

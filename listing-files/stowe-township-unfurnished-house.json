@@ -1,0 +1,42 @@
+[
+  {
+    "listing_kind": "home",
+    "property_type": "house",
+    "title": "Stowe Township 3BR House with Covered Patio and City Views",
+    "city": "Pittsburgh",
+    "area": "Stowe Township",
+    "address": "",
+    "bedrooms": 3,
+    "bathrooms": 1,
+    "half_bathrooms": 1,
+    "bathroom_type": "private",
+    "kitchen_access": "private",
+    "laundry_access": "none",
+    "max_guests": 6,
+    "beds": [],
+    "min_nights": 30,
+    "max_nights": 365,
+    "booking_mode": "request",
+    "cancellation_policy": "firm",
+    "children_free_age": 0,
+    "amenities": [
+      "kitchen",
+      "fridge",
+      "stove",
+      "patio",
+      "backyard"
+    ],
+    "house_rules": [
+      "No smoking indoors",
+      "Every adult (18+) living in the home completes their own rental application",
+      "If you get a pet after moving in, you must tell the manager"
+    ],
+    "description": "A bright three-bedroom single family house in Stowe Township, on a quiet street overlooking McKees Rocks. Downtown Pittsburgh is only minutes away, even at rush hour, which makes this an easy base for hospital staff, project teams and families relocating to the city.\n\nThe spacious, well-lit kitchen is the heart of the home and opens to a great-room layout made for everyday living. A sunroom brings in extra light, and a converted former porch gives you a flexible extra room. It has an unusual shape, but it works well as a fourth bedroom, a home office or a playroom.\n\nOut back there is a private yard with a large covered patio for cookouts, get-togethers or a quiet evening outside. The full basement has laundry hookups and a second bathroom (a classic Pittsburgh bathroom), plus plenty of storage.\n\nThe home is freshly painted and comes unfurnished, with a stove and refrigerator included, so you can make it your own for a longer stay.\n\nHighlights\n- Single family house on a quiet street\n- 3 bedrooms, plus a flexible fourth room\n- Nice views over McKees Rocks\n- Spacious, well-lit kitchen and great-room layout\n- Sunroom\n- Back yard with a covered patio\n- Full basement with a second bathroom and laundry hookups\n- Fresh paint throughout\n- Stove and refrigerator included\n- Minutes from downtown Pittsburgh\n\nHow to apply\nEvery person 18 or older who will live in the home fills out their own application. The application fee is $30 per household, no matter how many applications you send.\n1. Download the rental application (the \"Download application (PDF)\" button on this page).\n2. Fill it out by hand and scan it or take a clear phone photo, or fill it out on your device in Adobe Acrobat.\n3. Email the completed application to info@brandscapital.com.\n4. Pay the $30 application fee. See the payment options at brandscapital.com/paymentoptions.php.\n5. Let us know once you have sent the application and paid the fee, so we can match your payment to your application.\nNo printer? We can mail you an application. You can also mail a completed application to Brands Capital Corp, P.O. Box 8221, Pittsburgh, PA 15217 (this adds a few days).\nOnce your application is processed, we will contact you to let you know if you are approved or if we need more information. For the fastest reply, text (412) 223-6653. To talk on the phone, text that number to set up a call time.\n\nMinimum requirements\n- Every adult occupant submits a complete application\n- Gross monthly income of about three times the monthly rent or more\n- A favorable credit history\n- Good references, housekeeping and property care from previous landlords\n- No prior evictions or landlord-tenant complaint filings\n- Applicants who fall short may still qualify with compensating factors, such as a double deposit or rent paid in advance\n\nMove-in costs: the first full month's rent plus a security deposit equal to one month's rent, paid before the lease is signed. Once approved, a holding deposit secures the home.\n\nAll homes are offered without regard to race, color, religion, national origin, sex, disability or familial status.",
+    "corp_listed": true,
+    "corp_lease_only": true,
+    "corp_furnished": false,
+    "corp_app_fee": 30,
+    "corp_apply_url": "/docs/brands-capital-rental-application.pdf",
+    "corp_price_note": "Unfurnished, long-term lease"
+  }
+]

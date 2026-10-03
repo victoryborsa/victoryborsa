@@ -74,6 +74,8 @@ function readListing(fd: FormData) {
   if (v.corp_lease_only) {
     v.corp_listed = true;
     if (!v.nightly && v.corp_monthly) v.nightly = Math.round(v.corp_monthly / 30);
+    // A draft can be saved before the rent is known; the nightly price isn't used for leases.
+    if (!v.nightly && !v.corp_monthly && v.status !== "published") v.nightly = 1000;
   }
   // Monthly rentals don't need a nightly price; keep one (rent ÷ 30) for sorting and the calendar.
   if (v.monthly && !v.nightly) v.nightly = Math.round(v.monthly / 30);
@@ -86,10 +88,10 @@ function readListing(fd: FormData) {
   else if (v.smart_pricing && v.min_price! > v.max_price!) error = "The lowest price per night can't be higher than the highest.";
   else if ((v.min_price !== null && !(v.min_price > 0)) || (v.max_price !== null && !(v.max_price > 0))) error = "Enter the minimum and maximum prices as numbers.";
   else if (v.corp_monthly !== null && !(v.corp_monthly > 0)) error = "Enter the corporate housing monthly price as a number, or leave it empty.";
-  else if (v.corp_listed && !v.corp_monthly) error = "Add the all-inclusive monthly price to show this home on the Corporate Housing page.";
+  else if (v.corp_lease_only && !v.corp_monthly && v.status === "published") error = "Add the monthly rent in the Corporate housing section before publishing this long-term lease.";
+  else if (v.corp_listed && !v.corp_monthly && v.status === "published") error = "Add the all-inclusive monthly price to show this home on the Corporate Housing page.";
   else if ([v.corp_deposit, v.corp_cleaning, v.corp_pet_fee].some(c => c === null)) error = "Enter the corporate housing deposit and fees as numbers (use 0 for none).";
   else if (v.corp_available_from && !/^\d{4}-\d{2}-\d{2}$/.test(v.corp_available_from)) error = "Choose a valid Available from date.";
-  else if (v.corp_lease_only && !v.corp_monthly) error = "Add the monthly rent in the Corporate housing section for a long-term lease.";
   else if (v.corp_app_fee === null) error = "Enter the application fee as a number (use 0 for none).";
   else if (v.corp_apply_url && !/^https:\/\/\S+$/i.test(v.corp_apply_url) && !/^\/docs\/[\w.-]+$/.test(v.corp_apply_url)) error = "The application link should be a full web address starting with https://, or a file on this site like /docs/brands-capital-rental-application.pdf";
   else if (v.corp_position !== null && !(Number.isInteger(v.corp_position) && v.corp_position >= 1 && v.corp_position <= 999)) error = "The order on the Corporate Housing page must be a whole number from 1 to 999, or empty.";
@@ -217,7 +219,8 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
     "kitchen_access", "laundry_access", "stairs_info", "shared_spaces", "camera_locations", "min_nights", "max_nights", "booking_mode", "cancellation_policy", "check_in_time",
     "check_out_time", "arrival_instructions", "base_occupancy", "fewer_guest_discount_percent", "weekly_discount_percent", "monthly_discount_percent",
     "children_free_age", "management_fee_percent", "owner_zelle", "owner_venmo", "pet_fee_per", "monthly_price",
-    "corp_monthly", "corp_deposit", "corp_cleaning", "corp_pet_fee", "furnished_finder_url", ...Object.keys(IMPORT_FIELDS)];
+    "corp_monthly", "corp_deposit", "corp_cleaning", "corp_pet_fee", "furnished_finder_url",
+    "corp_app_fee", "corp_apply_url", "corp_price_note", "corp_position", "corp_available_from", ...Object.keys(IMPORT_FIELDS)];
   for (const k of plain) set(IMPORT_FIELDS[k] || k, item[k]);
   const isRoom = item.listing_kind === "room" || item.property_type === "room";
   fd.set("listing_kind", isRoom ? "room" : "home");
@@ -231,6 +234,10 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
     cleaning_fee: 0, extra_guest_fee: 0, fewer_guest_discount_percent: 0, weekly_discount_percent: 0, monthly_discount_percent: 0, children_free_age: 2 }))
     if (!fd.has(k)) fd.set(k, String(v));
   if (item.has_exterior_cameras) fd.set("has_exterior_cameras", "on");
+  // Corporate Housing page options.
+  if (item.corp_listed || item.corp_lease_only) fd.set("corp_listed", "on");
+  if (item.corp_lease_only) fd.set("corp_lease_only", "on");
+  fd.set("corp_furnished", item.corp_furnished === false ? "no" : "yes");
   if (Number(item.pet_fee) > 0) { fd.set("pet_fee_mode", "fee"); fd.set("pet_fee", String(item.pet_fee)); }
   if (Array.isArray(item.beds)) fd.set("beds_json", JSON.stringify(item.beds));
   if (Array.isArray(item.rooms)) fd.set("rooms_json", JSON.stringify(item.rooms));
