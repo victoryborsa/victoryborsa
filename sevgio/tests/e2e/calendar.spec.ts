@@ -24,11 +24,12 @@ test.describe.serial("reservations calendar", () => {
                  VALUES ($1, $2, $3, $4, $5, 1, 'confirmed', $6, 10000, 0, 0, 10000, $7, '555', 1, 10000)`, [code, props[p].id, g.id, add(D, a), add(D, b), b - a, name]);
     const [f] = await sql<{ id: string }>("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, 'Airbnb', 'https://example.com/cal.ics') RETURNING id", [props[0].id]);
     // An Airbnb booking that overlaps both of Ava's and Dee's stays (double-booked across sites): it must still be visible.
-    await sql("INSERT INTO blocks (property_id, start_date, end_date, note, source) VALUES ($1, $2, $3, 'Airbnb: Reserved', $4)", [props[0].id, add(D, 2), add(D, 4), "ical:" + f.id]);
+    await sql("INSERT INTO channel_reservations (property_id, feed_id, channel, check_in, check_out, summary) VALUES ($1, $2, 'airbnb', $3, $4, 'Reserved')", [props[0].id, f.id, add(D, 2), add(D, 4)]);
   });
 
   test.afterAll(async () => {
     await sql("DELETE FROM bookings WHERE code LIKE 'CALT%'");
+    await sql("DELETE FROM channel_reservations WHERE feed_id IN (SELECT id FROM ical_feeds WHERE url = 'https://example.com/cal.ics')");
     await sql("DELETE FROM ical_feeds WHERE url = 'https://example.com/cal.ics'");
   });
 

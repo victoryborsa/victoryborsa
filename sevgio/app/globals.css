@@ -1537,3 +1537,33 @@ a.ar-card:hover { border-color: var(--accent); }
 @media (min-width: 641px) { .cal-filterbar .cal-field { flex: 0 0 220px; min-width: 0; } }
 @media (max-width: 640px) { .cal-filterbar .cal-filters { flex-wrap: wrap; flex: 1 1 100%; } }
 .mc-tl-day .mc-day b.ev { align-self: center; }
+
+/* Finance, statements and reservations from other sites */
+.needs { color: var(--warn); font-family: var(--f-body, inherit); font-size: .85em; font-weight: 600; white-space: nowrap; }
+.stat b .needs { font-size: 18px; }
+.needs-n { display: block; font-size: 12px; font-weight: 500; color: var(--warn); font-family: var(--f-body, inherit); }
+.fin-filters { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); align-items: end; }
+.fin-actions { display: flex; gap: 8px; flex-wrap: wrap; grid-column: 1 / -1; justify-content: flex-end; }
+.fin-chk { align-self: end; padding-bottom: 10px; }
+.fin-quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fin-quick a[aria-current="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.fin-period { display: flex; align-items: center; gap: 4px; margin-bottom: 12px; }
+.fin-period h2 { margin: 0; }
+.fin-h { margin-bottom: 12px; }
+.fin-stats .stat.money b { font-family: var(--f-mono); font-weight: 500; font-size: 24px; }
+.tbl tr.fin-total td { background: var(--surface-2); }
+.fin-fields { border: 1px solid var(--line); border-radius: var(--r); padding: 14px; }
+.fin-fields legend { font-size: 13px; font-weight: 600; padding: 0 6px; }
+.imp-map { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.pill.ch-dot.ch-airbnb::before { background: #E0484E; }
+.pill.ch-dot.ch-bookingcom::before { background: #003B95; }
+.pill.ch-dot.ch-vrbo::before { background: #3D8BE8; }
+.pill.ch-dot.ch-furnished::before { background: #E8891A; }
+.pill.ch-dot.ch-sevgio::before { background: var(--gold, #C9A227); }
+@media (max-width: 640px) {
+  .fin-filters { grid-template-columns: 1fr 1fr; }
+  .fin-actions { justify-content: stretch; }
+  .fin-actions > * { flex: 1; text-align: center; }
+  .fin-stats { grid-template-columns: 1fr 1fr; }
+  .fin-stats .stat.money b { font-size: 18px; }
+}

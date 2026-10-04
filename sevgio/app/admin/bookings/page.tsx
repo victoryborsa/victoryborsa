@@ -28,6 +28,8 @@ export default async function AdminBookings({ searchParams }: { searchParams: Pr
         <select className="input" name="status" defaultValue={status} style={{ width: "auto" }}>{STATUSES.map(s => <option key={s} value={s}>{s === "all" ? "All statuses" : s[0].toUpperCase() + s.slice(1)}</option>)}</select>
         <button className="btn btn-ghost">Filter</button>
         {(term || status !== "all") && <Link href="/admin/bookings">Clear</Link>}
+        <span className="spacer" />
+        <Link className="btn btn-ghost" href="/host/bookings/other-sites">Reservations from other sites</Link>
       </form>
       {fresh.size > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}>{fresh.size} new booking{fresh.size === 1 ? "" : "s"} since you last looked, marked <b>New</b> below.</div>}
       <BookingTable fresh={fresh} rows={rows} today={todayLocal()} back={`/admin/bookings?status=${status}`} />

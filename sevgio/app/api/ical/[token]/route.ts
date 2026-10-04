@@ -14,8 +14,9 @@ async function feed(tokenParam: string) {
   if (!p) return null;
   const from = addDays(todayLocal(), -30);
   const bookings = await q<{ id: string; check_in: string; check_out: string }>(`SELECT id, check_in, check_out FROM bookings WHERE property_id IN ${RELATED("$1")} AND status IN ('pending','awaiting_payment','confirmed') AND check_out > $2`, [p.id, from]);
-  // Blocks imported from other sites are left out, so calendars don't echo each other's bookings back.
-  const blocks = await q<{ id: string; start_date: string; end_date: string }>(`SELECT id, start_date, end_date FROM blocks WHERE property_id IN ${RELATED("$1")} AND source = 'host' AND end_date > $2`, [p.id, from]);
+  // Blocks imported from other sites' calendar links are left out, so calendars don't echo each other's bookings back.
+  // Host blocks and reservations entered by hand (source 'res:…') are sent.
+  const blocks = await q<{ id: string; start_date: string; end_date: string }>(`SELECT id, start_date, end_date FROM blocks WHERE property_id IN ${RELATED("$1")} AND source NOT LIKE 'ical:%' AND end_date > $2`, [p.id, from]);
   const events = [
     ...bookings.map(b => ({ uid: "b-" + b.id, start: b.check_in, end: b.check_out, summary: "Booked on Sevgio" })),
     ...blocks.map(b => ({ uid: "k-" + b.id, start: b.start_date, end: b.end_date, summary: "Not available" })),

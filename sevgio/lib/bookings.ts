@@ -40,7 +40,7 @@ export const RELATED = (param: string) =>
   `(SELECT r.id FROM properties r, properties me WHERE me.id = ${param} AND (r.id = me.id OR r.parent_id = me.id OR r.id = me.parent_id))`;
 
 /** Serialises every booking and block change for a whole home and its rooms, so two requests can never both pass the availability check. */
-async function lockProperty(c: Db, propertyId: string) {
+export async function lockProperty(c: Db, propertyId: string) {
   const root = await one<{ root: string }>("SELECT coalesce(parent_id, id)::text AS root FROM properties WHERE id = $1", [propertyId], c);
   await c.query("SELECT pg_advisory_xact_lock(hashtext($1))", [root?.root ?? propertyId]);
 }

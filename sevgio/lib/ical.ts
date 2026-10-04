@@ -14,10 +14,14 @@ export function buildIcs(name: string, events: { uid: string; start: string; end
   return out.join("\r\n") + "\r\n";
 }
 
+export type IcsEvent = { start: string; end: string; summary: string; uid: string; description: string; cancelled: boolean };
+
+const unescape = (v: string) => v.replace(/\\n/gi, "\n").replace(/\\([,;\\])/g, "$1");
+
 /** Reads all-day or timed events from an iCal file and returns them as night ranges [start, end). */
-export function parseIcs(text: string): { start: string; end: string; summary: string }[] {
+export function parseIcs(text: string): IcsEvent[] {
   const unfolded = text.replace(/\r?\n[ \t]/g, "");
-  const events: { start: string; end: string; summary: string }[] = [];
+  const events: IcsEvent[] = [];
   for (const block of unfolded.split("BEGIN:VEVENT").slice(1)) {
     const body = block.split("END:VEVENT")[0];
     const get = (key: string) => {
@@ -32,7 +36,13 @@ export function parseIcs(text: string): { start: string; end: string; summary: s
     let end = toDate(get("DTEND"));
     if (!isIsoDate(start)) continue;
     if (!isIsoDate(end) || end <= start) end = addDays(start, 1);
-    events.push({ start, end, summary: get("SUMMARY").replace(/\\n/g, " ").replace(/\\([,;\\])/g, "$1").slice(0, 120) || "Blocked" });
+    events.push({
+      start, end,
+      summary: unescape(get("SUMMARY")).replace(/\n/g, " ").slice(0, 120) || "Blocked",
+      uid: get("UID").slice(0, 300),
+      description: unescape(get("DESCRIPTION")).slice(0, 2000),
+      cancelled: /^cancel/i.test(get("STATUS")),
+    });
   }
   return events;
 }

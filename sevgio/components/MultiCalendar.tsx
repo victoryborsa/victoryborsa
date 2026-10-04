@@ -10,20 +10,19 @@ import { partyLabel } from "@/lib/party.ts";
 import { CalSettings, type CalSettingsData } from "./CalSettings.tsx";
 import { BOOKING_STATUS } from "@/lib/constants.ts";
 import { assignLanes, barLines, groupByArrival, inView, propertyColor } from "@/lib/cal-layout.ts";
+import { channelLabel } from "@/lib/channels.ts";
 
 type Prop = { id: string; title: string; city: string; parent_id: string | null; status: string; cover_id: string | null; nightly_price_cents: number; smart_pricing: boolean; min_price_cents: number | null; max_price_cents: number | null };
 type Res = { id: string; code: string; property_id: string; check_in: string; check_out: string; status: string; guest_name: string; guests: number; nights: number;
   adults: number; children: number; free_children: number; pets: number; guest_phone: string; arrival_time: string; total_cents: number };
-type Blk = { id: string; property_id: string; start_date: string; end_date: string; note: string; source: string; feed_name: string | null };
+/** Dates you blocked (source "host"), or a stay from another site (source "ical:…", from channel_stays, with its site and money status). */
+type Blk = { id: string; property_id: string; start_date: string; end_date: string; note: string; source: string; feed_name: string | null;
+  channel: string | null; kind: string | null; ref: string; guest: string; status: string; needs: boolean; payout: number | null };
 
-/** Which booking site an imported block came from, by the calendar link's name. */
-export function channelOf(feedName: string | null): { key: string; label: string } {
-  const n = (feedName || "").toLowerCase();
-  if (n.includes("airbnb")) return { key: "airbnb", label: "Airbnb" };
-  if (n.includes("booking")) return { key: "bookingcom", label: "Booking.com" };
-  if (n.includes("vrbo") || n.includes("homeaway")) return { key: "vrbo", label: "Vrbo" };
-  if (n.includes("furnished")) return { key: "furnished", label: "Furnished Finder" };
-  return { key: "other", label: feedName || "Other site" };
+/** The booking site of a stay from another site, for its color and label. */
+function siteOf(b: Blk): { key: string; label: string } | null {
+  if (!b.channel) return null;
+  return { key: b.channel, label: b.channel === "other" ? b.feed_name || "Other site" : channelLabel(b.channel) };
 }
 
 const COLS = `id, title, city, parent_id, status, nightly_price_cents, smart_pricing, min_price_cents, max_price_cents,
@@ -95,14 +94,23 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
         q<Res>(`SELECT id, code, property_id, check_in, check_out, status, guest_name, guests, nights, adults, children, free_children, pets, guest_phone, arrival_time, total_cents FROM bookings
                 WHERE property_id = ANY($1) AND status = ANY($4) AND check_in < $3 AND check_out >= $2`,
           [ids, start, end, status === "cancelled" ? ["cancelled"] : ["pending", "awaiting_payment", "confirmed"]]),
-        q<Blk>(`SELECT k.id, k.property_id, k.start_date, k.end_date, k.note, k.source, f.name AS feed_name FROM blocks k
-                LEFT JOIN ical_feeds f ON k.source = 'ical:' || f.id::text
-                WHERE k.property_id = ANY($1) AND k.start_date < $3 AND k.end_date >= $2`, [ids, start, end]),
+        // Stays from other sites come from their reservation records (so past stays and Finance match the calendar);
+        // copies of a booking that's already shown (a site echoing Sevgio's calendar back, or the linked home/room) are left out.
+        q<Blk>(`SELECT k.id, k.property_id, k.start_date, k.end_date, k.note, k.source, NULL AS feed_name, NULL AS channel, NULL AS kind, '' AS ref, '' AS guest,
+                       'confirmed' AS status, false AS needs, NULL::int AS payout
+                FROM blocks k WHERE k.source = 'host' AND k.property_id = ANY($1) AND k.start_date < $3 AND k.end_date >= $2
+                UNION ALL
+                SELECT c.id, c.property_id, c.check_in, c.check_out, c.summary, 'ical:' || coalesce(c.feed_id::text, c.source), f.name, c.channel, c.eff_kind, c.external_ref, c.guest_name,
+                       c.status, c.eff_kind = 'reservation' AND (c.rent_cents IS NULL OR c.expected_payout_cents IS NULL), c.expected_payout_cents
+                FROM channel_stays c LEFT JOIN ical_feeds f ON f.id = c.feed_id
+                WHERE c.property_id = ANY($1) AND c.check_in < $3 AND c.check_out >= $2 AND c.eff_kind <> 'mirror' AND c.status = $4`,
+          [ids, start, end, status === "cancelled" ? "cancelled" : "confirmed"]),
       ])
     : [[], []];
   // The status filter: one booking status, bookings from other sites, or dates you blocked.
   const res = allRes.filter(b => !status || status === b.status);
-  const blocks = allBlocks.filter(b => !status || (status === "other" && b.source.startsWith("ical")) || (status === "blocked" && !b.source.startsWith("ical")));
+  const blocks = allBlocks.filter(b => status === "cancelled" ? b.status === "cancelled"
+    : !status || (status === "other" && b.source.startsWith("ical")) || (status === "blocked" && !b.source.startsWith("ical")));
   const stays = toStays(res, blocks, byId, placeName, colorOf);
 
   const link = (s: string, v: View = view) =>
@@ -255,21 +263,27 @@ function toStays(res: Res[], blocks: Blk[], byId: Map<string, Prop>, placeName: 
         title: `Sevgio · ${b.code} · ${b.guest_name} · ${place(b.property_id)} · check-in ${fmtShort(b.check_in)}, check-out ${fmtShort(b.check_out)} · ${b.nights} night${b.nights === 1 ? "" : "s"} · ${b.guests} guest${b.guests === 1 ? "" : "s"} · ${st.label}` };
     }),
     ...blocks.map(b => {
-      const ch = b.source.startsWith("ical") ? channelOf(b.feed_name || b.note.split(":")[0]) : null;
-      const detail = ch && b.note.includes(":") ? b.note.split(":").slice(1).join(":").trim() : "";
-      return { key: b.id, pid: b.property_id, from: b.start_date, to: b.end_date, kind: ch ? "ext" as const : "blk" as const,
-        cls: ch ? `ch-${ch.key}` : "blk", label: ch ? ch.label : b.note || "Blocked", status: ch ? `Booked on ${ch.label}` : "Blocked by you", tone: "neutral",
-        place: place(b.property_id),
-        detail: { title: ch ? `Booked on ${ch.label}` : "Blocked by you", badge: ch ? ch.label : "Blocked", badgeCls: `neutral ar-status ${ch ? `ch-${ch.key}` : ""}`, color: colorOf.get(b.property_id),
-          href: ch ? undefined : `/host/listings/${b.property_id}/calendar`, hrefLabel: "Edit blocked dates", rows: [
+      const ch = siteOf(b);
+      const what = !ch ? "Blocked by you" : b.status === "cancelled" ? `Cancelled on ${ch.label}` : b.kind === "blocked" ? `Blocked on ${ch.label}`
+        : b.kind === "unknown" ? `${ch.label}: reservation or closed?` : `Booked on ${ch.label}`;
+      const href = ch ? `/host/bookings/other-sites/${b.id}` : `/host/listings/${b.property_id}/calendar`;
+      // Dates blocked on another site have no guest arriving, so they count like your own blocked dates.
+      return { key: b.id, pid: b.property_id, from: b.start_date, to: b.end_date, kind: ch && b.kind !== "blocked" ? "ext" as const : "blk" as const,
+        cls: ch ? `ch-${ch.key}${b.status === "cancelled" ? " cx" : ""}` : "blk", label: ch ? (b.guest ? `${ch.label} · ${b.guest}` : ch.label) : b.note || "Blocked", status: what, tone: "neutral",
+        place: place(b.property_id), code: ch && b.ref ? b.ref : undefined,
+        detail: { title: ch ? (b.guest || what) : "Blocked by you", badge: ch ? ch.label : "Blocked", badgeCls: `neutral ar-status ${ch ? `ch-${ch.key}` : ""}`, color: colorOf.get(b.property_id),
+          href, hrefLabel: ch ? (b.needs ? "Add payout details" : "Open reservation") : "Edit blocked dates", rows: [
           ["Property / room", place(b.property_id)],
+          ...(ch ? [["Status", what] as [string, string]] : []),
           [ch ? "Check-in" : "From", fmtDate(b.start_date, { weekday: "short", month: "short", day: "numeric", year: "numeric" })],
           [ch ? "Check-out" : "Until", fmtDate(b.end_date, { weekday: "short", month: "short", day: "numeric", year: "numeric" })],
           ["Nights", String(nightsBetween(b.start_date, b.end_date))],
-          ...(ch ? [["Guests", `Not shared by ${ch.label}. See the reservation there.`] as [string, string]] : []),
-          ...(detail ? [["Note", detail] as [string, string]] : !ch && b.note ? [["Note", b.note] as [string, string]] : []),
+          ...(ch && b.ref ? [["Confirmation code", b.ref] as [string, string]] : []),
+          ...(ch ? [["Guests", b.guest ? b.guest : `Not shared by ${ch.label}. See the reservation there.`] as [string, string]] : []),
+          ...(ch && b.kind === "reservation" ? [["Payout", b.payout == null ? "Needs entry" : money(b.payout)] as [string, string]] : []),
+          ...(!ch && b.note ? [["Note", b.note] as [string, string]] : []),
         ] as [string, string][] },
-        title: `${ch ? `Booked on ${ch.label}` : b.note || "Blocked"} · ${place(b.property_id)} · ${fmtShort(b.start_date)} → ${fmtShort(b.end_date)}${detail ? ` · ${detail}` : ""}` };
+        title: `${what}${b.guest ? ` · ${b.guest}` : ""} · ${place(b.property_id)} · ${fmtShort(b.start_date)} → ${fmtShort(b.end_date)}${b.ref ? ` · ${b.ref}` : ""}` };
     }),
   ];
 }
@@ -453,7 +467,7 @@ function MonthGrid({ p, res, blocks, start, end, today, demand }: { p: Prop; res
       label: b.property_id !== p.id ? "Whole house booked" : b.guest_name, href: b.property_id === p.id ? `/trips/${b.code}` : undefined,
       title: `${b.guest_name} · ${b.check_in} → ${b.check_out} · ${b.guests} guests${b.status === "pending" ? " · awaiting approval" : b.status === "awaiting_payment" ? " · awaiting payment" : ""}` })),
     ...blocks.filter(b => b.property_id === p.id || b.property_id === p.parent_id).map(b => {
-      const ch = b.source.startsWith("ical") ? channelOf(b.feed_name || b.note.split(":")[0]) : null;
+      const ch = siteOf(b);
       return { key: b.id, from: b.start_date, to: b.end_date, cls: ch ? `ch-${ch.key}` : "blk",
         label: b.property_id !== p.id ? "Whole house blocked" : ch ? ch.label : b.note || "Blocked", title: `${ch ? `Booked on ${ch.label}` : b.note || "Blocked"}: ${b.start_date} → ${b.end_date}` };
     }),

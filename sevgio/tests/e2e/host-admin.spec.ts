@@ -330,7 +330,8 @@ test("calendar board colors bookings by the site they came from", async ({ page 
   const start = iso(400);
   for (const [i, name] of ["Airbnb", "Booking.com", "Vrbo", "Furnished Finder"].entries()) {
     const [f] = await sql<{ id: string }>("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, $2, 'https://example.com/x.ics') RETURNING id", [p.id, name]);
-    await sql("INSERT INTO blocks (property_id, start_date, end_date, note, source) VALUES ($1, $2, $3, $4, $5)", [p.id, iso(400 + i * 3), iso(402 + i * 3), `${name}: Reserved`, "ical:" + f.id]);
+    await sql("INSERT INTO channel_reservations (property_id, feed_id, channel, check_in, check_out, summary) VALUES ($1, $2, $3, $4, $5, 'Reserved')",
+      [p.id, f.id, ["airbnb", "bookingcom", "vrbo", "furnished"][i], iso(400 + i * 3), iso(402 + i * 3)]);
   }
   await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
   await page.goto(`/admin/calendar?start=${start}&days=14`);

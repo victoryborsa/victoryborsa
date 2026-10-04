@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireUser } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
 import { scopeSql } from "@/lib/access.ts";
@@ -7,6 +6,7 @@ import { todayLocal } from "@/lib/dates.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { BookingTable, type BookingRow } from "@/components/BookingTable.tsx";
 import { markSeen } from "@/lib/alerts.ts";
+import { BookingTabs } from "@/components/BookingTabs.tsx";
 
 const VIEWS: Record<string, { label: string; where: string; order: string }> = {
   upcoming: { label: "Upcoming", where: "b.status IN ('pending','awaiting_payment','confirmed') AND b.check_out >= $T", order: "b.check_in" },
@@ -31,9 +31,7 @@ export default async function HostBookings({ searchParams }: { searchParams: Pro
   return (
     <>
       <Flash msg={(await searchParams).msg} />
-      <div className="seg" style={{ marginBottom: 16 }} role="tablist">
-        {Object.entries(VIEWS).map(([k, x]) => <Link key={k} href={`/host/bookings?view=${k}`} role="tab" aria-selected={k === view} className="btn btn-sm" style={k === view ? { background: "var(--ink)", color: "var(--bg)" } : { background: "var(--surface)", border: "1px solid var(--line)", color: "var(--ink)" }}>{x.label}</Link>)}
-      </div>
+      <BookingTabs current={view} />
       {fresh.size > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}>{fresh.size} new booking{fresh.size === 1 ? "" : "s"} since you last looked, marked <b>New</b> below.</div>}
       <BookingTable fresh={fresh} rows={rows} today={todayLocal()} back={`/host/bookings?view=${view}`} />
       <p className="hint" style={{ marginTop: 10 }}>Guest phone numbers and emails are shown only for active bookings.</p>

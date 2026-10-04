@@ -458,7 +458,7 @@ export async function addFeedAction(_: ActionState, fd: FormData): Promise<Actio
   const feed = await one<{ id: string }>("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, $2, $3) RETURNING id", [p.id, name, url]);
   const res = await syncFeed(feed!.id);
   revalidatePath(`/host/listings/${p.id}/calendar`);
-  return res.error ? { error: `Saved, but the first import failed: ${res.error}` } : { ok: `Imported ${res.count} booked period${res.count === 1 ? "" : "s"} from ${name}.` };
+  return res.error ? { error: `Saved, but the first import failed: ${res.error}` } : { ok: `Imported ${res.count} booked period${res.count === 1 ? "" : "s"} from ${name}. They now show in the calendar, Bookings › Other sites, and Finance.` };
 }
 
 export async function syncFeedAction(fd: FormData) {
@@ -472,6 +472,8 @@ export async function removeFeedAction(fd: FormData) {
   const { p } = await requireManageable(str(fd, "id", 40));
   const feedId = str(fd, "feed", 40);
   await q("DELETE FROM blocks WHERE property_id = $1 AND source = $2", [p.id, "ical:" + feedId]);
+  // Reservations with payout details entered stay on the books (unlinked from the calendar link); the rest go with it.
+  await q("DELETE FROM channel_reservations WHERE feed_id = $1 AND property_id = $2 AND finance_source = 'none'", [feedId, p.id]);
   await q("DELETE FROM ical_feeds WHERE id = $1 AND property_id = $2", [feedId, p.id]);
   revalidatePath(`/host/listings/${p.id}/calendar`);
 }

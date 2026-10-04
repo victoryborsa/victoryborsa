@@ -107,9 +107,9 @@ test("per-guest pricing, children and length-of-stay discounts", () => {
 
 test("iCal round trip, including Airbnb-style folded lines", () => {
   const ics = buildIcs("Test", [{ uid: "1", start: "2026-11-01", end: "2026-11-04", summary: "Booked" }]);
-  assert.deepEqual(parseIcs(ics), [{ start: "2026-11-01", end: "2026-11-04", summary: "Booked" }]);
+  assert.deepEqual(parseIcs(ics), [{ start: "2026-11-01", end: "2026-11-04", summary: "Booked", uid: "1@sevgio", description: "", cancelled: false }]);
   const airbnb = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20261201\r\nDTEND;VALUE=DATE:20261203\r\nSUMMARY:Reserved\r\nDESCRIPTION:Reservation URL: https://www.airbnb.com/hosting/\r\n reservations/details/ABC\r\nEND:VEVENT\r\nEND:VCALENDAR";
-  assert.deepEqual(parseIcs(airbnb), [{ start: "2026-12-01", end: "2026-12-03", summary: "Reserved" }]);
+  assert.deepEqual(parseIcs(airbnb), [{ start: "2026-12-01", end: "2026-12-03", summary: "Reserved", uid: "", description: "Reservation URL: https://www.airbnb.com/hosting/reservations/details/ABC", cancelled: false }]);
 });
 
 test("whole home and its rooms share a calendar; rooms don't block each other", async () => {
