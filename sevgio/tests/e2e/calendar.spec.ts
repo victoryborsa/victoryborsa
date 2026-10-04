@@ -126,5 +126,14 @@ test.describe.serial("reservations calendar", () => {
     const scrollW = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollW).toBeLessThanOrEqual(391);
     if (process.env.CAL_SHOTS) await page.screenshot({ path: `${process.env.CAL_SHOTS}/phone-week.png`, fullPage: true });
+    // Month on a phone: a small calendar per listing (like the Availability screen), then the arrivals list.
+    await page.getByRole("link", { name: "Month", exact: true }).click();
+    await expect(page.locator(".mg-all")).toBeHidden();
+    const ava = page.locator(".mm-one", { hasText: props[0].title });
+    await expect(ava).toBeVisible();
+    await expect(ava.locator(".mm-d.bk")).toHaveCount(4); // Ava, the Airbnb guest and Dee: 4 nights in a row
+    await expect(page.locator(".mc-phone-list a.ar-card")).toHaveCount(5);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+    if (process.env.CAL_SHOTS) await page.screenshot({ path: `${process.env.CAL_SHOTS}/phone-month.png`, fullPage: true });
   });
 });

@@ -1478,3 +1478,24 @@ a.ar-card:hover { border-color: var(--accent); }
 /* Fit the week to the screen; it scrolls sideways (names stay put) only when days get too narrow. */
 .mc.mc-tl.mc-v-week { min-width: 0; width: max(100%, calc(200px + 7 * 96px)); }
 @media (max-width: 640px) { .mc.mc-tl.mc-v-week { width: max(100%, calc(64px + 7 * 96px)); } }
+/* Phones, Month tab: a small calendar per house and room (green free, red booked, amber waiting). */
+.mc-phone-only { display: none; }
+.mm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 12px; }
+.mm-one { display: flex; flex-direction: column; gap: 6px; color: var(--ink); text-decoration: none; min-width: 0; }
+.mm-cal { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 3px; font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; }
+.mm-dow { color: var(--muted); font-size: 10px; padding-bottom: 2px; }
+.mm-d { line-height: 20px; }
+.mm-d.free { background: color-mix(in srgb, var(--ok) 22%, transparent); }
+.mm-d.bk { background: repeating-linear-gradient(135deg, color-mix(in srgb, #E5484D 26%, transparent) 0 4px, color-mix(in srgb, #E5484D 14%, transparent) 4px 7px); }
+.mm-d.wt { background: color-mix(in srgb, var(--warn) 40%, transparent); }
+.mm-d.bl { background: repeating-linear-gradient(135deg, var(--surface-2) 0 4px, var(--line) 4px 7px); color: var(--muted); }
+.mm-d.past { opacity: .5; }
+.mm-d.today { font-weight: 800; text-decoration: underline; }
+.mm-name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 5px; line-height: 1.2; }
+.mm-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0 0 10px; }
+.mm-k { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-left: 6px; }
+.mm-k.free { background: color-mix(in srgb, var(--ok) 35%, transparent); }
+.mm-k.bk { background: color-mix(in srgb, #E5484D 30%, transparent); }
+.mm-k.wt { background: color-mix(in srgb, var(--warn) 45%, transparent); }
+.mm-k.cx-k { background: repeating-linear-gradient(135deg, var(--surface-2) 0 3px, var(--line) 3px 5px); }
+@media (max-width: 640px) { .mc-phone-only { display: block; } }

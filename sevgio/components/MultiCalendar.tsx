@@ -172,6 +172,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
       ) : view === "month" ? (
         <>
           <AllMonthGrid rows={rows} stays={stays} start={start} end={end} today={today} demand={demand} colorOf={colorOf} dayHref={d => link(d, "day")} />
+          <MiniMonths rows={rows} stays={stays} start={start} end={end} today={today} colorOf={colorOf} basePath={basePath} />
           {phoneList}
         </>
       ) : view === "day" ? (
@@ -490,6 +491,39 @@ function AllMonthGrid({ rows, stays, start, end, today, demand, colorOf, dayHref
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+/** Phones: a small month per house and room, like the Availability screen in booking apps. Green is free, red is booked, amber is waiting on approval or payment. */
+function MiniMonths({ rows, stays, start, end, today, colorOf, basePath }: { rows: Prop[]; stays: Stay[]; start: string; end: string; today: string; colorOf: Map<string, string>; basePath: string }) {
+  const lead = dayLabel(start).getUTCDay();
+  const dates: string[] = [];
+  for (let d = start; d < end; d = addDays(d, 1)) dates.push(d);
+  return (
+    <div className="mm mc-phone-only">
+      <p className="hint mm-key"><i className="mm-k free" />Free <i className="mm-k bk" />Booked <i className="mm-k wt" />Waiting <i className="mm-k cx-k" />Blocked</p>
+      <div className="mm-grid">
+        {rows.map(p => {
+          // Booking the whole house also takes its rooms.
+          const mine = stays.filter(s => s.pid === p.id || (p.parent_id && s.pid === p.parent_id));
+          const href = `${basePath}?` + new URLSearchParams({ view: "month", start, ...(p.parent_id ? { property: p.parent_id, room: p.id } : { property: p.id }) });
+          return (
+            <Link key={p.id} href={href} className="mm-one" style={{ ["--pc" as string]: colorOf.get(p.id) }} aria-label={`${p.title}: open its month`}>
+              <span className="mm-cal" aria-hidden>
+                {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => <span key={i} className="mm-dow">{w}</span>)}
+                {Array.from({ length: lead }, (_, i) => <span key={"x" + i} />)}
+                {dates.map(d => {
+                  const s = mine.find(x => x.from <= d && d < x.to);
+                  const c = !s ? "free" : s.kind === "blk" ? "bl" : s.cls === "warn" ? "wt" : s.cls === "cx" ? "free" : "bk";
+                  return <span key={d} className={`mm-d ${c}${d < today ? " past" : ""}${d === today ? " today" : ""}`}>{Number(d.slice(8))}</span>;
+                })}
+              </span>
+              <span className="mm-name"><i className="ar-dot" />{p.parent_id ? "↳ " : ""}{p.title}</span>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
