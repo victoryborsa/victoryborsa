@@ -350,7 +350,7 @@ test("calendar has day, week and month views, and a one-property month with pric
   await page.getByRole("link", { name: "Day", exact: true }).click();
   await expect(page).toHaveURL(/view=day/);
   await expect(page.locator(".mc-day")).toHaveCount(1);
-  await expect(page.locator(`a.mc-bar[href="/trips/${b.code}"]`)).toHaveText(`Arriving: ${b.guest_name}`);
+  await expect(page.locator(`a.mc-bar[href="/trips/${b.code}"]`)).toContainText(`Arriving: ${b.guest_name}`);
   await page.getByRole("link", { name: "Next day" }).click();
   await expect(page.locator(`a[href="/trips/${b.code}"]`).first()).toHaveText(new RegExp(`(Staying|Leaving): ${b.guest_name}`));
   // Picking a property shows its month like a wall calendar, with prices on free days, and a Settings panel beside it.

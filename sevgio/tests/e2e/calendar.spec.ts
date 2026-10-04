@@ -39,7 +39,7 @@ test.describe.serial("reservations calendar", () => {
     for (const c of ["CALTA1", "CALTA2", "CALTA3", "CALTB1", "CALTC1"]) await expect(page.locator(`a.mc-bar[href="/trips/${c}"]`)).toBeVisible();
     // Each bar names the guest with check-in and check-out days.
     await expect(page.locator(`a.mc-bar[href="/trips/CALTA1"]`)).toContainText("Ava Arrival");
-    await expect(page.locator(`a.mc-bar[href="/trips/CALTA1"]`)).toContainText(/In \w+ \d+ · Out \w+ \d+ · Confirmed/);
+    await expect(page.locator(`a.mc-bar[href="/trips/CALTA1"]`)).toContainText(/In \w+ \d+ · Out \w+ \d+ · 1 guest · Confirmed/);
 
     const ava = await box(page.locator(`a.mc-bar[href="/trips/CALTA1"]`));
     const dee = await box(page.locator(`a.mc-bar[href="/trips/CALTB1"]`));
@@ -63,8 +63,14 @@ test.describe.serial("reservations calendar", () => {
     await expect(page.locator(`a.mc-bar[href="/trips/CALTC1"]`)).toHaveClass(/cut-l/);
     await expect(page.locator(`a.mc-bar[href="/trips/CALTC1"]`)).not.toHaveClass(/cut-r/);
 
-    // Clicking a reservation opens its full details.
+    // Clicking a reservation opens its details (with the guest count) right on the calendar, then the full page.
     await page.locator(`a.mc-bar[href="/trips/CALTC1"]`).click();
+    const panel = page.getByRole("dialog", { name: "Reservation: Eli Longstay" });
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText("Guests1 (1 adult)");
+    await expect(panel).toContainText("CALTC1");
+    if (process.env.CAL_SHOTS) await page.screenshot({ path: `${process.env.CAL_SHOTS}/details.png` });
+    await panel.getByRole("link", { name: "Open full reservation" }).click();
     await expect(page).toHaveURL(/\/trips\/CALTC1/);
     await expect(page.getByText("Eli Longstay").first()).toBeVisible();
     await signOut(page);
@@ -77,7 +83,7 @@ test.describe.serial("reservations calendar", () => {
     await expect(days.first()).toBeVisible();
     const day1 = days.filter({ has: page.locator(`a[href="/trips/CALTA1"]`) });
     await expect(day1.locator(".ar-card")).toHaveCount(3);
-    await expect(day1.locator(".ar-count")).toHaveText("3 arrivals");
+    await expect(day1.locator(".ar-count")).toHaveText("3 arrivals · 3 guests");
     if (process.env.CAL_SHOTS) await page.screenshot({ path: `${process.env.CAL_SHOTS}/arrivals.png`, fullPage: true });
     // Earliest first: the three same-day arrivals, then Dee (and the Airbnb guest), then Eli.
     const order = await page.locator(".ar:not(.mc-phone-list) a.ar-card").evaluateAll(as => as.map(a => a.getAttribute("href")).filter(h => h?.startsWith("/trips/CALT")));
@@ -97,12 +103,49 @@ test.describe.serial("reservations calendar", () => {
     await signOut(page);
   });
 
+  test("day view looks like the week: rooms down the side, bars, arrival counts", async ({ page }) => {
+    await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+    await page.goto(`/admin/calendar?view=day&start=${add(D, 3)}`);
+    await expect(page.locator(".mc-tl-day .mc-day")).toHaveCount(1);
+    await expect(page.locator(".mc-tl-day .mc-arr")).toHaveText("1 arriving · 1 guest");
+    // Ava leaves and Dee arrives the same day: both show, side by side on one line.
+    const ava = page.locator(`a.mc-bar[href="/trips/CALTA1"]`), dee = page.locator(`a.mc-bar[href="/trips/CALTB1"]`);
+    await expect(ava).toContainText("Leaving: Ava Arrival");
+    await expect(dee).toContainText("Arriving: Dee Backtoback");
+    const a = await box(ava), b = await box(dee);
+    expect(Math.abs(a.y - b.y)).toBeLessThan(2);
+    expect(a.x + a.width).toBeLessThanOrEqual(b.x);
+    await expect(page.locator(".mc-bar.ch-airbnb")).toBeVisible();
+    if (process.env.CAL_SHOTS) await page.screenshot({ path: `${process.env.CAL_SHOTS}/day.png`, fullPage: true });
+    await dee.click();
+    await expect(page.getByRole("dialog", { name: "Reservation: Dee Backtoback" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    // Picking a month jumps there, keeping the view.
+    await page.getByLabel("Go to month").fill(D.slice(0, 7).replace(/-\d\d$/, "-01"));
+    await expect(page).toHaveURL(/month=\d{4}-01/);
+    await expect(page).toHaveURL(/view=day/);
+    await expect(page.locator(".mc-period")).toContainText("January 1");
+    await signOut(page);
+  });
+
   test("month view lists every booking on busy days, with no '+ more'", async ({ page }) => {
     await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
     await page.goto(`/admin/calendar?view=month&start=${D}`);
     await expect(page.locator(".mg-more")).toHaveCount(0);
     const busy = page.locator(".mg-all .mg-day", { has: page.locator(".mg-tag", { hasText: "Ava Arrival" }) }).first();
     await expect(busy.locator(".mg-tag.arr")).toHaveCount(3);
+    // The day shows how many guests arrive, and each booking opens its details.
+    await expect(busy.locator(".mg-arr")).toHaveText("3 arriving · 3 guests");
+    await busy.locator(".mg-tag", { hasText: "Ben Arrival" }).click();
+    await expect(page.getByRole("dialog", { name: "Reservation: Ben Arrival" })).toContainText("1 (1 adult)");
+    await page.keyboard.press("Escape");
+    // The Airbnb booking opens too, and says the guest count lives on Airbnb.
+    await page.locator(".mg-tag.ch-airbnb").first().click();
+    await expect(page.getByRole("dialog", { name: "Reservation: Booked on Airbnb" })).toContainText("Not shared by Airbnb");
+    await page.keyboard.press("Escape");
+    // The month's reservations are listed under the calendar.
+    await expect(page.getByRole("heading", { name: /Reservations in/ })).toBeVisible();
+    await expect(page.locator(`a.ar-card[href^="/trips/CALT"]`)).toHaveCount(5);
     if (process.env.CAL_SHOTS) await page.screenshot({ path: `${process.env.CAL_SHOTS}/month.png`, fullPage: true });
     await signOut(page);
   });
@@ -132,7 +175,7 @@ test.describe.serial("reservations calendar", () => {
     const ava = page.locator(".mm-one", { hasText: props[0].title });
     await expect(ava).toBeVisible();
     await expect(ava.locator(".mm-d.bk")).toHaveCount(4); // Ava, the Airbnb guest and Dee: 4 nights in a row
-    await expect(page.locator(".mc-phone-list a.ar-card")).toHaveCount(5);
+    await expect(page.locator(`a.ar-card[href^="/trips/CALT"]`)).toHaveCount(5);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
     if (process.env.CAL_SHOTS) await page.screenshot({ path: `${process.env.CAL_SHOTS}/phone-month.png`, fullPage: true });
   });

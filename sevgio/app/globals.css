@@ -1499,3 +1499,41 @@ a.ar-card:hover { border-color: var(--accent); }
 .mm-k.wt { background: color-mix(in srgb, var(--warn) 45%, transparent); }
 .mm-k.cx-k { background: repeating-linear-gradient(135deg, var(--surface-2) 0 3px, var(--line) 3px 5px); }
 @media (max-width: 640px) { .mc-phone-only { display: block; } }
+
+/* Calendar follow-up: month picker, arrival counts, day board, reservation panel */
+.cal-month .input { width: 170px; padding-block: 8px; }
+.mc-arr { margin-top: 3px; font-size: 11px; font-weight: 700; color: var(--ink); background: var(--accent-soft); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.mc-arr.none { background: none; color: var(--muted); font-weight: 500; opacity: .7; }
+.mc.mc-tl.mc-v-week.mc-tl-day { width: 100%; }
+.mc-tl-day .mc-day small { font-size: 12px; }
+@media (max-width: 640px) { .mc-wrap-tl.mc-wrap-day { display: block; } .mc.mc-tl.mc-v-week.mc-tl-day { --mc-name-w: 96px; } .mc-tl-day .mc-bar-meta { white-space: normal; } }
+.mg-daylink { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding-right: 8px; color: var(--ink); text-decoration: none; }
+.mg-daylink:hover .mg-num { text-decoration: underline; }
+.mg-arr { font-size: 10px; font-weight: 700; background: var(--accent-soft); color: var(--ink); border-radius: 999px; padding: 1px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mg-tag[data-stay], .mg-link[data-stay], .ar-card[data-stay], .mc-bar[data-stay] { cursor: pointer; }
+.mg-tag[data-stay]:hover { filter: brightness(1.08); outline: 1px solid var(--ink); }
+.mc-list-h { font-size: 18px; margin-top: 8px; }
+@media (max-width: 640px) { .mg-arr { display: none; } }
+.sd { border: 1px solid var(--line); border-radius: var(--r-lg); padding: 0; background: var(--surface); color: var(--ink); width: min(440px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.sd::backdrop { background: rgba(10, 16, 22, .45); }
+.sd-in { display: flex; flex-direction: column; gap: 12px; padding: 20px 22px 18px; box-shadow: inset 5px 0 0 var(--pc, var(--line)); }
+.sd-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.sd-head h3 { font-size: 20px; display: flex; align-items: center; gap: 8px; }
+.sd-x { background: none; border: 0; font-size: 26px; line-height: 1; color: var(--muted); cursor: pointer; padding: 0 4px; }
+.sd-in > .pill { align-self: flex-start; }
+.sd-rows { margin: 0; display: grid; gap: 0; }
+.sd-rows > div { display: grid; grid-template-columns: 130px 1fr; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.sd-rows dt { color: var(--muted); font-weight: 600; }
+.sd-rows dd { margin: 0; }
+.sd-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 4px; }
+.cal-filterbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; }
+.cal-filterbar .cal-filters { flex: 0 1 auto; }
+.cal-month .input { width: 100%; }
+.cal-month .cal-field { min-width: 170px; }
+.mg-daylink { flex-wrap: wrap; justify-content: flex-start; padding-right: 6px; }
+.mg-daylink .mg-arr { margin-left: 8px; max-width: calc(100% - 8px); }
+@media (max-width: 640px) { .cal-month { flex: 1 1 100%; } .cal-month .cal-field { flex: 1 1 100%; } }
+.cal-filterbar .cal-filters { max-width: none; flex-wrap: nowrap; }
+@media (min-width: 641px) { .cal-filterbar .cal-field { flex: 0 0 220px; min-width: 0; } }
+@media (max-width: 640px) { .cal-filterbar .cal-filters { flex-wrap: wrap; flex: 1 1 100%; } }
+.mc-tl-day .mc-day b.ev { align-self: center; }
