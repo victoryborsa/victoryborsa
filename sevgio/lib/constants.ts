@@ -100,6 +100,9 @@ export function parseRooms(raw: unknown): RoomDetail[] {
   }
 }
 
+/** Who pays the utilities, shown under the price on the listing. '' = not shown. */
+export const UTILITIES: Record<string, string> = { included: "All-inclusive — utilities included", tenant: "Utilities paid by tenant" };
+
 /** Paid extras a listing can offer. Keys are stored, so never rename one. */
 export const SERVICE_PRESETS: Record<string, string> = {
   airport_pickup: "Airport pickup", airport_dropoff: "Airport drop-off", city_tour: "Private city tour", shuttle: "Shuttle service",
@@ -109,11 +112,18 @@ export const SERVICE_PRESETS: Record<string, string> = {
 export const SERVICE_DEFAULTS: Record<string, { price_cents: number; per: string; note: string }> = {
   airport_pickup: { price_cents: 0, per: "trip", note: "" },
   airport_dropoff: { price_cents: 0, per: "trip", note: "" },
-  city_tour: { price_cents: 15000, per: "trip", note: "2 hours" },
+  city_tour: { price_cents: 10000, per: "trip", note: "2 hours" },
   shuttle: { price_cents: 0, per: "trip", note: "" },
   early_checkin: { price_cents: 0, per: "stay", note: "Subject to availability" },
   late_checkout: { price_cents: 0, per: "stay", note: "Subject to availability" },
 };
+/** Prices the host picks from a dropdown for rides and tours, instead of typing one each time (plus Free and another amount). */
+export const SERVICE_PRICE_PRESETS = [8000, 8500, 9000, 10000, 11000, 12000];
+export const PRESET_PRICED_SERVICES = ["airport_pickup", "airport_dropoff", "city_tour"];
+/** Services the host marks Free or Charge; Charge shows a fee field. */
+export const FREE_OR_CHARGE_SERVICES = ["early_checkin", "late_checkout"];
+/** Notes that always show with a service and can't be edited. */
+export const FIXED_SERVICE_NOTES: Record<string, string> = { early_checkin: "Subject to availability" };
 /** Services where the guest tells us their flight and a time when they book. */
 export const FLIGHT_SERVICES: Record<string, { when: "ci" | "co"; timeLabel: string; detail: string; label: string }> = {
   airport_pickup: { when: "ci", timeLabel: "Your flight lands at", detail: "Flight lands", label: "airport pickup" },
@@ -130,13 +140,16 @@ export function parseServices(raw: unknown): Service[] {
     const arr = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!Array.isArray(arr)) return [];
     const seen = new Set<string>();
-    return arr.slice(0, 15).map(x => ({
-      key: String(x?.key ?? "").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 30),
-      name: String(x?.name ?? "").trim().slice(0, 80),
-      price_cents: Math.max(0, Math.round(Number(x?.price_cents) || 0)),
-      per: String(x?.per ?? "trip") in SERVICE_PER ? String(x.per) : "trip",
-      note: String(x?.note ?? "").trim().slice(0, 160),
-    })).filter(x => x.key && x.name && !seen.has(x.key) && seen.add(x.key));
+    return arr.slice(0, 15).map(x => {
+      const key = String(x?.key ?? "").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 30);
+      return {
+        key,
+        name: String(x?.name ?? "").trim().slice(0, 80),
+        price_cents: Math.max(0, Math.round(Number(x?.price_cents) || 0)),
+        per: String(x?.per ?? "trip") in SERVICE_PER ? String(x.per) : "trip",
+        note: FIXED_SERVICE_NOTES[key] ?? String(x?.note ?? "").trim().slice(0, 160),
+      };
+    }).filter(x => x.key && x.name && !seen.has(x.key) && seen.add(x.key));
   } catch {
     return [];
   }

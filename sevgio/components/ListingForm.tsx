@@ -1,4 +1,6 @@
-import { ACCESS, AMENITY_GROUPS, CANCELLATION, parseBeds, parseRooms, parseServices } from "@/lib/constants.ts";
+import { ACCESS, AMENITY_GROUPS, CANCELLATION, UTILITIES, parseBeds, parseRooms, parseServices } from "@/lib/constants.ts";
+import { DateField } from "./DateField.tsx";
+import { todayLocal } from "@/lib/dates.ts";
 import { BedsEditor } from "./BedsEditor.tsx";
 import { RoomsEditor } from "./RoomsEditor.tsx";
 import { ServicesEditor } from "./ServicesEditor.tsx";
@@ -139,9 +141,16 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
           <label className="field"><span>Furnishing</span>
             <select className="input" name="corp_furnished" defaultValue={p?.corp_furnished === false ? "no" : "yes"}><option value="yes">Furnished</option><option value="no">Unfurnished</option></select>
           </label>
-          <label className="field"><span>Line under the price (optional)</span><input className="input" name="corp_price_note" maxLength={80} defaultValue={p?.corp_price_note ?? ""} placeholder="e.g. Utilities paid by tenant" /><span className="hint">Empty: “Fixed price, all inclusive” (furnished) or “Unfurnished, long-term lease”.</span></label>
           <label className="field"><span>Monthly price (USD, all inclusive)</span><input className="input mono" name="corp_monthly" inputMode="decimal" defaultValue={p?.corp_monthly_cents ? dollars(p.corp_monthly_cents) : ""} placeholder="2300" /></label>
-          <label className="field"><span>Available from (empty = available now)</span><input className="input" name="corp_available_from" type="date" defaultValue={p?.corp_available_from || ""} /></label>
+          <label className="field"><span>Line under the price (optional)</span><input className="input" name="corp_price_note" maxLength={80} defaultValue={p?.corp_price_note ?? ""} placeholder="e.g. Fixed price, 3-month minimum" /><span className="hint">Empty: “Fixed price, all inclusive” (furnished) or “Unfurnished, long-term lease”.</span></label>
+          <label className="field"><span>Utilities</span>
+            <select className="input" name="utilities" defaultValue={p?.utilities ?? ""}>
+              <option value="">Don't show</option>
+              {Object.entries(UTILITIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            <span className="hint">Shown under the price on the listing and the Corporate Housing page.</span>
+          </label>
+          <DateField name="corp_available_from" label="Available from" initial={p?.corp_available_from || ""} today={todayLocal()} emptyText="Available now" hint="Leave empty = Available now." />
           <label className="field"><span>Security deposit (USD)</span><input className="input mono" name="corp_deposit" inputMode="decimal" defaultValue={dollars(p?.corp_deposit_cents) || "0"} /></label>
           <label className="field"><span>Cleaning fee (USD, one time)</span><input className="input mono" name="corp_cleaning" inputMode="decimal" defaultValue={dollars(p?.corp_cleaning_cents) || "0"} /></label>
           <label className="field"><span>Pet fee (USD, non-refundable, 0 = none)</span><input className="input mono" name="corp_pet_fee" inputMode="decimal" defaultValue={dollars(p?.corp_pet_fee_cents) || "0"} /></label>

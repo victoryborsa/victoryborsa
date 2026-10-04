@@ -3,10 +3,10 @@ import Link from "next/link";
 import { createContext, useContext, useMemo, useState } from "react";
 import { Calendar, addDaysC } from "./Calendar.tsx";
 import { PET_FEE_PER, baseLabel, priceTag, quote, type Party, type PricingInput } from "@/lib/pricing.ts";
-import { parseServices, servicePrice } from "@/lib/constants.ts";
+import { UTILITIES, parseServices, servicePrice } from "@/lib/constants.ts";
 import { money } from "@/lib/money.ts";
 
-type P = PricingInput & { security_deposit_cents?: number; slug: string; min_nights: number; max_nights: number; booking_mode: "instant" | "request"; children_free_age: number };
+type P = PricingInput & { security_deposit_cents?: number; utilities?: string; slug: string; min_nights: number; max_nights: number; booking_mode: "instant" | "request"; children_free_age: number };
 type Ctx = { p: P; today: string; taken: Set<string>; taxPercent: number; ci: string; co: string; party: Party; msg: string; pick: (d: string) => void; clear: () => void; setParty: (p: Party) => void; bookable: boolean };
 const BookingCtx = createContext<Ctx | null>(null);
 const use = () => useContext(BookingCtx)!;
@@ -154,7 +154,8 @@ export function BookingPanel({ paymentNote }: { paymentNote: string }) {
   const ready = !!(ci && co && pr && !problem && bookable);
   return (
     <aside className="panel sticky" aria-label="Book this home" id="book">
-      <div className="panel-price"><b>{money(priceTag(p).cents)}</b><span className="muted">/ {priceTag(p).unit}{p.monthly_price_cents ? " · all-inclusive" : ""}</span></div>
+      <div className="panel-price"><b>{money(priceTag(p).cents)}</b><span className="muted">/ {priceTag(p).unit}{p.monthly_price_cents && p.utilities !== "tenant" ? " · all-inclusive" : ""}</span></div>
+      {p.utilities && UTILITIES[p.utilities] && <p className={`util-line ${p.utilities}`}>{UTILITIES[p.utilities]}</p>}
       <a href="#availability" className="datepair" style={{ color: "inherit", textDecoration: "none" }}>
         <div><small>Check-in</small>{fmt(ci)}</div>
         <div><small>Check-out</small>{fmt(co)}</div>

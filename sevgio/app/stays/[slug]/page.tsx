@@ -24,7 +24,9 @@ import { AvailabilitySection, BookingPanel, BookingProvider, MobileBookBar } fro
 import { Check, Rating } from "@/components/ui.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { askHostAction } from "@/app/actions/messages.ts";
-import { priceNote, isWebUrl, isPdf } from "@/lib/corporate.ts";
+import { priceNote, isWebUrl, isPdf, availableLabel } from "@/lib/corporate.ts";
+import { UTILITIES } from "@/lib/constants.ts";
+import { Icon } from "@/components/Icon.tsx";
 import type { Property } from "@/lib/bookings.ts";
 
 /** Long-term lease homes: rent, fees and Request / Apply buttons in place of the booking calendar. */
@@ -40,6 +42,8 @@ function LeasePanel({ p, phone }: { p: Property; phone: string }) {
     <aside className="panel sticky lease-panel" aria-label="Rent this home" id="book">
       <div className="panel-price"><b>{money(p.corp_monthly_cents || 0)}</b><span className="muted">/ month</span></div>
       <p className="lease-note">{priceNote(p)}</p>
+      {p.utilities && UTILITIES[p.utilities] && <p className={`util-line ${p.utilities}`}><Icon name="bolt" size={14} />{UTILITIES[p.utilities]}</p>}
+      <p className={`ch-avail${p.corp_available_from && p.corp_available_from > todayLocal() ? "" : " now"}`}>{availableLabel(p.corp_available_from ?? null)}</p>
       <dl className="ch-fees">
         {fees.filter(([, c]) => c > 0).map(([k, c, sub]) => <div key={k}><dt>{k}{sub && <small>{sub}</small>}</dt><dd>{money(c)}</dd></div>)}
       </dl>
@@ -130,7 +134,7 @@ export default async function StayPage({ params, searchParams }: Params) {
         p={{ slug: p.slug, nightly_price_cents: p.nightly_price_cents, cleaning_fee_cents: p.cleaning_fee_cents, min_nights: p.min_nights, max_nights: p.max_nights, max_guests: p.max_guests, booking_mode: p.booking_mode,
           base_occupancy: p.base_occupancy, extra_guest_fee_cents: p.extra_guest_fee_cents, fewer_guest_discount_percent: Number(p.fewer_guest_discount_percent), weekly_discount_percent: Number(p.weekly_discount_percent), monthly_discount_percent: Number(p.monthly_discount_percent), children_free_age: p.children_free_age,
           pets_allowed: p.amenities.includes("pets"), pet_fee_cents: p.pet_fee_cents, pet_fee_per: p.pet_fee_per,
-          services: parseServices(p.services), security_deposit_cents: p.security_deposit_cents,
+          services: parseServices(p.services), security_deposit_cents: p.security_deposit_cents, utilities: p.utilities || "",
           monthly_price_cents: p.monthly_price_cents, smart_pricing: p.smart_pricing, min_price_cents: p.min_price_cents, max_price_cents: p.max_price_cents, demand }}
         today={today}
         unavailable={taken}

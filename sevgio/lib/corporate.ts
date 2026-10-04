@@ -3,7 +3,7 @@ import { q } from "./db.ts";
 import type { CardProperty } from "./queries.ts";
 import { todayLocal } from "./dates.ts";
 
-export type CorpHome = CardProperty & { parent_title: string | null; corp_furnished: boolean; corp_lease_only: boolean; corp_app_fee_cents: number; corp_apply_url: string; corp_price_note: string; corp_monthly_cents: number; corp_deposit_cents: number; corp_cleaning_cents: number; corp_pet_fee_cents: number; corp_available_from: string | null; furnished_finder_url: string };
+export type CorpHome = CardProperty & { parent_title: string | null; corp_furnished: boolean; corp_lease_only: boolean; corp_app_fee_cents: number; corp_apply_url: string; corp_price_note: string; utilities: string; corp_monthly_cents: number; corp_deposit_cents: number; corp_cleaning_cents: number; corp_pet_fee_cents: number; corp_available_from: string | null; furnished_finder_url: string };
 
 /** Published homes the host chose to show on the Corporate Housing page: furnished before unfurnished; within each, numbered ones first, then the lowest monthly rate. */
 export async function corporateHomes(): Promise<CorpHome[]> {
@@ -19,15 +19,15 @@ export async function corporateHomes(): Promise<CorpHome[]> {
 export function availableLabel(from: string | null, today = todayLocal()): string {
   if (!from || from <= today) return "Available now";
   const d = new Date(from + "T12:00:00");
-  return "Available " + d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(from.slice(0, 4) !== today.slice(0, 4) ? { year: "numeric" } : {}) });
+  return "Available from " + d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(from.slice(0, 4) !== today.slice(0, 4) ? { year: "numeric" } : {}) });
 }
 
 /** Only real Furnished Finder links are shown. */
 export const isFurnishedFinderUrl = (u: string) => /^https:\/\/(www\.)?furnishedfinder\.com\//i.test(u);
 
 /** The line under the monthly price: the host's own note, or the default for furnished and unfurnished homes. */
-export const priceNote = (p: { corp_price_note?: string; corp_furnished?: boolean }) =>
-  p.corp_price_note || (p.corp_furnished === false ? "Unfurnished, long-term lease" : "Fixed price, all inclusive");
+export const priceNote = (p: { corp_price_note?: string; corp_furnished?: boolean; utilities?: string }) =>
+  p.corp_price_note || (p.corp_furnished === false ? "Unfurnished, long-term lease" : p.utilities ? "Fixed monthly price" : "Fixed price, all inclusive");
 
 /** Application links: a full web address, or a file on this site such as /docs/application.pdf. */
 export const isWebUrl = (u: string) => /^https:\/\/[^\s]+$/i.test(u) || /^\/docs\/[\w.-]+$/.test(u);

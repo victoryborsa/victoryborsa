@@ -9,6 +9,7 @@ import { siteUrl } from "@/lib/email.ts";
 import { mailUrl, telUrl } from "@/lib/links.ts";
 import { todayLocal } from "@/lib/dates.ts";
 import { Icon, type IconName } from "@/components/Icon.tsx";
+import { UTILITIES } from "@/lib/constants.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { CopyField } from "@/components/CopyField.tsx";
 import { PickHome } from "@/components/PickHome.tsx";
@@ -58,6 +59,7 @@ function HomeCard({ p, today }: { p: CorpHome; today: string }) {
         <div className="ch-rate">
           <p><b>{money(p.corp_monthly_cents)}</b> <span>per month</span></p>
           <p className="ch-incl">{priceNote(p)}</p>
+          {UTILITIES[p.utilities] && <p className={`util-line ${p.utilities}`}><Icon name="bolt" size={14} />{UTILITIES[p.utilities]}</p>}
         </div>
         <dl className="ch-fees">
           <div><dt>Security deposit</dt><dd>{p.corp_deposit_cents ? money(p.corp_deposit_cents) : "None"}</dd></div>

@@ -6,7 +6,7 @@ import { one, q, tx, type Db } from "./db.ts";
 import { addDays, isIsoDate, nightsBetween, todayLocal } from "./dates.ts";
 import { quote, type Party } from "./pricing.ts";
 import { dueNow, type PayMethod } from "./payment-rules.ts";
-import { REQUEST_EXPIRY_HOURS } from "./constants.ts";
+import { FIXED_SERVICE_NOTES, REQUEST_EXPIRY_HOURS } from "./constants.ts";
 
 export type Property = {
   id: string; slug: string; host_id: string; title: string; city: string; area: string; address: string; description: string; property_type: string;
@@ -18,7 +18,7 @@ export type Property = {
   base_occupancy: number | null; extra_guest_fee_cents: number; fewer_guest_discount_percent: number; weekly_discount_percent: number; monthly_discount_percent: number;
   children_free_age: number; management_fee_percent: number; shared_spaces: string; owner_zelle: string; owner_venmo: string; pet_fee_cents: number; pet_fee_per: string; rooms_detail: unknown; services: unknown; security_deposit_cents: number; lat: number | null; lng: number | null; monthly_price_cents: number | null; smart_pricing: boolean;
   corp_listed?: boolean; corp_monthly_cents?: number | null; corp_deposit_cents?: number; corp_cleaning_cents?: number; corp_pet_fee_cents?: number; corp_available_from?: string | null; furnished_finder_url?: string; corp_position?: number | null;
-  corp_furnished?: boolean; corp_lease_only?: boolean; corp_app_fee_cents?: number; corp_apply_url?: string; corp_price_note?: string; min_price_cents: number | null; max_price_cents: number | null; demand?: Demand;
+  corp_furnished?: boolean; corp_lease_only?: boolean; corp_app_fee_cents?: number; corp_apply_url?: string; corp_price_note?: string; utilities?: string; min_price_cents: number | null; max_price_cents: number | null; demand?: Demand;
 };
 
 export type Booking = {
@@ -135,7 +135,7 @@ export async function createBooking(b: NewBooking): Promise<CreateResult> {
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32) RETURNING *`,
             [newCode(), p.id, b.guestId, b.ci, b.co, guests, status, pr.nights, pr.nightly, pr.cleaning, pr.tax, pr.total, b.name, b.phone, b.arrival, b.message,
               b.party.adults, b.party.children, b.party.free_children, pr.base, pr.discount, p.management_fee_percent,
-              b.pay?.method ?? null, due.fee, due.now, b.pay ? "pending" : "none", deadline, pr.pets, pr.petFee, JSON.stringify(pr.extras.map(x => (b.serviceDetails?.[x.key] ? { ...x, details: b.serviceDetails[x.key] } : x))), pr.extrasTotal, p.security_deposit_cents || 0],
+              b.pay?.method ?? null, due.fee, due.now, b.pay ? "pending" : "none", deadline, pr.pets, pr.petFee, JSON.stringify(pr.extras.map(x => { const details = [b.serviceDetails?.[x.key], FIXED_SERVICE_NOTES[x.key]].filter(Boolean).join(" · "); return details ? { ...x, details } : x; })), pr.extrasTotal, p.security_deposit_cents || 0],
             c,
           );
           return { ok: true, booking: booking!, property: p } as const;

@@ -69,6 +69,7 @@ function readListing(fd: FormData) {
     corp_app_fee: toCents(str(fd, "corp_app_fee") || "0"),
     corp_apply_url: str(fd, "corp_apply_url", 500),
     corp_price_note: str(fd, "corp_price_note", 80),
+    utilities: ["included", "tenant"].includes(str(fd, "utilities")) ? str(fd, "utilities") : "",
   };
   // Long-term leases are listed on the Corporate Housing page and need no nightly price; keep one (rent ÷ 30) for sorting.
   if (v.corp_lease_only) {
@@ -141,7 +142,7 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     monthly_price_cents: v.monthly, smart_pricing: v.smart_pricing && !v.monthly, min_price_cents: v.min_price, max_price_cents: v.max_price,
     corp_listed: v.corp_listed, corp_monthly_cents: v.corp_monthly, corp_deposit_cents: v.corp_deposit || 0, corp_cleaning_cents: v.corp_cleaning || 0,
     corp_pet_fee_cents: v.corp_pet_fee || 0, corp_available_from: v.corp_available_from, furnished_finder_url: v.furnished_finder_url, corp_position: v.corp_position,
-    corp_furnished: v.corp_furnished, corp_lease_only: v.corp_lease_only, corp_app_fee_cents: v.corp_app_fee || 0, corp_apply_url: v.corp_apply_url, corp_price_note: v.corp_price_note,
+    corp_furnished: v.corp_furnished, corp_lease_only: v.corp_lease_only, corp_app_fee_cents: v.corp_app_fee || 0, corp_apply_url: v.corp_apply_url, corp_price_note: v.corp_price_note, utilities: v.utilities,
   };
   // Only admins set the management fee; hosts never see or change it.
   if (isAdmin && v.management_fee_percent !== null) cols.management_fee_percent = v.management_fee_percent;
@@ -220,7 +221,7 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
     "check_out_time", "arrival_instructions", "base_occupancy", "fewer_guest_discount_percent", "weekly_discount_percent", "monthly_discount_percent",
     "children_free_age", "management_fee_percent", "owner_zelle", "owner_venmo", "pet_fee_per", "monthly_price",
     "corp_monthly", "corp_deposit", "corp_cleaning", "corp_pet_fee", "furnished_finder_url",
-    "corp_app_fee", "corp_apply_url", "corp_price_note", "corp_position", "corp_available_from", ...Object.keys(IMPORT_FIELDS)];
+    "corp_app_fee", "corp_apply_url", "corp_price_note", "utilities", "corp_position", "corp_available_from", ...Object.keys(IMPORT_FIELDS)];
   for (const k of plain) set(IMPORT_FIELDS[k] || k, item[k]);
   const isRoom = item.listing_kind === "room" || item.property_type === "room";
   fd.set("listing_kind", isRoom ? "room" : "home");

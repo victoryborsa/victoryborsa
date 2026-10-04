@@ -809,6 +809,9 @@ a.room-card:hover { border-color: var(--gold); }
 /* Extra services editor */
 .svc-preset { display: flex; flex-direction: column; gap: 6px; }
 .svc-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; margin-left: 28px; padding: 10px 12px; border-left: 2px solid var(--gold); background: var(--surface-2); border-radius: 0 var(--r) var(--r) 0; }
+.svc-note-fixed { margin: 0; display: flex; align-items: center; min-height: 44px; padding: 0 12px; border: 1px dashed var(--line); border-radius: var(--r); color: var(--ink); font-size: 14px; background: var(--surface); }
+.svc-warn { flex-basis: 100%; margin: 0; color: #B3261E; }
+@media (max-width: 640px) { .svc-row { margin-left: 0; } .svc-row > .field { width: auto !important; min-width: 0 !important; flex: 1 1 40% !important; } .svc-row > .field:has(input:not(.mono)), .svc-row > .svc-fixed-note { flex: 1 1 100% !important; } }
 
 /* Extras on the booking panel and listing */
 .extras { border: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 8px; margin: 0; }
@@ -964,6 +967,18 @@ a.cs-card:hover { border-color: var(--accent); }
 .dr-head { margin: 0 0 12px; font-weight: 700; }
 .dr-foot { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 @media (min-width: 900px) { .dr-pop { left: auto; width: min(720px, 100%); } }
+/* One optional date (listing editor "Available from"): the field opens the site calendar. */
+.df { position: relative; }
+.df-box { position: relative; display: flex; }
+.df-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; cursor: pointer; color: var(--ink); font: inherit; padding-right: 44px; }
+.df-btn svg { position: absolute; right: 12px; color: var(--muted); pointer-events: none; }
+.df-box:has(.df-clear) .df-btn svg { right: 44px; }
+.df-box:has(.df-clear) .df-btn { padding-right: 76px; }
+.df-btn.on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.df-ph { color: var(--muted); }
+.df-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer; }
+.df-clear:hover { background: var(--surface-2); color: var(--ink); }
+@media (min-width: 900px) { .df-pop { left: 0; right: auto; width: min(660px, calc(100vw - 48px)); } }
 @media (max-width: 899px) {
   .dr-pop { position: fixed; z-index: 90; box-shadow: 0 0 0 100vmax rgba(0,0,0,.55); left: 0; right: 0; top: auto; bottom: 0; max-height: 85dvh; overflow-y: auto; border-radius: 20px 20px 0 0; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
 }
@@ -1350,6 +1365,9 @@ footer .brand-tag { font-size: 8px; }
 .ch-rate { margin-top: 14px; padding: 14px 16px; border-radius: 14px; background: var(--accent-soft); }
 .ch-rate b { font-size: 28px; letter-spacing: -.01em; }
 .ch-rate span { color: #3F4A54; }
+.util-line { display: flex; align-items: center; gap: 6px; margin: 4px 0 0; font-size: 13px; font-weight: 600; color: var(--ink); }
+.util-line.included { color: #1E7B45; }
+.panel .util-line { margin: -4px 0 12px; }
 .ch-incl { font-size: 13px; font-weight: 700; color: var(--gold); }
 .ch-fees { margin: 12px 0 0; display: grid; gap: 8px; }
 .ch-fees div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 15px; }

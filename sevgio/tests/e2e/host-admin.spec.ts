@@ -639,13 +639,25 @@ test("extra services and security deposit: host offers them, guest adds pickup a
   await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
   await page.goto(`/host/listings/${p.id}`);
   await page.getByLabel("Airport pickup").check();
-  await page.getByLabel("Price for Airport pickup").fill("45");
+  // Rides and tours pick a price from a list: Free, $80 … $120, or another amount.
+  await expect(page.getByLabel("Price for Airport pickup").locator("option")).toHaveText(["Free", "$80", "$85", "$90", "$100", "$110", "$120", "Other amount…"]);
+  await page.getByLabel("Price for Airport pickup").selectOption({ label: "$85" });
   await expect(page.getByLabel(/Uber/)).toHaveCount(0);
   await expect(page.getByLabel(/Groceries/)).toHaveCount(0);
   await page.getByLabel("Private city tour").check();
-  await expect(page.getByLabel("Price for Private city tour")).toHaveValue("150");
+  await expect(page.getByLabel("Price for Private city tour")).toHaveValue("10000");
   await expect(page.getByLabel("Note for Private city tour")).toHaveValue("2 hours");
-  await page.getByLabel("Price for Private city tour").fill("30");
+  await page.getByLabel("Price for Private city tour").selectOption("other");
+  await page.getByLabel("Amount for Private city tour").fill("30");
+  // Early check-in: Free or Charge (Charge shows a fee field), always "Subject to availability".
+  await page.getByLabel("Early check-in").check();
+  await expect(page.getByLabel("Free or charge for Early check-in")).toHaveValue("free");
+  await expect(page.getByLabel("Fee for Early check-in")).toHaveCount(0);
+  await expect(page.locator(".svc-preset", { hasText: "Early check-in" }).locator(".svc-note-fixed")).toHaveText("Subject to availability");
+  await expect(page.getByLabel("Note for Early check-in")).toHaveCount(0);
+  await page.getByLabel("Free or charge for Early check-in").selectOption("charge");
+  await expect(page.getByText("Enter the fee, or choose Free.")).toBeVisible();
+  await page.getByLabel("Fee for Early check-in").fill("25");
   await page.getByLabel("Late check-out").check();
   await expect(page.getByLabel("Note for Late check-out")).toHaveValue("Subject to availability");
   await page.getByLabel("How Private city tour is charged").selectOption("person");
@@ -661,14 +673,19 @@ test("extra services and security deposit: host offers them, guest adds pickup a
   await page.locator(".extras").getByLabel(/Private city tour/).check();
   await expect(page.locator(".extras").getByText("Free")).toBeVisible();
   await page.locator(".extras").getByLabel(/Late check-out/).check();
+  await expect(page.locator(".extras").getByText("Subject to availability").first()).toBeVisible();
+  await expect(page.locator(".extras .extra-item", { hasText: "Early check-in" })).toContainText("$25 per stay");
+  await page.locator(".extras").getByLabel(/Early check-in/).check();
   const panel = page.locator("#book table.breakdown");
   await expect(panel).toContainText("Airport pickup");
   await expect(panel).toContainText("Private city tour × 2");
   await expect(panel).toContainText("$60");
   await expect(panel.getByRole("row").filter({ hasText: "Late check-out" })).toContainText("Free");
+  await expect(panel.getByRole("row").filter({ hasText: "Early check-in" })).toContainText("$25");
+  await expect(panel.getByRole("row").filter({ hasText: "Airport pickup" })).toContainText("$85");
   await page.locator("#book").getByRole("link", { name: /Reserve|Request to book/ }).click();
   await signIn(page, "guest@demo.sevgio.com", "demo-password-2026");
-  await page.goto(`/book/downtown-state-college-condo?ci=${iso(345)}&co=${iso(347)}&adults=2&svc=airport_pickup,city_tour,late_checkout,bogus`);
+  await page.goto(`/book/downtown-state-college-condo?ci=${iso(345)}&co=${iso(347)}&adults=2&svc=airport_pickup,city_tour,early_checkin,late_checkout,bogus`);
   await expect(page.locator("table.breakdown")).toContainText("Airport pickup");
   await page.getByLabel("Mobile phone").fill("(570) 555-0100");
   await expect(page.getByLabel("Date")).toHaveValue(iso(345));
@@ -681,9 +698,10 @@ test("extra services and security deposit: host offers them, guest adds pickup a
   const code = (await page.locator(".code").textContent())!.trim();
   await expect(page.getByText(/Flight lands .*2:30 PM · Delta DL 1234/)).toBeVisible();
   const [b] = await sql<{ services_cents: number; security_deposit_cents: number; services: { name: string }[] }>("SELECT services_cents, security_deposit_cents, services FROM bookings WHERE code = $1", [code]);
-  expect(b.services_cents).toBe(4500 + 3000 * 2);
+  expect(b.services_cents).toBe(8500 + 3000 * 2 + 2500);
   expect(b.security_deposit_cents).toBe(20000);
-  expect(b.services.map(x => x.name)).toEqual(["Airport pickup", "Private city tour", "Late check-out"]);
+  expect(b.services.map(x => x.name)).toEqual(["Airport pickup", "Private city tour", "Early check-in", "Late check-out"]);
+  await expect(page.locator("table.breakdown").getByRole("row").filter({ hasText: "Early check-in" })).toContainText("Subject to availability");
   await expect(page.getByText(/Refundable security deposit/)).toBeVisible();
   await signOut(page);
 });
@@ -944,6 +962,73 @@ test("corporate housing: host shows a home with its monthly rate and fees; compa
   await expect(page.getByText(/^Saved\./)).toBeVisible();
   await page.goto("/corporate-housing");
   await expect(page.locator(".ch-home")).toHaveCount(0);
+  await signOut(page);
+});
+
+test("listing settings on phone and computer: Utilities line under the price and the Available from calendar", async ({ page }) => {
+  const [p] = await sql<{ id: string }>("SELECT id FROM properties WHERE slug = 'mount-washington-view-house'");
+  await sql("UPDATE properties SET corp_listed = true, corp_monthly_cents = coalesce(corp_monthly_cents, 200000), corp_available_from = NULL, utilities = '' WHERE id = $1", [p.id]);
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  const target = iso(70);
+  const shown = new Date(target + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+  for (const [device, size] of [["phone", { width: 390, height: 844 }], ["computer", { width: 1280, height: 900 }]] as const) {
+    await page.setViewportSize(size);
+    await page.goto(`/host/listings/${p.id}`);
+    const field = page.getByRole("button", { name: /^Available from/ });
+    await expect(field).toContainText("Available now");
+    await expect(page.getByText("Leave empty = Available now.")).toBeVisible();
+
+    // Tapping the field (or its calendar icon) opens the calendar; move ahead a few months and pick a day.
+    await (device === "phone" ? field.locator("svg") : field).click({ force: device === "phone" });
+    const cal = page.getByRole("dialog", { name: "Choose available from" });
+    await expect(cal).toBeVisible();
+    for (let i = 0; i < 4 && !(await cal.locator(`[data-day="${target}"]`).count()); i++) await cal.getByRole("button", { name: "Next month" }).click();
+    await cal.locator(`[data-day="${target}"]`).click();
+    await expect(cal).toHaveCount(0);
+    await expect(field).toContainText(shown);
+
+    await page.getByLabel("Utilities").selectOption(device === "phone" ? "tenant" : "included");
+    await page.getByRole("button", { name: "Save listing" }).click();
+    await expect(page.getByText(/^Saved\./)).toBeVisible();
+    const [row] = await sql<{ d: string; utilities: string }>("SELECT to_char(corp_available_from, 'YYYY-MM-DD') AS d, utilities FROM properties WHERE id = $1", [p.id]);
+    expect(row).toEqual({ d: target, utilities: device === "phone" ? "tenant" : "included" });
+    const label = device === "phone" ? "Utilities paid by tenant" : "All-inclusive — utilities included";
+
+    // Saved values come back in the editor.
+    await page.reload();
+    await expect(page.getByRole("button", { name: /^Available from/ })).toContainText(shown);
+    await expect(page.getByLabel("Utilities")).toHaveValue(device === "phone" ? "tenant" : "included");
+
+    // Guests see the utilities line under the price and the date.
+    await page.goto("/corporate-housing");
+    const card = page.locator(".ch-home", { hasText: "Mount Washington View House" });
+    await expect(card.locator(".util-line")).toHaveText(label);
+    await expect(card.locator(".ch-avail")).toHaveText(/^Available from /);
+    await page.goto("/stays/mount-washington-view-house");
+    await expect(page.locator("#book .util-line")).toHaveText(label);
+
+    // Clearing the date means available now.
+    await page.goto(`/host/listings/${p.id}`);
+    await page.getByRole("button", { name: "Clear Available from" }).click();
+    await expect(page.getByRole("button", { name: /^Available from/ })).toContainText("Available now");
+    await page.getByRole("button", { name: "Save listing" }).click();
+    await expect(page.getByText(/^Saved\./)).toBeVisible();
+    const [cleared] = await sql<{ d: string | null }>("SELECT corp_available_from AS d FROM properties WHERE id = $1", [p.id]);
+    expect(cleared.d).toBeNull();
+    await page.goto("/corporate-housing");
+    await expect(page.locator(".ch-home", { hasText: "Mount Washington View House" }).locator(".ch-avail")).toHaveText("Available now");
+  }
+
+  // Extra services on a phone: price dropdown and Free/Charge fit the screen.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/host/listings/${p.id}`);
+  await page.getByLabel("Early check-in").check();
+  await page.getByLabel("Free or charge for Early check-in").selectOption("charge");
+  await expect(page.getByLabel("Fee for Early check-in")).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  await sql("UPDATE properties SET utilities = '' WHERE id = $1", [p.id]);
+  await page.setViewportSize({ width: 1280, height: 720 });
   await signOut(page);
 });
 

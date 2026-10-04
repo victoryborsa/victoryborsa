@@ -38,7 +38,7 @@ export async function exportListings() {
       corp_listed: !!p.corp_listed, corp_lease_only: !!p.corp_lease_only, corp_furnished: p.corp_furnished !== false,
       corp_monthly: p.corp_monthly_cents ? dollars(p.corp_monthly_cents) : null, corp_deposit: dollars(p.corp_deposit_cents),
       corp_cleaning: dollars(p.corp_cleaning_cents), corp_pet_fee: dollars(p.corp_pet_fee_cents), corp_app_fee: dollars(p.corp_app_fee_cents),
-      corp_apply_url: p.corp_apply_url || "", corp_price_note: p.corp_price_note || "", corp_position: p.corp_position ?? null,
+      corp_apply_url: p.corp_apply_url || "", corp_price_note: p.corp_price_note || "", utilities: p.utilities || "", corp_position: p.corp_position ?? null,
       corp_available_from: p.corp_available_from || null, furnished_finder_url: p.furnished_finder_url || "",
       lat: p.lat, lng: p.lng,
     };

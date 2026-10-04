@@ -6,7 +6,7 @@ import { demandBetween } from "@/lib/demand.ts";
 import { nightPrice, type Demand } from "@/lib/smart-pricing.ts";
 import { AutoSubmit } from "./AutoSubmit.tsx";
 import { CalDetails, type StayDetail } from "./CalDetails.tsx";
-import { partyLabel } from "@/lib/party.ts";
+import { extrasOf, partyLabel } from "@/lib/party.ts";
 import { CalSettings, type CalSettingsData } from "./CalSettings.tsx";
 import { BOOKING_STATUS } from "@/lib/constants.ts";
 import { assignLanes, barLines, groupByArrival, inView, propertyColor } from "@/lib/cal-layout.ts";
@@ -14,7 +14,7 @@ import { channelLabel } from "@/lib/channels.ts";
 
 type Prop = { id: string; title: string; city: string; parent_id: string | null; status: string; cover_id: string | null; nightly_price_cents: number; smart_pricing: boolean; min_price_cents: number | null; max_price_cents: number | null };
 type Res = { id: string; code: string; property_id: string; check_in: string; check_out: string; status: string; guest_name: string; guests: number; nights: number;
-  adults: number; children: number; free_children: number; pets: number; guest_phone: string; arrival_time: string; total_cents: number };
+  adults: number; children: number; free_children: number; pets: number; guest_phone: string; arrival_time: string; total_cents: number; services: unknown };
 /** Dates you blocked (source "host"), or a stay from another site (source "ical:…", from channel_stays, with its site and money status). */
 type Blk = { id: string; property_id: string; start_date: string; end_date: string; note: string; source: string; feed_name: string | null;
   channel: string | null; kind: string | null; ref: string; guest: string; status: string; needs: boolean; payout: number | null };
@@ -91,7 +91,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
 
   const [allRes, allBlocks] = ids.length
     ? await Promise.all([
-        q<Res>(`SELECT id, code, property_id, check_in, check_out, status, guest_name, guests, nights, adults, children, free_children, pets, guest_phone, arrival_time, total_cents FROM bookings
+        q<Res>(`SELECT id, code, property_id, check_in, check_out, status, guest_name, guests, nights, adults, children, free_children, pets, guest_phone, arrival_time, total_cents, services FROM bookings
                 WHERE property_id = ANY($1) AND status = ANY($4) AND check_in < $3 AND check_out >= $2`,
           [ids, start, end, status === "cancelled" ? ["cancelled"] : ["pending", "awaiting_payment", "confirmed"]]),
         // Stays from other sites come from their reservation records (so past stays and Finance match the calendar);
@@ -258,6 +258,7 @@ function toStays(res: Res[], blocks: Blk[], byId: Map<string, Prop>, placeName: 
           ["Guests", `${b.guests} (${partyLabel(b)})`],
           ["Booking code", b.code],
           ...(b.guest_phone ? [["Phone", b.guest_phone] as [string, string]] : []),
+          ...(extrasOf(b).length ? [["Extra services", extrasOf(b).map(x => `${x.name}${x.qty > 1 && x.total ? ` × ${x.qty}` : ""} (${x.total ? money(x.total) : "free"})${x.details ? `, ${x.details}` : ""}`).join("; ")] as [string, string]] : []),
           ["Total", money(b.total_cents)],
         ] as [string, string][] },
         title: `Sevgio · ${b.code} · ${b.guest_name} · ${place(b.property_id)} · check-in ${fmtShort(b.check_in)}, check-out ${fmtShort(b.check_out)} · ${b.nights} night${b.nights === 1 ? "" : "s"} · ${b.guests} guest${b.guests === 1 ? "" : "s"} · ${st.label}` };
