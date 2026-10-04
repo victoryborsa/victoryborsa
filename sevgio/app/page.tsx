@@ -44,6 +44,12 @@ function MiniCard({ p, saved, eager }: { p: CardProperty; saved: boolean; eager?
   );
 }
 
+/** The four kinds of guest we house, each linking to the stays that fit them. */
+const WHO: [string, IconName, "nurse" | "corp" | "pro" | "trip"][] = [
+  ["/corporate-housing", "stethoscope", "nurse"], ["/corporate-housing#request", "briefcase", "corp"],
+  ["/stays?kind=room&monthly=1", "room", "pro"], ["/stays?kind=home", "home", "trip"],
+];
+
 const TABS: [string, string, IconName][] = [["/", "All", "all"], ["/stays?kind=home", "Homes", "home"], ["/stays?kind=room", "Rooms", "room"], ["/stays?monthly=1", "Monthly", "calendar"], ["/corporate-housing", "Corporate", "briefcase"], ["/pittsburgh", "Things to do", "compass"], ["/events", "Events", "ticket"]];
 
 export default async function Home() {
@@ -73,8 +79,31 @@ export default async function Home() {
             <Link key={href} href={href} aria-current={i === 0 ? "page" : undefined}><Icon name={icon} size={24} className="ab-tab-ico" />{label}</Link>
           ))}
         </nav>
-        <PillSearch places={places} today={todayLocal()} labels={{ where: t("search.where"), when: "When", who: "Who", search: t("search.submit"), anywhere: t("search.anywhere") }} />
       </div>
+
+      <section className="hm-hero" aria-labelledby="hm-h1">
+        <div className="hm-hero-text">
+          <p className="hm-eyebrow">{t("home.eyebrow")}</p>
+          <h1 id="hm-h1">{t("home.h1")}</h1>
+          <p className="hm-sub">{t("home.sub")}</p>
+          <PillSearch places={places} today={todayLocal()} labels={{ where: t("search.where"), when: "When", who: "Who", search: t("search.submit"), anywhere: t("search.anywhere") }} />
+        </div>
+        <div className="hm-hero-pics"><PictureTrio photos={slides} /></div>
+      </section>
+
+      <section className="hm-who" aria-labelledby="hm-who-h">
+        <h2 id="hm-who-h">{t("home.whoTitle")}</h2>
+        <div className="hm-who-list">
+          {WHO.map(([href, icon, k]) => (
+            <Link key={k} href={href} className="hm-who-item">
+              <Icon name={icon} size={26} className="hm-who-ico" />
+              <span className="hm-who-t">{t(`home.who.${k}`)}</span>
+              <span className="hm-who-len">{t(`home.who.${k}Len`)}</span>
+              <span className="hm-who-d">{t(`home.who.${k}Text`)}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
       <ContinueSearch img={firstPhoto ? photoUrl(firstPhoto, "thumb") : null} />
 
       <div className="ab-body">
@@ -90,21 +119,16 @@ export default async function Home() {
           <Link className="ab-promo" href="/pittsburgh"><span className="ab-promo-ico"><Icon name="compass" size={30} /></span><span>Find things to do in Pittsburgh</span><span className="ab-pill">See the guide</span></Link>
         </div>
 
-        <section className="ab-welcome">
-          <div className="hero-grid home-top">
-            <div>
-              <p className="eyebrow">{t("home.eyebrow")}</p>
-              <h1 style={{ marginTop: 10, whiteSpace: "pre-line" }}>{t("home.h1")}</h1>
-              <p className="lede">{t("home.lede")}</p>
-              <p className="home-welcome">{t("home.welcome")}</p>
-              <nav className="hello" aria-label={t("home.pickLang")}>
-                {LANGS_AZ.map(l => (
-                  <a key={l.code} href={`/lang/${l.code}?next=/`} lang={l.code} hrefLang={l.code} className={l.code === lang ? "on" : undefined} aria-current={l.code === lang ? "true" : undefined} title={l.name}>{l.hello}</a>
-                ))}
-              </nav>
-              <p className="hint" style={{ marginTop: 6 }}>{t("home.pickLang")}</p>
-            </div>
-            <PictureTrio photos={slides} />
+        <section className="ab-welcome hm-welcome" aria-labelledby="hm-welcome-h">
+          <div className="hm-welcome-text">
+            <h2 id="hm-welcome-h" className="home-welcome">{t("home.welcome")}</h2>
+            <p className="lede">{t("home.lede")}</p>
+            <nav className="hello" aria-label={t("home.pickLang")}>
+              {LANGS_AZ.map(l => (
+                <a key={l.code} href={`/lang/${l.code}?next=/`} lang={l.code} hrefLang={l.code} className={l.code === lang ? "on" : undefined} aria-current={l.code === lang ? "true" : undefined} title={l.name}>{l.hello}</a>
+              ))}
+            </nav>
+            <p className="hint" style={{ marginTop: 6 }}>{t("home.pickLang")}</p>
           </div>
           <div className="worldmap-wrap"><WorldMap /></div>
         </section>
