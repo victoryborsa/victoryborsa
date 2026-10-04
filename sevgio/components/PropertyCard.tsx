@@ -7,8 +7,8 @@ import { priceTag, quote } from "@/lib/pricing.ts";
 import type { Demand } from "@/lib/smart-pricing.ts";
 import { Rating } from "./ui.tsx";
 
-export function PropertyCard({ p, ci, co, guests, taxPercent, eager, demand }: { p: CardProperty; ci?: string; co?: string; guests?: number; taxPercent: number; eager?: boolean; demand?: Demand }) {
-  const pr = ci && co ? quote({ ...p, demand }, ci, co, taxPercent, guests ? { adults: guests, children: 0, free_children: 0 } : undefined) : null;
+export function PropertyCard({ p, ci, co, guests, taxPercent, eager, demand, prices }: { p: CardProperty; ci?: string; co?: string; guests?: number; taxPercent: number; eager?: boolean; demand?: Demand; prices?: Record<string, number> }) {
+  const pr = ci && co ? quote({ ...p, demand, prices }, ci, co, taxPercent, guests ? { adults: guests, children: 0, free_children: 0 } : undefined) : null;
   const qs = new URLSearchParams();
   if (ci && co) { qs.set("ci", ci); qs.set("co", co); }
   if (guests) qs.set("guests", String(guests));

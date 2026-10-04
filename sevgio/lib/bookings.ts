@@ -1,5 +1,5 @@
 import type { Demand } from "./smart-pricing.ts";
-import { demandBetween } from "./demand.ts";
+import { withNightPricing } from "./demand.ts";
 import crypto from "node:crypto";
 import type pg from "pg";
 import { one, q, tx, type Db } from "./db.ts";
@@ -18,7 +18,7 @@ export type Property = {
   base_occupancy: number | null; extra_guest_fee_cents: number; fewer_guest_discount_percent: number; weekly_discount_percent: number; monthly_discount_percent: number;
   children_free_age: number; management_fee_percent: number; shared_spaces: string; owner_zelle: string; owner_venmo: string; pet_fee_cents: number; pet_fee_per: string; rooms_detail: unknown; services: unknown; security_deposit_cents: number; lat: number | null; lng: number | null; monthly_price_cents: number | null; smart_pricing: boolean;
   corp_listed?: boolean; corp_monthly_cents?: number | null; corp_deposit_cents?: number; corp_cleaning_cents?: number; corp_pet_fee_cents?: number; corp_available_from?: string | null; furnished_finder_url?: string; corp_position?: number | null;
-  corp_furnished?: boolean; corp_lease_only?: boolean; corp_app_fee_cents?: number; corp_apply_url?: string; corp_price_note?: string; utilities?: string; min_price_cents: number | null; max_price_cents: number | null; demand?: Demand;
+  corp_furnished?: boolean; corp_lease_only?: boolean; corp_app_fee_cents?: number; corp_apply_url?: string; corp_price_note?: string; utilities?: string; min_price_cents: number | null; max_price_cents: number | null; demand?: Demand; prices?: Record<string, number>;
 };
 
 export type Booking = {
@@ -119,7 +119,7 @@ export async function createBooking(b: NewBooking): Promise<CreateResult> {
       const problem = stayProblem(p, b.ci, b.co, b.party);
       if (problem) return { ok: false, error: problem, reason: "invalid" } as const;
       if (!(await isRangeFree(p.id, b.ci, b.co, c))) return { ok: false, error: "Some of these nights were just booked. Please choose different dates.", reason: "unavailable" } as const;
-      if (p.smart_pricing) p.demand = await demandBetween(b.ci, b.co);
+      await withNightPricing(p, b.ci, b.co, c);
       const pr = quote(p, b.ci, b.co, b.taxPercent, b.party);
       const guests = b.party.adults + b.party.children + b.party.free_children;
       // Instant bookings wait for payment when payments are on; requests wait for the host first either way.

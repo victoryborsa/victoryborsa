@@ -4,7 +4,9 @@ import { createContext, useContext, useMemo, useState } from "react";
 import { Calendar, addDaysC } from "./Calendar.tsx";
 import { PET_FEE_PER, baseLabel, priceTag, quote, type Party, type PricingInput } from "@/lib/pricing.ts";
 import { UTILITIES, parseServices, servicePrice } from "@/lib/constants.ts";
-import { money } from "@/lib/money.ts";
+import { money, moneyShort } from "@/lib/money.ts";
+import { nightPrice } from "@/lib/smart-pricing.ts";
+import { NightlyRates } from "./NightlyRates.tsx";
 
 type P = PricingInput & { security_deposit_cents?: number; utilities?: string; slug: string; min_nights: number; max_nights: number; booking_mode: "instant" | "request"; children_free_age: number };
 type Ctx = { p: P; today: string; taken: Set<string>; taxPercent: number; ci: string; co: string; party: Party; msg: string; pick: (d: string) => void; clear: () => void; setParty: (p: Party) => void; bookable: boolean };
@@ -62,7 +64,9 @@ export function AvailabilitySection() {
     let canCheckout = false;
     if (choosingCheckout && d > ci) { canCheckout = true; for (let x = ci; x < d; x = addDaysC(x, 1)) if (taken.has(x)) { canCheckout = false; break; } }
     const className = d === ci || d === co ? "sel" : ci && co && d > ci && d < co ? "in" : !past && isTaken ? (canCheckout ? "taken checkout-ok" : "taken") : "";
-    return { disabled: past || (isTaken && !canCheckout), className, note: isTaken ? (canCheckout ? "booked that night, available as check-out day" : "unavailable") : undefined };
+    // Each open night shows its rate (Smart Pricing and nights the host priced by hand included), the same amount checkout charges.
+    const price = !past && !isTaken && !p.monthly_price_cents ? moneyShort(nightPrice(p, d, today)) : undefined;
+    return { disabled: past || (isTaken && !canCheckout), className, price, note: isTaken ? (canCheckout ? "booked that night, available as check-out day" : "unavailable") : undefined };
   };
   return (
     <section id="availability">
@@ -71,8 +75,8 @@ export function AvailabilitySection() {
         {!ci ? "Select your check-in date." : !co ? `Now select your check-out date. Minimum stay: ${p.min_nights} night${p.min_nights > 1 ? "s" : ""}.` : `${nights(ci, co)} nights: ${fmt(ci)} to ${fmt(co)}.`}
       </p>
       {msg && <div className="notice error" role="alert">{msg}</div>}
-      <Calendar today={today} startMonth={ci || today} dayState={dayState} onPick={pick} />
-      <div className="legend cal-legend"><span><i className="lg-sel" />Your dates</span><span><i className="lg-free" />Available</span><span><i className="lg-taken" />Booked / unavailable</span></div>
+      <Calendar today={today} startMonth={ci || today} dayState={dayState} onPick={pick} boxed />
+      <div className="legend cal-legend"><span><i className="lg-sel" />Your dates</span><span><i className="lg-free" />Available</span><span><i className="lg-taken" />Booked / unavailable</span>{!p.monthly_price_cents && <span>Prices are per night</span>}</div>
     </section>
   );
 }
@@ -165,7 +169,7 @@ export function BookingPanel({ paymentNote }: { paymentNote: string }) {
       {pr && !problem && (
         <table className="breakdown">
           <tbody>
-            <tr><td>{baseLabel(pr, money, p)}{p.monthly_price_cents && <div className="hint">All-inclusive monthly rent</div>}{pr.smart && <div className="hint">Nightly prices follow demand in Pittsburgh</div>}{pr.extraGuests > 0 ? <div className="hint">Includes {pr.extraGuests} extra guest{pr.extraGuests > 1 ? "s" : ""}</div> : pr.fewerGuests > 0 && !pr.smart && pr.nightly < pr.baseNightly ? <div className="hint">Smaller-group price</div> : null}</td><td>{money(pr.base)}</td></tr>
+            <tr><td>{baseLabel(pr, money, p)}{p.monthly_price_cents && <div className="hint">All-inclusive monthly rent</div>}{pr.smart && <div className="hint">Nightly prices follow demand in Pittsburgh</div>}<NightlyRates q={pr} />{pr.extraGuests > 0 ? <div className="hint">Includes {pr.extraGuests} extra guest{pr.extraGuests > 1 ? "s" : ""}</div> : pr.fewerGuests > 0 && !pr.smart && pr.nightly < pr.baseNightly ? <div className="hint">Smaller-group price</div> : null}</td><td>{money(pr.base)}</td></tr>
             {pr.discount > 0 && <tr><td>{pr.discountLabel}</td><td>−{money(pr.discount)}</td></tr>}
             {pr.cleaning > 0 && <tr><td>Cleaning fee</td><td>{money(pr.cleaning)}</td></tr>}
             {pr.petFee > 0 && <tr><td>Pet fee ({pr.pets} pet{pr.pets === 1 ? "" : "s"})</td><td>{money(pr.petFee)}</td></tr>}

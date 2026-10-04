@@ -410,6 +410,8 @@ a.mc-bar:hover { filter: brightness(1.08); }
 .mg-num.today.ev { box-shadow: 0 0 0 2px #E5484D, 0 0 0 4px var(--bg); }
 .ev-dot { display: inline-block; width: 12px; height: 12px; border-radius: 999px; box-shadow: inset 0 0 0 2px #E5484D; vertical-align: -2px; margin-right: 4px; }
 .mg-price.smart { color: var(--gold); }
+.mg-price.down { color: var(--ok); }
+.mg-price.set { text-decoration: underline dotted; text-underline-offset: 3px; color: var(--ink); }
 .mg-num.today { align-self: flex-start; margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
 .mg-price { color: var(--muted); font-size: 15px; padding: 0 12px; }
 .mg-link { text-decoration: none; display: block; }
@@ -1426,6 +1428,30 @@ footer .brand-tag { font-size: 8px; }
 .cal button.taken:disabled { background: #FDECEC; color: #B42318; opacity: 1; text-decoration: line-through; text-decoration-thickness: 2px; font-weight: 600; }
 .cal button.taken.checkout-ok { background: linear-gradient(135deg, transparent 50%, #FDECEC 50%); }
 .cal button:disabled:not(.taken):not(.booked-host):not(.blocked-host) { opacity: .35; text-decoration: none; }
+/* Pricing calendars: every day in its own bordered box, with its nightly rate under the date. */
+.cal-boxed .cal { gap: 4px; }
+.cal-boxed .cal button { aspect-ratio: auto; min-height: 60px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 2px; }
+.cal-boxed .cal button:hover:not(:disabled) { outline: 0; border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.cal-boxed .cal button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cal-boxed .cal-n { font-size: 14px; font-weight: 600; line-height: 1; }
+.cal-boxed .cal-p { font-size: 11.5px; line-height: 1; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.cal-boxed .cal button.sel { border-color: var(--accent); }
+.cal-boxed .cal button.sel .cal-p { color: inherit; opacity: .8; }
+.cal-boxed .cal button.in { border-radius: 10px; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.cal-boxed .cal button.in .cal-p { color: var(--ink); }
+.cal-boxed .cal button.taken:disabled { border-color: #F4B4AE; }
+.cal-boxed .cal button:disabled:not(.taken):not(.booked-host):not(.blocked-host) { background: var(--surface-2); }
+.cal-boxed .cal button.booked-host { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }
+.cal-boxed .cal button .cal-p.up { color: var(--gold); }
+.cal-boxed .cal button .cal-p.down { color: var(--ok); }
+.cal-boxed .cal button .cal-p.set { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
+@media (max-width: 480px) {
+  .cal-boxed .cal { gap: 3px; }
+  .cal-boxed .cal button { min-height: 50px; border-radius: 8px; gap: 2px; }
+  .cal-boxed .cal-n { font-size: 13px; }
+  .cal-boxed .cal-p { font-size: 10px; letter-spacing: -.01em; }
+}
 .cal-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 13px; color: var(--muted); }
 .cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .cal-legend i { display: inline-block; width: 16px; height: 16px; border-radius: 4px; }
@@ -1585,3 +1611,29 @@ a.ar-card:hover { border-color: var(--accent); }
   .fin-stats { grid-template-columns: 1fr 1fr; }
   .fin-stats .stat.money b { font-size: 18px; }
 }
+
+/* Checkout and booking panel: each night's rate, folded away until asked for. */
+.nightly-rates { margin-top: 4px; font-size: 13px; }
+.nightly-rates summary { cursor: pointer; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; width: fit-content; }
+.nightly-rates ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; max-height: 220px; overflow-y: auto; }
+.nightly-rates li { display: flex; justify-content: space-between; gap: 12px; padding: 2px 8px 2px 0; }
+
+/* Smart Pricing switch card (listing calendar and the calendar's Settings panel). */
+.sp-card { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: var(--surface); }
+.sp-card.compact { padding: 14px; }
+.sp-card.compact .grid-2 { grid-template-columns: 1fr 1fr; gap: 10px; }
+.sp-switch { display: flex; align-items: center; gap: 12px; cursor: pointer; min-height: 44px; }
+.sp-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.sp-track { flex: none; width: 46px; height: 28px; border-radius: 999px; background: var(--line); position: relative; transition: background .15s; }
+.sp-track i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
+.sp-switch input:checked + .sp-track { background: var(--accent); }
+.sp-switch input:checked + .sp-track i { transform: translateX(18px); }
+.sp-switch input:focus-visible + .sp-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .sp-track, .sp-track i { transition: none; } }
+
+/* Listing calendar: what the picked night costs and why, then price and block tools side by side. */
+.pc-why { margin: 10px 0 0; font-size: 14px; }
+.pc-tools { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 760px) { .pc-tools { grid-template-columns: 1fr 1fr; } }
+.pc-tool { border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.pc-tool h4 { margin: 0 0 4px; font-size: 16px; }

@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { SmartPricingCard, type SmartPricingData } from "./SmartPricingCard.tsx";
+import type { ActionState } from "@/lib/validate.ts";
 
 export type CalSettingsData = {
   id: string; title: string; status: string;
-  base: string; baseUnit: "night" | "month"; smart: { min: string; max: string } | null;
+  base: string; baseUnit: "night" | "month"; smart: { min: string; max: string } | null; sp: SmartPricingData;
   weekly: number; monthly: number;
   fees: { label: string; value: string }[];
   minNights: number; maxNights: number; instant: boolean;
@@ -15,7 +17,7 @@ export type CalSettingsData = {
 const Chevron = () => <svg className="cs-chev" viewBox="0 0 24 24" aria-hidden><path d="M9 6l6 6-6 6" /></svg>;
 
 /** The panel beside one listing's month: its prices and availability at a glance, each card opening the place to change it. */
-export function CalSettings({ d }: { d: CalSettingsData }) {
+export function CalSettings({ d, smartAction }: { d: CalSettingsData; smartAction: (s: ActionState, fd: FormData) => Promise<ActionState> }) {
   const [tab, setTab] = useState<"pricing" | "availability">("pricing");
   const edit = `/host/listings/${d.id}`;
   const pct = d.month.nights ? Math.round((d.month.booked / d.month.nights) * 100) : 0;
@@ -35,6 +37,10 @@ export function CalSettings({ d }: { d: CalSettingsData }) {
           <Link className="cs-card" href={`${edit}#pricing`}>
             <span><span className="cs-k">Base rate</span><b className="cs-big">{d.base}<small> / {d.baseUnit}</small></b>
               {d.smart && <span className="cs-v">Smart pricing on: {d.smart.min} to {d.smart.max}</span>}</span><Chevron />
+          </Link>
+          <SmartPricingCard d={d.sp} action={smartAction} compact />
+          <Link className="cs-card" href={`${edit}/calendar`}>
+            <span><span className="cs-k">Nightly prices</span><span className="cs-v">Set your own price for any night</span></span><Chevron />
           </Link>
           <Link className="cs-card" href={`${edit}#guest-pricing`}>
             <span><span className="cs-k">Extended stay discounts</span><span className="cs-v">Weekly: {d.weekly}%</span><span className="cs-v">Monthly: {d.monthly}%</span></span><Chevron />

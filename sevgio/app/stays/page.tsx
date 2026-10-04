@@ -6,7 +6,7 @@ import { getSettings } from "@/lib/settings.ts";
 import { isIsoDate, fmtShort, todayLocal } from "@/lib/dates.ts";
 import { AMENITY_FILTERS, placeLabel } from "@/lib/constants.ts";
 import { PropertyCard } from "@/components/PropertyCard.tsx";
-import { demandBetween } from "@/lib/demand.ts";
+import { demandBetween, manualPrices } from "@/lib/demand.ts";
 import { SearchBar } from "@/components/SearchBar.tsx";
 import { FilterDrawer } from "@/components/FilterDrawer.tsx";
 import { MapToggle } from "@/components/MapToggle.tsx";
@@ -43,6 +43,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
     monthly: first(sp.monthly) === "1", freeCancel: first(sp.cancel) === "1", kind };
   const [list, cities, settings] = await Promise.all([searchProperties(f), publishedCities(), getSettings()]);
   const demand = ci && list.some(p => p.smart_pricing) ? await demandBetween(ci, co) : undefined;
+  const prices = ci && co ? await manualPrices(list.map(p => p.id), ci, co) : {};
   const activeCount = (f.maxPrice ? 1 : 0) + (f.bedrooms ? 1 : 0) + (f.baths ? 1 : 0) + amen.length + (f.instant ? 1 : 0) + (f.privateBath ? 1 : 0) + (f.monthly ? 1 : 0) + (f.freeCancel ? 1 : 0) + (kind ? 1 : 0);
   const filtersOn = activeCount > 0;
   const clearHref = "/stays?" + new URLSearchParams({ ...(loc && { loc }), ...(ci && { ci, co }), guests: String(guests) });
@@ -153,7 +154,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
           {dateError && <div className="notice warn" style={{ marginBottom: 18 }} role="alert">{dateError}</div>}
           {!ci && !dateError && <div className="notice info" style={{ marginBottom: 18 }}>Add your dates to see only homes that are free, with the total price for your stay.</div>}
           {list.length ? (
-            <div className="cards results-cards">{list.map((p, i) => <PropertyCard key={p.id} p={p} demand={demand} ci={ci} co={co} guests={guests} taxPercent={settings.tax_percent} eager={i < 3} />)}</div>
+            <div className="cards results-cards">{list.map((p, i) => <PropertyCard key={p.id} p={p} demand={demand} prices={prices[p.id]} ci={ci} co={co} guests={guests} taxPercent={settings.tax_percent} eager={i < 3} />)}</div>
           ) : (
             <div className="empty">
               <h3>No stays match your search</h3>

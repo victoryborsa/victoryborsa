@@ -2,8 +2,9 @@ import Link from "next/link";
 import type { User } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
 import { addDays, fmtDate, fmtShort, isIsoDate, nightsBetween, todayLocal } from "@/lib/dates.ts";
-import { demandBetween } from "@/lib/demand.ts";
-import { nightPrice, type Demand } from "@/lib/smart-pricing.ts";
+import { demandBetween, manualPrices } from "@/lib/demand.ts";
+import { nightPrice, priceWhy, type Demand } from "@/lib/smart-pricing.ts";
+import { smartPricingAction } from "@/app/actions/pricing.ts";
 import { AutoSubmit } from "./AutoSubmit.tsx";
 import { CalDetails, type StayDetail } from "./CalDetails.tsx";
 import { extrasOf, partyLabel } from "@/lib/party.ts";
@@ -186,14 +187,14 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
         <noscript><button className="btn btn-ghost btn-sm">Go</button></noscript>
       </form>
       </div>
-      {view !== "arrivals" && Object.values(demand).some(x => x.notable) && <p className="hint mc-legend"><span className="ev-dot" aria-hidden /> Red circle: a game, big event or holiday in Pittsburgh. Hover or tap the date to see it.{selected?.smart_pricing ? " Smart pricing is on: prices in gold are adjusted for demand." : ""}</p>}
+      {view !== "arrivals" && Object.values(demand).some(x => x.notable) && <p className="hint mc-legend"><span className="ev-dot" aria-hidden /> Red circle: a game, big event or holiday in Pittsburgh. Hover or tap the date to see it.{selected?.smart_pricing ? " Smart Pricing is on: prices in gold are raised for demand, in green lowered. Dotted prices are ones you set." : ""}</p>}
 
       {rows.length === 0 ? <div className="empty"><p className="muted">No listings yet.</p></div> : view === "arrivals" ? (
         <ArrivalList stays={listed.filter(s => s.from >= start && s.from < end)} today={today} colorOf={colorOf} empty={`No arrivals in ${period}.`} />
       ) : selected && view === "month" ? (
         <div className="cal-split">
-          <MonthGrid p={selected} res={res} blocks={blocks} start={start} end={end} today={today} demand={demand} />
-          <CalSettings d={await settingsFor(selected, allRes, allBlocks, start, end, today)} />
+          <MonthGrid p={selected} res={res} blocks={blocks} start={start} end={end} today={today} demand={demand} prices={(await manualPrices([selected.id], start, end))[selected.id]} />
+          <CalSettings d={await settingsFor(selected, allRes, allBlocks, start, end, today)} smartAction={smartPricingAction} />
         </div>
       ) : view === "month" ? (
         <>
@@ -437,6 +438,7 @@ async function settingsFor(p: Prop, res: Res[], blocks: Blk[], start: string, en
   return {
     id: p.id, title: p.title, status: p.status,
     base: money(x.monthly_price_cents || p.nightly_price_cents), baseUnit: x.monthly_price_cents ? "month" : "night",
+    sp: { id: p.id, on: p.smart_pricing, min: p.min_price_cents ? String(p.min_price_cents / 100) : "", max: p.max_price_cents ? String(p.max_price_cents / 100) : "", base: money(p.nightly_price_cents), monthly: !!x.monthly_price_cents },
     smart: p.smart_pricing && !x.monthly_price_cents ? { min: money(p.min_price_cents || 0), max: money(p.max_price_cents || 0) } : null,
     weekly: Number(x.weekly_discount_percent), monthly: Number(x.monthly_discount_percent), fees,
     minNights: x.min_nights, maxNights: x.max_nights, instant: x.booking_mode === "instant",
@@ -460,7 +462,7 @@ function MgNum({ d, today, demand }: { d: string; today: string; demand: Demand 
 }
 
 /** One property's month, laid out like a wall calendar: each day shows its price, or who is staying. */
-function MonthGrid({ p, res, blocks, start, end, today, demand }: { p: Prop; res: Res[]; blocks: Blk[]; start: string; end: string; today: string; demand: Demand }) {
+function MonthGrid({ p, res, blocks, start, end, today, demand, prices }: { p: Prop; res: Res[]; blocks: Blk[]; start: string; end: string; today: string; demand: Demand; prices?: Record<string, number> }) {
   type Stay = { key: string; from: string; to: string; cls: string; label: string; href?: string; title: string };
   const stays: Stay[] = [
     ...res.filter(b => b.property_id === p.id || b.property_id === p.parent_id).map(b => ({
@@ -482,11 +484,13 @@ function MonthGrid({ p, res, blocks, start, end, today, demand }: { p: Prop; res
       {Array.from({ length: lead }, (_, i) => <div key={"x" + i} className="mg-blank" />)}
       {dates.map(d => {
         const s = stays.find(x => x.from <= d && d < x.to);
-        const price = nightPrice({ ...p, demand }, d, today);
+        const priced = { ...p, demand, prices };
+        const price = nightPrice(priced, d, today);
+        const tone = prices?.[d] ? " set" : price > p.nightly_price_cents ? " smart" : price < p.nightly_price_cents ? " down" : "";
         const first = s && (s.from === d || d === start || dayLabel(d).getUTCDay() === 0);
         const inner = s ? (
           <span className={`mg-bar ${s.cls}${s.from === d ? " s" : ""}${addDays(d, 1) === s.to ? " e" : ""}`} title={s.title}>{first ? s.label : "\u00a0"}</span>
-        ) : <span className={`mg-price${p.smart_pricing && price !== p.nightly_price_cents ? " smart" : ""}`}>{money(price)}</span>;
+        ) : <span className={`mg-price${tone}`} data-price={d} title={priceWhy(priced, d, today)}>{money(price)}</span>;
         return (
           <div key={d} role="gridcell" className={`mg-day${d < today ? " past" : ""}${s ? " booked" : ""}`}>
             <MgNum d={d} today={today} demand={demand} />

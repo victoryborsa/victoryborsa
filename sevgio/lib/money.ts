@@ -7,3 +7,8 @@ export function toCents(input: string): number | null {
   if (!Number.isFinite(n) || n < 0) return null;
   return Math.round(n * 100);
 }
+/** A nightly rate short enough for a calendar box: "$110", "$1.3k". Whole dollars. */
+export function moneyShort(cents: number): string {
+  const d = Math.round(cents / 100);
+  return d >= 1000 ? `$${(Math.round(d / 100) / 10).toString()}k` : `$${d}`;
+}

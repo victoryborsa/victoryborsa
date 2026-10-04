@@ -6,18 +6,20 @@ const pad = (n: number) => String(n).padStart(2, "0");
 export const addDaysC = (s: string, n: number) => new Date(Date.parse(s + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
 const label = (s: string) => new Date(s + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
 
-export type DayState = { disabled: boolean; className: string; note?: string };
+/** `price`: the nightly rate to print inside the day's box (e.g. "$110"). */
+export type DayState = { disabled: boolean; className: string; note?: string; price?: string; priceTone?: "up" | "down" | "set" };
 
-/** Two-month calendar. The parent decides how each day looks and what a click does. */
-export function Calendar({ today, startMonth, dayState, onPick, maxMonthsAhead = 18 }: {
-  today: string; startMonth?: string; dayState: (d: string) => DayState; onPick: (d: string) => void; maxMonthsAhead?: number;
+/** Two-month calendar. The parent decides how each day looks and what a click does.
+ *  `boxed`: each day gets its own bordered box, with room for its nightly rate (the pricing calendars). */
+export function Calendar({ today, startMonth, dayState, onPick, maxMonthsAhead = 18, boxed = false }: {
+  today: string; startMonth?: string; dayState: (d: string) => DayState; onPick: (d: string) => void; maxMonthsAhead?: number; boxed?: boolean;
 }) {
   const [month, setMonth] = useState((startMonth || today).slice(0, 7));
   const shift = (m: string, n: number) => { let [y, mo] = m.split("-").map(Number); mo += n; while (mo < 1) { mo += 12; y--; } while (mo > 12) { mo -= 12; y++; } return `${y}-${pad(mo)}`; };
   const minMonth = today.slice(0, 7), maxMonth = shift(minMonth, maxMonthsAhead - 1);
   const months = [month, shift(month, 1)];
   return (
-    <div className="cal-wrap">
+    <div className={`cal-wrap${boxed ? " cal-boxed" : ""}`}>
       {months.map((m, idx) => {
         const [y, mo] = m.split("-").map(Number);
         const startDow = (new Date(Date.UTC(y, mo - 1, 1)).getUTCDay() + 6) % 7;
@@ -36,8 +38,9 @@ export function Calendar({ today, startMonth, dayState, onPick, maxMonthsAhead =
                 const ds = `${y}-${pad(mo)}-${pad(i + 1)}`;
                 const st = dayState(ds);
                 return (
-                  <button key={ds} type="button" data-day={ds} className={st.className} disabled={st.disabled} onClick={() => onPick(ds)} aria-label={label(ds) + (st.note ? ", " + st.note : "")}>
-                    {i + 1}
+                  <button key={ds} type="button" data-day={ds} className={st.className} disabled={st.disabled} onClick={() => onPick(ds)}
+                    aria-label={label(ds) + (st.price ? `, ${st.price} a night` : "") + (st.note ? ", " + st.note : "")}>
+                    {boxed ? <><span className="cal-n">{i + 1}</span>{st.price && <span className={`cal-p${st.priceTone ? " " + st.priceTone : ""}`} data-price={ds}>{st.price}</span>}</> : i + 1}
                   </button>
                 );
               })}

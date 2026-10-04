@@ -1,5 +1,5 @@
 import { eachNight, nightsBetween, todayLocal } from "./dates.ts";
-import { nightPrice, type SmartListing } from "./smart-pricing.ts";
+import { nightPrice, pricedByNight, type SmartListing } from "./smart-pricing.ts";
 import { parseServices } from "./constants.ts";
 
 export type PricingInput = SmartListing & {
@@ -16,6 +16,7 @@ export type Quote = {
   baseNightly: number;     // listing's normal nightly price
   nightly: number;         // nightly price for this group (the average when smart pricing changes it night by night)
   smart: boolean;          // smart pricing set the nightly prices
+  byNight: { date: string; cents: number }[]; // each night's calendar price (before guest-count changes) when nights can differ, else empty
   months: number;          // monthly rentals: whole months in the stay (0 otherwise)
   extraDays: number;       // monthly rentals: days beyond the whole months, charged at the monthly rent ÷ 30
   extraGuests: number;     // guests above base occupancy (paying an extra-guest fee)
@@ -43,8 +44,10 @@ export function quote(p: PricingInput, ci: string, co: string, taxPercent: numbe
   if (p.monthly_price_cents) return monthlyQuote(p, p.monthly_price_cents, nights, taxPercent, party);
   const forGroup = (rate: number) => Math.round(rate * (1 - fewerPct / 100)) + extraGuests * (p.extra_guest_fee_cents || 0);
   const smart = !!p.smart_pricing && nights > 0;
-  const base = smart ? eachNight(ci, co).reduce((n, d) => n + forGroup(nightPrice(p, d, today)), 0) : forGroup(p.nightly_price_cents) * nights;
-  const nightly = smart ? Math.round(base / nights) : forGroup(p.nightly_price_cents);
+  // Smart Pricing or nights priced by hand: every night is priced on its own, exactly as the calendar shows it.
+  const byNight = pricedByNight(p) && nights > 0 ? eachNight(ci, co).map(date => ({ date, cents: nightPrice(p, date, today) })) : [];
+  const base = byNight.length ? byNight.reduce((n, x) => n + forGroup(x.cents), 0) : forGroup(p.nightly_price_cents) * nights;
+  const nightly = byNight.length ? Math.round(base / nights) : forGroup(p.nightly_price_cents);
   const monthly = Number(p.monthly_discount_percent || 0), weekly = Number(p.weekly_discount_percent || 0);
   const pct = nights >= 28 && monthly > 0 ? monthly : nights >= 7 ? weekly : 0;
   const discountLabel = pct ? `${nights >= 28 && monthly > 0 ? "Monthly" : "Weekly"} discount (${pct}%)` : "";
@@ -61,7 +64,7 @@ export function quote(p: PricingInput, ci: string, co: string, taxPercent: numbe
     return { key: x.key, name: x.name, per: x.per, price_cents: x.price_cents, qty, total: x.price_cents * qty };
   });
   const extrasTotal = extras.reduce((n, x) => n + x.total, 0);
-  return { nights, baseNightly: p.nightly_price_cents, nightly, smart, months: 0, extraDays: 0, extraGuests, fewerGuests, base, discount, discountLabel, cleaning, pets, petFee, extras, extrasTotal, tax,
+  return { nights, baseNightly: p.nightly_price_cents, nightly, smart, byNight, months: 0, extraDays: 0, extraGuests, fewerGuests, base, discount, discountLabel, cleaning, pets, petFee, extras, extrasTotal, tax,
     total: base - discount + cleaning + petFee + extrasTotal + tax };
 }
 
@@ -98,7 +101,7 @@ function monthlyQuote(p: PricingInput, monthly: number, nights: number, taxPerce
     return { key: x.key, name: x.name, per: x.per, price_cents: x.price_cents, qty, total: x.price_cents * qty };
   });
   const extrasTotal = extras.reduce((n, x) => n + x.total, 0);
-  return { nights, baseNightly: p.nightly_price_cents, nightly: nights > 0 ? Math.round(base / nights) : 0, smart: false, months, extraDays, extraGuests: 0, fewerGuests: 0,
+  return { nights, baseNightly: p.nightly_price_cents, nightly: nights > 0 ? Math.round(base / nights) : 0, smart: false, byNight: [], months, extraDays, extraGuests: 0, fewerGuests: 0,
     base, discount: 0, discountLabel: "", cleaning, pets, petFee, extras, extrasTotal, tax, total: base + cleaning + petFee + extrasTotal + tax };
 }
 
@@ -113,5 +116,6 @@ export function baseLabel(q: Quote, money: (c: number) => string, p: { monthly_p
     const parts = [q.months ? `${money(p.monthly_price_cents)} × ${q.months} month${q.months === 1 ? "" : "s"}` : "", q.extraDays ? `${q.extraDays} extra day${q.extraDays === 1 ? "" : "s"}` : ""].filter(Boolean);
     return parts.join(" + ");
   }
-  return `${money(q.nightly)}${q.smart && q.nights > 1 ? " avg" : ""} × ${q.nights} night${q.nights === 1 ? "" : "s"}`;
+  const varies = new Set(q.byNight.map(x => x.cents)).size > 1;
+  return `${money(q.nightly)}${varies ? " avg" : ""} × ${q.nights} night${q.nights === 1 ? "" : "s"}`;
 }

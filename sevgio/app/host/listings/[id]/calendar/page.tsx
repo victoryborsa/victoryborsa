@@ -6,6 +6,10 @@ import { siteUrl } from "@/lib/email.ts";
 import { HostCalendar } from "@/components/HostCalendar.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { CopyField } from "@/components/CopyField.tsx";
+import { SmartPricingCard } from "@/components/SmartPricingCard.tsx";
+import { demandBetween, manualPrices } from "@/lib/demand.ts";
+import { money } from "@/lib/money.ts";
+import { nightPriceAction, smartPricingAction } from "@/app/actions/pricing.ts";
 import { addBlockAction, addFeedAction, removeBlockAction, removeFeedAction, syncFeedAction } from "@/app/actions/host.ts";
 
 export default async function CalendarPage({ params }: { params: Promise<{ id: string }> }) {
@@ -23,10 +27,15 @@ export default async function CalendarPage({ params }: { params: Promise<{ id: s
   const blocked = blocks.flatMap(b => eachNight(b.start_date, b.end_date < until ? b.end_date : until));
   const hostBlocks = blocks.filter(b => b.source === "host");
   const exportUrl = `${siteUrl()}/api/ical/${p.ical_token}.ics`;
+  // Each night's rate on the calendar: Smart Pricing (with why) and the nights you priced yourself.
+  const [demand, prices] = await Promise.all([p.smart_pricing ? demandBetween(today, until) : Promise.resolve(undefined), manualPrices([p.id], today, until)]);
+  const pricing = { nightly_price_cents: p.nightly_price_cents, smart_pricing: p.smart_pricing, min_price_cents: p.min_price_cents, max_price_cents: p.max_price_cents, demand, prices: prices[p.id] };
+  const dollars = (c: number | null) => (c ? String(c / 100) : "");
 
   return (
     <div className="stack" style={{ gap: 20 }}>
-      <HostCalendar propertyId={p.id} today={today} booked={booked} blocked={blocked} action={addBlockAction} />
+      <SmartPricingCard action={smartPricingAction} d={{ id: p.id, on: p.smart_pricing, min: dollars(p.min_price_cents), max: dollars(p.max_price_cents), base: money(p.nightly_price_cents), monthly: !!p.monthly_price_cents }} />
+      <HostCalendar propertyId={p.id} today={today} booked={booked} blocked={blocked} pricing={pricing} monthly={!!p.monthly_price_cents} action={addBlockAction} priceAction={nightPriceAction} />
 
       <div className="box">
         <h3>Your blocked dates</h3>

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { propertyBySlug, photosFor, photoUrl, linkedListings } from "@/lib/queries.ts";
 import { PropertyCard } from "@/components/PropertyCard.tsx";
-import { demandBetween, demandForClient } from "@/lib/demand.ts";
+import { demandBetween, demandForClient, manualPrices } from "@/lib/demand.ts";
 import { unavailableNights } from "@/lib/bookings.ts";
 import { currentUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
@@ -99,6 +99,8 @@ export default async function StayPage({ params, searchParams }: Params) {
     listingStats(p.id, (await cookies()).get(VISITOR_COOKIE)?.value),
   ]);
   const demand = p.smart_pricing || linked.rooms.some(r => r.smart_pricing) ? demandForClient(await demandBetween()) : undefined;
+  // Nights the host priced by hand, so the calendar and the price summary match checkout night by night.
+  const prices = await manualPrices([p.id, ...linked.rooms.map(r => r.id)], today, addDays(today, 560));
   const hostFirst = (host?.name || "your host").split(" ")[0];
   const bookable = p.status === "published";
   const beds = parseBeds(p.beds_detail);
@@ -135,7 +137,7 @@ export default async function StayPage({ params, searchParams }: Params) {
           base_occupancy: p.base_occupancy, extra_guest_fee_cents: p.extra_guest_fee_cents, fewer_guest_discount_percent: Number(p.fewer_guest_discount_percent), weekly_discount_percent: Number(p.weekly_discount_percent), monthly_discount_percent: Number(p.monthly_discount_percent), children_free_age: p.children_free_age,
           pets_allowed: p.amenities.includes("pets"), pet_fee_cents: p.pet_fee_cents, pet_fee_per: p.pet_fee_per,
           services: parseServices(p.services), security_deposit_cents: p.security_deposit_cents, utilities: p.utilities || "",
-          monthly_price_cents: p.monthly_price_cents, smart_pricing: p.smart_pricing, min_price_cents: p.min_price_cents, max_price_cents: p.max_price_cents, demand }}
+          monthly_price_cents: p.monthly_price_cents, smart_pricing: p.smart_pricing, min_price_cents: p.min_price_cents, max_price_cents: p.max_price_cents, demand, prices: prices[p.id] }}
         today={today}
         unavailable={taken}
         taxPercent={settings.tax_percent}
@@ -217,7 +219,7 @@ export default async function StayPage({ params, searchParams }: Params) {
               <section>
                 <h2>Just need a room?</h2>
                 <p className="muted">You can also book individual rooms in this home. When a room is booked, the whole home isn't available for those dates.</p>
-                <div className="cards">{linked.rooms.map(r => <PropertyCard key={r.id} p={r} demand={demand} taxPercent={settings.tax_percent} ci={sp.ci} co={sp.co} guests={Number(sp.guests) || undefined} />)}</div>
+                <div className="cards">{linked.rooms.map(r => <PropertyCard key={r.id} p={r} demand={demand} prices={prices[r.id]} taxPercent={settings.tax_percent} ci={sp.ci} co={sp.co} guests={Number(sp.guests) || undefined} />)}</div>
               </section>
             )}
             {parseServices(p.services).length > 0 && (

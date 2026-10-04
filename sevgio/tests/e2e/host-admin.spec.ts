@@ -63,8 +63,8 @@ test("host edits price, blocks dates, uploads a photo, and imports nothing unsaf
 
   await page.goto("/host/listings");
   await page.locator("tr", { hasText: "Jim Thorpe" }).getByRole("link", { name: "Calendar" }).click();
-  await page.getByLabel("First blocked night").fill(iso(80));
-  await page.getByLabel("Open again from").fill(iso(83));
+  await page.getByLabel("First night").fill(iso(80));
+  await page.getByLabel("Day after the last night").fill(iso(83));
   await page.getByLabel("Note (only you see this)").fill("Chimney sweep");
   await page.getByRole("button", { name: "Block these dates" }).click();
   await expect(page.getByText(/Guests can't book those nights/)).toBeVisible();
@@ -825,12 +825,17 @@ test("smart pricing: prices follow events between the minimum and maximum; event
   await expect(page.getByText(/Red circle: a game, big event or holiday/)).toBeVisible();
   await signOut(page);
 
-  // Monday + Tuesday (game) nights: $100 + $130.
+  // Monday (the night before the game, +15%) + Tuesday (game, +30%) nights: $115 + $130.
   const mon = new Date(Date.parse(d + "T12:00:00Z") - 86_400_000).toISOString().slice(0, 10);
   await page.goto(`/stays/downtown-state-college-condo?ci=${mon}&co=${new Date(Date.parse(d + "T12:00:00Z") + 86_400_000).toISOString().slice(0, 10)}&adults=2`);
   const panel = page.locator("#book table.breakdown");
-  await expect(panel).toContainText("$115 avg × 2 nights");
-  await expect(panel).toContainText("$230");
+  await expect(panel).toContainText("$122.50 avg × 2 nights");
+  await expect(panel).toContainText("$245");
+  // The guest's calendar shows the same nightly rates checkout charges.
+  await expect(page.locator(`#availability [data-price="${d}"]`)).toHaveText("$130");
+  await expect(page.locator(`#availability [data-price="${mon}"]`)).toHaveText("$115");
+  await panel.getByText("See each night's rate").click();
+  await expect(panel.locator(".nightly-rates li")).toHaveText([/\$115/, /\$130/]);
   await sql("UPDATE properties SET smart_pricing = false WHERE id = $1", [p.id]);
 });
 
