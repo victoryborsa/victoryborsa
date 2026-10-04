@@ -514,10 +514,12 @@ test("admin manages guide places: draft, preview, publish, reorder, sponsor with
   await expect(eat.locator(".gp-card").first().locator(".gp-sponsor-badge")).toHaveCount(0);
   await page.goto(editUrl);
   await page.getByRole("button", { name: "Publish changes" }).first().click();
+  // Wait until it's saved before leaving the page, or the publish can be cut off.
+  await expect(page.getByText("“Yinzer Coffee Co.” is on the guide.")).toBeVisible();
   await page.goto("/pittsburgh");
   await expect(eat.locator(".gp-card").first().locator(".gp-sponsor-badge")).toHaveText("Sponsored");
   // The sponsorship ends by itself after its end date.
-  await sql("UPDATE guide_places SET sponsor_end = current_date - 1 WHERE name = 'Yinzer Coffee Co.'");
+  await sql("UPDATE guide_places SET sponsor_end = $1 WHERE name = 'Yinzer Coffee Co.'", [iso(-1)]); // yesterday in Pittsburgh time, like the site
   await page.reload();
   await expect(eat.locator(".gp-card").first().locator(".gp-sponsor-badge")).toHaveCount(0);
   // Hide, then delete.
