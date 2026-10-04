@@ -1422,3 +1422,59 @@ footer .brand-tag { font-size: 8px; }
 .lease-actions .btn { width: 100%; border-radius: 999px; }
 .lease-panel .hint a { font-weight: 700; color: var(--gold) !important; }
 .fact b.fact-word { font-size: clamp(13px, 3.4vw, 22px); white-space: nowrap; }
+
+/* Reservations calendar: filters, timeline lanes, arrivals list */
+.cal-filters { max-width: none; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; }
+.cal-field { display: flex; flex-direction: column; gap: 4px; min-width: 170px; flex: 0 1 240px; }
+.cal-field-l { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.cal-filters .cal-prop-ph { align-self: flex-end; }
+/* Each listing's own color, as an edge beside its name. */
+.mc-name, .mc-name.room { box-shadow: inset 4px 0 0 var(--pc, transparent); }
+.mc-tl .mc-bar { margin: 0 2px; min-width: 0; }
+.mc-tl .mc-bar.in { margin-left: 3px; }
+.mc-tl .mc-bar.out { margin-right: 3px; }
+.mc-tl.mc-v-week { grid-auto-rows: minmax(58px, auto); }
+.mc-tl.mc-v-week .mc-bar { height: 46px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; padding: 0 10px; }
+.mc-tl.mc-v-week .mc-day small { font-size: 11px; }
+.mc-bar-name { font-size: 13px; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.mc-bar-meta { font-size: 11px; font-weight: 500; opacity: .85; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.mc-bar.cx, .mg-tag.cx { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); text-decoration: line-through; }
+.mc-key.cx { background: var(--surface-2); border: 1px solid var(--muted); }
+/* Day view: everyone at a listing that day, one line each. */
+.mc-daylist { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 6px 0; }
+.mc-daylist .mc-bar { height: 30px; align-self: stretch; }
+.mc-daylist .mc-leave { align-self: flex-start; margin: 0 8px; }
+/* Month: every booking is listed in its day (no "+ more"); arrivals are marked. */
+.mg-tag .ar-dot { margin-right: 5px; }
+.mg-tag.arr { box-shadow: inset 3px 0 0 currentColor; }
+/* Arrivals: one group per check-in day, earliest first. */
+.ar { display: flex; flex-direction: column; gap: 22px; }
+.ar-date { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--f-body); font-size: 15px; font-weight: 600; color: var(--muted); padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+.ar-count { margin-left: auto; font-size: 13px; font-weight: 500; }
+.ar-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.ar-card { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 14px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: inset 5px 0 0 var(--pc, var(--line)); color: var(--ink); text-decoration: none; height: 100%; }
+a.ar-card:hover { border-color: var(--accent); }
+.ar-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ar-guest { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ar-status.ch-airbnb, .ar-status.ch-bookingcom, .ar-status.ch-vrbo, .ar-status.ch-furnished, .ar-status.ch-other { color: #fff; }
+.ar-status.ch-airbnb { background: #E0484E; } .ar-status.ch-bookingcom { background: #003B95; } .ar-status.ch-vrbo { background: #3D8BE8; }
+.ar-status.ch-furnished { background: #E8891A; } .ar-status.ch-other { background: #6B7280; }
+.ar-place { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.ar-dot { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--pc, var(--muted)); }
+.ar-dates { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.ar-k { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin-right: 2px; }
+.ar-meta { font-size: 13px; color: var(--muted); }
+.mc-phone-list { display: none; }
+@media (max-width: 640px) {
+  /* Phones get a readable list grouped by arrival day instead of the wide boards. */
+  .mc-phone-list { display: flex; }
+  .mc-phone-list.ar-empty { display: flex; }
+  .mc-wrap-tl, .mg-all { display: none; }
+  .ar-list { grid-template-columns: 1fr; }
+  .cal-field { flex: 1 1 100%; }
+  .cal-filters .cal-prop-ph { display: none; }
+}
+.mg-all .mg-tag { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 15px; padding: 2px 6px; }
+/* Fit the week to the screen; it scrolls sideways (names stay put) only when days get too narrow. */
+.mc.mc-tl.mc-v-week { min-width: 0; width: max(100%, calc(200px + 7 * 96px)); }
+@media (max-width: 640px) { .mc.mc-tl.mc-v-week { width: max(100%, calc(64px + 7 * 96px)); } }

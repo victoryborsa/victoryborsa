@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth.ts";
-import { MultiCalendar } from "@/components/MultiCalendar.tsx";
+import { MultiCalendar, type CalParams } from "@/components/MultiCalendar.tsx";
 
-export default async function AdminCalendar({ searchParams }: { searchParams: Promise<{ start?: string; days?: string; property?: string }> }) {
+export default async function AdminCalendar({ searchParams }: { searchParams: Promise<CalParams> }) {
   const u = await requireUser(["admin"], "/admin/calendar");
   return <MultiCalendar u={u} basePath="/admin/calendar" sp={await searchParams} />;
 }
