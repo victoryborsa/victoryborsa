@@ -1,6 +1,8 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { checkConflicts } from "@/lib/conflicts.ts";
 import { one } from "@/lib/db.ts";
 import { requireUser } from "@/lib/auth.ts";
 import { createBooking, setBookingStatus, type Booking, type PaymentChoice } from "@/lib/bookings.ts";
@@ -63,6 +65,7 @@ export async function createBookingAction(_: ActionState, fd: FormData): Promise
     return { error: result.error };
   }
   const { booking: b } = result;
+  after(checkConflicts);
   if (phone !== u.phone && !u.phone) await one("UPDATE users SET phone = $2 WHERE id = $1", [u.id, phone]);
   const info = (await bookingInfo(b.id))!;
   revalidatePath(`/stays/${slug}`);
@@ -107,6 +110,7 @@ export async function guestCancelAction(_: ActionState, fd: FormData): Promise<A
   if (!b) return { error: "We couldn't find that booking on your account." };
   const updated = await setBookingStatus(b.id, ["pending", "awaiting_payment", "confirmed"], "cancelled", { cancelledBy: "guest" });
   if (!updated) return { error: "This booking can't be cancelled anymore." };
+  after(checkConflicts);
   await sendEmail(b.host_email, `Cancelled: ${b.title}, ${fmtDate(b.check_in)}`, `${b.guest_name} cancelled booking ${b.code} (${fmtDate(b.check_in)} - ${fmtDate(b.check_out)}). The dates are open again.`);
   await sendEmail(u.email, `You cancelled booking ${b.code}`, `Your booking at ${b.title} for ${fmtDate(b.check_in)} - ${fmtDate(b.check_out)} is cancelled.`);
   redirect(`/trips/${b.code}?msg=guestcancelled`);
