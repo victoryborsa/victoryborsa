@@ -5,7 +5,7 @@ import { compactRef, likeSafe, nameWords, paymentLabel, sortResults, stayPhase, 
 
 type BookingHit = { id: string; code: string; guest_name: string; guest_email: string; title: string; check_in: string; check_out: string; guests: number; status: string;
   payment_method: string | null; payment_status: string; total_cents: number; paid_cents: number; created_at: string };
-type ChannelHit = { id: string; channel: string; external_ref: string; guest_name: string; title: string; check_in: string; check_out: string; guests: number | null; status: string;
+type ChannelHit = { id: string; eff_kind: string; channel: string; external_ref: string; guest_name: string; title: string; check_in: string; check_out: string; guests: number | null; status: string;
   received_payout_cents: number | null; created_at: string };
 
 /**
@@ -36,9 +36,9 @@ export async function searchReservations(term: string, today: string, opts: { ho
       [words, ref, host, any],
     ),
     q<ChannelHit>(
-      `SELECT c.id, c.channel, c.external_ref, c.guest_name, p.title, c.check_in::text, c.check_out::text, c.guests, c.status, c.received_payout_cents, c.created_at
+      `SELECT c.id, c.eff_kind, c.channel, c.external_ref, c.guest_name, p.title, c.check_in::text, c.check_out::text, c.guests, c.status, c.received_payout_cents, c.created_at
        FROM channel_stays c JOIN properties p ON p.id = c.property_id
-       WHERE c.eff_kind = 'reservation' AND ($3::uuid IS NULL OR p.host_id = $3)
+       WHERE c.eff_kind IN ('reservation', 'unknown') AND ($3::uuid IS NULL OR p.host_id = $3)
          AND ($4 OR ${nameCond("c.guest_name", null)} OR ${refCond("c.external_ref")})
        ORDER BY c.check_in DESC LIMIT 300`,
       [words, ref, host, any],
@@ -59,7 +59,8 @@ export async function searchReservations(term: string, today: string, opts: { ho
       const site = channelLabel(c.channel);
       return {
         source: "channel" as const, id: c.id, ref: c.external_ref, guest_name: c.guest_name, guest_email: "", title: c.title, check_in: c.check_in, check_out: c.check_out,
-        guests: c.guests, status: c.status, status_label: c.status === "cancelled" ? "Cancelled" : "Confirmed", status_tone: c.status === "cancelled" ? "danger" as const : "ok" as const,
+        guests: c.guests, status: c.status, status_label: c.status === "cancelled" ? "Cancelled" : c.eff_kind === "unknown" ? "Needs check" : "Confirmed",
+        status_tone: c.status === "cancelled" ? "danger" as const : c.eff_kind === "unknown" ? "warn" as const : "ok" as const,
         pay_label: c.received_payout_cents != null ? "Payout received" : `Paid on ${site}`, pay_tone: c.received_payout_cents != null ? "ok" as const : "neutral" as const,
         phase: stayPhase(c.status, c.check_in, c.check_out, today), href: `/host/bookings/other-sites/${c.id}`, site, created_at: c.created_at,
       };

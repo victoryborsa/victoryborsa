@@ -46,15 +46,20 @@ export default async function HostBookings({ searchParams }: { searchParams: Pro
     params,
   );
 
-  // Reservations from other sites on this person's listings (homes and their rooms). Blocked dates and copies of other bookings are left out.
+  // Reservations from other sites on this person's listings (homes and their rooms), with the same date rules as Sevgio bookings:
+  // Upcoming = checking out today or later, Past = checked out before today. Periods the site didn't label ("unknown", e.g. Booking.com's
+  // "CLOSED - Not available") are included and marked Needs check; dates known to be blocked and copies of another booking are left out.
   const listings = v.platform ? await financeListings(u) : [];
+  const pp: unknown[] = [listings.map(l => l.id)];
+  const at = (val: unknown) => { pp.push(val); return "$" + pp.length; };
+  const pWhere = v.platform ? (v.platform.includes("$T") ? v.platform.replaceAll("$T", at(today)) : v.platform) : "";
+  const pFind = term ? ` AND ${matchSql("c.guest_name", "c.external_ref", at(words), at(ref))}` : "";
   const platform = v.platform && listings.length ? (await q<Omit<PlatformRow, "place"> & { property_id: string }>(
-    `SELECT c.id, c.property_id, c.channel, c.external_ref, c.guest_name, c.guest_name_source, c.check_in::text, c.check_out::text, c.guests, c.status,
+    `SELECT c.id, c.property_id, c.channel, c.external_ref, c.guest_name, c.guest_name_source, c.check_in::text, c.check_out::text, c.guests, c.status, c.eff_kind,
             c.expected_payout_cents, c.received_payout_cents, c.updated_at
-     FROM channel_stays c WHERE c.property_id = ANY($1) AND c.eff_kind = 'reservation' AND ${v.platform.replaceAll("$T", "$2")}
-       ${term ? `AND ${matchSql("c.guest_name", "c.external_ref", "$3", "$4")}` : ""}
+     FROM channel_stays c WHERE c.property_id = ANY($1) AND c.eff_kind IN ('reservation', 'unknown') AND ${pWhere}${pFind}
      ORDER BY c.${ORDER_SQL[v.order]} LIMIT 300`,
-    [listings.map(l => l.id), today, ...(term ? [words, ref] : [])],
+    pp,
   )).map(r => ({ ...r, place: placeName(listings, r.property_id) })) : undefined;
 
   const fresh = await markSeen(rows.filter(r => ["pending", "awaiting_payment", "confirmed"].includes(r.status)).map(r => r.id));
@@ -76,7 +81,8 @@ export default async function HostBookings({ searchParams }: { searchParams: Pro
       <BookingTable fresh={fresh} rows={rows} platform={platform} order={v.order} today={today} back={back} />
       <p className="hint" style={{ marginTop: 10 }}>
         Guest phone numbers and emails are shown only for active bookings.
-        {v.platform && <> Reservations from Airbnb, Booking.com, Vrbo and other sites are included. Their calendar links rarely share the guest&apos;s name, so add it with <b>Add guest name</b>; names you enter are kept when the calendars refresh.</>}
+        {v.platform && <> Reservations from Airbnb, Booking.com, Vrbo and other sites are included. Their calendar links rarely share the guest&apos;s name, so add it with <b>Add guest name</b>; names you enter are kept when the calendars refresh.
+          Booking.com and Vrbo use the same label for reservations and closed dates, so those show <b>Needs check</b> until you say which they are.</>}
       </p>
     </>
   );

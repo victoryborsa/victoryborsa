@@ -6,6 +6,7 @@ import { money } from "@/lib/money.ts";
 import { StatusPill } from "./ui.tsx";
 import { ActionForm, SubmitButton } from "./forms.tsx";
 import { decideBookingAction, markPaidAction } from "@/app/actions/host.ts";
+import { setKindAction } from "@/app/actions/channel.ts";
 
 const METHOD_SHORT: Record<string, string> = { card: "Card", ach: "Bank transfer", zelle: "Zelle", venmo: "Venmo", cash: "Cash + deposit" };
 const PAY_LABEL: Record<string, string> = { none: "-", pending: "Waiting", processing: "Processing", paid: "Paid", deposit_paid: "Deposit paid", failed: "Failed" };
@@ -19,11 +20,12 @@ export type BookingRow = Booking & { title: string; guest_email: string; updated
 
 /** A reservation made on Airbnb, Booking.com, Vrbo or another site, shown in the same list as Sevgio bookings. */
 export type PlatformRow = { id: string; channel: string; external_ref: string; guest_name: string; guest_name_source: string; place: string; check_in: string; check_out: string;
-  guests: number | null; status: string; expected_payout_cents: number | null; received_payout_cents: number | null; updated_at: string };
+  guests: number | null; status: string; eff_kind: string; expected_payout_cents: number | null; received_payout_cents: number | null; updated_at: string };
 
 /** "Staying now", "Checked out" and the like for a reservation from another site. */
 function platformStatus(r: PlatformRow, today: string): { label: string; tone: string } {
   if (r.status === "cancelled") return { label: "Cancelled", tone: "danger" };
+  if (r.eff_kind === "unknown") return { label: "Needs check", tone: "warn" };
   if (r.check_out < today) return { label: "Completed", tone: "neutral" };
   if (r.check_in <= today) return { label: "Staying now", tone: "ok" };
   return { label: "Confirmed", tone: "ok" };
@@ -54,7 +56,20 @@ export function BookingTable({ rows, today, back, showActions = true, fresh, det
                   <td data-label="Listing">{r.place}</td>
                   <td data-label="Guest" style={{ minWidth: 180 }}><GuestNameCell id={r.id} name={r.guest_name} source={r.guest_name_source} site={label} /></td>
                   <td data-label="Dates" style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} - {fmtShort(r.check_out)}<div className="hint">{n} night{n === 1 ? "" : "s"}</div></td>
-                  <td data-label="Status"><span className={`pill ${st.tone}`}>{st.label}</span></td>
+                  <td data-label="Status">
+                    <span className={`pill ${st.tone}`}>{st.label}</span>
+                    {r.eff_kind === "unknown" && r.status === "confirmed" && (
+                      <div className="bk-check">
+                        <div className="hint">{label} didn&apos;t say if this is a guest or closed dates.</div>
+                        {([["reservation", "It's a reservation"], ["blocked", "It's blocked dates"]] as const).map(([k, text]) => (
+                          <form key={k} action={setKindAction}>
+                            <input type="hidden" name="id" value={r.id} /><input type="hidden" name="back" value={back} /><input type="hidden" name="kind" value={k} />
+                            <button className="btn btn-ghost btn-sm">{text}</button>
+                          </form>
+                        ))}
+                      </div>
+                    )}
+                  </td>
                   <td data-label="Guests" className="num">{r.guests ?? <span className="muted">–</span>}</td>
                   <td data-label="Total" className="num">{r.expected_payout_cents == null ? <span className="muted">–</span> : money(r.expected_payout_cents)}{r.expected_payout_cents != null && <div className="hint">Payout</div>}</td>
                   <td data-label="Payment"><span className={`pill ${r.received_payout_cents != null ? "ok" : "neutral"}`}>{r.received_payout_cents != null ? "Payout received" : `Paid on ${label}`}</span></td>

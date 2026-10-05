@@ -15,7 +15,7 @@ type Row = { id: string; property_id: string; channel: string; external_ref: str
   source: string; expected_payout_cents: number | null; received_payout_cents: number | null; rent_cents: number | null; modified_at: string | null };
 
 const WHEN: Record<string, string> = { upcoming: "Upcoming and current", past: "Past", all: "All dates" };
-const KINDS: Record<string, string> = { "": "Reservations", unknown: "Unclear (reservation or closed?)", blocked: "Blocked on the other site", mirror: "Copies of other bookings", cancelled: "Cancelled" };
+const KINDS: Record<string, string> = { "": "Reservations (incl. ones to check)", reservation: "Confirmed reservations only", unknown: "Unclear (reservation or closed?)", blocked: "Blocked on the other site", mirror: "Copies of other bookings", cancelled: "Cancelled" };
 
 /** Every reservation that came from Airbnb, Vrbo, Booking.com or another site, with what's still missing for Finance. */
 export default async function OtherSites({ searchParams }: { searchParams: Promise<{ when?: string; kind?: string; channel?: string; property?: string; needs?: string; msg?: string }> }) {
@@ -33,7 +33,7 @@ export default async function OtherSites({ searchParams }: { searchParams: Promi
     `SELECT id, property_id, channel, external_ref, guest_name, guest_name_source, check_in, check_out, status, kind, eff_kind, source, expected_payout_cents, received_payout_cents, rent_cents, modified_at
      FROM channel_stays WHERE property_id = ANY($1)
        AND ($2 = 'all' OR ($2 = 'upcoming' AND check_out >= $3) OR ($2 = 'past' AND check_out < $3))
-       AND (CASE $4 WHEN 'cancelled' THEN status = 'cancelled' WHEN '' THEN status = 'confirmed' AND eff_kind = 'reservation' ELSE status = 'confirmed' AND eff_kind = $4 END)
+       AND (CASE $4 WHEN 'cancelled' THEN status = 'cancelled' WHEN '' THEN status = 'confirmed' AND eff_kind IN ('reservation', 'unknown') ELSE status = 'confirmed' AND eff_kind = $4 END)
        AND ($5 = '' OR channel = $5)
        AND (NOT $6 OR rent_cents IS NULL OR expected_payout_cents IS NULL)
      ORDER BY check_in ${when === "upcoming" ? "" : "DESC"} LIMIT 500`,
@@ -71,7 +71,7 @@ export default async function OtherSites({ searchParams }: { searchParams: Promi
                   <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} – {fmtShort(r.check_out)}{r.modified_at && <div className="hint">Dates changed {fmtShort(r.modified_at.slice(0, 10))}</div>}</td>
                   <td className="num">{nightsBetween(r.check_in, r.check_out)}</td>
                   <td>{r.status === "cancelled" ? <span className="pill danger">Cancelled</span>
-                    : r.eff_kind === "unknown" ? <span className="pill warn">Unclear</span>
+                    : r.eff_kind === "unknown" ? <span className="pill warn">Needs check</span>
                     : r.eff_kind === "blocked" ? <span className="pill neutral">Blocked</span>
                     : r.eff_kind === "mirror" ? <span className="pill neutral">Copy of another booking</span>
                     : r.check_in <= today && today < r.check_out ? <span className="pill ok">Staying now</span>

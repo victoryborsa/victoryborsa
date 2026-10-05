@@ -122,6 +122,7 @@ export async function setKindAction(fd: FormData) {
   const kind = str(fd, "kind");
   if (r && ["reservation", "blocked"].includes(kind)) await q("UPDATE channel_reservations SET kind = $2, kind_locked = true, updated_at = now() WHERE id = $1", [r.id, kind]);
   revalidatePath("/host/bookings/other-sites");
+  revalidatePath("/host/bookings");
   const back = str(fd, "back", 300);
   if (back.startsWith("/host/")) redirect(back);
 }

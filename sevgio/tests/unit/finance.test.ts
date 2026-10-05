@@ -21,7 +21,10 @@ test("calendar events are told apart by site: reservations, blocked dates, and B
     { kind: "reservation", ref: "HMABCD1234", guest: "" });
   assert.equal(classifyEvent("airbnb", "Airbnb (Not available)").kind, "blocked");
   assert.deepEqual(classifyEvent("vrbo", "Reserved - Jane Doe"), { kind: "reservation", ref: "", guest: "Jane Doe" });
-  assert.equal(classifyEvent("vrbo", "Blocked").kind, "blocked");
+  // Vrbo labels reservations copied from other calendars, and some of its own, "Blocked", so those wait for the host to check.
+  assert.equal(classifyEvent("vrbo", "Blocked").kind, "unknown");
+  assert.equal(classifyEvent("vrbo", "Owner stay").kind, "blocked");
+  assert.equal(classifyEvent("other", "Not available").kind, "unknown");
   assert.equal(classifyEvent("bookingcom", "CLOSED - Not available").kind, "unknown");
   assert.equal(channelOf("Other calendar", "https://www.vrbo.com/icalendar/abc.ics").key, "vrbo");
 });

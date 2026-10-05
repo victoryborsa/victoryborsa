@@ -1758,3 +1758,4 @@ a.ar-card:hover { border-color: var(--accent); }
   .bk-tbl td.num { font-family: inherit; }
   .bk-tbl .gn-form { max-width: none; }
 }
+.bk-check { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; max-width: 220px; }
