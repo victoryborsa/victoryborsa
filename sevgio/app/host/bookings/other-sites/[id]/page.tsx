@@ -6,10 +6,11 @@ import { fmtDate, nightsBetween } from "@/lib/dates.ts";
 import { financeListings, placeName } from "@/lib/finance.ts";
 import { channelLabel } from "@/lib/channels.ts";
 import { Flash } from "@/components/Flash.tsx";
+import { GuestNameCell } from "@/components/GuestNameForm.tsx";
 import { ChannelResForm, type ChannelResValues } from "@/components/ChannelResForm.tsx";
 import { deleteChannelResAction, setManualStatusAction } from "@/app/actions/channel.ts";
 
-type Res = ChannelResValues & { id: string; property_id: string; channel: string; source: string; status: string; eff_kind: string; check_in: string; check_out: string; summary: string;
+type Res = ChannelResValues & { guest_name_source: string; guest_name_at: string | null; guest_name_by_name: string | null; id: string; property_id: string; channel: string; source: string; status: string; eff_kind: string; check_in: string; check_out: string; summary: string;
   feed_name: string | null; first_seen_at: string; last_seen_at: string; modified_at: string | null; cancelled_at: string | null; finance_source: string };
 
 const when = (t: string) => new Date(t).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
@@ -18,7 +19,8 @@ export default async function OtherSiteReservation({ params, searchParams }: { p
   const { id } = await params;
   const u = await requireUser(["host", "admin"], `/host/bookings/other-sites/${id}`);
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
-  const r = await one<Res>(`SELECT c.*, f.name AS feed_name FROM channel_stays c LEFT JOIN ical_feeds f ON f.id = c.feed_id WHERE c.id = $1`, [id]);
+  const r = await one<Res>(`SELECT c.*, f.name AS feed_name, nb.name AS guest_name_by_name FROM channel_stays c LEFT JOIN ical_feeds f ON f.id = c.feed_id
+     LEFT JOIN users nb ON nb.id = c.guest_name_by WHERE c.id = $1`, [id]);
   const listings = await financeListings(u);
   if (!r || !listings.some(l => l.id === r.property_id)) notFound();
   const site = channelLabel(r.channel);
@@ -33,6 +35,12 @@ export default async function OtherSiteReservation({ params, searchParams }: { p
       </div>
       <dl className="sd-rows box">
         <div><dt>Listing</dt><dd>{placeName(listings, r.property_id)}</dd></div>
+        {r.eff_kind === "reservation" && (
+          <div><dt>Guest</dt><dd>
+            <GuestNameCell id={r.id} name={r.guest_name || ""} source={r.guest_name_source} site={site} />
+            {r.guest_name_source === "manual" && r.guest_name_at && <div className="hint">Entered{r.guest_name_by_name ? ` by ${r.guest_name_by_name}` : ""} on {when(r.guest_name_at)}</div>}
+          </dd></div>
+        )}
         <div><dt>Dates</dt><dd>{fmtDate(r.check_in)} → {fmtDate(r.check_out)} · {nightsBetween(r.check_in, r.check_out)} nights</dd></div>
         <div><dt>Came from</dt><dd>{r.source === "ical" ? `${r.feed_name || site} calendar link` : r.source === "import" ? "Payout file import" : "Added by hand"}{r.summary ? ` · "${r.summary}"` : ""}</dd></div>
         {r.source === "ical" && <div><dt>History</dt><dd>First seen {when(r.first_seen_at)} · last seen {when(r.last_seen_at)}{r.modified_at ? ` · dates changed ${when(r.modified_at)}` : ""}{r.cancelled_at ? ` · cancelled ${when(r.cancelled_at)}` : ""}</dd></div>}

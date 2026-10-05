@@ -5,7 +5,7 @@ import { pool, q, one } from "../../lib/db.ts";
 import { addDays, todayLocal } from "../../lib/dates.ts";
 import { parseIcs, type IcsEvent } from "../../lib/ical.ts";
 import { classifyEvent, channelOf, occupancy, unitsOf } from "../../lib/channels.ts";
-import { applyFeedEvents } from "../../lib/channel-res.ts";
+import { applyFeedEvents, feedOwnsName } from "../../lib/channel-res.ts";
 import { guessMapping, parseCsv, parseDate, parseMoney, toRecords, matchListing } from "../../lib/payout-import.ts";
 import { applyPayoutRecords } from "../../lib/payout-apply.ts";
 import { financeListings, occupancyFor, readFilters, reportRows, statementCsv, totals, type Filters } from "../../lib/finance.ts";
@@ -147,6 +147,37 @@ test("rows carried over from older syncs (no calendar ID) are adopted, not dupli
   assert.deepEqual([r.added, r.updated], [0, 1]);
   const [row] = await q<{ ical_uid: string; guest_name: string }>("SELECT ical_uid, guest_name FROM channel_reservations WHERE feed_id = $1", [f2]);
   assert.deepEqual(row, { ical_uid: "vrbo-1", guest_name: "Sam Lee" });
+});
+
+test("guest names: a name typed in by a host survives calendar refreshes; a name the calendar gave follows the calendar", async () => {
+  const f3 = (await one<{ id: string }>("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, 'Vrbo', 'https://example.com/v3.ics') RETURNING id", [soloId]))!.id;
+  const feed = { id: f3, property_id: soloId };
+  const typed = ev(addDays(T, 50), addDays(T, 53), "Reserved", "gn-typed");
+  const named = ev(addDays(T, 54), addDays(T, 56), "Reserved - Ann Park", "gn-named");
+  await applyFeedEvents(feed, "vrbo", [typed, named], T);
+  const name = async (uid: string) => (await one<{ guest_name: string; guest_name_source: string }>(
+    "SELECT guest_name, guest_name_source FROM channel_reservations WHERE feed_id = $1 AND ical_uid = $2", [f3, uid]))!;
+  assert.deepEqual(await name("gn-typed"), { guest_name: "", guest_name_source: "" });
+  assert.deepEqual(await name("gn-named"), { guest_name: "Ann Park", guest_name_source: "feed" });
+  // A host types names in: one where the calendar gave none, one correcting the calendar's.
+  await q("UPDATE channel_reservations SET guest_name = 'Maria Lopez', guest_name_source = 'manual' WHERE feed_id = $1 AND ical_uid = 'gn-typed'", [f3]);
+  await q("UPDATE channel_reservations SET guest_name = 'Annabel Park', guest_name_source = 'manual' WHERE feed_id = $1 AND ical_uid = 'gn-named'", [f3]);
+  // The next refreshes (even with a different name in the calendar, and moved dates) keep both.
+  await applyFeedEvents(feed, "vrbo", [{ ...typed, summary: "Reserved - Someone Else" }, { ...named, end: addDays(T, 57) }], T);
+  await applyFeedEvents(feed, "vrbo", [typed, named], T);
+  assert.deepEqual(await name("gn-typed"), { guest_name: "Maria Lopez", guest_name_source: "manual" });
+  assert.deepEqual(await name("gn-named"), { guest_name: "Annabel Park", guest_name_source: "manual" });
+  // A name that came from the calendar is updated when the calendar changes it.
+  const f4 = (await one<{ id: string }>("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, 'Vrbo', 'https://example.com/v4.ics') RETURNING id", [soloId]))!.id;
+  await applyFeedEvents({ id: f4, property_id: soloId }, "vrbo", [ev(addDays(T, 70), addDays(T, 72), "Reserved - Jo Smith", "gn-feed")], T);
+  await applyFeedEvents({ id: f4, property_id: soloId }, "vrbo", [ev(addDays(T, 70), addDays(T, 72), "Reserved - Joanna Smith", "gn-feed")], T);
+  const [fed] = await q<{ guest_name: string }>("SELECT guest_name FROM channel_reservations WHERE feed_id = $1", [f4]);
+  assert.equal(fed.guest_name, "Joanna Smith");
+  assert.equal(feedOwnsName({ guest_name: "X", guest_name_source: "manual" }), false);
+  assert.equal(feedOwnsName({ guest_name: "X", guest_name_source: "import" }), false);
+  assert.equal(feedOwnsName({ guest_name: "", guest_name_source: "" }), true);
+  await q("DELETE FROM blocks WHERE source IN ($1, $2)", ["ical:" + f3, "ical:" + f4]);
+  await q("DELETE FROM channel_reservations WHERE feed_id IN ($1, $2)", [f3, f4]);
 });
 
 test("Finance: other-site stays count as bookings, missing money says so, whole home and rooms aren't double counted", async () => {

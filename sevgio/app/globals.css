@@ -1730,3 +1730,31 @@ a.ar-card:hover { border-color: var(--accent); }
   .ref-code { color: #000; }
 }
 .pill.info { background: #E8F1FB; color: #1D5FA8; }
+
+/* Guest name on reservations from other sites: the name, where it came from, and a small form to add or correct it. */
+.gn-name { font-weight: 600; }
+.gn-none { color: var(--muted); font-style: italic; }
+.gn-edit { margin-top: 2px; }
+.gn-edit > summary { cursor: pointer; font-size: 13px; list-style: none; }
+.gn-edit > summary::-webkit-details-marker { display: none; }
+.gn-form { margin-top: 6px; gap: 6px; max-width: 240px; }
+.gn-form .input { min-height: 34px; padding: 4px 8px; }
+.bk-search { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.bk-search .input { flex: 1 1 260px; max-width: 420px; }
+.bk-tbl .bk-site { margin-top: 4px; }
+.bk-tbl td[data-label="Listing"] { min-width: 150px; }
+/* Phones: each reservation becomes a card with labelled lines instead of a table that scrolls sideways. */
+@media (max-width: 640px) {
+  .tbl-wrap:has(.bk-tbl) { overflow: visible; background: none; border: 0; }
+  table.bk-tbl { min-width: 0; }
+  .bk-tbl thead { display: none; }
+  .bk-tbl, .bk-tbl tbody, .bk-tbl tr, .bk-tbl td { display: block; width: 100%; }
+  .bk-tbl tr { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 6px 14px; margin-bottom: 12px; }
+  .bk-tbl tr:last-child td, .bk-tbl td { border-bottom: 1px solid var(--line); padding: 8px 0; min-width: 0 !important; }
+  .bk-tbl td:last-child { border-bottom: 0; }
+  .bk-tbl td:empty { display: none; }
+  .bk-tbl td[data-label]:not([data-label=""]) { position: relative; padding-left: 100px; text-align: left; }
+  .bk-tbl td[data-label]:not([data-label=""])::before { content: attr(data-label); position: absolute; left: 0; top: 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+  .bk-tbl td.num { font-family: inherit; }
+  .bk-tbl .gn-form { max-width: none; }
+}

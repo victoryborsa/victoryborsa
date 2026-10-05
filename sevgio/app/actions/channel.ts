@@ -61,10 +61,10 @@ export async function saveChannelResAction(_: ActionState, fd: FormData): Promis
     await q(
       `UPDATE channel_reservations SET rent_cents = $2, cleaning_cents = $3, other_cents = $4, tax_cents = $5, commission_cents = $6, refund_cents = $7,
          expected_payout_cents = $8, received_payout_cents = $9, payout_date = $10, finance_source = CASE WHEN $11 THEN 'manual' ELSE 'none' END,
-         external_ref = $12, guest_name = $13, guests = $14, note = $15, kind = $16, kind_locked = true, updated_at = now()
+         external_ref = $12, ${fd.has("guest_name") ? NAME_SET("$13", "$17") : "guest_name = guest_name, guest_name_by = coalesce(guest_name_by, $17::uuid)"}, guests = $14, note = $15, kind = $16, kind_locked = true, updated_at = now()
        WHERE id = $1`,
       [id, m.values.rent_cents, m.values.cleaning_cents, m.values.other_cents, m.values.tax_cents, m.values.commission_cents, m.values.refund_cents,
-        m.values.expected_payout_cents, m.values.received_payout_cents, payoutDate || null, anyMoney, ref, guest, guests, note, kind]);
+        m.values.expected_payout_cents, m.values.received_payout_cents, payoutDate || null, anyMoney, ref, guest, guests, note, kind, u.id]);
     await logEvent("info", "Finance", `Updated payout details for ${channelLabel(r.channel)} reservation ${ref || r.check_in}`, { reservation: id }, u.id);
     revalidatePath("/host/bookings/other-sites");
     return { ok: "Saved. Finance and statements now use these amounts." };
@@ -79,16 +79,40 @@ export async function saveChannelResAction(_: ActionState, fd: FormData): Promis
     return { error: `A ${channelLabel(channel)} reservation with the code ${ref} is already here. Open it from Other sites to edit it.` };
   const row = await one<Row>(
     `INSERT INTO channel_reservations (property_id, channel, kind, kind_locked, source, external_ref, check_in, check_out, summary, guest_name, guests, note,
-       rent_cents, cleaning_cents, other_cents, tax_cents, commission_cents, refund_cents, expected_payout_cents, received_payout_cents, payout_date, finance_source)
-     VALUES ($1, $2, $3, true, 'manual', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+       rent_cents, cleaning_cents, other_cents, tax_cents, commission_cents, refund_cents, expected_payout_cents, received_payout_cents, payout_date, finance_source,
+       guest_name_source, guest_name_by, guest_name_at)
+     VALUES ($1, $2, $3, true, 'manual', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+       CASE WHEN $8 = '' THEN '' ELSE 'manual' END, CASE WHEN $8 = '' THEN NULL ELSE $21::uuid END, CASE WHEN $8 = '' THEN NULL ELSE now() END)
      RETURNING id, property_id, source, check_in, check_out, status, summary, channel`,
     [pid, channel, kind, ref, ci, co, `${channelLabel(channel)}: ${kind === "blocked" ? "Not available" : "Reserved"}`, guest, guests, note,
       m.values.rent_cents, m.values.cleaning_cents, m.values.other_cents, m.values.tax_cents, m.values.commission_cents, m.values.refund_cents,
-      m.values.expected_payout_cents, m.values.received_payout_cents, payoutDate || null, anyMoney ? "manual" : "none"]);
+      m.values.expected_payout_cents, m.values.received_payout_cents, payoutDate || null, anyMoney ? "manual" : "none", u.id]);
   await syncManualBlock(row!, today);
   await logEvent("info", "Finance", `Added a ${channelLabel(channel)} reservation by hand, ${ci} to ${co}`, { reservation: row!.id }, u.id);
   revalidatePath("/host/bookings/other-sites");
   redirect(`/host/bookings/other-sites/${row!.id}?msg=resadded`);
+}
+
+/**
+ * SQL that sets a reservation's guest name to what a host or admin typed (`val`), marking it as typed in so calendar refreshes keep it.
+ * Saving the same name again changes nothing; clearing it lets the site's calendar fill it in again.
+ */
+const NAME_SET = (val: string, by: string) => `guest_name_source = CASE WHEN ${val} = guest_name THEN guest_name_source WHEN ${val} = '' THEN '' ELSE 'manual' END,
+  guest_name_by = CASE WHEN ${val} = guest_name THEN guest_name_by WHEN ${val} = '' THEN NULL ELSE ${by}::uuid END,
+  guest_name_at = CASE WHEN ${val} = guest_name THEN guest_name_at WHEN ${val} = '' THEN NULL ELSE now() END, guest_name = ${val}`;
+
+/** Lets an authorized host or admin type the guest's name for a reservation the other site's calendar didn't name. */
+export async function setGuestNameAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const u = await requireUser(["host", "admin"]);
+  const r = await manageable(u, str(fd, "id", 40));
+  if (!r) return { error: "You can't manage this reservation." };
+  const name = str(fd, "guest_name", 80).replace(/\s+/g, " ");
+  if (name && !/\p{L}/u.test(name)) return { error: "Type the guest's name using letters." };
+  await q(`UPDATE channel_reservations SET ${NAME_SET("$2", "$3")}, updated_at = now() WHERE id = $1`, [r.id, name, u.id]);
+  await logEvent("info", "Bookings", name ? `Entered the guest name for a ${channelLabel(r.channel)} reservation (${r.check_in} to ${r.check_out})` : `Cleared the guest name for a ${channelLabel(r.channel)} reservation (${r.check_in} to ${r.check_out})`, { reservation: r.id }, u.id);
+  revalidatePath("/host/bookings");
+  revalidatePath("/host/bookings/other-sites");
+  return { ok: name ? "Guest name saved." : "Guest name cleared." };
 }
 
 /** Marks a calendar period from another site as a reservation or as blocked dates (for sites like Booking.com that don't say). */

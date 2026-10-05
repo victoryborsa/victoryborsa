@@ -29,7 +29,7 @@ export function ChannelResForm({ v, listings }: { v: ChannelResValues; listings?
       <div className="grid-2">
         <label className="field"><span>What is it?</span><select className="input" name="kind" defaultValue={v.kind === "blocked" ? "blocked" : "reservation"}><option value="reservation">A guest reservation</option><option value="blocked">Blocked or closed dates (no guest)</option></select></label>
         <label className="field"><span>Confirmation code</span><input className="input mono" name="ref" defaultValue={v.external_ref || ""} placeholder="e.g. HMABC12345" /></label>
-        <label className="field"><span>Guest name</span><input className="input" name="guest_name" defaultValue={v.guest_name || ""} /></label>
+        {!v.id && <label className="field"><span>Guest full name</span><input className="input" name="guest_name" defaultValue={v.guest_name || ""} /></label>}
         <label className="field"><span>Guests</span><input className="input" name="guests" inputMode="numeric" defaultValue={v.guests ?? ""} /></label>
       </div>
       <fieldset className="stack fin-fields">

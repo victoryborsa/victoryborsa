@@ -241,7 +241,7 @@ function Statement({ rows }: { rows: ReportRow[] }) {
             <tr key={r.id} data-res={r.ref || r.id}>
               <td><span className={`pill neutral ch-dot ch-${r.channel}`}>{r.channelLabel}</span>{r.status === "cancelled" && <div className="hint">Cancelled</div>}</td>
               <td className="mono"><Link href={r.href}>{r.ref || (r.needsEntry ? "Add details" : "Open")}</Link></td>
-              <td>{r.place}</td><td>{r.guest_name || <span className="muted">Not shared</span>}</td>
+              <td>{r.place}</td><td>{r.guest_name || <span className="muted">Guest name unavailable</span>}</td>
               <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} – {fmtShort(r.check_out)}</td>
               <td className="num">{r.nights}</td>
               <td className="num"><Amt v={r.rent} /></td><td className="num"><Amt v={r.cleaning} /></td><td className="num"><Amt v={r.other} /></td>

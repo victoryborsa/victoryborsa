@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fmtShort } from "@/lib/dates.ts";
 import { nightsBetween } from "@/lib/dates.ts";
+import { NO_GUEST_NAME } from "./GuestNameForm.tsx";
 import { PHASE_LABEL, PHASE_TONE, type SearchRow } from "@/lib/booking-ref.ts";
 
 /**
@@ -21,7 +22,7 @@ export function ReservationResults({ rows, back }: { rows: SearchRow[]; back: st
                 <b className="mono">{r.ref || "No code"}</b>
                 {r.source === "channel" && <span className="rs-site">{r.site}</span>}
               </span>
-              <span className="rs-guest"><b>{r.guest_name || "Guest name not given"}</b>{r.guest_email && <span className="hint">{r.guest_email}</span>}</span>
+              <span className="rs-guest">{r.guest_name ? <b>{r.guest_name}</b> : <span className="gn-none">{NO_GUEST_NAME}</span>}{r.guest_email && <span className="hint">{r.guest_email}</span>}</span>
               <span className="rs-prop">{r.title}</span>
               <span className="rs-dates">{fmtShort(r.check_in)} - {fmtShort(r.check_out)}, {r.check_out.slice(0, 4)}<span className="hint">{n} night{n === 1 ? "" : "s"}{r.guests ? ` · ${r.guests} guest${r.guests === 1 ? "" : "s"}` : ""}</span></span>
               <span className="rs-status">
