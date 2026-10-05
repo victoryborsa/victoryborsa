@@ -5,7 +5,7 @@ import { compactRef, likeSafe, localNow, nameWords, paymentLabel, sortResults, s
 
 type BookingHit = { id: string; code: string; guest_name: string; guest_email: string; title: string; check_in: string; check_out: string; guests: number; status: string;
   payment_method: string | null; payment_status: string; total_cents: number; paid_cents: number; created_at: string; check_in_time: string; check_out_time: string };
-type ChannelHit = { id: string; eff_kind: string; channel: string; external_ref: string; guest_name: string; title: string; check_in: string; check_out: string; guests: number | null; status: string;
+type ChannelHit = { id: string; eff_kind: string; summary: string; channel: string; external_ref: string; guest_name: string; title: string; check_in: string; check_out: string; guests: number | null; status: string;
   received_payout_cents: number | null; expected_payout_cents: number | null; created_at: string; check_in_time: string; check_out_time: string };
 
 /**
@@ -28,16 +28,16 @@ export async function searchReservations(term: string, today: string, opts: { ho
 
   const [bookings, channel] = await Promise.all([
     q<BookingHit>(
-      `SELECT b.id, b.code, b.guest_name, g.email AS guest_email, p.title, b.check_in::text, b.check_out::text, b.guests, b.status,
+      `SELECT b.id, b.code, b.guest_name, g.email AS guest_email, coalesce(hp.title || ' › ' || p.title, p.title) AS title, b.check_in::text, b.check_out::text, b.guests, b.status,
               b.payment_method, b.payment_status, b.total_cents, b.paid_cents, b.created_at, p.check_in_time, p.check_out_time
-       FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users g ON g.id = b.guest_id
+       FROM bookings b JOIN properties p ON p.id = b.property_id LEFT JOIN properties hp ON hp.id = p.parent_id JOIN users g ON g.id = b.guest_id
        WHERE ($3::uuid IS NULL OR p.host_id = $3) AND ($4 OR ${nameCond("b.guest_name", "g.email")} OR ${refCond("b.code")})
        ORDER BY b.check_in DESC LIMIT 300`,
       [words, ref, host, any],
     ),
     q<ChannelHit>(
-      `SELECT c.id, c.eff_kind, c.channel, c.external_ref, c.guest_name, p.title, c.check_in::text, c.check_out::text, c.guests, c.status, c.received_payout_cents, c.expected_payout_cents, c.created_at, p.check_in_time, p.check_out_time
-       FROM channel_stays c JOIN properties p ON p.id = c.property_id
+      `SELECT c.id, c.eff_kind, c.summary, c.channel, c.external_ref, c.guest_name, coalesce(hp.title || ' › ' || p.title, p.title) AS title, c.check_in::text, c.check_out::text, c.guests, c.status, c.received_payout_cents, c.expected_payout_cents, c.created_at, p.check_in_time, p.check_out_time
+       FROM channel_stays c JOIN properties p ON p.id = c.property_id LEFT JOIN properties hp ON hp.id = p.parent_id
        WHERE c.eff_kind IN ('reservation', 'unknown') AND ($3::uuid IS NULL OR p.host_id = $3)
          AND ($4 OR ${nameCond("c.guest_name", null)} OR ${refCond("c.external_ref")})
        ORDER BY c.check_in DESC LIMIT 300`,
@@ -67,6 +67,7 @@ export async function searchReservations(term: string, today: string, opts: { ho
         pay_label: c.received_payout_cents != null ? "Payout received" : c.expected_payout_cents != null ? "Payout not received" : "Payment status unavailable",
         pay_tone: c.received_payout_cents != null ? "ok" as const : c.expected_payout_cents != null ? "warn" as const : "neutral" as const,
         phase: stayPhase(c.status, c.check_in, c.check_out, today, clock(c)), href: `/host/bookings/other-sites/${c.id}`, site, created_at: c.created_at,
+        channel: { key: c.channel, eff_kind: c.eff_kind, summary: c.summary },
       };
     }),
   ];

@@ -33,7 +33,7 @@ test("payment status in words", () => {
   assert.equal(paymentLabel({ ...b, payment_status: "deposit_paid", paid_cents: 10000 }).label, "Partly paid, $400 due");
   assert.equal(paymentLabel({ ...b, payment_status: "failed" }).label, "Payment failed");
   assert.equal(paymentLabel({ ...b, status: "pending" }).label, "Not due yet");
-  assert.equal(paymentLabel({ ...b, payment_method: null, payment_status: "none" }).label, "Paid to host directly");
+  assert.equal(paymentLabel({ ...b, payment_method: null, payment_status: "none" }).label, "Payment status unavailable");
   assert.equal(paymentLabel({ ...b, status: "cancelled" }).label, "Not paid");
 });
 

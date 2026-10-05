@@ -63,7 +63,8 @@ export function paymentLabel(b: PayFields): { label: string; tone: "ok" | "warn"
   if (b.payment_status === "failed") return { label: "Payment failed", tone: "danger" };
   if (b.paid_cents > 0) return { label: `Partly paid, ${money(balance)} due`, tone: "warn" };
   if (["cancelled", "declined", "expired"].includes(b.status)) return { label: "Not paid", tone: "neutral" };
-  if (!b.payment_method) return { label: b.status === "pending" ? "Not due yet" : "Paid to host directly", tone: "neutral" };
+  // No payment was taken or recorded through Sevgio, so it can't be shown as paid.
+  if (!b.payment_method) return { label: b.status === "pending" ? "Not due yet" : "Payment status unavailable", tone: "neutral" };
   if (b.status === "pending") return { label: "Not due yet", tone: "neutral" };
   return { label: "Waiting for payment", tone: "warn" };
 }
@@ -87,6 +88,8 @@ export type SearchRow = {
   href: string;
   site: string;
   created_at: string;
+  /** Reservations from other sites: what the host may still need to settle (unconfirmed dates, missing reference or name). */
+  channel?: { key: string; eff_kind: string; summary: string };
 };
 
 const PHASE_ORDER: Record<Phase, number> = { current: 0, upcoming: 1, past: 2, cancelled: 3 };

@@ -134,7 +134,7 @@ export async function setKindAction(fd: FormData) {
   revalidatePath("/host/bookings/other-sites");
   revalidatePath("/host/bookings");
   const back = str(fd, "back", 300);
-  if (back.startsWith("/host/")) redirect(back);
+  if (back.startsWith("/host/") || back.startsWith("/admin/")) redirect(back);
 }
 
 /** Cancels or reinstates a reservation entered by hand. Ones from calendar links follow the other site. */

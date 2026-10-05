@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { fmtShort } from "@/lib/dates.ts";
 import { nightsBetween } from "@/lib/dates.ts";
-import { NO_GUEST_NAME } from "./GuestNameForm.tsx";
+import { DetailsCell, NO_GUEST_NAME } from "./GuestNameForm.tsx";
+import { Badge } from "./Badge.tsx";
+import { setKindAction } from "@/app/actions/channel.ts";
 import { PHASE_LABEL, PHASE_TONE, type SearchRow } from "@/lib/booking-ref.ts";
 
 /**
@@ -19,7 +21,7 @@ export function ReservationResults({ rows, back }: { rows: SearchRow[]; back: st
           <li key={r.source + r.id}>
             <Link className="rs-row" href={href} data-ref={r.ref || undefined}>
               <span className="rs-ref">
-                <b className="mono">{r.ref || "No code"}</b>
+                {r.ref ? <b className="mono">{r.ref}</b> : <b className="rs-noref">No reference</b>}
                 {r.source === "channel" && <span className="rs-site">{r.site}</span>}
               </span>
               <span className="rs-guest">{r.guest_name ? <b>{r.guest_name}</b> : <span className="gn-none">{NO_GUEST_NAME}</span>}{r.guest_email && <span className="hint">{r.guest_email}</span>}</span>
@@ -32,6 +34,23 @@ export function ReservationResults({ rows, back }: { rows: SearchRow[]; back: st
               <span className="rs-pay"><span className={`pill ${r.pay_tone}`}>{r.pay_label}</span></span>
               <span className="rs-go" aria-hidden>›</span>
             </Link>
+            {r.channel && r.status === "confirmed" && (r.channel.eff_kind === "unknown" || !r.ref || !r.guest_name) && (
+              <div className="rs-fix">
+                {r.channel.eff_kind === "unknown" && (
+                  <div className="rs-fix-q">
+                    <Badge tone="warn" icon="question">Unconfirmed</Badge>
+                    <span className="hint">{r.site} marks these dates “{r.channel.summary || "unavailable"}”, the same as dates you closed. Is a guest staying?</span>
+                    {([["reservation", "Yes, a guest reservation"], ["blocked", "No, dates I closed"]] as const).map(([k, text]) => (
+                      <form key={k} action={setKindAction}>
+                        <input type="hidden" name="id" value={r.id} /><input type="hidden" name="back" value={back} /><input type="hidden" name="kind" value={k} />
+                        <button className="btn btn-ghost btn-sm">{text}</button>
+                      </form>
+                    ))}
+                  </div>
+                )}
+                {(!r.ref || !r.guest_name) && <DetailsCell id={r.id} channel={r.channel.key} site={r.site} name={r.guest_name} refCode={r.ref} />}
+              </div>
+            )}
           </li>
         );
       })}

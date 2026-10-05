@@ -137,4 +137,32 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     }
     await signOut(page);
   });
+
+  test("admin Bookings search shows the same open questions, with the fixes right under each result", async ({ page }) => {
+    sync(feeds.bdc, ics([...BDC.map(e => e[0] === "bdc-1@booking.com" ? [e[0], U + 21, U + 24, e[3]] as typeof e : e), ["bdc-3@booking.com", U + 60, U + 62, "CLOSED - Not available"]]));
+    await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+    await page.goto("/admin/bookings?when=upcoming");
+    const item = page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "Unconfirmed" });
+    await expect(item).toHaveCount(1);
+    await expect(item).toContainText("No reference");
+    await expect(item).toContainText("Booking.com marks these dates “CLOSED - Not available”");
+    await expect(item).toContainText("Missing reference and guest name");
+    await item.getByRole("button", { name: "Yes, a guest reservation" }).click();
+    await expect(page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "Unconfirmed" })).toHaveCount(0);
+    const open = page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "Missing reference and guest name" });
+    await expect(open).toHaveCount(1);
+    await open.getByText("Add details").click();
+    await open.getByLabel("Guest full name").fill("Tomas Berg");
+    await open.getByLabel("Booking.com reference").fill("4455998877");
+    await open.getByRole("button", { name: "Save details" }).click();
+    await expect(page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "Missing reference and guest name" })).toHaveCount(0);
+    await page.goto("/admin/bookings?q=berg");
+    await expect(page.locator(".rs-list li", { hasText: "4455998877" })).toContainText("Tomas Berg");
+    await expect(page.locator(".rs-list li", { hasText: "4455998877" })).not.toContainText("Missing");
+    if (process.env.GN_SHOTS) {
+      await page.goto("/admin/bookings?when=upcoming");
+      await page.screenshot({ path: `${process.env.GN_SHOTS}/computer-admin-upcoming.png`, fullPage: true });
+    }
+    await signOut(page);
+  });
 });
