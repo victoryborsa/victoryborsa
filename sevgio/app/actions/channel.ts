@@ -1,6 +1,8 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { checkConflicts } from "@/lib/conflicts.ts";
 import { one, q } from "@/lib/db.ts";
 import { requireUser, type User } from "@/lib/auth.ts";
 import { str, type ActionState } from "@/lib/validate.ts";
@@ -88,6 +90,7 @@ export async function saveChannelResAction(_: ActionState, fd: FormData): Promis
       m.values.rent_cents, m.values.cleaning_cents, m.values.other_cents, m.values.tax_cents, m.values.commission_cents, m.values.refund_cents,
       m.values.expected_payout_cents, m.values.received_payout_cents, payoutDate || null, anyMoney ? "manual" : "none", u.id]);
   await syncManualBlock(row!, today);
+  after(checkConflicts);
   await logEvent("info", "Finance", `Added a ${channelLabel(channel)} reservation by hand, ${ci} to ${co}`, { reservation: row!.id }, u.id);
   revalidatePath("/host/bookings/other-sites");
   redirect(`/host/bookings/other-sites/${row!.id}?msg=resadded`);
@@ -131,6 +134,7 @@ export async function setKindAction(fd: FormData) {
   const r = await manageable(u, str(fd, "id", 40));
   const kind = str(fd, "kind");
   if (r && ["reservation", "blocked"].includes(kind)) await q("UPDATE channel_reservations SET kind = $2, kind_locked = true, updated_at = now() WHERE id = $1", [r.id, kind]);
+  after(checkConflicts);
   revalidatePath("/host/bookings/other-sites");
   revalidatePath("/host/bookings");
   const back = str(fd, "back", 300);
@@ -145,6 +149,7 @@ export async function setManualStatusAction(fd: FormData) {
   if (!r || r.source === "ical" || !["confirmed", "cancelled"].includes(status)) return;
   await q("UPDATE channel_reservations SET status = $2, cancelled_at = CASE WHEN $2 = 'cancelled' THEN now() END, updated_at = now() WHERE id = $1", [r.id, status]);
   await syncManualBlock({ ...r, status }, todayLocal());
+  after(checkConflicts);
   revalidatePath(`/host/bookings/other-sites/${r.id}`);
 }
 
@@ -154,6 +159,7 @@ export async function deleteChannelResAction(fd: FormData) {
   if (!r || r.source === "ical") return;
   await q("DELETE FROM blocks WHERE source = $1", ["res:" + r.id]);
   await q("DELETE FROM channel_reservations WHERE id = $1", [r.id]);
+  after(checkConflicts);
   await logEvent("info", "Finance", `Deleted a ${channelLabel(r.channel)} reservation entered by hand (${r.check_in} to ${r.check_out})`, {}, u.id);
   redirect("/host/bookings/other-sites?msg=resdeleted");
 }

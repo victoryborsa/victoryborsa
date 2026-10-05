@@ -12,7 +12,7 @@ const securityHeaders = [
 
 const config: NextConfig = {
   poweredByHeader: false,
-  serverExternalPackages: ["sharp", "pg"],
+  serverExternalPackages: ["sharp", "pg", "web-push"],
   experimental: { serverActions: { bodySizeLimit: "25mb" } },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

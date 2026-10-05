@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { checkConflicts } from "@/lib/conflicts.ts";
 import { one, q, tx } from "@/lib/db.ts";
 import { requireUser, safeNext, type User } from "@/lib/auth.ts";
 import { withMsg } from "@/components/Flash.tsx";
@@ -524,6 +525,7 @@ export async function decideBookingAction(_: ActionState, fd: FormData): Promise
     if (note.length < 5) return { error: "Add a short reason for the guest. It's included in the cancellation email." };
     const r = await setBookingStatus(b.id, ["pending", "awaiting_payment", "confirmed"], "cancelled", { cancelledBy: u.role === "admin" ? "admin" : "host", hostNote: note });
     if (!r) return { error: "This booking is already cancelled or finished." };
+    after(checkConflicts);
     await sendEmail(b.guest_email, `Your booking was cancelled: ${b.title}`, `We're sorry. Your booking ${b.code} at ${b.title} for ${dates} has been cancelled.\n\nReason: ${note}\n\nPlease contact us if you have questions: ${siteUrl()}/contact`);
     await logEvent("warn", "Bookings", `Booking ${b.code} cancelled by ${u.role}`, { reason: note }, u.id);
     redirect(withMsg(back, "cancelled"));

@@ -6,9 +6,11 @@ import { logEvent } from "./log.ts";
 import { todayLocal } from "./dates.ts";
 import { channelOf } from "./channels.ts";
 import { applyFeedEvents, type FeedResult } from "./channel-res.ts";
+import { checkConflicts } from "./conflicts.ts";
 
-/** Downloads an Airbnb/Vrbo/Booking.com calendar and updates that feed's reservations and blocked dates. Also used by the scheduled job. */
-export async function syncFeed(feedId: string): Promise<{ count: number; error?: string; result?: FeedResult }> {
+/** Downloads an Airbnb/Vrbo/Booking.com calendar and updates that feed's reservations and blocked dates. Also used by the scheduled job.
+ *  Then checks for double bookings and alerts right away (the hourly job checks once after all calendars instead: `checkAfter: false`). */
+export async function syncFeed(feedId: string, opts: { checkAfter?: boolean } = {}): Promise<{ count: number; error?: string; result?: FeedResult }> {
   const f = await one<{ id: string; property_id: string; name: string; url: string }>("SELECT id, property_id, name, url FROM ical_feeds WHERE id = $1", [feedId]);
   if (!f) return { count: 0, error: "Calendar link not found." };
   try {
@@ -23,6 +25,7 @@ export async function syncFeed(feedId: string): Promise<{ count: number; error?:
     if (r.clashes.length) await logEvent("warn", "Calendar sync", `${f.name} has dates that overlap Sevgio bookings`, { feed: f.id, clashes: r.clashes });
     if (r.kept) await logEvent("warn", "Calendar sync", `${f.name}: ${r.kept}`, { feed: f.id });
     if (r.changed || r.cancelled) await logEvent("info", "Calendar sync", `${f.name}: ${r.added} new, ${r.changed} changed dates, ${r.cancelled} cancelled`, { feed: f.id, property: f.property_id });
+    if (opts.checkAfter !== false) await checkConflicts();
     return { count: events.filter(e => !e.cancelled).length, result: r };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

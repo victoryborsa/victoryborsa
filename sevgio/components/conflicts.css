@@ -1,0 +1,125 @@
+/* Double bookings: dashboard notice, conflict list, and the review page.
+   Plan: Sevgio's black and gold stays the frame; red is spent only on the clash itself (the hatched nights and the status chip),
+   amber on "no longer overlapping", green on resolved. Every status carries an icon and words, never color alone. */
+:root {
+  --cf-red: #B42318; --cf-red-soft: #FEF3F2; --cf-red-line: #F4C7C2;
+  --cf-amber: #8A5300; --cf-amber-soft: #FFF6DF; --cf-amber-line: #F2D597;
+  --cf-green: #146C3A; --cf-green-soft: #EDF8F1;
+  --cf-night: #101820;
+}
+
+/* Notice at the top of every dashboard page. Hidden on the conflict pages themselves. */
+.cf-banner { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 20px; padding: 14px 16px; border-radius: 14px;
+  background: var(--cf-night); color: #FFFFFF; box-shadow: 0 6px 18px rgba(16, 24, 32, .18); border-left: 6px solid #F04438; }
+.cf-banner.calm { background: var(--cf-amber-soft); color: var(--cf-night); border-left-color: #E0A100; box-shadow: none; }
+.cf-banner-ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: #F04438; color: #FFFFFF; flex: none; }
+.cf-banner.calm .cf-banner-ic { background: #FFE3A3; color: var(--cf-amber); }
+.cf-banner-text { display: grid; gap: 2px; flex: 1 1 260px; min-width: 0; }
+.cf-banner-text b { font-family: var(--f-display); font-size: 17px; letter-spacing: -0.01em; }
+.cf-banner-text span { font-size: 14px; opacity: .86; }
+.cf-banner .cf-banner-btn { color: var(--accent-ink) !important; }
+.dash-main:has(.cf-page) .cf-banner { display: none; }
+
+/* Status chips: icon + words. */
+.cf-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; line-height: 1.2; border: 1px solid transparent; white-space: nowrap; }
+.cf-chip.red { background: var(--cf-red-soft); color: var(--cf-red); border-color: var(--cf-red-line); }
+.cf-chip.amber { background: var(--cf-amber-soft); color: var(--cf-amber); border-color: var(--cf-amber-line); }
+.cf-chip.ok { background: var(--cf-green-soft); color: var(--cf-green); border-color: #BFE3CD; }
+.cf-missing { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-style: italic; font-family: var(--f-body); }
+
+/* Booking-site colors (same as the calendar). */
+.cf-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; background: #8A939B; }
+.ch-sevgio.cf-dot, .cf-bar.ch-sevgio { background: #FFB612; }
+.ch-airbnb.cf-dot, .cf-bar.ch-airbnb { background: #E0484E; }
+.ch-bookingcom.cf-dot, .cf-bar.ch-bookingcom { background: #003B95; }
+.ch-vrbo.cf-dot, .cf-bar.ch-vrbo { background: #3D8BE8; }
+.ch-furnished.cf-dot, .cf-bar.ch-furnished { background: #E8891A; }
+
+.cf-page { display: grid; gap: 18px; }
+.cf-head { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.cf-head > div { max-width: 760px; display: grid; gap: 6px; }
+.cf-check { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.cf-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.cf-tabs a { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; text-decoration: none; font-weight: 700; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.cf-tabs a[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.cf-count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-grid; place-items: center; background: #F04438; color: #FFFFFF; font-size: 12px; }
+
+.cf-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; }
+.cf-grid-review { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+@media (max-width: 1100px) { .cf-grid, .cf-grid-review { grid-template-columns: minmax(0, 1fr); } }
+.cf-list { display: grid; gap: 16px; }
+.cf-side { display: grid; gap: 16px; }
+.cf-box { border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 12px; background: var(--surface); }
+.cf-box h3 { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 17px; }
+
+/* A conflict in the list: a ticket with a red edge while it's live. */
+.cf-card { position: relative; border: 1px solid var(--line); border-radius: 16px; padding: 18px 18px 18px 22px; display: grid; gap: 12px; background: var(--surface); overflow: hidden; }
+.cf-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 6px; background: #F04438; }
+.cf-card.calm::before { background: #E0A100; }
+.cf-card.done::before { background: #3BA96B; }
+.cf-card-top { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.cf-card-title { color: var(--ink); font-size: 19px; }
+.cf-card-sum { font-weight: 600; }
+.cf-pair { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cf-pair li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 14px; }
+.cf-num { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--cf-night); color: #FFFFFF; font-weight: 800; font-family: var(--f-mono); flex: none; }
+.cf-num.sm { width: 22px; height: 22px; border-radius: 6px; font-size: 12px; }
+
+/* Both stays on one date line. The shared nights are hatched red; a too-short changeover is a red line. */
+.cf-strip { margin: 0; display: grid; gap: 6px; }
+.cf-lanes { position: relative; display: grid; gap: 6px; padding: 8px 0; border-radius: 10px; background: repeating-linear-gradient(90deg, transparent 0 calc(100% / 14 - 1px), var(--line) calc(100% / 14 - 1px) calc(100% / 14)), var(--surface-2); }
+.cf-lane { position: relative; height: 34px; }
+.cf-bar { position: absolute; top: 0; bottom: 0; border-radius: 8px; display: flex; align-items: center; padding: 0 10px; min-width: 6px; color: #FFFFFF; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+.cf-bar.ch-sevgio { color: var(--cf-night); }
+.cf-bar-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cf-bar-label .cf-dot { display: none; }
+.cf-clash { position: absolute; top: 0; bottom: 0; z-index: 1; pointer-events: none; border-inline: 2px solid var(--cf-red);
+  background: repeating-linear-gradient(135deg, rgba(180, 35, 24, .30) 0 6px, rgba(180, 35, 24, .08) 6px 12px); }
+.cf-gapmark { position: absolute; top: -2px; bottom: -2px; z-index: 1; width: 4px; margin-left: -2px; background: var(--cf-red); border-radius: 2px; }
+.cf-axis { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cf-axis-clash { color: var(--cf-red); text-align: center; }
+
+/* Review page */
+.cf-review-head { display: grid; gap: 8px; justify-items: start; }
+.cf-lede { font-size: 17px; font-weight: 600; max-width: 760px; }
+.cf-stays { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 760px) { .cf-stays { grid-template-columns: minmax(0, 1fr); } }
+.cf-stay { border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 14px; align-content: start; background: var(--surface); }
+.cf-stay-head { display: flex; gap: 12px; align-items: flex-start; }
+.cf-stay-site { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 18px; }
+.cf-stay-place { color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cf-tag { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); }
+.cf-facts { margin: 0; display: grid; gap: 10px; }
+.cf-facts > div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; }
+.cf-facts dt { color: var(--muted); font-size: 14px; }
+.cf-facts dd { margin: 0; overflow-wrap: anywhere; }
+.cf-sync { display: flex; gap: 8px; font-size: 13px; color: var(--muted); padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }
+.cf-sync svg { flex: none; margin-top: 2px; }
+.cf-open { justify-self: start; }
+.cf-resolve fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+.cf-resolve legend { font-weight: 700; margin-bottom: 6px; }
+.cf-radio { display: flex; gap: 10px; align-items: center; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.cf-radio:has(input:checked) { border-color: var(--cf-night); box-shadow: inset 0 0 0 1px var(--cf-night); }
+.cf-radio input { appearance: auto; -webkit-appearance: radio; width: 18px; height: 18px; min-height: 0; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; flex: none; accent-color: var(--cf-night); color-scheme: light; }
+
+.cf-empty { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 40px 20px; border: 1px dashed var(--line); border-radius: 16px; color: var(--cf-green); }
+.cf-empty b { color: var(--ink); font-size: 17px; }
+.cf-alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 14px; }
+.cf-alerts li { display: flex; gap: 10px; }
+.cf-alerts svg { flex: none; margin-top: 2px; }
+.cf-warn-text { color: var(--cf-amber); font-weight: 600; }
+.cf-push { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: var(--surface-2); }
+.cf-push-head { display: flex; gap: 10px; align-items: flex-start; }
+.cf-push-head svg { flex: none; }
+.cf-push[data-state="on"] .cf-push-head svg { color: var(--cf-green); }
+.cf-feeds, .cf-turn { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 14px; }
+.cf-feeds li { display: grid; gap: 2px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.cf-feeds li:last-child { border-bottom: 0; padding-bottom: 0; }
+.cf-feeds li > span:first-child { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.cf-feed-ok { color: var(--cf-green); }
+.cf-feed-bad { color: var(--cf-red); }
+.cf-turn-form { display: grid !important; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.cf-turn-form label { display: grid; gap: 0; min-width: 0; }
+.cf-turn-form select { width: auto; min-height: 40px; padding-block: 6px; }
+.cf-turn-form .notice { grid-column: 1 / -1; }
+@media (max-width: 480px) { .cf-turn-form { grid-template-columns: minmax(0, 1fr) auto; } .cf-turn-form label { grid-column: 1 / -1; } .cf-facts > div { grid-template-columns: 90px minmax(0, 1fr); } }
