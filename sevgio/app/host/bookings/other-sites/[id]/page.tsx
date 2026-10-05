@@ -6,11 +6,11 @@ import { fmtDate, nightsBetween } from "@/lib/dates.ts";
 import { financeListings, placeName } from "@/lib/finance.ts";
 import { channelLabel } from "@/lib/channels.ts";
 import { Flash } from "@/components/Flash.tsx";
-import { GuestNameCell } from "@/components/GuestNameForm.tsx";
+import { DetailsCell, GuestCell } from "@/components/GuestNameForm.tsx";
 import { ChannelResForm, type ChannelResValues } from "@/components/ChannelResForm.tsx";
 import { deleteChannelResAction, setManualStatusAction } from "@/app/actions/channel.ts";
 
-type Res = ChannelResValues & { guest_name_source: string; guest_name_at: string | null; guest_name_by_name: string | null; id: string; property_id: string; channel: string; source: string; status: string; eff_kind: string; check_in: string; check_out: string; summary: string;
+type Res = ChannelResValues & { guest_name_source: string; phone_last4: string; feed_detail: string; ref_source: string; guest_name_at: string | null; guest_name_by_name: string | null; id: string; property_id: string; channel: string; source: string; status: string; eff_kind: string; check_in: string; check_out: string; summary: string;
   feed_name: string | null; first_seen_at: string; last_seen_at: string; modified_at: string | null; cancelled_at: string | null; finance_source: string };
 
 const when = (t: string) => new Date(t).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
@@ -37,12 +37,19 @@ export default async function OtherSiteReservation({ params, searchParams }: { p
         <div><dt>Listing</dt><dd>{placeName(listings, r.property_id)}</dd></div>
         {r.eff_kind === "reservation" && (
           <div><dt>Guest</dt><dd>
-            <GuestNameCell id={r.id} name={r.guest_name || ""} source={r.guest_name_source} site={site} />
+            <GuestCell name={r.guest_name || ""} source={r.guest_name_source} site={site} phone={r.phone_last4} />
             {r.guest_name_source === "manual" && r.guest_name_at && <div className="hint">Entered{r.guest_name_by_name ? ` by ${r.guest_name_by_name}` : ""} on {when(r.guest_name_at)}</div>}
           </dd></div>
         )}
         <div><dt>Dates</dt><dd>{fmtDate(r.check_in)} → {fmtDate(r.check_out)} · {nightsBetween(r.check_in, r.check_out)} nights</dd></div>
+        {r.eff_kind === "reservation" && <div><dt>Details</dt><dd><DetailsCell id={r.id} channel={r.channel} site={site} name={r.guest_name || ""} refCode={r.external_ref || ""} /></dd></div>}
         <div><dt>Came from</dt><dd>{r.source === "ical" ? `${r.feed_name || site} calendar link` : r.source === "import" ? "Payout file import" : "Added by hand"}{r.summary ? ` · "${r.summary}"` : ""}</dd></div>
+        {r.source === "ical" && (
+          <div><dt>What {site} sent</dt><dd>
+            <div className="feed-raw"><b>Title:</b> {r.summary || "(empty)"}{r.feed_detail ? <><br /><b>Description:</b> {r.feed_detail}</> : <><br /><b>Description:</b> (none)</>}</div>
+            <div className="hint">Exactly what the {site} calendar link contains for this stay, refreshed with every sync. Anything not here has to come from a payout file or be typed in.</div>
+          </dd></div>
+        )}
         {r.source === "ical" && <div><dt>History</dt><dd>First seen {when(r.first_seen_at)} · last seen {when(r.last_seen_at)}{r.modified_at ? ` · dates changed ${when(r.modified_at)}` : ""}{r.cancelled_at ? ` · cancelled ${when(r.cancelled_at)}` : ""}</dd></div>}
       </dl>
       {r.source === "ical" && <p className="hint">The dates follow the {site} calendar. To change or cancel this stay, do it on {site}; Sevgio picks it up at the next refresh.</p>}

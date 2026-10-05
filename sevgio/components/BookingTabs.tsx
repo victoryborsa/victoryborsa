@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const TABS = [["upcoming", "Upcoming", "/host/bookings?view=upcoming"], ["requests", "Requests", "/host/bookings?view=requests"], ["past", "Past", "/host/bookings?view=past"],
+const TABS = [["upcoming", "Upcoming", "/host/bookings?view=upcoming"], ["staying", "Staying now", "/host/bookings?view=staying"], ["requests", "Requests", "/host/bookings?view=requests"], ["past", "Past", "/host/bookings?view=past"],
   ["cancelled", "Cancelled & declined", "/host/bookings?view=cancelled"], ["other-sites", "Other sites", "/host/bookings/other-sites"]] as const;
 
 /** The tabs above the host's bookings: Sevgio bookings by status, and reservations from other sites. */

@@ -118,3 +118,21 @@ test("an email address finds that guest's bookings", async () => {
   const rows = await searchReservations("MARY.JONES@ref.test", T);
   assert.ok(rows.length >= 3 && rows.every(r => r.guest_email === "mary.jones@ref.test"));
 });
+
+test("stay timing uses the listing's local check-in and check-out times", async () => {
+  const { clockMinutes, localNow } = await import("../../lib/booking-ref.ts");
+  assert.equal(clockMinutes("3:00 pm", 0), 900);
+  assert.equal(clockMinutes("11 AM", 0), 660);
+  assert.equal(clockMinutes("12:30 am", 0), 30);
+  assert.equal(clockMinutes("15:45", 0), 945);
+  assert.equal(clockMinutes("noon-ish", 600), 600);
+  const T = "2026-10-06", times = { checkInTime: "4:00 pm", checkOutTime: "10:00 am" };
+  // Arrival day: upcoming until 4 pm, then staying.
+  assert.equal(stayPhase("confirmed", T, "2026-10-09", T, { minutes: 15 * 60 + 59, ...times }), "upcoming");
+  assert.equal(stayPhase("confirmed", T, "2026-10-09", T, { minutes: 16 * 60, ...times }), "current");
+  // Departure day: staying until 10 am, then past.
+  assert.equal(stayPhase("confirmed", "2026-10-03", T, T, { minutes: 9 * 60 + 59, ...times }), "current");
+  assert.equal(stayPhase("confirmed", "2026-10-03", T, T, { minutes: 10 * 60, ...times }), "past");
+  // Pittsburgh time, not the server's: 02:30 UTC on Oct 6 is still the evening of Oct 5 there.
+  assert.deepEqual(localNow("America/New_York", new Date("2026-10-06T02:30:00Z")), { date: "2026-10-05", minutes: 22 * 60 + 30 });
+});

@@ -4,12 +4,12 @@ import type { Metadata } from "next";
 import { requireUser, safeNext } from "@/lib/auth.ts";
 import { one, q } from "@/lib/db.ts";
 import { expireStaleRequests, type Booking } from "@/lib/bookings.ts";
-import { fmtDate, todayLocal } from "@/lib/dates.ts";
+import { fmtDate } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
 import { partyLabel } from "@/lib/party.ts";
 import { mailUrl, telUrl } from "@/lib/links.ts";
 import { METHOD_LABEL } from "@/lib/payment-rules.ts";
-import { PHASE_LABEL, PHASE_TONE, stayPhase } from "@/lib/booking-ref.ts";
+import { PHASE_LABEL, PHASE_TONE, localNow, stayPhase } from "@/lib/booking-ref.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { StatusPill } from "@/components/ui.tsx";
 import { CopyButton } from "@/components/CopyButton.tsx";
@@ -44,8 +44,8 @@ export default async function AdminReservation({ params, searchParams }: { param
   const payments = await q<Pay>(
     `SELECT pm.method, pm.amount_cents, pm.status, pm.note, pm.created_at, u.name AS recorded_by_name
      FROM payments pm LEFT JOIN users u ON u.id = pm.recorded_by WHERE pm.booking_id = $1 ORDER BY pm.created_at`, [b.id]);
-  const today = todayLocal();
-  const phase = stayPhase(b.status, b.check_in, b.check_out, today);
+  const now = localNow(), today = now.date;
+  const phase = stayPhase(b.status, b.check_in, b.check_out, today, { minutes: now.minutes, checkInTime: b.check_in_time, checkOutTime: b.check_out_time });
   const back = safeNext(sp.back, "/admin/bookings");
   const self = `/admin/bookings/${b.code}${sp.back ? `?back=${encodeURIComponent(back)}` : ""}`;
   const canPay = ["awaiting_payment", "confirmed"].includes(b.status) && b.paid_cents < b.total_cents && b.payment_status !== "processing"

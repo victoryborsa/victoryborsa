@@ -23,6 +23,7 @@ const AIRBNB = [
   ["air-1@airbnb.com", U + 5, U + 8, "Reserved", "Reservation URL: https://www.airbnb.com/hosting/reservations/details/HMPLAT0001\\nPhone Number (Last 4 Digits): 4321"],
   ["air-2@airbnb.com", U + 30, U + 32, "Airbnb (Not available)"],
   ["air-3@airbnb.com", P, P + 3, "Reserved", "Reservation URL: https://www.airbnb.com/hosting/reservations/details/HMPLAT0002"],
+  ["air-4@airbnb.com", -2, 3, "Reserved", "Reservation URL: https://www.airbnb.com/hosting/reservations/details/HMPLAT0003"],
 ] as [string, number, number, string, string?][];
 const VRBO = [
   ["vrbo-1", U + 10, U + 13, "Reserved - Chris Vale"],
@@ -66,14 +67,28 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Platform Test House › Rose Room");
     await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Confirmed");
     await expect(row(page, "vrbo", "Chris Vale")).toContainText("Confirmed");
-    await expect(row(page, "vrbo", "Needs check")).toHaveCount(1); // the one labelled "Blocked" (its copy of the Airbnb stay is left out)
-    await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Needs check");
-    await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Guest name unavailable");
+    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Phone ends in 4321");
+    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Missing guest name");
+    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Payment status unavailable");
+    await expect(row(page, "vrbo", "Unconfirmed")).toHaveCount(1); // the one labelled "Blocked" (its copy of the Airbnb stay is left out)
+    await expect(row(page, "vrbo", "Unconfirmed")).toContainText("Vrbo marks these dates “Blocked”");
+    const bdc = row(page, "bookingcom", "Platform Test House");
+    await expect(bdc).toContainText("Unconfirmed");
+    await expect(bdc).toContainText("Booking.com marks these dates “CLOSED - Not available”");
+    await expect(bdc).toContainText("Guest name unavailable");
+    await expect(bdc).toContainText("Missing reference and guest name");
+    await expect(bdc).toContainText("Booking.com's calendar link never sends these.");
+    await expect(bdc).toContainText("Upcoming");
+    await expect(bdc).not.toContainText("Paid on");
+    // The stay going on now is under Staying now, not Upcoming.
+    await expect(row(page, "airbnb", "HMPLAT0003")).toHaveCount(0);
     await expect(page.locator("tbody tr", { hasText: "Platform Test House" })).toHaveCount(4);
     if (process.env.GN_SHOTS) await page.screenshot({ path: `${process.env.GN_SHOTS}/computer-all-platforms-before-check.png`, fullPage: true });
 
+    await page.getByRole("tab", { name: "Staying now" }).click();
+    await expect(row(page, "airbnb", "HMPLAT0003")).toContainText("Staying now");
     await page.getByRole("tab", { name: "Past" }).click();
-    await expect(row(page, "airbnb", "HMPLAT0002")).toContainText("Completed");
+    await expect(row(page, "airbnb", "HMPLAT0002")).toContainText("Checked out");
     await expect(row(page, "vrbo", "Platform Test House")).toHaveCount(1);
     await expect(row(page, "bookingcom", "Platform Test House")).toHaveCount(1);
     await expect(page.locator("tbody tr", { hasText: "Platform Test House" })).toHaveCount(3);
@@ -87,10 +102,17 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
   test("the host sorts the unclear ones; changes and cancellations update without duplicates", async ({ page }) => {
     await signIn(page, "dana@demo.sevgio.com", "demo-password-2026");
     await page.goto("/host/bookings?view=upcoming");
-    await row(page, "bookingcom", "Platform Test House").getByRole("button", { name: "It's a reservation" }).click();
-    await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Confirmed");
-    await row(page, "vrbo", "Needs check").getByRole("button", { name: "It's blocked dates" }).click();
-    await expect(row(page, "vrbo", "Needs check")).toHaveCount(0);
+    await row(page, "bookingcom", "Platform Test House").getByRole("button", { name: "Yes, a guest reservation" }).click();
+    await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Confirmed on Booking.com");
+    await row(page, "vrbo", "Unconfirmed").getByRole("button", { name: "No, dates I closed" }).click();
+    await expect(row(page, "vrbo", "Unconfirmed")).toHaveCount(0);
+    // The Booking.com reference and guest name, copied from the Booking.com extranet.
+    const bdc = row(page, "bookingcom", "Platform Test House");
+    await bdc.getByText("Add details").click();
+    await bdc.getByLabel("Guest full name").fill("Ines Duarte");
+    await bdc.getByLabel("Booking.com reference").fill("4455112233");
+    await bdc.getByRole("button", { name: "Save details" }).click();
+    await expect(bdc).toContainText("Saved.");
     await expect(page.locator("tbody tr", { hasText: "Platform Test House" })).toHaveCount(3);
 
     // Next refresh: Booking.com moves a day later, Chris Vale cancels on Vrbo; everything else is the same.
@@ -99,7 +121,10 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     sync(feeds.air, ics(AIRBNB));
     await page.reload();
     await expect(row(page, "bookingcom", "Platform Test House")).toHaveCount(1);
-    await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Confirmed"); // the host's choice is kept
+    await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Confirmed on Booking.com"); // the host's choice is kept
+    await expect(row(page, "bookingcom", "Platform Test House")).toContainText("4455112233"); // and the typed details
+    await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Ines Duarte");
+    await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Complete");
     await expect(row(page, "vrbo", "Chris Vale")).toHaveCount(0);
     await expect(page.locator("tbody tr", { hasText: "Platform Test House" })).toHaveCount(2);
     await page.getByRole("tab", { name: "Cancelled & declined" }).click();

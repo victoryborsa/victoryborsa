@@ -1758,4 +1758,21 @@ a.ar-card:hover { border-color: var(--accent); }
   .bk-tbl td.num { font-family: inherit; }
   .bk-tbl .gn-form { max-width: none; }
 }
-.bk-check { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; max-width: 220px; }
+/* Reservation rows: status pills with icons (meaning never rests on color alone) and the four separate facts. */
+.pill.pill-ic::before { display: none; }
+.pill.pill-ic .ic { flex: none; }
+.bk-tbl td { vertical-align: top; }
+.bk-tbl .bk-place { margin-top: 6px; font-size: 13px; color: var(--ink); max-width: 200px; }
+.bk-tbl .bk-noref { font-family: var(--f-body, inherit); font-style: italic; color: var(--muted); }
+.bk-tbl .bk-dates { font-weight: 600; white-space: nowrap; }
+.bk-tbl td[data-label="Stay"] .pill { margin-top: 6px; }
+.bk-tbl .bk-total { font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+.bk-tbl td[data-label="Payment"] .hint, .bk-tbl .dt-why { max-width: 230px; margin: 4px 0 0; }
+.bk-tbl td[data-label="Booking"] { min-width: 170px; max-width: 220px; }
+.bk-tbl td[data-label="Payment"], .bk-tbl td[data-label="Details"] { max-width: 210px; }
+.bk-tbl td[data-label="Guest"] { min-width: 130px; }
+.bk-tbl td[data-label="Payment"] .pill, .bk-tbl td[data-label="Details"] .pill, .bk-tbl td[data-label="Booking"] .pill { white-space: normal; border-radius: 8px; text-align: left; line-height: 1.35; }
+.bk-check { max-width: 250px; }
+.bk-check .hint { margin: 6px 0; }
+.bk-check-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.feed-raw { font-family: var(--f-mono); font-size: 13px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; word-break: break-word; }

@@ -54,8 +54,8 @@ export async function applyPayoutRecords(listings: { id: string; title: string; 
     if (o.dryRun) continue;
     const refFree = r.ref && !(await one("SELECT 1 FROM channel_reservations WHERE channel = $1 AND lower(external_ref) = lower($2)", [o.channel, r.ref]));
     const row = await one<Target & { check_in: string; check_out: string; status: string }>(
-      `INSERT INTO channel_reservations (property_id, channel, kind, kind_locked, source, external_ref, check_in, check_out, summary, guest_name, guest_name_source, guests, status, cancelled_at)
-       VALUES ($1, $2, 'reservation', true, 'import', $3, $4, $5, $6, $7, CASE WHEN $7 = '' THEN '' ELSE 'import' END, $8, $9, CASE WHEN $9 = 'cancelled' THEN now() END)
+      `INSERT INTO channel_reservations (property_id, channel, kind, kind_locked, source, external_ref, check_in, check_out, summary, guest_name, guest_name_source, guests, status, cancelled_at, ref_source)
+       VALUES ($1, $2, 'reservation', true, 'import', $3, $4, $5, $6, $7, CASE WHEN $7 = '' THEN '' ELSE 'import' END, $8, $9, CASE WHEN $9 = 'cancelled' THEN now() END, CASE WHEN $3 = '' THEN '' ELSE 'import' END)
        RETURNING id, property_id, external_ref, guest_name, guests, received_payout_cents, check_in, check_out, status`,
       [pid, o.channel, refFree ? r.ref : "", r.check_in, r.check_out, `${channelLabel(o.channel)} reservation${r.ref ? " " + r.ref : ""}`, r.guest, r.guests, r.cancelled ? "cancelled" : "confirmed"]);
     used.add(row!.id);
@@ -75,7 +75,7 @@ async function saveFinance(id: string, r: PayoutRecord, o: ImportOptions, t: Tar
        rent_cents = coalesce($2, rent_cents), cleaning_cents = coalesce($3, cleaning_cents), other_cents = coalesce($4, other_cents), tax_cents = coalesce($5, tax_cents),
        commission_cents = coalesce($6, commission_cents), refund_cents = coalesce($7, refund_cents), expected_payout_cents = coalesce($8, expected_payout_cents),
        received_payout_cents = $9, payout_date = coalesce($10, payout_date), finance_source = 'import', kind = 'reservation', kind_locked = true,
-       external_ref = CASE WHEN $11 THEN $12 ELSE external_ref END, guest_name = CASE WHEN guest_name = '' THEN $13 ELSE guest_name END,
+       external_ref = CASE WHEN $11 THEN $12 ELSE external_ref END, ref_source = CASE WHEN $11 THEN 'import' ELSE ref_source END, guest_name = CASE WHEN guest_name = '' THEN $13 ELSE guest_name END,
        guest_name_source = CASE WHEN guest_name = '' AND $13 <> '' THEN 'import' ELSE guest_name_source END, guests = coalesce(guests, $14),
        status = CASE WHEN $15 THEN 'cancelled' ELSE status END, cancelled_at = CASE WHEN $15 AND cancelled_at IS NULL THEN now() ELSE cancelled_at END, updated_at = now()
      WHERE id = $1`,

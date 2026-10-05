@@ -1,6 +1,6 @@
 import { one, q, tx, type Db } from "./db.ts";
 import { lockProperty, replaceFeedBlocks } from "./bookings.ts";
-import { classifyEvent } from "./channels.ts";
+import { classifyEvent, phoneLast4 } from "./channels.ts";
 import type { IcsEvent } from "./ical.ts";
 
 type Existing = { id: string; ical_uid: string | null; check_in: string; check_out: string; status: string; kind: string; kind_locked: boolean; external_ref: string; guest_name: string; guest_name_source: string };
@@ -27,6 +27,7 @@ export async function applyFeedEvents(feed: { id: string; property_id: string },
 
     for (const e of events) {
       const cls = classifyEvent(channel, e.summary, e.description);
+      const detail = (e.description || "").slice(0, 2000), phone = phoneLast4(e.description || "");
       const match = (e.uid && existing.find(r => r.ical_uid === e.uid && !seen.has(r.id)))
         || existing.find(r => !r.ical_uid && r.check_in === e.start && r.check_out === e.end && !seen.has(r.id))
         || (cls.ref && existing.find(r => r.external_ref && r.external_ref.toUpperCase() === cls.ref && !seen.has(r.id)));
@@ -38,9 +39,10 @@ export async function applyFeedEvents(feed: { id: string; property_id: string },
       if (!match) {
         const ref = cls.ref && !(await refTaken(c, channel, cls.ref, null)) ? cls.ref : "";
         const row = await one<{ id: string }>(
-          `INSERT INTO channel_reservations (property_id, feed_id, channel, kind, source, ical_uid, external_ref, check_in, check_out, summary, guest_name, guest_name_source)
-           VALUES ($1, $2, $3, $4, 'ical', $5, $6, $7, $8, $9, $10, CASE WHEN $10 = '' THEN '' ELSE 'feed' END) RETURNING id`,
-          [feed.property_id, feed.id, channel, cls.kind, e.uid || null, ref, e.start, e.end, e.summary, cls.guest], c);
+          `INSERT INTO channel_reservations (property_id, feed_id, channel, kind, source, ical_uid, external_ref, check_in, check_out, summary, guest_name, guest_name_source,
+             feed_detail, phone_last4, ref_source)
+           VALUES ($1, $2, $3, $4, 'ical', $5, $6, $7, $8, $9, $10, CASE WHEN $10 = '' THEN '' ELSE 'feed' END, $11, $12, CASE WHEN $6 = '' THEN '' ELSE 'feed' END) RETURNING id`,
+          [feed.property_id, feed.id, channel, cls.kind, e.uid || null, ref, e.start, e.end, e.summary, cls.guest, detail, phone], c);
         seen.add(row!.id);
         out.added++;
         continue;
@@ -55,9 +57,10 @@ export async function applyFeedEvents(feed: { id: string; property_id: string },
       await q(
         `UPDATE channel_reservations SET check_in = $2, check_out = $3, ical_uid = coalesce(ical_uid, $4), external_ref = $5, kind = $6, summary = $7,
            guest_name = CASE WHEN $11 THEN $8 ELSE guest_name END, guest_name_source = CASE WHEN $11 THEN 'feed' ELSE guest_name_source END, status = 'confirmed', cancelled_at = NULL, last_seen_at = now(),
-           modified_at = CASE WHEN $9 THEN now() ELSE modified_at END, updated_at = CASE WHEN $10 THEN now() ELSE updated_at END
+           modified_at = CASE WHEN $9 THEN now() ELSE modified_at END, updated_at = CASE WHEN $10 THEN now() ELSE updated_at END,
+           ref_source = CASE WHEN external_ref = '' AND $5 <> '' THEN 'feed' ELSE ref_source END, feed_detail = $12, phone_last4 = CASE WHEN $13 = '' THEN phone_last4 ELSE $13 END
          WHERE id = $1`,
-        [match.id, e.start, e.end, e.uid || null, ref, kind, e.summary, cls.guest, moved, touched, nameFromFeed], c);
+        [match.id, e.start, e.end, e.uid || null, ref, kind, e.summary, cls.guest, moved, touched, nameFromFeed, detail, phone], c);
       if (moved) out.changed++; else if (touched) out.updated++; else out.unchanged++;
     }
     for (const r of existing) {

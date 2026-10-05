@@ -24,6 +24,9 @@ export function channelOf(feedName: string | null, url = ""): { key: ChannelKey;
  * Only Airbnb's "Not available" and periods that say owner / maintenance are known to have no guest. Anything else that isn't clearly
  * a reservation is "unknown": it still shows in the reservation lists, marked for the host to check, unless it only copies another booking.
  */
+/** The last 4 digits of the guest's phone, which Airbnb puts in the event description. */
+export const phoneLast4 = (description: string) => description.match(/last\s*4\s*digits\)?\s*:?\s*(\d{4})/i)?.[1] || "";
+
 export function classifyEvent(channel: string, summary: string, description = ""): { kind: "reservation" | "blocked" | "unknown"; ref: string; guest: string } {
   const s = summary.trim(), all = `${s}\n${description}`;
   const ref = (description.match(/reservations\/details\/([A-Z0-9]{6,14})/i)?.[1]

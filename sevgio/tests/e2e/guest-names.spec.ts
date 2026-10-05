@@ -1,9 +1,22 @@
 import { test, expect } from "@playwright/test";
-import { iso, signIn, signOut, sql } from "./helpers.ts";
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { DB, iso, signIn, signOut, sql } from "./helpers.ts";
+
+const add = (d: string, n: number) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+/** Runs the real calendar sync on an .ics text for one calendar link. */
+function sync(feed: string, text: string) {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gn-")), "feed.ics");
+  fs.writeFileSync(file, text);
+  execFileSync("node", ["--experimental-strip-types", "--no-warnings", "tests/e2e/feed-sync.ts", feed, file], { env: { ...process.env, DATABASE_URL: DB } });
+}
 
 // Reservations from Airbnb, Booking.com and Vrbo in the host's Upcoming and Past lists, with guest names (or a way to add them) and search.
 test.describe.serial("guest names on reservations from other sites", () => {
   const UP = iso(300), PAST = iso(-40);
+  let airFeed = "";
 
   test.beforeAll(async () => {
     const [h] = await sql<{ id: string }>("SELECT id FROM users WHERE email = 'dana@demo.sevgio.com'");
@@ -12,7 +25,7 @@ test.describe.serial("guest names on reservations from other sites", () => {
     const [{ id: room }] = await sql<{ id: string }>(
       "INSERT INTO properties (slug, host_id, title, city, max_guests, nightly_price_cents, status, parent_id) VALUES ('gn-test-room', $1, 'Blue Room', 'Pittsburgh', 2, 9000, 'published', $2) RETURNING id", [h.id, house]);
     const [air] = await sql<{ id: string }>("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, 'Airbnb', 'https://example.com/gn-air.ics') RETURNING id", [room]);
-    const add = (d: string, n: number) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+    airFeed = air.id;
     // As a calendar sync stores them: Airbnb shares only the code, Vrbo sometimes the name; a past Booking.com stay entered from a payout file.
     await sql("INSERT INTO channel_reservations (property_id, feed_id, channel, kind, ical_uid, external_ref, check_in, check_out, summary) VALUES ($1, $2, 'airbnb', 'reservation', 'gn-a', 'HMGNTEST01', $3, $4, 'Reserved')",
       [room, air.id, UP, add(UP, 5)]);
@@ -20,6 +33,7 @@ test.describe.serial("guest names on reservations from other sites", () => {
       [house, add(UP, 20), add(UP, 23)]);
     await sql("INSERT INTO channel_reservations (property_id, channel, kind, source, external_ref, check_in, check_out, summary, guest_name, guest_name_source) VALUES ($1, 'bookingcom', 'reservation', 'import', '4455667788', $2, $3, 'Booking.com reservation', 'Oskar Nowak', 'import')",
       [house, PAST, add(PAST, 3)]);
+    await sql("UPDATE channel_reservations SET received_payout_cents = 30000, expected_payout_cents = 30000 WHERE external_ref = '4455667788'");
     // And a direct Sevgio.com booking of the same house, which shares the list.
     const [g] = await sql<{ id: string }>("SELECT id FROM users WHERE email = 'guest@demo.sevgio.com'");
     await sql(`INSERT INTO bookings (code, property_id, guest_id, check_in, check_out, guests, adults, status, nights, nightly_price_cents, cleaning_fee_cents, tax_cents, total_cents, lodging_cents, guest_name, guest_phone)
@@ -44,7 +58,12 @@ test.describe.serial("guest names on reservations from other sites", () => {
     await expect(air).toContainText("Confirmed");
     const vrbo = page.locator("tr[data-platform=vrbo]", { hasText: "Lee Park" });
     await expect(vrbo).toContainText("From Vrbo");
-    await expect(vrbo).toContainText("No code");
+    await expect(vrbo).toContainText("No reference");
+    await expect(vrbo).toContainText("Missing reference");
+    await expect(vrbo).toContainText("Vrbo's calendar link didn't send a reference.");
+    await expect(air).toContainText("Payment status unavailable");
+    await expect(air).toContainText("Upcoming");
+    await expect(air).not.toContainText("Paid on");
     // Sevgio's own bookings are still in the same list.
     await expect(page.locator("tr", { hasText: "SV-GNTST1" })).toContainText("Sevgio.com");
     // In date order: the Airbnb stay, then the Sevgio booking, then the Vrbo stay.
@@ -53,18 +72,38 @@ test.describe.serial("guest names on reservations from other sites", () => {
     expect(at("HMGNTEST01")).toBeLessThan(at("SV-GNTST1"));
     expect(at("SV-GNTST1")).toBeLessThan(at("Lee Park"));
 
-    await air.getByText("Add guest name").click();
+    await expect(air).toContainText("Missing guest name");
+    await expect(air).toContainText("Airbnb's calendar link never sends guest names.");
+    await air.getByText("Add details").click();
     await air.getByLabel("Guest full name").fill("Maria  Lopez");
-    await air.getByRole("button", { name: "Save name" }).click();
-    await expect(air).toContainText("Guest name saved.");
+    await air.getByRole("button", { name: "Save details" }).click();
+    await expect(air).toContainText("Saved.");
     await page.reload();
     await expect(page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" })).toContainText("Maria Lopez");
     await expect(page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" })).toContainText("Entered by hand");
+    await expect(page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" })).toContainText("Complete");
+    // A missing reference can be typed in too.
+    const lee = page.locator("tr[data-platform=vrbo]", { hasText: "Lee Park" });
+    await lee.getByText("Add details").click();
+    await lee.getByLabel("Vrbo reference").fill("ha-8xk2pq");
+    await lee.getByRole("button", { name: "Save details" }).click();
+    await expect(lee).toContainText("Saved.");
+    await page.reload();
+    await expect(page.locator("tr[data-platform=vrbo]", { hasText: "Lee Park" })).toContainText("HA-8XK2PQ");
+    const [lr] = await sql<{ ref_source: string }>("SELECT ref_source FROM channel_reservations WHERE external_ref = 'HA-8XK2PQ'");
+    expect(lr.ref_source).toBe("manual");
+    // The next Airbnb calendar refresh keeps the typed name.
+    sync(airFeed, ["BEGIN:VCALENDAR", "BEGIN:VEVENT", "UID:gn-a", `DTSTART;VALUE=DATE:${UP.replaceAll("-", "")}`, `DTEND;VALUE=DATE:${add(UP, 5).replaceAll("-", "")}`, "SUMMARY:Reserved",
+      "DESCRIPTION:Reservation URL: https://www.airbnb.com/hosting/reservations/details/HMGNTEST01\\nPhone Number (Last 4 Digits): 7788", "END:VEVENT", "END:VCALENDAR"].join("\r\n"));
+    await page.reload();
+    await expect(page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" })).toContainText("Maria Lopez");
+    await expect(page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" })).toContainText("Phone ends in 7788");
+    await expect(page.locator("tr[data-platform=airbnb]")).toHaveCount(1);
     const [r] = await sql<{ guest_name: string; guest_name_source: string; guest_name_by: string | null }>(
       "SELECT guest_name, guest_name_source, guest_name_by FROM channel_reservations WHERE external_ref = 'HMGNTEST01'");
     expect([r.guest_name, r.guest_name_source, !!r.guest_name_by]).toEqual(["Maria Lopez", "manual", true]);
     // The reservation's own page shows it too, with who entered it.
-    await page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" }).getByRole("link", { name: "Open" }).click();
+    await page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" }).getByRole("link", { name: "HMGNTEST01" }).click();
     await expect(page.locator("dl")).toContainText("Maria Lopez");
     await expect(page.locator("dl")).toContainText(/Entered by .+ on /);
     await signOut(page);
@@ -76,7 +115,10 @@ test.describe.serial("guest names on reservations from other sites", () => {
     const bdc = page.locator("tr[data-platform=bookingcom]", { hasText: "4455667788" });
     await expect(bdc).toContainText("Oskar Nowak");
     await expect(bdc).toContainText("Booking.com");
-    await expect(bdc).toContainText("Completed");
+    await expect(bdc).toContainText("Checked out");
+    await expect(bdc).toContainText("Payout received");
+    await expect(bdc).toContainText("$300");
+    await expect(bdc).toContainText("Complete");
 
     await page.getByRole("tab", { name: "Upcoming" }).click();
     await page.getByLabel("Guest name or booking reference").fill("lopez maria");
@@ -105,7 +147,7 @@ test.describe.serial("guest names on reservations from other sites", () => {
       await page.screenshot({ path: `${process.env.GN_SHOTS}/computer-search.png`, fullPage: true });
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto("/host/bookings?view=upcoming");
-      await page.locator("tr[data-platform=vrbo]").getByText("Edit name").click();
+      await page.locator("tr[data-platform=vrbo]").getByText("Edit details").click();
       await page.screenshot({ path: `${process.env.GN_SHOTS}/phone-upcoming.png`, fullPage: true });
       await page.setViewportSize({ width: 1280, height: 900 });
     }

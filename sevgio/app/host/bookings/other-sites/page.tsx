@@ -9,13 +9,13 @@ import { Flash } from "@/components/Flash.tsx";
 import { AutoSubmit } from "@/components/AutoSubmit.tsx";
 import { BookingTabs } from "@/components/BookingTabs.tsx";
 import { setKindAction } from "@/app/actions/channel.ts";
-import { GuestNameCell, NO_GUEST_NAME } from "@/components/GuestNameForm.tsx";
+import { GuestCell, NO_GUEST_NAME } from "@/components/GuestNameForm.tsx";
 
 type Row = { id: string; property_id: string; channel: string; external_ref: string; guest_name: string; guest_name_source: string; check_in: string; check_out: string; status: string; kind: string; eff_kind: string;
   source: string; expected_payout_cents: number | null; received_payout_cents: number | null; rent_cents: number | null; modified_at: string | null };
 
 const WHEN: Record<string, string> = { upcoming: "Upcoming and current", past: "Past", all: "All dates" };
-const KINDS: Record<string, string> = { "": "Reservations (incl. ones to check)", reservation: "Confirmed reservations only", unknown: "Unclear (reservation or closed?)", blocked: "Blocked on the other site", mirror: "Copies of other bookings", cancelled: "Cancelled" };
+const KINDS: Record<string, string> = { "": "Reservations (incl. unconfirmed)", reservation: "Confirmed reservations only", unknown: "Unconfirmed (guest or closed dates?)", blocked: "Blocked on the other site", mirror: "Copies of other bookings", cancelled: "Cancelled" };
 
 /** Every reservation that came from Airbnb, Vrbo, Booking.com or another site, with what's still missing for Finance. */
 export default async function OtherSites({ searchParams }: { searchParams: Promise<{ when?: string; kind?: string; channel?: string; property?: string; needs?: string; msg?: string }> }) {
@@ -67,11 +67,11 @@ export default async function OtherSites({ searchParams }: { searchParams: Promi
                   <td><span className={`pill neutral ch-dot ch-${r.channel}`}>{channelLabel(r.channel)}</span></td>
                   <td className="mono">{r.external_ref || <span className="muted">–</span>}</td>
                   <td>{placeName(listings, r.property_id)}</td>
-                  <td style={{ minWidth: 170 }}>{r.eff_kind === "reservation" ? <GuestNameCell id={r.id} name={r.guest_name} source={r.guest_name_source} site={channelLabel(r.channel)} /> : r.guest_name || <span className="muted">{NO_GUEST_NAME}</span>}</td>
+                  <td style={{ minWidth: 170 }}>{r.eff_kind === "reservation" ? <GuestCell name={r.guest_name} source={r.guest_name_source} site={channelLabel(r.channel)} /> : r.guest_name || <span className="muted">{NO_GUEST_NAME}</span>}</td>
                   <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} – {fmtShort(r.check_out)}{r.modified_at && <div className="hint">Dates changed {fmtShort(r.modified_at.slice(0, 10))}</div>}</td>
                   <td className="num">{nightsBetween(r.check_in, r.check_out)}</td>
                   <td>{r.status === "cancelled" ? <span className="pill danger">Cancelled</span>
-                    : r.eff_kind === "unknown" ? <span className="pill warn">Needs check</span>
+                    : r.eff_kind === "unknown" ? <span className="pill warn">Unconfirmed</span>
                     : r.eff_kind === "blocked" ? <span className="pill neutral">Blocked</span>
                     : r.eff_kind === "mirror" ? <span className="pill neutral">Copy of another booking</span>
                     : r.check_in <= today && today < r.check_out ? <span className="pill ok">Staying now</span>
@@ -99,7 +99,7 @@ export default async function OtherSites({ searchParams }: { searchParams: Promi
       )}
       <p className="hint" style={{ marginTop: 10 }}>
         Calendar links from other sites share only dates (and on Airbnb, the confirmation code), never prices or payouts, and usually not the guest&apos;s name.
-        Add a missing name with <b>Add guest name</b>; names entered here, or read from a payout file, are kept when the calendars refresh. Add those by importing the site&apos;s payout file or by hand.
+        Add a missing name or reference with <b>Add details</b> in Bookings or on the reservation; details entered by hand, or read from a payout file, are kept when the calendars refresh. Add those by importing the site&apos;s payout file or by hand.
         Refreshing a calendar link updates these reservations in place: changed dates are updated and reservations removed on the other site are marked cancelled, so nothing is duplicated.
         Past reservations stay here even after the other site drops them from its calendar link.
       </p>

@@ -18,12 +18,39 @@ export type Phase = "current" | "upcoming" | "past" | "cancelled";
 export const PHASE_LABEL: Record<Phase, string> = { current: "Staying now", upcoming: "Upcoming", past: "Past", cancelled: "Cancelled" };
 export const PHASE_TONE: Record<Phase, "ok" | "info" | "danger" | "neutral"> = { current: "ok", upcoming: "info", past: "neutral", cancelled: "danger" };
 
-/** Where a stay sits in time. Declined and expired requests are grouped with cancellations. */
-export function stayPhase(status: string, checkIn: string, checkOut: string, today: string): Phase {
+/** "3:00 pm", "11 AM" or "15:30" → minutes after midnight. Unreadable times fall back to `fallback`. */
+export function clockMinutes(t: string | null | undefined, fallback: number): number {
+  const m = (t || "").trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?$/);
+  if (!m) return fallback;
+  let h = Number(m[1]) % 24;
+  const pm = m[3]?.startsWith("p"), am = m[3]?.startsWith("a");
+  if (pm && h < 12) h += 12;
+  if (am && h === 12) h = 0;
+  return h * 60 + Number(m[2] || 0);
+}
+
+/** The property's local time now (Pittsburgh): its date and the minutes since midnight. */
+export function localNow(tz = "America/New_York", now = new Date()): { date: string; minutes: number } {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .formatToParts(now).map(x => [x.type, x.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, minutes: Number(p.hour) * 60 + Number(p.minute) };
+}
+
+/** The listing's check-in and check-out times, for `stayPhase`. */
+export type StayClock = { minutes: number; checkInTime?: string | null; checkOutTime?: string | null };
+
+/**
+ * Where a stay sits in time. Declined and expired requests are grouped with cancellations.
+ * With `clock` (the local time now and the listing's check-in / check-out times), the stay starts at check-in time on the arrival day
+ * and ends at check-out time on the departure day; without it, whole days are used.
+ */
+export function stayPhase(status: string, checkIn: string, checkOut: string, today: string, clock?: StayClock): Phase {
   if (["cancelled", "declined", "expired"].includes(status)) return "cancelled";
   if (checkOut < today) return "past";
-  if (checkIn <= today) return "current";
-  return "upcoming";
+  if (clock && checkOut === today && clock.minutes >= clockMinutes(clock.checkOutTime, 11 * 60)) return "past";
+  if (checkIn > today) return "upcoming";
+  if (clock && checkIn === today && clock.minutes < clockMinutes(clock.checkInTime, 15 * 60)) return "upcoming";
+  return "current";
 }
 
 type PayFields = { status: string; payment_method: string | null; payment_status: string; total_cents: number; paid_cents: number; card_fee_cents?: number };
