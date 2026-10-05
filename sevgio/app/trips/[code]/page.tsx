@@ -11,11 +11,13 @@ import { photoUrl } from "@/lib/queries.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { forListing } from "@/lib/payments.ts";
 import { directionsUrl, mailUrl, telUrl } from "@/lib/links.ts";
-import { extrasOf } from "@/lib/party.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { StatusPill } from "@/components/ui.tsx";
 import { partyLabel } from "@/lib/party.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
+import { CopyButton } from "@/components/CopyButton.tsx";
+import { PaymentPill, PriceBreakdown } from "@/components/booking-summary.tsx";
+import { KEEP_REFERENCE } from "@/lib/booking-ref.ts";
 import { guestCancelAction, payNowAction } from "@/app/actions/bookings.ts";
 
 export const metadata: Metadata = { title: "Your booking", robots: { index: false } };
@@ -79,13 +81,23 @@ export default async function TripPage({ params, searchParams }: { params: Promi
               <div><b>{confirmed ? "You're booked!" : b.status === "awaiting_payment" ? "Your dates are held." : "Request sent to the host."}</b> {confirmed ? `A confirmation has been sent to ${u.email}.` : b.status === "awaiting_payment" ? "Complete the payment below to confirm your booking. We've emailed you the details." : "Your dates are held while the host decides. We'll email you when they reply."}</div>
             </div>
           )}
-          <div><span className="eyebrow">Booking reference</span><div className="code">{b.code}</div></div>
+          <section className="ref-card" aria-label="Booking reference">
+            <div className="ref-card-top">
+              <div><span className="eyebrow">Booking reference</span><div className="code ref-code" data-testid="booking-ref">{b.code}</div></div>
+              <CopyButton value={b.code} />
+            </div>
+            <p className="ref-keep">{KEEP_REFERENCE}</p>
+          </section>
           <dl className="kv">
             <dt>Status</dt><dd><StatusPill status={b.status} /></dd>
-            <dt>Home</dt><dd><Link href={`/stays/${b.slug}`}>{b.title}</Link>, {b.city}</dd>
-            <dt>Dates</dt><dd>{fmtDate(b.check_in)} - {fmtDate(b.check_out)} ({b.nights} night{b.nights === 1 ? "" : "s"})</dd>
+            <dt>Guest name</dt><dd>{b.guest_name}</dd>
+            <dt>Property</dt><dd><Link href={`/stays/${b.slug}`}>{b.title}</Link>, {b.city}</dd>
+            <dt>Check-in</dt><dd>{fmtDate(b.check_in)}<span className="muted" style={{ fontWeight: 400 }}> · after {b.check_in_time}</span></dd>
+            <dt>Check-out</dt><dd>{fmtDate(b.check_out)}<span className="muted" style={{ fontWeight: 400 }}> · by {b.check_out_time} · {b.nights} night{b.nights === 1 ? "" : "s"}</span></dd>
             <dt>Guests</dt><dd>{partyLabel(b)}</dd>
-            <dt>Lead guest</dt><dd>{b.guest_name}, <a href={telUrl(b.guest_phone)}>{b.guest_phone}</a></dd>
+            <dt>Total price</dt><dd>{money(b.total_cents + b.card_fee_cents)}</dd>
+            <dt>Payment</dt><dd><PaymentPill b={b} /></dd>
+            <dt>Phone</dt><dd><a href={telUrl(b.guest_phone)}>{b.guest_phone}</a></dd>
           </dl>
           <h3>What happens next</h3>
           <ol className="nextsteps">{(steps[b.status] || []).filter(Boolean).map((t, i) => <li key={i}><span>{t}</span></li>)}</ol>
@@ -108,22 +120,10 @@ export default async function TripPage({ params, searchParams }: { params: Promi
         </div>
         <aside className="box" style={{ alignSelf: "start" }}>
           <div style={{ borderRadius: "var(--r)", overflow: "hidden", aspectRatio: "4/3" }}>{b.cover_id ? <img src={photoUrl(b.cover_id, "thumb")} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div className="noph" />}</div>
-          <table className="breakdown">
-            <tbody>
-              <tr><td>{money(b.nightly_price_cents)} × {b.nights} night{b.nights === 1 ? "" : "s"}</td><td>{money(b.lodging_cents)}</td></tr>
-              {b.discount_cents > 0 && <tr><td>Length-of-stay discount</td><td>−{money(b.discount_cents)}</td></tr>}
-              {b.cleaning_fee_cents > 0 && <tr><td>Cleaning fee</td><td>{money(b.cleaning_fee_cents)}</td></tr>}
-              {b.pet_fee_cents > 0 && <tr><td>Pet fee ({b.pets} pet{b.pets === 1 ? "" : "s"})</td><td>{money(b.pet_fee_cents)}</td></tr>}
-              {extrasOf(b).map(x => <tr key={x.key}><td>{x.name}{x.qty > 1 && x.total ? ` × ${x.qty}` : ""}{x.details && <div className="hint">{x.details}</div>}</td><td>{x.total ? money(x.total) : "Free"}</td></tr>)}
-              {b.tax_cents > 0 && <tr><td>Taxes</td><td>{money(b.tax_cents)}</td></tr>}
-              {b.card_fee_cents > 0 && <tr><td>Card processing fee</td><td>{money(b.card_fee_cents)}</td></tr>}
-              <tr className="total"><td>Total</td><td>{money(b.total_cents + b.card_fee_cents)}</td></tr>
-              {b.paid_cents > 0 && <tr><td>Paid{b.payment_status === "processing" ? " (bank transfer processing)" : ""}</td><td>{money(b.paid_cents + (b.payment_method === "card" ? b.card_fee_cents : 0))}</td></tr>}
-              {b.payment_method === "cash" && b.status === "confirmed" && b.paid_cents < b.total_cents && <tr><td>Due in cash at check-in</td><td>{money(b.total_cents - b.paid_cents)}</td></tr>}
-            </tbody>
-          </table>
+          <PriceBreakdown b={b} />
           {b.security_deposit_cents > 0 && <p className="hint">Refundable security deposit: <b>{money(b.security_deposit_cents)}</b>, collected by your host and returned after check-out. It isn't part of the total above.</p>}
           <p className="hint">Questions? <Link href="/contact">Contact us</Link> and include your reference {b.code}.</p>
+          <p><Link className="btn btn-ghost btn-sm" href={`/trips/${b.code}/invoice`}>View or print invoice</Link></p>
         </aside>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth.ts";
 import { DashNav } from "@/components/DashNav.tsx";
+import { AdminFind } from "@/components/AdminFind.tsx";
 import { unseenBookings } from "@/lib/alerts.ts";
 import { one } from "@/lib/db.ts";
 
@@ -33,7 +34,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ] },
       ]} />
       <div className="dash-main">
-        <div className="dash-head"><div><p className="eyebrow">Admin</p><h1 className="dash-h1">Sevgio operations</h1></div></div>
+        <div className="dash-head"><div><p className="eyebrow">Admin</p><h1 className="dash-h1">Sevgio operations</h1></div><AdminFind /></div>
         {children}
       </div>
     </div>

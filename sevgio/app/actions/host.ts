@@ -507,7 +507,7 @@ export async function decideBookingAction(_: ActionState, fd: FormData): Promise
     if (!r) return { error: "This request was already answered or has expired." };
     const info = await bookingInfo(b.id);
     if (info) {
-      if (note) await sendEmail(b.guest_email, `Your request was accepted: ${b.title}`, `Good news! Your request to stay at ${b.title} for ${dates} was accepted.\n\nNote from the host: ${note}`);
+      if (note) await sendEmail(b.guest_email, `Your request was accepted ${b.code}: ${b.title}`, `Good news! Your request to stay at ${b.title} for ${dates} was accepted. Your booking reference is ${b.code}.\n\nNote from the host: ${note}`);
       await notifyBooking(info);
     }
     await logEvent("info", "Bookings", `Request ${b.code} accepted`, {}, u.id);
@@ -516,7 +516,7 @@ export async function decideBookingAction(_: ActionState, fd: FormData): Promise
   if (decision === "decline") {
     const r = await setBookingStatus(b.id, ["pending"], "declined", { hostNote: note || undefined });
     if (!r) return { error: "This request was already answered or has expired." };
-    await sendEmail(b.guest_email, `Update on your request: ${b.title}`, `Unfortunately the host can't accept your request for ${b.title} (${dates}).${note ? "\n\nNote from the host: " + note : ""}\n\nNothing is owed. Find another stay: ${siteUrl()}/stays`);
+    await sendEmail(b.guest_email, `Update on your request ${b.code}: ${b.title}`, `Unfortunately the host can't accept your request for ${b.title} (${dates}, booking reference ${b.code}).${note ? "\n\nNote from the host: " + note : ""}\n\nNothing is owed. Find another stay: ${siteUrl()}/stays`);
     await logEvent("info", "Bookings", `Request ${b.code} declined`, {}, u.id);
     redirect(withMsg(back, "declined"));
   }

@@ -36,7 +36,7 @@ export default async function Trips() {
         <b className="trip-title">{r.title}</b>
         <span className="trip-meta"><Icon name="calendar" size={16} />{fmtDate(r.check_in)} - {fmtDate(r.check_out)}</span>
         <span className="trip-meta"><Icon name="pin" size={16} />{r.city} · {r.guests} guest{r.guests > 1 ? "s" : ""}</span>
-        <span className="trip-foot"><span className="mono hint">{r.code}</span><b>{money(r.total_cents)}</b></span>
+        <span className="trip-foot"><span className="trip-ref">Ref <b className="mono">{r.code}</b></span><b>{money(r.total_cents)}</b></span>
       </span>
     </Link>
   );

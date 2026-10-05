@@ -1637,3 +1637,96 @@ a.ar-card:hover { border-color: var(--accent); }
 @media (min-width: 760px) { .pc-tools { grid-template-columns: 1fr 1fr; } }
 .pc-tool { border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
 .pc-tool h4 { margin: 0 0 4px; font-size: 16px; }
+
+/* ============ Booking reference, reservation search and invoice ============ */
+.ref-card { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: var(--r-lg); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.ref-card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ref-code { font-size: 28px; font-weight: 700; letter-spacing: .08em; color: var(--ink); line-height: 1.15; overflow-wrap: anywhere; }
+.ref-keep { margin: 0; font-size: 14px; }
+.trip-ref { font-size: 13px; color: var(--muted); }
+.trip-ref b { color: var(--ink); letter-spacing: .04em; }
+
+.dash-head .admin-find { margin-left: auto; position: relative; width: min(100%, 360px); }
+.admin-find svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; pointer-events: none; }
+.admin-find .input { padding-left: 38px; }
+@media (max-width: 640px) { .dash-head .admin-find { margin-left: 0; width: 100%; } }
+
+.rs-search { margin-bottom: 16px; gap: 10px; }
+.rs-h { margin: 0; font-size: 20px; }
+.rs-form { display: flex; gap: 8px; }
+.rs-input { flex: 1; min-width: 0; font-size: 17px; min-height: 50px; }
+.rs-form .btn { min-height: 50px; padding-inline: 22px; }
+.rs-search .hint { margin: 0; }
+.rs-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.rs-chip { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 14px; font-weight: 600; text-decoration: none; }
+.rs-chip:hover { border-color: var(--ink); }
+.rs-chip[aria-current="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.rs-subh { font-size: 16px; margin: 8px 0 10px; }
+.rs-count { margin-bottom: 10px; font-size: 14px; }
+
+.rs-list { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.rs-head, .rs-row { display: grid; grid-template-columns: 130px minmax(150px, 1.3fr) minmax(130px, 1.1fr) 150px minmax(150px, 1fr) 150px 16px; gap: 14px; align-items: center; padding: 12px 16px; }
+.rs-head { background: var(--surface-2); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--line); }
+.rs-list li + li { border-top: 1px solid var(--line); }
+.rs-list li.rs-head + li { border-top: 0; }
+.rs-row { color: var(--ink); text-decoration: none; font-size: 14px; }
+.rs-row:hover, .rs-row:focus-visible { background: var(--surface-2); }
+.rs-row > span { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.rs-ref b { letter-spacing: .04em; font-size: 15px; }
+.rs-site { font-size: 12px; color: var(--muted); }
+.rs-guest b { overflow-wrap: anywhere; }
+.rs-guest .hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-status { flex-direction: row !important; flex-wrap: wrap; gap: 6px !important; align-items: flex-start; }
+.rs-pay { align-items: flex-start; }
+.rs-go { color: var(--muted); font-size: 22px; line-height: 1; }
+@media (max-width: 900px) {
+  .rs-head { display: none; }
+  .rs-row { grid-template-columns: 1fr auto; grid-template-areas: "ref go" "guest go" "prop go" "dates go" "status go" "pay go"; gap: 4px 12px; padding: 14px 16px; }
+  .rs-ref { grid-area: ref; flex-direction: row !important; gap: 8px !important; align-items: baseline; }
+  .rs-guest { grid-area: guest; font-size: 16px; }
+  .rs-prop { grid-area: prop; color: var(--muted); }
+  .rs-dates { grid-area: dates; }
+  .rs-status { grid-area: status; margin-top: 4px; }
+  .rs-pay { grid-area: pay; }
+  .rs-go { grid-area: go; align-self: center; }
+}
+@media (max-width: 640px) { .rs-form .btn { padding-inline: 16px; } }
+
+.rd-head { gap: 12px; }
+.rd-who { margin: 6px 0 0; }
+.rd-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.rd-links { gap: 8px; }
+.rd-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 1000px) { .rd-grid { grid-template-columns: 1fr 1fr; } }
+.rd-grid h3 { margin: 0; }
+.rd-note { margin: 0; padding: 10px 12px; background: var(--surface-2); border-radius: var(--r); font-size: 14px; }
+.rd-act summary { list-style: none; cursor: pointer; display: inline-flex; }
+.rd-act summary::-webkit-details-marker { display: none; }
+.rd-act[open] summary { margin-bottom: 10px; }
+@media (max-width: 640px) { .rd .kv { grid-template-columns: 1fr; gap: 2px; } .rd .kv dd { margin-bottom: 8px; } }
+
+.invoice-page { max-width: 860px; }
+.invoice { gap: 20px; }
+.inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.inv-title { text-align: right; }
+.inv-title h1 { margin: 0; font-size: 28px; }
+.inv-cols { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.inv-cols p { margin: 0; line-height: 1.6; }
+.inv-h { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 6px; }
+.inv-kv { gap: 4px 14px; font-size: 14px; }
+.inv-sum { margin: 0; margin-left: auto; width: min(100%, 320px); display: flex; flex-direction: column; gap: 6px; }
+.inv-sum div { display: flex; justify-content: space-between; }
+.inv-sum dt { color: var(--muted); }
+.inv-sum dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.inv-sum .inv-due { padding-top: 4px; font-weight: 700; font-size: 17px; }
+.inv-sum .inv-due dt { color: var(--ink); }
+.inv-foot { border-top: 1px solid var(--line); padding-top: 14px; }
+.inv-foot p { margin: 0 0 6px; }
+@media (max-width: 640px) { .inv-title { text-align: left; } }
+@media print {
+  header.site, footer.site, .site-notice, .no-print { display: none !important; }
+  .invoice-page { padding: 0; max-width: none; }
+  .invoice { border: 0; padding: 0; }
+  .ref-code { color: #000; }
+}
+.pill.info { background: #E8F1FB; color: #1D5FA8; }
