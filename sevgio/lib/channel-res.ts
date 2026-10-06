@@ -69,11 +69,16 @@ export async function applyFeedEvents(feed: { id: string; property_id: string },
     }
   });
   if (out.kept) return out;
+  out.clashes = await rebuildFeedBlocks(feed, today);
+  return out;
+}
+
+/** Rebuilds a calendar link's blocked nights from its active upcoming stays. */
+export async function rebuildFeedBlocks(feed: { id: string; property_id: string }, today: string): Promise<string[]> {
   const active = await q<{ check_in: string; check_out: string; summary: string; kind: string }>(
     "SELECT check_in, check_out, summary, kind FROM channel_reservations WHERE feed_id = $1 AND status = 'confirmed' AND check_out > $2 ORDER BY check_in", [feed.id, today]);
-  out.clashes = await replaceFeedBlocks(feed.property_id, "ical:" + feed.id,
+  return replaceFeedBlocks(feed.property_id, "ical:" + feed.id,
     active.map(r => ({ start: r.check_in < today ? today : r.check_in, end: r.check_out, note: r.summary })));
-  return out;
 }
 
 /** Whether a calendar refresh may set this reservation's guest name: only when there is none yet, or the calendar gave the current one. */

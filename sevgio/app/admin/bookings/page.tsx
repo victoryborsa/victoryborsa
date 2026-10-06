@@ -9,6 +9,7 @@ import { searchReservations } from "@/lib/reservation-search.ts";
 import { ReservationResults, ReservationSearchForm } from "@/components/ReservationResults.tsx";
 import type { Phase } from "@/lib/booking-ref.ts";
 import { MissingNames } from "@/components/MissingNames.tsx";
+import { RecentImports } from "@/components/RecentImports.tsx";
 
 const STATUSES = ["all", "pending", "awaiting_payment", "confirmed", "cancelled", "declined", "expired"];
 const PHASES = ["all", "upcoming", "current", "past", "cancelled"];
@@ -26,7 +27,7 @@ export default async function AdminBookings({ searchParams }: { searchParams: Pr
       <>
         <Flash msg={sp.msg} />
         <ReservationSearchForm term={term} phase={phase} />
-        {!term && <MissingNames propertyIds={null} today={todayLocal()} />}
+        {!term && <><RecentImports userId={null} /><MissingNames propertyIds={null} today={todayLocal()} /></>}
         <div className="row rs-count" role="status">
           <span><b>{found.length === 100 ? "100+" : found.length}</b> reservation{found.length === 1 ? "" : "s"}{term ? <> matching “{term}”</> : null}</span>
           <span className="spacer" />
@@ -50,6 +51,7 @@ export default async function AdminBookings({ searchParams }: { searchParams: Pr
     <>
       <Flash msg={sp.msg} />
       <ReservationSearchForm term="" phase="all" />
+      <RecentImports userId={null} />
       <MissingNames propertyIds={null} today={todayLocal()} />
       <h2 className="rs-subh">All Sevgio.com bookings</h2>
       <form className="row" method="get" style={{ marginBottom: 16 }}>

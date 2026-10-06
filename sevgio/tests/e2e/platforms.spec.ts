@@ -188,4 +188,55 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Payout not received");
     await signOut(page);
   });
+  test("a Booking.com file import can be reviewed and undone without touching anything else, and the undo reversed", async ({ page }) => {
+    const dmy = (n: number) => { const [y, m, dd] = iso(n).split("-"); return `${dd}/${m}/${y}`; };
+    const before = await sql<{ n: number }>("SELECT count(*)::int AS n FROM channel_reservations WHERE property_id IN (SELECT id FROM properties WHERE slug LIKE 'plat-test-%')");
+    await signIn(page, "dana@demo.sevgio.com", "demo-password-2026");
+    await page.goto("/host/finance/import");
+    // Booking.com › Reservations › Download, day-first dates. One stay nobody has yet, one overlapping the synced Booking.com stay.
+    const csv = ["Book number,Booked by,Guest name(s),Check-in,Check-out,Status,People,Price,Commission amount",
+      `4000111222,Ola Nordmann,Ola Nordmann,${dmy(U + 80)},${dmy(U + 82)},ok,2,300 USD,45 USD`,
+      `4000111333,Dup Guest,Dup Guest,${dmy(U + 21)},${dmy(U + 23)},ok,2,300 USD,45 USD`].join("\n");
+    await page.getByLabel("Payout or earnings file (CSV)").setInputFiles({ name: "booking-res.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+    await page.getByLabel("Which site is it from?").selectOption("bookingcom");
+    const house = await page.locator("select[name=default_property] option", { hasText: /on Platform Test House$/ }).getAttribute("value");
+    await page.getByLabel("Lines that match no reservation").selectOption(house!);
+    await page.getByRole("button", { name: "Check file" }).click();
+    await expect(page.locator("tr", { hasText: "4000111222" })).toContainText("Add new");
+    await expect(page.locator("tr", { hasText: "4000111333" })).toContainText("already has a Booking.com stay");
+    await expect(page.getByRole("note").filter({ hasText: "will be added as new reservation" })).toBeVisible();
+    await page.getByRole("button", { name: /Import 1 reservation/ }).click();
+    await expect(page.getByText(/0 reservations updated, 1 added/)).toBeVisible();
+    const [added] = await sql<{ id: string; check_in: string }>("SELECT id, check_in::text FROM channel_reservations WHERE external_ref = '4000111222'");
+    expect(added.check_in).toBe(iso(U + 80));
+    expect((await sql("SELECT 1 FROM blocks WHERE source = $1", ["res:" + added.id])).length).toBe(1);
+
+    // From Bookings: the recent-imports notice leads to the review page.
+    await page.goto("/host/bookings?view=upcoming");
+    await expect(row(page, "bookingcom", "4000111222")).toHaveCount(1);
+    await page.getByRole("status").filter({ hasText: "Recent file imports" }).locator("li", { hasText: "booking-res.csv" }).getByRole("link", { name: "Review or undo" }).click();
+    await expect(page.getByRole("table", { name: "Added by this import" })).toContainText("4000111222");
+    await page.getByRole("button", { name: "Undo this import" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Import undone" })).toBeVisible();
+    expect((await sql("SELECT 1 FROM channel_reservations WHERE external_ref = '4000111222'")).length).toBe(0);
+    expect((await sql("SELECT 1 FROM blocks WHERE source = $1", ["res:" + added.id])).length).toBe(0);
+    const after = await sql<{ n: number }>("SELECT count(*)::int AS n FROM channel_reservations WHERE property_id IN (SELECT id FROM properties WHERE slug LIKE 'plat-test-%')");
+    expect(after[0].n).toBe(before[0].n);
+    await page.goto("/host/bookings?view=upcoming");
+    await expect(row(page, "bookingcom", "4000111222")).toHaveCount(0);
+    await expect(page.getByRole("status").filter({ hasText: "booking-res.csv" })).toHaveCount(0);
+
+    // Put it back, then undo again.
+    await page.goto("/host/finance/import");
+    await expect(page.locator("tr", { hasText: "booking-res.csv" })).toContainText("Undone");
+    await page.locator("tr", { hasText: "booking-res.csv" }).getByRole("link", { name: "Review" }).click();
+    await page.getByRole("button", { name: "Put it back" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "put back" })).toBeVisible();
+    expect((await sql("SELECT 1 FROM channel_reservations WHERE id = $1", [added.id])).length).toBe(1);
+    expect((await sql("SELECT 1 FROM blocks WHERE source = $1", ["res:" + added.id])).length).toBe(1);
+    await page.getByRole("button", { name: "Undo this import" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Import undone" })).toBeVisible();
+    expect((await sql("SELECT 1 FROM channel_reservations WHERE external_ref = '4000111222'")).length).toBe(0);
+    await signOut(page);
+  });
 });

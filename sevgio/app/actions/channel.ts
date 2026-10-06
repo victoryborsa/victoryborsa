@@ -14,6 +14,7 @@ import { syncManualBlock } from "@/lib/channel-res.ts";
 import { FIELDS, guessMapping, parseCsv, toRecords, type Field, type Mapping } from "@/lib/payout-import.ts";
 import { applyPayoutRecords, type ImportSummary } from "@/lib/payout-apply.ts";
 import { logEvent } from "@/lib/log.ts";
+import { canUndo, getImport, putBackImport, undoImport } from "@/lib/import-undo.ts";
 
 type Row = { id: string; property_id: string; source: string; check_in: string; check_out: string; status: string; summary: string; channel: string };
 
@@ -209,4 +210,33 @@ export async function importPayoutAction(prev: ImportState, fd: FormData): Promi
     return { step: "done", opts, ok: `Imported ${fileName}: ${summary.updated} reservation${summary.updated === 1 ? "" : "s"} updated, ${summary.created} added, ${summary.skipped} skipped.`, summary, skippedLines: skipped };
   }
   return { step: "preview", text, fileName, headers, mapping, sample: rows.slice(1, 6), summary, skippedLines: skipped, opts };
+}
+
+/** Undo one reservations/payout file import (admin, or the person who imported it). The review page shows exactly what changes. */
+export async function undoImportAction(fd: FormData) {
+  const u = await requireUser(["host", "admin"]);
+  const id = str(fd, "id", 40), imp = await getImport(id);
+  if (!imp || !canUndo(u, imp)) redirect("/host/finance/import");
+  let msg = "undone";
+  if (imp.status !== "undone") {
+    const r = await undoImport(id, u.id, todayLocal());
+    after(checkConflicts);
+    await logEvent("warn", "Finance", `Undid ${channelLabel(imp.channel)} import ${imp.file_name}: ${r.removed} added reservations removed, ${r.restored} put back`, { import: id }, u.id);
+  } else msg = "already";
+  revalidatePath("/", "layout");
+  redirect(`/host/finance/import/${id}?done=${msg}`);
+}
+
+/** Reverse an undo from the copies it saved. */
+export async function putBackImportAction(fd: FormData) {
+  const u = await requireUser(["host", "admin"]);
+  const id = str(fd, "id", 40), imp = await getImport(id);
+  if (!imp || !canUndo(u, imp)) redirect("/host/finance/import");
+  if (imp.status === "undone") {
+    const n = await putBackImport(id, todayLocal());
+    after(checkConflicts);
+    await logEvent("warn", "Finance", `Put back ${channelLabel(imp.channel)} import ${imp.file_name} after an undo (${n} reservations)`, { import: id }, u.id);
+  }
+  revalidatePath("/", "layout");
+  redirect(`/host/finance/import/${id}?done=putback`);
 }

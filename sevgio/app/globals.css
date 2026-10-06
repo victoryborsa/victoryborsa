@@ -1793,3 +1793,6 @@ a.ar-card:hover { border-color: var(--accent); }
 .mn-actions { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
 .imp-names h3 { margin-top: 0; }
 .imp-steps { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+.imp-last { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+.ri-list { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+.imp-undo { border-color: var(--danger, #c0392b); }

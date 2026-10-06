@@ -97,8 +97,24 @@ export function parseMoney(v: string | undefined): number | null {
 }
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-/** Dates as sites write them: 2026-10-04, 10/04/2026 (US order unless the first number is over 12), 4 Oct 2026, Oct 4, 2026. */
-export function parseDate(v: string | undefined): string | null {
+/**
+ * Which way round a file writes numeric dates. Booking.com and European exports use day first (13/10/2026),
+ * Airbnb US uses month first (10/13/2026). One date with a first number over 12 settles it for the whole file;
+ * dotted dates (13.10.2026) are day first. Returns "mdy" when nothing in the file tells them apart.
+ */
+export function dateOrder(values: (string | undefined)[]): "dmy" | "mdy" {
+  let dmy = 0, mdy = 0;
+  for (const v of values) {
+    const m = (v || "").trim().match(/^(\d{1,2})([-/.])(\d{1,2})[-/.]\d{2,4}/);
+    if (!m) continue;
+    if (+m[1] > 12 || m[2] === ".") dmy++;
+    else if (+m[3] > 12) mdy++;
+  }
+  return dmy > mdy ? "dmy" : "mdy";
+}
+
+/** Dates as sites write them: 2026-10-04, 10/04/2026 (month first unless the file is day first, see dateOrder), 4 Oct 2026, Oct 4, 2026. */
+export function parseDate(v: string | undefined, order: "dmy" | "mdy" = "mdy"): string | null {
   if (!v) return null;
   const s = v.trim().replace(/T.*$/, "").replace(/\s+\d{1,2}:\d{2}.*$/, "");
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -108,7 +124,7 @@ export function parseDate(v: string | undefined): string | null {
   m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
   if (m) {
     const y = +m[3] < 100 ? 2000 + +m[3] : +m[3];
-    return +m[1] > 12 ? ok(y, +m[2], +m[1]) : ok(y, +m[1], +m[2]);
+    return +m[1] > 12 || (order === "dmy" && +m[2] <= 12) ? ok(y, +m[2], +m[1]) : ok(y, +m[1], +m[2]);
   }
   m = s.match(/^(\d{1,2})\s+([a-z]{3})[a-z]*\.?,?\s+(\d{4})$/i);
   if (m && MONTHS.includes(m[2].toLowerCase())) return ok(+m[3], MONTHS.indexOf(m[2].toLowerCase()) + 1, +m[1]);
@@ -135,14 +151,16 @@ const add = (a: number | null, b: number | null) => (b == null ? a : (a ?? 0) + 
 export function toRecords(rows: string[][], m: Mapping): { records: PayoutRecord[]; skipped: Skipped[] } {
   const out = new Map<string, PayoutRecord>(), skipped: Skipped[] = [];
   const cell = (r: string[], f: Field) => (m[f] == null ? undefined : r[m[f]!]);
+  const order = dateOrder(rows.flatMap(r => [cell(r, "check_in"), cell(r, "check_out"), cell(r, "payout_date")]));
+  const date = (v: string | undefined) => parseDate(v, order);
   rows.forEach((r, i) => {
     const line = i + 2;
     const type = (cell(r, "type") || "").toLowerCase();
     if (/^payout$|transfer|withdrawal/.test(type)) { skipped.push({ line, reason: "Bank transfer line (not a reservation)" }); return; }
     const ref = (cell(r, "ref") || "").trim().toUpperCase();
-    const ci = parseDate(cell(r, "check_in"));
+    const ci = date(cell(r, "check_in"));
     const nights = Number(cell(r, "nights")) || 0;
-    const co = parseDate(cell(r, "check_out")) || (ci && nights > 0 ? addDays(ci, nights) : null);
+    const co = date(cell(r, "check_out")) || (ci && nights > 0 ? addDays(ci, nights) : null);
     if (!ref && !ci) { skipped.push({ line, reason: "No confirmation code or check-in date" }); return; }
     const key = ref || `${ci}|${co}|${(cell(r, "listing") || "").toLowerCase()}`;
     const rec = out.get(key) || { key, ref, check_in: null, check_out: null, guest: "", listing: "", guests: null, cancelled: false,
@@ -175,7 +193,7 @@ export function toRecords(rows: string[][], m: Mapping): { records: PayoutRecord
     rec.rent = add(rec.rent, rent);
     rec.payout = add(rec.payout, amount);
     rec.received = add(rec.received, money("received"));
-    rec.payout_date ||= parseDate(cell(r, "payout_date"));
+    rec.payout_date ||= date(cell(r, "payout_date"));
     out.set(key, rec);
   });
   return { records: [...out.values()], skipped };

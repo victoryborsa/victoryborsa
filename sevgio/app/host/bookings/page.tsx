@@ -10,6 +10,7 @@ import { BookingTable, type BookingRow, type PlatformRow } from "@/components/Bo
 import { markSeen } from "@/lib/alerts.ts";
 import { BookingTabs } from "@/components/BookingTabs.tsx";
 import { MissingNames } from "@/components/MissingNames.tsx";
+import { RecentImports } from "@/components/RecentImports.tsx";
 
 // `platform` picks the reservations from Airbnb, Booking.com, Vrbo and other sites that belong in the same list.
 // `phase` keeps only stays in that part of their timeline, using the listing's check-in and check-out times in Pittsburgh time:
@@ -75,6 +76,7 @@ export default async function HostBookings({ searchParams }: { searchParams: Pro
     <>
       <Flash msg={sp.msg} />
       <BookingTabs current={view} q={term} />
+      <RecentImports userId={u.role === "admin" ? null : u.id} />
       {v.platform && <MissingNames propertyIds={u.role === "admin" ? null : listings.map(l => l.id)} today={today} />}
       <form className="bk-search" method="get" action="/host/bookings" role="search">
         <input type="hidden" name="view" value={view} />
