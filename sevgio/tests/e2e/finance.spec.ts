@@ -52,6 +52,12 @@ test.describe.serial("finance with reservations from other sites", () => {
     await expect(page.locator(".stat", { hasText: "Reservations checking in" }).locator("b")).toHaveText("2");
     // Whole-home Booking.com (3 nights) fills the room too; the room's Airbnb stay adds 4 room-nights: 7 of the month's room-nights.
     await expect(page.locator(".stat", { hasText: "Nights booked" }).locator("b")).toHaveText("7");
+
+    // A stay whose dates changed on the other site still lists (this page used to crash on it).
+    await sql("UPDATE channel_reservations SET modified_at = '2026-10-06T04:30:00Z' WHERE external_ref = 'HMFINTEST1'");
+    await page.goto(`/host/bookings/other-sites?when=all&property=${house}`);
+    await expect(page.locator("tr", { hasText: "HMFINTEST1" })).toContainText("Dates changed Oct 6");
+    await sql("UPDATE channel_reservations SET modified_at = NULL WHERE external_ref = 'HMFINTEST1'");
     await signOut(page);
   });
 
