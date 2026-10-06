@@ -23,7 +23,7 @@ const NAMES: Record<Field, string[]> = {
   nights: ["nights", "number of nights", "of nights", "length of stay", "room nights"],
   guest: ["guest", "guest name", "guest names", "guest name s", "traveler", "traveler name", "booker name", "booked by", "name"],
   listing: ["listing", "listing name", "unit type", "room type", "property", "property name", "unit", "unit name", "accommodation", "room name", "room"],
-  guests: ["guests", "number of guests", "people", "persons", "guest count"],
+  guests: ["guests", "number of guests", "people", "persons", "guest count", "of adults", "adults"],
   type: ["type", "transaction type", "line type", "entry type"],
   status: ["status", "reservation status", "booking status"],
   gross: ["gross earnings", "gross amount", "gross revenue", "gross booking value", "total price", "price", "booking amount", "total amount", "original amount", "total"],

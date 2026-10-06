@@ -165,4 +165,27 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     }
     await signOut(page);
   });
+
+  test("Airbnb's reservations download fills in guest names; the notice says how many are still missing", async ({ page }) => {
+    await signIn(page, "dana@demo.sevgio.com", "demo-password-2026");
+    await page.goto("/host/bookings?view=upcoming");
+    await expect(page.getByRole("status").filter({ hasText: "no guest name" })).toContainText("from Airbnb");
+    await page.getByRole("link", { name: "Import a reservations file" }).click();
+    await expect(page.getByRole("heading", { name: "Get guest names and booking references" })).toBeVisible();
+    // Airbnb › Reservations › Export › Download CSV file, as Airbnb writes it.
+    const csv = ["Confirmation code,Status,Guest name,Contact,# of adults,# of children,# of infants,Start date,End date,# of nights,Booked,Listing,Earnings",
+      `HMPLAT0001,Confirmed,Jordan Lee,"+1 (412) 555-4321",2,0,0,${iso(U + 5).slice(5, 7)}/${iso(U + 5).slice(8)}/${iso(U + 5).slice(0, 4)},${iso(U + 8).slice(5, 7)}/${iso(U + 8).slice(8)}/${iso(U + 8).slice(0, 4)},3,2026-09-30,Rose Room,"$412.50"`].join("\n");
+    await page.getByLabel("Payout or earnings file (CSV)").setInputFiles({ name: "reservations.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+    await page.getByLabel("Which site is it from?").selectOption("airbnb");
+    await page.getByRole("button", { name: "Check file" }).click();
+    await expect(page.locator("tr", { hasText: "HMPLAT0001" })).toContainText("Update");
+    await page.getByRole("button", { name: /Import 1 reservation/ }).click();
+    await expect(page.getByText(/1 reservation updated/)).toBeVisible();
+    await page.goto("/host/bookings?view=upcoming");
+    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Jordan Lee");
+    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("From payout file");
+    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("2 guests");
+    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Payout not received");
+    await signOut(page);
+  });
 });

@@ -15,9 +15,19 @@ export default async function ImportPayouts() {
   return (
     <div className="stack" style={{ gap: 16 }}>
       <p><Link href="/host/finance">‹ Finance</Link></p>
-      <h2>Import a payout file</h2>
+      <h2>Import reservations or payouts</h2>
+      <section className="box imp-names" aria-labelledby="imp-names-h">
+        <h3 id="imp-names-h">Get guest names and booking references</h3>
+        <p className="hint">Calendar links from Airbnb, Booking.com and Vrbo never include guest names. Each site&apos;s reservations download does. Import it once and every matching reservation gets its guest name and reference; names already typed in are kept.</p>
+        <ol className="imp-steps">
+          <li><b>Airbnb:</b> on airbnb.com, switch to hosting › <b>Today</b> › <b>Reservations</b> (or Menu › Reservations) › <b>All</b> › <b>Export</b> › <b>Download CSV file</b>.</li>
+          <li><b>Booking.com:</b> in the extranet, <b>Reservations</b> › set the dates › <b>Download</b> (choose CSV, or open the Excel file and save it as CSV).</li>
+          <li><b>Vrbo:</b> <b>Reservations</b> › <b>Export</b>, or Financial reporting › Payouts › Export.</li>
+          <li>Below, choose the file and the site, click <b>Check file</b>, review what will change, then <b>Import</b>. Leave “These payouts have already reached my bank account” unticked for a reservations download.</li>
+        </ol>
+      </section>
       <div className="stack hint" style={{ gap: 4 }}>
-        <span>Calendar links only share dates. To see rent, fees, commissions and payouts, download the payout or earnings report from each site and import it here:</span>
+        <span>Payout and earnings reports work too, and also bring in rent, fees, commissions and payouts:</span>
         <span><b>Airbnb:</b> Menu › Earnings › Transaction history (paid or upcoming) › Export CSV.</span>
         <span><b>Vrbo:</b> Financial reporting › Payouts › Export.</span>
         <span><b>Booking.com:</b> Finance › Reservation statement, or Reservations › Download, saved as CSV.</span>

@@ -1786,3 +1786,10 @@ a.ar-card:hover { border-color: var(--accent); }
 .rs-noref { font-style: italic; font-weight: 500; color: var(--muted); }
 @media (max-width: 760px) { .rs-fix { padding: 0 14px 14px; } }
 .rs-row .pill { white-space: normal; border-radius: 8px; text-align: left; line-height: 1.35; }
+.mn { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
+.mn .ic { flex: none; margin-top: 2px; }
+.mn-h { margin: 0 0 4px; font-size: 16px; }
+.mn-p { margin: 0 0 10px; }
+.mn-actions { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.imp-names h3 { margin-top: 0; }
+.imp-steps { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
