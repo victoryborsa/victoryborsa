@@ -32,6 +32,8 @@ before(async () => {
   roomId = await prop("Room", houseId);
   soloId = await prop("Solo", null);
   airbnbFeed = (await one<{ id: string }>("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, 'Airbnb', 'https://example.com/u1.ics') RETURNING id", [roomId]))!.id;
+  // Solo is listed on Airbnb too (its link isn't synced in these tests); House and Room only through the Room's Airbnb link.
+  await q("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, 'Airbnb', 'https://example.com/u3.ics')", [soloId]);
   bookingFeed = (await one<{ id: string }>("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, 'Booking.com', 'https://example.com/u2.ics') RETURNING id", [soloId]))!.id;
 });
 after(async () => { await pool.end(); });
@@ -82,6 +84,10 @@ test("undo removes only what one import added, puts back what it changed, and ca
   ].join("\n"), soloId, "airbnb.csv");
   assert.deepEqual([air.updated, air.created, air.skipped], [2, 1, 1]);
   assert.match(air.outcomes.find(o => o.ref === code("O1"))!.reason!, /already has a Vrbo stay/);
+  // A listing with no Vrbo link never gets a Vrbo stay from a file.
+  const vrbo = await importCsv("vrbo", `Reservation ID,Guest name,Check-in,Check-out\nHA-${K},Not Here,${addDays(T, 90)},${addDays(T, 92)}`, soloId, "vrbo.csv");
+  assert.deepEqual([vrbo.created, vrbo.skipped], [0, 1]);
+  assert.match(vrbo.outcomes[0].reason!, /isn't connected to Vrbo/);
   const afterAirbnb = await state();
 
   // Import 2 (Booking.com): confirms the unclear stay and adds one more.

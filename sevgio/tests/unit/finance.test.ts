@@ -231,6 +231,7 @@ test("payout import fills in the money, matches by code or dates, and importing 
   ].join("\n");
   const rows = parseCsv(csv);
   const { records } = toRecords(rows.slice(1), guessMapping(rows[0]));
+  await q("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, 'Airbnb', 'https://example.com/solo-airbnb.ics')", [soloId]);
   const opts = { channel: "airbnb", defaultProperty: null, markReceived: false, dryRun: true, today: T };
   const dry = await applyPayoutRecords(listings, records, opts);
   assert.deepEqual([dry.updated, dry.created, dry.skipped], [2, 1, 0]);

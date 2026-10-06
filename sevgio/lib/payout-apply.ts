@@ -1,7 +1,7 @@
 import { one, q } from "./db.ts";
 import { matchListing, type PayoutRecord } from "./payout-import.ts";
 import { syncManualBlock } from "./channel-res.ts";
-import { channelLabel } from "./channels.ts";
+import { channelLabel, channelOf } from "./channels.ts";
 
 export type ImportOptions = { channel: string; defaultProperty: string | null; markReceived: boolean; dryRun: boolean; today: string; userId?: string | null; fileName?: string };
 export type ImportOutcome = { key: string; ref: string; check_in: string | null; check_out: string | null; action: "update" | "create" | "skip"; place: string; reason?: string; payout: number | null };
@@ -25,8 +25,9 @@ type Target = { id: string; property_id: string; external_ref: string; guest_nam
  * With dryRun, nothing is saved; the outcome shows what would happen.
  * Otherwise every change is recorded against one channel_imports row (what was added, and what changed with its
  * values before and after), so lib/import-undo.ts can reverse exactly this import later.
- * A line that matches nothing is added only when it doesn't overlap a stay already on that listing, so a file whose
- * lines fail to match can't pile duplicates onto the calendar.
+ * A line that matches nothing is added only on a listing connected to that site (it has the site's calendar link),
+ * and only when it doesn't overlap a stay already there, so a file whose lines fail to match can't pile duplicates
+ * onto the calendar or put stays on listings that aren't on that site.
  */
 export async function applyPayoutRecords(listings: { id: string; title: string; parent_id: string | null }[], records: PayoutRecord[], o: ImportOptions): Promise<ImportSummary> {
   const ids = listings.map(l => l.id);
@@ -72,6 +73,13 @@ export async function applyPayoutRecords(listings: { id: string; title: string; 
     const pid = named?.id || o.defaultProperty;
     if (!pid) { skip(r.listing ? `No listing called "${r.listing}"; choose one for unmatched lines` : "No matching reservation; choose a listing for unmatched lines"); continue; }
     if (!r.check_in || !r.check_out || r.check_out <= r.check_in) { skip("No matching reservation, and the line has no check-in and check-out dates"); continue; }
+    // Only on a listing (or its home or rooms) that has this site's calendar link: a stay is never put on a listing not listed on that site.
+    const links = await q<{ name: string; url: string }>(
+      `SELECT f.name, f.url FROM ical_feeds f, properties me WHERE me.id = $1
+         AND f.property_id IN (SELECT x.id FROM properties x WHERE x.id = me.id OR x.parent_id = me.id OR x.id = me.parent_id)`, [pid]);
+    if (!links.some(f => channelOf(f.name, f.url).key === o.channel)) {
+      skip(`Not added: ${title(pid)} isn't connected to ${channelLabel(o.channel)} (no ${channelLabel(o.channel)} calendar link)`); continue;
+    }
     const overlap = await one<{ check_in: string; check_out: string; label: string }>(
       `SELECT check_in, check_out, label FROM (
          SELECT c.check_in, c.check_out, c.channel AS label FROM channel_reservations c
