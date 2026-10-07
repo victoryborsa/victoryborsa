@@ -3,18 +3,19 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { checkConflicts } from "@/lib/conflicts.ts";
 import { one, q, tx } from "@/lib/db.ts";
-import { requireUser, safeNext, type User } from "@/lib/auth.ts";
+import { hashPassword, requireUser, safeNext, type User } from "@/lib/auth.ts";
+import nodeCrypto from "node:crypto";
 import { withMsg } from "@/components/Flash.tsx";
 import { requireManageable } from "@/lib/access.ts";
-import { addBlock, setBookingStatus, type Booking } from "@/lib/bookings.ts";
+import { addBlock, createManualBooking, setBookingStatus, type Booking } from "@/lib/bookings.ts";
 import { ACCESS, AMENITIES, CANCELLATION, PROPERTY_TYPES, parseBeds, parseRooms, parseServices } from "@/lib/constants.ts";
-import { int, lines, slugify, str, type ActionState } from "@/lib/validate.ts";
+import { int, isEmail, lines, slugify, str, type ActionState } from "@/lib/validate.ts";
 import { toCents } from "@/lib/money.ts";
 import { processPhoto } from "@/lib/photos.ts";
 import { syncFeed } from "@/lib/calendar-sync.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { isOnline } from "@/lib/payments.ts";
-import { bookingInfo, notifyBooking, recordPayment } from "@/lib/payment-flow.ts";
+import { bookingInfo, emailManualConfirmation, notifyBooking, recordPayment } from "@/lib/payment-flow.ts";
 import { fetchPublic } from "@/lib/safe-fetch.ts";
 import { moveListingFamily } from "@/lib/homes.ts";
 import { feePayText, feeState, type FeeRow } from "@/lib/listing-fee.ts";
@@ -22,7 +23,7 @@ import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
 import { after } from "next/server";
 import { geocodeListing } from "@/lib/geocode.ts";
-import { fmtDate, todayLocal } from "@/lib/dates.ts";
+import { fmtDate, isIsoDate, todayLocal } from "@/lib/dates.ts";
 
 // ---------- Listings ----------
 
@@ -557,4 +558,27 @@ export async function markPaidAction(_: ActionState, fd: FormData): Promise<Acti
   if (!r.ok) return { error: r.reason === "taken" ? "The payment was recorded, but these dates were already taken by someone else. Please refund the guest." : "Booking not found." };
   const back = safeNext(str(fd, "back", 300), "/host/bookings");
   redirect(withMsg(back, "paid"));
+}
+
+/** Admin → Add Manual Reservation: a guest who called or wrote directly. Confirmed with nothing paid; the guest is emailed. */
+export async function addManualReservationAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireUser(["admin"]);
+  const propertyId = str(fd, "property", 40), name = str(fd, "name", 120), email = str(fd, "email", 254).toLowerCase(), phone = str(fd, "phone", 40);
+  const ci = str(fd, "check_in", 10), co = str(fd, "check_out", 10);
+  if (!propertyId) return { error: "Choose a property." };
+  if (!name) return { error: "Enter the guest's name." };
+  if (!isEmail(email)) return { error: "Enter the guest's email, so they get their confirmation." };
+  if (!isIsoDate(ci) || !isIsoDate(co)) return { error: "Choose check-in and check-out dates." };
+  // The guest's account: an existing one with this email, or a new one they can open later with "Forgot password".
+  let guest = await one<{ id: string }>("SELECT id FROM users WHERE lower(email) = $1", [email]);
+  guest ??= await one<{ id: string }>("INSERT INTO users (email, name, phone, password_hash, role) VALUES ($1, $2, $3, $4, 'customer') RETURNING id",
+    [email, name, phone, await hashPassword(nodeCrypto.randomBytes(24).toString("hex"))]);
+  const s = await getSettings();
+  const r = await createManualBooking({ propertyId, guestId: guest!.id, ci, co, name, phone, taxPercent: s.tax_percent });
+  if (!r.ok) return { error: r.error };
+  await logEvent("info", "Bookings", `Manual reservation ${r.booking.code} added for ${name}, ${r.property.title}, ${ci} to ${co}`, { booking: r.booking.id }, admin.id);
+  after(() => checkConflicts());
+  const info = await bookingInfo(r.booking.id);
+  const sent = info ? await emailManualConfirmation(info) : { ok: false };
+  redirect(withMsg(`/admin/bookings/${r.booking.code}`, sent.ok ? "manualadded" : "manualnomail"));
 }

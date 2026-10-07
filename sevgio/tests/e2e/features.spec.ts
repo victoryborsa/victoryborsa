@@ -9,8 +9,8 @@ test("feature switches page lists upgrade features as not built yet", async ({ p
   await expect(audit).toContainText("Change history (audit log)");
   await expect(audit).toContainText("Not built yet");
   await expect(audit.getByRole("button")).toHaveCount(0);
-  await expect(page.locator('[data-flag="FEATURE_MANUAL_RESERVATIONS"]')).toContainText("Manual reservations");
-  await expect(page.getByRole("link", { name: "Feature switches" })).toBeVisible();
+  // Kept out of the admin menu; only reached by its address.
+  await expect(page.getByRole("link", { name: "Feature switches" })).toHaveCount(0);
   // Nothing is saved just by looking.
   expect(await sql("SELECT 1 FROM settings WHERE key LIKE 'flag:%'")).toHaveLength(0);
 });

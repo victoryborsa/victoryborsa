@@ -8,7 +8,6 @@ export type FlagDef = { key: string; name: string; about: string; phase: 1 | 2 |
 export const FLAGS: FlagDef[] = [
   { key: "FEATURE_AUDIT_LOG", phase: 1, ready: false, name: "Change history (audit log)", about: "Records who changed what on reservations, guests, listings, prices and payments, with the before and after values." },
   { key: "FEATURE_RESERVATION_SERVICE", phase: 1, ready: false, name: "Shared booking engine", about: "Every reservation (website, calendar link, CSV import, typed in) goes through the same duplicate and double-booking checks." },
-  { key: "FEATURE_MANUAL_RESERVATIONS", phase: 1, ready: false, name: "Manual reservations (payment optional)", about: "Create a confirmed booking for a guest who calls, with $0 paid, and record payment later." },
   { key: "FEATURE_SOFT_DELETE", phase: 1, ready: false, name: "Restore deleted reservations", about: "Deleted reservations go to a 90-day restore list instead of being erased." },
   { key: "FEATURE_DUPLICATE_CHECK", phase: 1, ready: false, name: "Possible duplicate warnings", about: "Flags stays on the same listing and dates with a similar guest name for you to review." },
   { key: "FEATURE_IMPORT_DRY_RUN", phase: 1, ready: false, name: "Import preview and same-file check", about: "Shows what an import will add, change, skip or clash with before anything is saved, and refuses a file already imported." },

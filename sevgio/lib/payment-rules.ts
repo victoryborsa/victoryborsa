@@ -9,6 +9,13 @@ export const METHOD_LABEL: Record<PayMethod, string> = {
   cash: "Cash at arrival (deposit by Zelle or Venmo)",
 };
 
+/** A booking marked cash with no deposit due is paid at the property (reservations the host enters by hand). */
+export const paysAtProperty = (b: { payment_method: string | null; due_now_cents?: number }) => b.payment_method === "cash" && b.due_now_cents === 0;
+
+/** How a booking is paid, for its record and invoice. */
+export const methodLabel = (b: { payment_method: PayMethod | null; due_now_cents?: number }) =>
+  !b.payment_method ? "" : paysAtProperty(b) ? "Pay at the property" : METHOD_LABEL[b.payment_method];
+
 /** Card processing fee added to the guest's total, so the host receives the full price. */
 export function cardFee(totalCents: number, percent: number, fixedCents: number): number {
   if (totalCents <= 0 || (percent <= 0 && fixedCents <= 0)) return 0;

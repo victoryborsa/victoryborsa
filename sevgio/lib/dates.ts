@@ -12,9 +12,9 @@ export function addDays(s: string, n: number): string {
 export function nightsBetween(a: string, b: string): number {
   return Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / DAY);
 }
-/** Today's date in Pennsylvania (all listings are in US Eastern time). */
-export function todayLocal(tz = "America/New_York"): string {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+/** Today's date in Pennsylvania (all listings are in US Eastern time), or the Pennsylvania date of `at`. */
+export function todayLocal(tz = "America/New_York", at: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
   return parts; // en-CA formats as YYYY-MM-DD
 }
 export function fmtDate(s: string, opts: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric", year: "numeric" }): string {

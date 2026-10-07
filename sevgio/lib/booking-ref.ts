@@ -53,7 +53,7 @@ export function stayPhase(status: string, checkIn: string, checkOut: string, tod
   return "current";
 }
 
-type PayFields = { status: string; payment_method: string | null; payment_status: string; total_cents: number; paid_cents: number; card_fee_cents?: number };
+type PayFields = { status: string; payment_method: string | null; payment_status: string; total_cents: number; paid_cents: number; card_fee_cents?: number; due_now_cents?: number };
 
 /** Payment status in words, with a tone for the colored pill. */
 export function paymentLabel(b: PayFields): { label: string; tone: "ok" | "warn" | "danger" | "neutral" } {
@@ -66,6 +66,7 @@ export function paymentLabel(b: PayFields): { label: string; tone: "ok" | "warn"
   // No payment was taken or recorded through Sevgio, so it can't be shown as paid.
   if (!b.payment_method) return { label: b.status === "pending" ? "Not due yet" : "Payment status unavailable", tone: "neutral" };
   if (b.status === "pending") return { label: "Not due yet", tone: "neutral" };
+  if (b.payment_method === "cash" && b.due_now_cents === 0) return { label: `Unpaid, ${money(balance)} due at the property`, tone: "warn" };
   return { label: "Waiting for payment", tone: "warn" };
 }
 

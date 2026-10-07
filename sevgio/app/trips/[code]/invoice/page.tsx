@@ -8,7 +8,7 @@ import { fmtDate } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
 import { partyLabel } from "@/lib/party.ts";
 import { getSettings } from "@/lib/settings.ts";
-import { METHOD_LABEL } from "@/lib/payment-rules.ts";
+import { methodLabel } from "@/lib/payment-rules.ts";
 import { KEEP_REFERENCE, paymentLabel } from "@/lib/booking-ref.ts";
 import { BOOKING_STATUS } from "@/lib/constants.ts";
 import { BrandLogo } from "@/components/BrandLogo.tsx";
@@ -68,7 +68,7 @@ export default async function Invoice({ params }: { params: Promise<{ code: stri
               <dt>Issued</dt><dd>{new Date(b.created_at).toLocaleDateString("en-US", { timeZone: "America/New_York", dateStyle: "medium" })}</dd>
               <dt>Status</dt><dd>{BOOKING_STATUS[b.status]?.label || b.status}</dd>
               <dt>Payment</dt><dd>{pay.label}</dd>
-              {b.payment_method && <><dt>Method</dt><dd>{METHOD_LABEL[b.payment_method]}</dd></>}
+              {b.payment_method && <><dt>Method</dt><dd>{methodLabel(b)}</dd></>}
             </dl>
           </section>
         </div>

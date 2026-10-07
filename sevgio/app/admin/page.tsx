@@ -44,6 +44,7 @@ export default async function AdminHome() {
           <div><b>Emails are failing.</b> {emailFailures} email{emailFailures === 1 ? "" : "s"} couldn't be sent in the last day, so guests may not get their codes. Click “Send me a test email” below to see why.</div>
         </div>
       )}
+      <p style={{ margin: "0 0 16px" }}><Link className="btn btn-primary" href="/admin/bookings/new">+ Add Manual Reservation</Link></p>
       <ActionForm action={testEmailAction} className="row email-test" id="email-test">
         <SubmitButton className="btn btn-ghost btn-sm" pendingText="Sending…">Send me a test email</SubmitButton>
         <span className="hint">Checks that verification codes and booking emails can reach people.</span>

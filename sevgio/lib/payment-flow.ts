@@ -171,3 +171,21 @@ export async function paymentFailed(stripeSession: string, reason: string) {
   await sendEmail(b.host_email, `Payment failed: ${b.code}`, `The bank transfer for ${b.guest_name}'s booking ${b.code} (${b.title}, ${dates(b)}) failed: ${reason}.\n\nContact the guest to arrange payment, or cancel the booking: ${siteUrl()}/host/bookings`);
   await sendEmail(b.guest_email, `Your payment didn't go through: ${b.code}`, `Your bank transfer for ${b.title} (${dates(b)}) didn't go through. Please contact us to arrange payment so we can keep your booking: ${siteUrl()}/contact`);
 }
+
+/** Confirmation for a reservation the host entered by hand: nothing paid yet, the guest pays at the property. */
+export async function emailManualConfirmation(b: Info) {
+  const first = b.guest_name.split(" ")[0] || "there";
+  const lines = [
+    `Booking reference: ${b.code}`,
+    `Guest name: ${b.guest_name}`,
+    `Property: ${b.title}`,
+    `Check-in: ${fmtDate(b.check_in)}`,
+    `Check-out: ${fmtDate(b.check_out)} (${b.nights} night${b.nights === 1 ? "" : "s"})`,
+    `Total: ${money(b.total_cents)}`,
+    `Amount paid: ${money(b.paid_cents)}`,
+    `Balance due: ${money(b.total_cents - b.paid_cents)}`,
+  ].join("\n");
+  return sendEmail(b.guest_email, `Reservation confirmed ${b.code}: ${b.title}`,
+    `Hi ${first},\n\nYour reservation at ${b.title} is confirmed.\n\n${lines}\n\nPayment is due at the property unless otherwise arranged.\n\n${KEEP_REFERENCE}\n\n`
+    + `See your reservation and arrival details online: ${siteUrl()}/trips/${b.code}\n(Sign in with this email address. The first time, choose "Forgot password" to set one.)`);
+}

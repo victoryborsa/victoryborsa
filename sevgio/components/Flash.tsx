@@ -8,6 +8,8 @@ const MESSAGES: Record<string, { tone: "ok" | "warn"; text: string }> = {
   paid: { tone: "ok", text: "Payment recorded. The guest has been emailed." },
   resadded: { tone: "ok", text: "Reservation added. Its dates are now blocked on Sevgio." },
   resdeleted: { tone: "ok", text: "Reservation deleted." },
+  manualadded: { tone: "ok", text: "Reservation saved. The dates are blocked on your calendar and the guest has been emailed a confirmation." },
+  manualnomail: { tone: "warn", text: "Reservation saved and the dates are blocked, but the confirmation email couldn't be sent. Check Errors & activity." },
 };
 
 export function Flash({ msg }: { msg?: string }) {

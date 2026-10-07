@@ -195,3 +195,44 @@ export async function replaceFeedBlocks(propertyId: string, source: string, rang
     return clashes;
   });
 }
+
+export type ManualBooking = { propertyId: string; guestId: string; ci: string; co: string; name: string; phone: string; taxPercent: number };
+
+/**
+ * A reservation the host enters for a guest who called or wrote directly. It is confirmed straight away with nothing paid:
+ * the guest pays at the property (marked as cash with no deposit due, so it never expires for non-payment).
+ * Uses the same lock, availability check and database constraint as website bookings, so it can't double-book.
+ * Listing rules (minimum nights, published or not) don't apply; the host decides.
+ */
+export async function createManualBooking(b: ManualBooking): Promise<CreateResult> {
+  if (!isIsoDate(b.ci) || !isIsoDate(b.co) || b.co <= b.ci) return { ok: false, error: "Check-out must be after check-in.", reason: "invalid" };
+  if (nightsBetween(b.ci, b.co) > 365) return { ok: false, error: "A reservation can be at most 365 nights.", reason: "invalid" };
+  try {
+    return await tx(async c => {
+      await lockProperty(c, b.propertyId);
+      const p = await one<Property>("SELECT * FROM properties WHERE id = $1", [b.propertyId], c);
+      if (!p) return { ok: false, error: "Choose a property.", reason: "not_found" } as const;
+      if (!(await isRangeFree(p.id, b.ci, b.co, c))) return { ok: false, error: "These dates are already booked or blocked for this property. Pick other dates, or check the calendar.", reason: "unavailable" } as const;
+      await withNightPricing(p, b.ci, b.co, c);
+      const pr = quote(p, b.ci, b.co, b.taxPercent); // the listing's normal price for its standard number of guests
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const booking = await one<Booking>(
+            `INSERT INTO bookings (code, property_id, guest_id, check_in, check_out, guests, status, nights, nightly_price_cents, cleaning_fee_cents, tax_cents, total_cents, guest_name, guest_phone, arrival_time, message,
+               adults, children, free_children, lodging_cents, discount_cents, management_fee_percent, payment_method, card_fee_cents, due_now_cents, payment_status, security_deposit_cents)
+             VALUES ($1,$2,$3,$4,$5,1,'confirmed',$6,$7,$8,$9,$10,$11,$12,'','',1,0,0,$13,$14,$15,'cash',0,0,'none',$16) RETURNING *`,
+            [newCode(), p.id, b.guestId, b.ci, b.co, pr.nights, pr.nightly, pr.cleaning, pr.tax, pr.total, b.name, b.phone, pr.base, pr.discount, p.management_fee_percent, p.security_deposit_cents || 0],
+            c,
+          );
+          return { ok: true, booking: booking!, property: p } as const;
+        } catch (e) {
+          if ((e as pg.DatabaseError).code === "23505" && attempt < 3) continue;
+          throw e;
+        }
+      }
+    });
+  } catch (e) {
+    if ((e as pg.DatabaseError).code === "23P01") return { ok: false, error: "These dates are already booked for this property.", reason: "unavailable" };
+    throw e;
+  }
+}

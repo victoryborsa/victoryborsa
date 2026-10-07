@@ -50,6 +50,7 @@ export default async function AdminBookings({ searchParams }: { searchParams: Pr
   return (
     <>
       <Flash msg={sp.msg} />
+      <p style={{ margin: "0 0 12px" }}><Link className="btn btn-primary" href="/admin/bookings/new">+ Add Manual Reservation</Link></p>
       <ReservationSearchForm term="" phase="all" />
       <RecentImports userId={null} />
       <MissingNames propertyIds={null} today={todayLocal()} />

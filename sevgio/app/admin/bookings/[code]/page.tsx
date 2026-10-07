@@ -8,7 +8,7 @@ import { fmtDate } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
 import { partyLabel } from "@/lib/party.ts";
 import { mailUrl, telUrl } from "@/lib/links.ts";
-import { METHOD_LABEL } from "@/lib/payment-rules.ts";
+import { METHOD_LABEL, methodLabel, paysAtProperty } from "@/lib/payment-rules.ts";
 import { PHASE_LABEL, PHASE_TONE, localNow, stayPhase } from "@/lib/booking-ref.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { StatusPill } from "@/components/ui.tsx";
@@ -105,8 +105,9 @@ export default async function AdminReservation({ params, searchParams }: { param
           <PriceBreakdown b={b} />
           <dl className="kv" style={{ marginTop: 12 }}>
             <dt>Payment</dt><dd><PaymentPill b={b} /></dd>
-            <dt>Method</dt><dd>{b.payment_method ? METHOD_LABEL[b.payment_method] : "Not collected online"}</dd>
+            <dt>Method</dt><dd>{b.payment_method ? methodLabel(b) : "Not collected online"}</dd>
             {b.paid_cents < b.total_cents && b.paid_cents > 0 && <><dt>Still to collect</dt><dd>{money(b.total_cents - b.paid_cents)}</dd></>}
+            {b.paid_cents === 0 && paysAtProperty(b) && b.status === "confirmed" && <><dt>Amount due</dt><dd>{money(b.total_cents)}</dd></>}
             {b.payment_deadline && b.status === "awaiting_payment" && <><dt>Pay by</dt><dd>{when(b.payment_deadline)} ET</dd></>}
             {b.security_deposit_cents > 0 && <><dt>Security deposit</dt><dd>{money(b.security_deposit_cents)} <span className="muted" style={{ fontWeight: 400 }}>collected separately</span></dd></>}
           </dl>
@@ -115,7 +116,7 @@ export default async function AdminReservation({ params, searchParams }: { param
               <table className="tbl">
                 <thead><tr><th>Date</th><th>Method</th><th className="num">Amount</th><th>Status</th></tr></thead>
                 <tbody>{payments.map((pm, i) => (
-                  <tr key={i}><td>{when(pm.created_at)}{pm.recorded_by_name && <div className="hint">Recorded by {pm.recorded_by_name}</div>}</td><td>{METHOD_LABEL[pm.method as keyof typeof METHOD_LABEL] || pm.method}{pm.note && <div className="hint">{pm.note}</div>}</td><td className="num">{money(pm.amount_cents)}</td><td>{PAY_STATUS[pm.status] || pm.status}</td></tr>
+                  <tr key={i}><td>{when(pm.created_at)}{pm.recorded_by_name && <div className="hint">Recorded by {pm.recorded_by_name}</div>}</td><td>{pm.method === "cash" ? "Cash" : METHOD_LABEL[pm.method as keyof typeof METHOD_LABEL] || pm.method}{pm.note && <div className="hint">{pm.note}</div>}</td><td className="num">{money(pm.amount_cents)}</td><td>{PAY_STATUS[pm.status] || pm.status}</td></tr>
                 ))}</tbody>
               </table>
             </div>
