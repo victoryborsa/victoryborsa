@@ -108,7 +108,7 @@ export async function FinanceView({ u, basePath, sp }: { u: User; basePath: stri
           <div className="stack" style={{ gap: 6 }}>
             <b>Some numbers are incomplete</b>
             {gaps.needsEntry > 0 && <span>{gaps.needsEntry} reservation{gaps.needsEntry === 1 ? "" : "s"} from other sites {gaps.needsEntry === 1 ? "has" : "have"} no prices or payout yet. Calendar links only share dates. <Link href="/host/finance/import">Import a payout file</Link> or <Link href="/host/bookings/other-sites?needs=1">enter them by hand</Link>.</span>}
-            {gaps.unclear > 0 && <span>{gaps.unclear} Booking.com period{gaps.unclear === 1 ? " doesn't" : "s don't"} say whether {gaps.unclear === 1 ? "it's" : "they're"} a reservation or closed dates, so {gaps.unclear === 1 ? "it isn't" : "they aren't"} counted. <Link href="/host/bookings/other-sites?kind=unknown">Review them</Link>.</span>}
+            {gaps.unclear > 0 && <span>{gaps.unclear} external calendar block{gaps.unclear === 1 ? " isn't" : "s aren't"} counted as bookings until a reservations file or details you add confirm {gaps.unclear === 1 ? "it" : "them"}. <Link href="/host/bookings/other-sites?kind=unknown">See them</Link>.</span>}
             {gaps.feedErrors.map(e => <span key={e.name + e.place}>{e.name} calendar for {e.place}: {e.error}</span>)}
           </div>
         </div>
@@ -241,7 +241,7 @@ function Statement({ rows }: { rows: ReportRow[] }) {
             <tr key={r.id} data-res={r.ref || r.id}>
               <td><span className={`pill neutral ch-dot ch-${r.channel}`}>{r.channelLabel}</span>{r.status === "cancelled" && <div className="hint">Cancelled</div>}</td>
               <td className="mono"><Link href={r.href}>{r.ref || (r.needsEntry ? "Add details" : "Open")}</Link></td>
-              <td>{r.place}</td><td>{r.guest_name || <span className="muted">Guest name unavailable</span>}</td>
+              <td>{r.place}</td><td>{r.guest_name || <span className="muted">Not provided by the site</span>}</td>
               <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} – {fmtShort(r.check_out)}</td>
               <td className="num">{r.nights}</td>
               <td className="num"><Amt v={r.rent} /></td><td className="num"><Amt v={r.cleaning} /></td><td className="num"><Amt v={r.other} /></td>

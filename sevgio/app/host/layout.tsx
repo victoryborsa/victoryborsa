@@ -3,12 +3,13 @@ import { DashNav } from "@/components/DashNav.tsx";
 import { unseenBookings } from "@/lib/alerts.ts";
 import { openConflictCounts } from "@/lib/conflicts.ts";
 import { ConflictBanner } from "@/components/Conflicts.tsx";
+import { failingFeedCount } from "@/lib/sync-health.ts";
 
 export const dynamic = "force-dynamic";
 
 export default async function HostLayout({ children }: { children: React.ReactNode }) {
   const u = await requireUser(["host", "admin"], "/host");
-  const [fresh, clash] = await Promise.all([unseenBookings(u), openConflictCounts(u)]);
+  const [fresh, clash, failingFeeds] = await Promise.all([unseenBookings(u), openConflictCounts(u), failingFeedCount(u)]);
   return (
     <div className="dash wrap wrap-wide theme-light">
       <DashNav label="Host menu" groups={[
@@ -18,6 +19,7 @@ export default async function HostLayout({ children }: { children: React.ReactNo
           { href: "/host/calendar", label: "Calendar", icon: "calendar" },
           { href: "/host/bookings", label: "Bookings", icon: "bookings", badge: fresh },
           { href: "/host/conflicts", label: "Double bookings", icon: "conflict", badge: clash.active + clash.cleared },
+          { href: "/host/calendar-sync", label: "Calendar sync", icon: "sync", badge: failingFeeds },
           { href: "/host/listings", label: "Listings", icon: "listings" },
           { href: "/host/finance", label: "Finance", icon: "finance" },
         ] },

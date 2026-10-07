@@ -45,8 +45,13 @@ test.describe.serial("finance with reservations from other sites", () => {
     await expect(row).toContainText("Needs entry");
 
     // The Booking.com period is a reservation: once marked, it counts.
-    await page.getByRole("link", { name: "Review them" }).click();
-    await page.locator("tr", { hasText: "Finance Test House" }).getByRole("button", { name: "It's a reservation" }).click();
+    await page.getByRole("link", { name: "See them" }).click();
+    await expect(page.locator("tr", { hasText: "Finance Test House" })).toContainText("External calendar block");
+    await page.locator("tr", { hasText: "Finance Test House" }).getByRole("link", { name: "Open" }).click();
+    await page.getByText("Know what it is?").click();
+    await page.getByRole("button", { name: "It's a guest reservation" }).click();
+    await expect(page.getByRole("heading", { name: /Booking.com reservation/ })).toBeVisible();
+    await page.goto("/host/bookings/other-sites?kind=unknown");
     await expect(page.locator("tr", { hasText: "Finance Test House" })).toHaveCount(0);
     await page.goto(`/host/finance?from=${FROM}&to=${TO}&property=${house}`);
     await expect(page.locator(".stat", { hasText: "Reservations checking in" }).locator("b")).toHaveText("2");

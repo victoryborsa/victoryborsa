@@ -55,7 +55,7 @@ export default async function HostBookings({ searchParams }: { searchParams: Pro
 
   // Reservations from other sites on this person's listings (homes and their rooms), with the same date rules as Sevgio bookings:
   // Upcoming = checking out today or later, Past = checked out before today. Periods the site didn't label ("unknown", e.g. Booking.com's
-  // "CLOSED - Not available") are included and marked Needs check; dates known to be blocked and copies of another booking are left out.
+  // "CLOSED - Not available") are included as external calendar blocks; dates known to be blocked and copies of another booking are left out.
   const listings = v.platform ? await financeListings(u) : [];
   const pp: unknown[] = [listings.map(l => l.id)];
   const at = (val: unknown) => { pp.push(val); return "$" + pp.length; };
@@ -90,8 +90,8 @@ export default async function HostBookings({ searchParams }: { searchParams: Pro
       <BookingTable fresh={fresh} rows={rows} platform={platform} order={v.order} today={today} now={now} back={back} />
       <p className="hint" style={{ marginTop: 10 }}>
         Guest phone numbers and emails are shown only for active bookings.
-        {v.platform && <> Reservations from Airbnb, Booking.com, Vrbo and other sites are included. Their calendar links rarely include the guest&apos;s name or the booking reference, so add them with <b>Add details</b>; what you enter is kept when the calendars refresh.
-          Booking.com and Vrbo use the same label for guest reservations and closed dates, so those show <b>Unconfirmed</b> until you answer the question on the row.</>}
+        {v.platform && <> Reservations from Airbnb, Booking.com, Vrbo and other sites are included. Calendar links carry dates, and rarely the guest&apos;s name or booking reference: import the site&apos;s reservations file, or use <b>Add details</b>. What you enter is kept when the calendars refresh.
+          Dates Booking.com or Vrbo only mark as unavailable show as <b>External calendar block</b>, and become <b>Confirmed</b> when a file or the details you add match them. <Link href="/host/calendar-sync">Calendar sync status</Link></>}
       </p>
     </>
   );

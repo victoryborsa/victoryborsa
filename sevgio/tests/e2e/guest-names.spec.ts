@@ -54,12 +54,12 @@ test.describe.serial("guest names on reservations from other sites", () => {
     const air = page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" });
     await expect(air).toContainText("Airbnb");
     await expect(air).toContainText("Name Test House › Blue Room");
-    await expect(air).toContainText("Guest name unavailable");
+    await expect(air).toContainText("Not provided by Airbnb");
     await expect(air).toContainText("Confirmed");
     const vrbo = page.locator("tr[data-platform=vrbo]", { hasText: "Lee Park" });
     await expect(vrbo).toContainText("From Vrbo");
     await expect(vrbo).toContainText("No reference");
-    await expect(vrbo).toContainText("Missing reference");
+    await expect(vrbo).toContainText("Calendar details only");
     await expect(vrbo).toContainText("Vrbo's calendar link didn't send a reference.");
     await expect(air).toContainText("Payment status unavailable");
     await expect(air).toContainText("Upcoming");
@@ -72,7 +72,7 @@ test.describe.serial("guest names on reservations from other sites", () => {
     expect(at("HMGNTEST01")).toBeLessThan(at("SV-GNTST1"));
     expect(at("SV-GNTST1")).toBeLessThan(at("Lee Park"));
 
-    await expect(air).toContainText("Missing guest name");
+    await expect(air).toContainText("Calendar details only");
     await expect(air).toContainText("Airbnb's calendar link never sends guest names.");
     await air.getByText("Add details").click();
     await air.getByLabel("Guest full name").fill("Maria  Lopez");

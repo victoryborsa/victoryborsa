@@ -62,8 +62,8 @@ export async function searchReservations(term: string, today: string, opts: { ho
       const site = channelLabel(c.channel);
       return {
         source: "channel" as const, id: c.id, ref: c.external_ref, guest_name: c.guest_name, guest_email: "", title: c.title, check_in: c.check_in, check_out: c.check_out,
-        guests: c.guests, status: c.status, status_label: c.status === "cancelled" ? "Cancelled" : c.eff_kind === "unknown" ? "Unconfirmed" : "Confirmed",
-        status_tone: c.status === "cancelled" ? "danger" as const : c.eff_kind === "unknown" ? "warn" as const : "ok" as const,
+        guests: c.guests, status: c.status, status_label: c.status === "cancelled" ? "Cancelled" : c.eff_kind === "unknown" ? "External calendar block" : "Confirmed",
+        status_tone: c.status === "cancelled" ? "danger" as const : c.eff_kind === "unknown" ? "neutral" as const : "ok" as const,
         pay_label: c.received_payout_cents != null ? "Payout received" : c.expected_payout_cents != null ? "Payout not received" : "Payment status unavailable",
         pay_tone: c.received_payout_cents != null ? "ok" as const : c.expected_payout_cents != null ? "warn" as const : "neutral" as const,
         phase: stayPhase(c.status, c.check_in, c.check_out, today, clock(c)), href: `/host/bookings/other-sites/${c.id}`, site, created_at: c.created_at,

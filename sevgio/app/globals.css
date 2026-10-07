@@ -1775,11 +1775,15 @@ a.ar-card:hover { border-color: var(--accent); }
 .bk-check { max-width: 250px; }
 .bk-check .hint { margin: 6px 0; }
 .bk-check-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.bk-sort > summary { font-size: 13px; cursor: pointer; }
+.bk-sort[open] > summary { margin-bottom: 6px; }
+.sy-tbl td form { display: inline-block; margin-right: 8px; }
 .feed-raw { font-family: var(--f-mono); font-size: 13px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; word-break: break-word; }
 /* Under a search result from another site: what still needs the host (unconfirmed dates, missing reference or name), with the fix right there. */
 .rs-fix { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: flex-start; padding: 0 16px 14px 150px; }
 .rs-fix-q { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 640px; }
 .rs-fix-q .hint { flex: 1 1 260px; }
+.rs-fix .bk-check { max-width: 640px; }
 .rs-fix .dt { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .rs-fix .dt .dt-why { margin: 0; }
 .rs-fix .gn-form { max-width: 280px; }

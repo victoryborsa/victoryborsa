@@ -5,15 +5,17 @@ import { unseenBookings } from "@/lib/alerts.ts";
 import { openConflictCounts } from "@/lib/conflicts.ts";
 import { ConflictBanner } from "@/components/Conflicts.tsx";
 import { one } from "@/lib/db.ts";
+import { failingFeedCount } from "@/lib/sync-health.ts";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const u = await requireUser(["admin"], "/admin");
-  const [fresh, clash, errs] = await Promise.all([
+  const [fresh, clash, errs, failingFeeds] = await Promise.all([
     unseenBookings(u),
     openConflictCounts(u),
     one<{ n: number }>("SELECT count(*)::int AS n FROM event_log WHERE level = 'error' AND resolved_at IS NULL"),
+    failingFeedCount(u),
   ]);
   return (
     <div className="dash wrap wrap-wide theme-light">
@@ -24,6 +26,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           { href: "/admin/calendar", label: "Calendar", icon: "calendar" },
           { href: "/admin/bookings", label: "Bookings", icon: "bookings", badge: fresh },
           { href: "/admin/conflicts", label: "Double bookings", icon: "conflict", badge: clash.active + clash.cleared },
+          { href: "/admin/calendar-sync", label: "Calendar sync", icon: "sync", badge: failingFeeds },
           { href: "/admin/listings", label: "Listings", icon: "listings" },
           { href: "/admin/finance", label: "Finance", icon: "finance" },
         ] },

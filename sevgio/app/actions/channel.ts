@@ -120,12 +120,17 @@ export async function saveStayDetailsAction(_: ActionState, fd: FormData): Promi
   if (ref && await one("SELECT 1 FROM channel_reservations WHERE channel = $1 AND lower(external_ref) = lower($2) AND id <> $3", [r.channel, ref, r.id]))
     return { error: `Another ${channelLabel(r.channel)} reservation already has the reference ${ref}.` };
   await q(`UPDATE channel_reservations SET ${NAME_SET("$2", "$3")},
-             ref_source = CASE WHEN $4 = external_ref THEN ref_source WHEN $4 = '' THEN '' ELSE 'manual' END, external_ref = $4, updated_at = now()
+             ref_source = CASE WHEN $4 = external_ref THEN ref_source WHEN $4 = '' THEN '' ELSE 'manual' END, external_ref = $4, updated_at = now(),
+             -- A calendar block with a guest name or reference is a real reservation: it becomes Confirmed.
+             kind_locked = CASE WHEN kind = 'unknown' AND ($2 <> '' OR $4 <> '') THEN true ELSE kind_locked END,
+             kind = CASE WHEN kind = 'unknown' AND ($2 <> '' OR $4 <> '') THEN 'reservation' ELSE kind END
            WHERE id = $1`, [r.id, name, u.id, ref]);
+  after(checkConflicts);
   await logEvent("info", "Bookings", `Updated the guest name and reference for a ${channelLabel(r.channel)} reservation (${r.check_in} to ${r.check_out})`, { reservation: r.id }, u.id);
   revalidatePath("/host/bookings");
   revalidatePath("/host/bookings/other-sites");
   revalidatePath(`/host/bookings/other-sites/${r.id}`);
+  revalidatePath("/admin/bookings");
   return { ok: "Saved. These details are kept when the calendars refresh." };
 }
 

@@ -8,14 +8,13 @@ import { money } from "@/lib/money.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { AutoSubmit } from "@/components/AutoSubmit.tsx";
 import { BookingTabs } from "@/components/BookingTabs.tsx";
-import { setKindAction } from "@/app/actions/channel.ts";
-import { GuestCell, NO_GUEST_NAME } from "@/components/GuestNameForm.tsx";
+import { CAL_BLOCK, GuestCell } from "@/components/GuestNameForm.tsx";
 
 type Row = { id: string; property_id: string; channel: string; external_ref: string; guest_name: string; guest_name_source: string; check_in: string; check_out: string; status: string; kind: string; eff_kind: string;
   source: string; expected_payout_cents: number | null; received_payout_cents: number | null; rent_cents: number | null; modified_at: Date | string | null };
 
 const WHEN: Record<string, string> = { upcoming: "Upcoming and current", past: "Past", all: "All dates" };
-const KINDS: Record<string, string> = { "": "Reservations (incl. unconfirmed)", reservation: "Confirmed reservations only", unknown: "Unconfirmed (guest or closed dates?)", blocked: "Blocked on the other site", mirror: "Copies of other bookings", cancelled: "Cancelled" };
+const KINDS: Record<string, string> = { "": "Reservations and calendar blocks", reservation: "Confirmed reservations only", unknown: "External calendar blocks", blocked: "Blocked on the other site", mirror: "Copies of other bookings", cancelled: "Cancelled" };
 
 /** Every reservation that came from Airbnb, Vrbo, Booking.com or another site, with what's still missing for Finance. */
 export default async function OtherSites({ searchParams }: { searchParams: Promise<{ when?: string; kind?: string; channel?: string; property?: string; needs?: string; msg?: string }> }) {
@@ -67,28 +66,18 @@ export default async function OtherSites({ searchParams }: { searchParams: Promi
                   <td><span className={`pill neutral ch-dot ch-${r.channel}`}>{channelLabel(r.channel)}</span></td>
                   <td className="mono">{r.external_ref || <span className="muted">–</span>}</td>
                   <td>{placeName(listings, r.property_id)}</td>
-                  <td style={{ minWidth: 170 }}>{r.eff_kind === "reservation" ? <GuestCell name={r.guest_name} source={r.guest_name_source} site={channelLabel(r.channel)} /> : r.guest_name || <span className="muted">{NO_GUEST_NAME}</span>}</td>
+                  <td style={{ minWidth: 170 }}>{r.eff_kind === "reservation" ? <GuestCell name={r.guest_name} source={r.guest_name_source} site={channelLabel(r.channel)} /> : r.guest_name || <span className="muted">No guest details</span>}</td>
                   <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} – {fmtShort(r.check_out)}{r.modified_at && <div className="hint">Dates changed {fmtShort(todayLocal("America/New_York", new Date(r.modified_at)))}</div>}</td>
                   <td className="num">{nightsBetween(r.check_in, r.check_out)}</td>
                   <td>{r.status === "cancelled" ? <span className="pill danger">Cancelled</span>
-                    : r.eff_kind === "unknown" ? <span className="pill warn">Unconfirmed</span>
+                    : r.eff_kind === "unknown" ? <span className="pill neutral">{CAL_BLOCK}</span>
                     : r.eff_kind === "blocked" ? <span className="pill neutral">Blocked</span>
                     : r.eff_kind === "mirror" ? <span className="pill neutral">Copy of another booking</span>
                     : r.check_in <= today && today < r.check_out ? <span className="pill ok">Staying now</span>
                     : <span className="pill ok">Confirmed</span>}</td>
-                  <td className="num">{r.expected_payout_cents == null ? <span className="needs">Needs entry</span> : money(r.expected_payout_cents)}</td>
+                  <td className="num">{r.expected_payout_cents != null ? money(r.expected_payout_cents) : r.eff_kind === "reservation" ? <span className="needs">Needs entry</span> : <span className="muted">–</span>}</td>
                   <td className="num">{r.received_payout_cents == null ? <span className="muted">–</span> : money(r.received_payout_cents)}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
-                    {r.eff_kind === "unknown" && r.status === "confirmed" && (
-                      <span className="row" style={{ gap: 6, display: "inline-flex", marginRight: 6 }}>
-                        {([["reservation", "It's a reservation"], ["blocked", "It's closed dates"]] as const).map(([k, label]) => (
-                          <form key={k} action={setKindAction}>
-                            <input type="hidden" name="id" value={r.id} /><input type="hidden" name="back" value={back} /><input type="hidden" name="kind" value={k} />
-                            <button className="btn btn-ghost btn-sm">{label}</button>
-                          </form>
-                        ))}
-                      </span>
-                    )}
                     <Link className="btn btn-ghost btn-sm" href={`/host/bookings/other-sites/${r.id}`}>{r.rent_cents == null && r.eff_kind === "reservation" ? "Add payout details" : "Open"}</Link>
                   </td>
                 </tr>

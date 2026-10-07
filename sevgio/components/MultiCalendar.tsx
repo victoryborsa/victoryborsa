@@ -281,7 +281,7 @@ function toStays(res: Res[], blocks: Blk[], byId: Map<string, Prop>, placeName: 
           [ch ? "Check-out" : "Until", fmtDate(b.end_date, { weekday: "short", month: "short", day: "numeric", year: "numeric" })],
           ["Nights", String(nightsBetween(b.start_date, b.end_date))],
           ...(ch && b.ref ? [["Confirmation code", b.ref] as [string, string]] : []),
-          ...(ch ? [["Guest", b.guest ? b.guest : "Guest name unavailable. Add it from the reservation."] as [string, string]] : []),
+          ...(ch ? [["Guest", b.guest ? b.guest : "Not provided by the site's calendar link. Add it from the reservation."] as [string, string]] : []),
           ...(ch && b.kind === "reservation" ? [["Payout", b.payout == null ? "Needs entry" : money(b.payout)] as [string, string]] : []),
           ...(!ch && b.note ? [["Note", b.note] as [string, string]] : []),
         ] as [string, string][] },

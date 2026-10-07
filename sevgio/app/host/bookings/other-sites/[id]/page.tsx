@@ -6,7 +6,7 @@ import { fmtDate, nightsBetween } from "@/lib/dates.ts";
 import { financeListings, placeName } from "@/lib/finance.ts";
 import { channelLabel } from "@/lib/channels.ts";
 import { Flash } from "@/components/Flash.tsx";
-import { DetailsCell, GuestCell } from "@/components/GuestNameForm.tsx";
+import { BlockStatus, DetailsCell, GuestCell } from "@/components/GuestNameForm.tsx";
 import { ChannelResForm, type ChannelResValues } from "@/components/ChannelResForm.tsx";
 import { deleteChannelResAction, setManualStatusAction } from "@/app/actions/channel.ts";
 
@@ -29,9 +29,9 @@ export default async function OtherSiteReservation({ params, searchParams }: { p
       <Flash msg={(await searchParams).msg} />
       <p><Link href="/host/bookings/other-sites">‹ Other sites</Link></p>
       <div className="row" style={{ alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>{site} {r.eff_kind === "reservation" ? "reservation" : r.eff_kind === "unknown" ? "period" : "blocked dates"}{r.external_ref ? ` ${r.external_ref}` : ""}</h2>
+        <h2 style={{ margin: 0 }}>{site} {r.eff_kind === "reservation" ? "reservation" : r.eff_kind === "unknown" ? "calendar block" : "blocked dates"}{r.external_ref ? ` ${r.external_ref}` : ""}</h2>
         {r.status === "cancelled" ? <span className="pill danger">Cancelled</span> : r.eff_kind === "mirror" ? <span className="pill neutral">Copy of another booking (not counted)</span>
-          : r.eff_kind === "unknown" ? <span className="pill warn">Unclear: reservation or closed?</span> : <span className="pill ok">Counted in Finance</span>}
+          : r.eff_kind === "unknown" ? <span className="pill neutral">External calendar block: dates only</span> : <span className="pill ok">Counted in Finance</span>}
       </div>
       <dl className="sd-rows box">
         <div><dt>Listing</dt><dd>{placeName(listings, r.property_id)}</dd></div>
@@ -43,6 +43,12 @@ export default async function OtherSiteReservation({ params, searchParams }: { p
         )}
         <div><dt>Dates</dt><dd>{fmtDate(r.check_in)} → {fmtDate(r.check_out)} · {nightsBetween(r.check_in, r.check_out)} nights</dd></div>
         {r.eff_kind === "reservation" && <div><dt>Details</dt><dd><DetailsCell id={r.id} channel={r.channel} site={site} name={r.guest_name || ""} refCode={r.external_ref || ""} /></dd></div>}
+        {r.eff_kind === "unknown" && r.status === "confirmed" && (
+          <div><dt>Status</dt><dd>
+            <BlockStatus id={r.id} site={site} summary={r.summary} back={`/host/bookings/other-sites/${r.id}`} />
+            <DetailsCell id={r.id} channel={r.channel} site={site} name={r.guest_name || ""} refCode={r.external_ref || ""} block />
+          </dd></div>
+        )}
         <div><dt>Came from</dt><dd>{r.source === "ical" ? `${r.feed_name || site} calendar link` : r.source === "import" ? "Payout file import" : "Added by hand"}{r.summary ? ` · "${r.summary}"` : ""}</dd></div>
         {r.source === "ical" && (
           <div><dt>What {site} sent</dt><dd>

@@ -5,14 +5,13 @@ import { fmtDate, fmtShort } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
 import { ActionForm, SubmitButton } from "./forms.tsx";
 import { decideBookingAction, markPaidAction } from "@/app/actions/host.ts";
-import { setKindAction } from "@/app/actions/channel.ts";
 import type { Booking } from "@/lib/bookings.ts";
 import { channelLabel } from "@/lib/channels.ts";
 import { nightsBetween } from "@/lib/dates.ts";
 import { stayPhase, type Phase } from "@/lib/booking-ref.ts";
 import { Badge } from "./Badge.tsx";
 import type { IconName } from "./Icon.tsx";
-import { DetailsCell, GuestCell } from "./GuestNameForm.tsx";
+import { BlockStatus, DetailsCell, GuestCell } from "./GuestNameForm.tsx";
 
 const METHOD_SHORT: Record<string, string> = { card: "Card", ach: "Bank transfer", zelle: "Zelle", venmo: "Venmo", cash: "Cash + deposit" };
 const PAY_LABEL: Record<string, string> = { none: "-", pending: "Waiting", processing: "Processing", paid: "Paid", deposit_paid: "Deposit paid", failed: "Failed" };
@@ -67,11 +66,11 @@ export function BookingTable({ rows, today, now, back, showActions = true, fresh
               return (
                 <tr key={"c" + r.id} data-platform={r.channel} data-phase={phase}>
                   <td data-label="Reservation">
-                    <Link className="mono" href={`/host/bookings/other-sites/${r.id}`}>{r.external_ref || <span className="bk-noref">No reference</span>}</Link>
+                    <Link className="mono" href={`/host/bookings/other-sites/${r.id}`}>{r.external_ref || <span className="bk-noref">{r.eff_kind === "unknown" ? "Calendar block" : "No reference"}</span>}</Link>
                     <div className="bk-site"><span className={`pill neutral ch-dot ch-${r.channel}`}>{label}</span></div>
                     <div className="bk-place">{r.place}</div>
                   </td>
-                  <td data-label="Guest"><GuestCell name={r.guest_name} source={r.guest_name_source} site={label} phone={r.phone_last4} /></td>
+                  <td data-label="Guest"><GuestCell name={r.guest_name} source={r.guest_name_source} site={label} phone={r.phone_last4} block={r.eff_kind === "unknown"} /></td>
                   <td data-label="Stay">
                     <div className="bk-dates">{fmtShort(r.check_in)} – {fmtShort(r.check_out)}</div>
                     <div className="hint">{n} night{n === 1 ? "" : "s"}{r.guests ? ` · ${r.guests} guest${r.guests === 1 ? "" : "s"}` : ""}</div>
@@ -79,27 +78,16 @@ export function BookingTable({ rows, today, now, back, showActions = true, fresh
                   </td>
                   <td data-label="Booking">
                     {r.status === "cancelled" ? <Badge tone="danger" icon="cross">Cancelled on {label}</Badge>
-                      : r.eff_kind === "unknown" ? (
-                        <div className="bk-check">
-                          <Badge tone="warn" icon="question">Unconfirmed</Badge>
-                          <p className="hint">{label} marks these dates “{r.summary || "unavailable"}”, the same as dates you closed. Is a guest staying?</p>
-                          <div className="bk-check-actions">
-                            {([["reservation", "Yes, a guest reservation"], ["blocked", "No, dates I closed"]] as const).map(([k, text]) => (
-                              <form key={k} action={setKindAction}>
-                                <input type="hidden" name="id" value={r.id} /><input type="hidden" name="back" value={back} /><input type="hidden" name="kind" value={k} />
-                                <button className="btn btn-ghost btn-sm">{text}</button>
-                              </form>
-                            ))}
-                          </div>
-                        </div>
-                      ) : <Badge tone="ok" icon="check">Confirmed on {label}</Badge>}
+                      : r.eff_kind === "unknown" ? <BlockStatus id={r.id} site={label} summary={r.summary} back={back} />
+                      : <Badge tone="ok" icon="check">Confirmed on {label}</Badge>}
                   </td>
                   <td data-label="Payment">
-                    {r.received_payout_cents != null ? <><Badge tone="ok" icon="check">Payout received</Badge><div className="hint">{money(r.received_payout_cents)}{r.payout_date ? ` on ${fmtDate(r.payout_date, { month: "short", day: "numeric" })}` : ""}</div></>
+                    {r.eff_kind === "unknown" && r.received_payout_cents == null && r.expected_payout_cents == null ? <span className="muted">–</span>
+                      : r.received_payout_cents != null ? <><Badge tone="ok" icon="check">Payout received</Badge><div className="hint">{money(r.received_payout_cents)}{r.payout_date ? ` on ${fmtDate(r.payout_date, { month: "short", day: "numeric" })}` : ""}</div></>
                       : r.expected_payout_cents != null ? <><Badge tone="warn" icon="wait">Payout not received</Badge><div className="hint">{money(r.expected_payout_cents)} expected from {label}</div></>
                       : <><Badge tone="neutral" icon="info">Payment status unavailable</Badge><div className="hint">Calendar links don&apos;t include payments. <Link href={`/host/bookings/other-sites/${r.id}`}>Add payout</Link></div></>}
                   </td>
-                  <td data-label="Details"><DetailsCell id={r.id} channel={r.channel} site={label} name={r.guest_name} refCode={r.external_ref} /></td>
+                  <td data-label="Details"><DetailsCell id={r.id} channel={r.channel} site={label} name={r.guest_name} refCode={r.external_ref} block={r.eff_kind === "unknown"} /></td>
                   {showActions && <td data-label="" />}
                 </tr>
               );

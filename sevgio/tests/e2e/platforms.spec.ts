@@ -46,7 +46,7 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     const [{ id: room }] = await sql<{ id: string }>(
       "INSERT INTO properties (slug, host_id, title, city, max_guests, nightly_price_cents, status, parent_id) VALUES ('plat-test-room', $1, 'Rose Room', 'Pittsburgh', 2, 9000, 'published', $2) RETURNING id", [h.id, house]);
     for (const [k, name, prop] of [["air", "Airbnb", room], ["vrbo", "Vrbo", house], ["bdc", "Booking.com", house]]) {
-      [{ id: feeds[k] }] = await sql<{ id: string }>("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, $2, $3) RETURNING id", [prop, name, `https://example.com/plat-${k}.ics`]);
+      [{ id: feeds[k] }] = await sql<{ id: string }>("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, $2, $3) RETURNING id", [prop, name, `https://127.0.0.1/plat-${k}.ics`]);
     }
     sync(feeds.air, ics(AIRBNB));
     sync(feeds.vrbo, ics(VRBO));
@@ -56,7 +56,7 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
   test.afterAll(async () => {
     await sql("DELETE FROM blocks WHERE property_id IN (SELECT id FROM properties WHERE slug LIKE 'plat-test-%')");
     await sql("DELETE FROM channel_reservations WHERE property_id IN (SELECT id FROM properties WHERE slug LIKE 'plat-test-%')");
-    await sql("DELETE FROM ical_feeds WHERE url LIKE 'https://example.com/plat-%'");
+    await sql("DELETE FROM ical_feeds WHERE url LIKE 'https://127.0.0.1/plat-%'");
     await sql("DELETE FROM properties WHERE slug = 'plat-test-room'");
     await sql("DELETE FROM properties WHERE slug = 'plat-test-house'");
   });
@@ -68,16 +68,20 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Confirmed");
     await expect(row(page, "vrbo", "Chris Vale")).toContainText("Confirmed");
     await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Phone ends in 4321");
-    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Missing guest name");
+    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Not provided by Airbnb");
+    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Calendar details only");
     await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Payment status unavailable");
-    await expect(row(page, "vrbo", "Unconfirmed")).toHaveCount(1); // the one labelled "Blocked" (its copy of the Airbnb stay is left out)
-    await expect(row(page, "vrbo", "Unconfirmed")).toContainText("Vrbo marks these dates “Blocked”");
+    await expect(row(page, "vrbo", "External calendar block")).toHaveCount(1); // the one labelled "Blocked" (its copy of the Airbnb stay is left out)
+    await expect(row(page, "vrbo", "External calendar block")).toContainText("Vrbo shows these dates as “Blocked”");
     const bdc = row(page, "bookingcom", "Platform Test House");
-    await expect(bdc).toContainText("Unconfirmed");
-    await expect(bdc).toContainText("Booking.com marks these dates “CLOSED - Not available”");
-    await expect(bdc).toContainText("Guest name unavailable");
-    await expect(bdc).toContainText("Missing reference and guest name");
-    await expect(bdc).toContainText("Booking.com's calendar link never sends these.");
+    await expect(bdc).toContainText("External calendar block");
+    await expect(bdc).toContainText("Booking.com shows these dates as “CLOSED - Not available”");
+    await expect(bdc).toContainText("Calendar block");
+    await expect(bdc).toContainText("No guest details");
+    await expect(bdc).toContainText("Dates only, from the Booking.com calendar link.");
+    await expect(bdc).not.toContainText("Missing");
+    await expect(bdc).not.toContainText("Unconfirmed");
+    await expect(bdc).not.toContainText("Payment status unavailable");
     await expect(bdc).toContainText("Upcoming");
     await expect(bdc).not.toContainText("Paid on");
     // The stay going on now is under Staying now, not Upcoming.
@@ -102,10 +106,12 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
   test("the host sorts the unclear ones; changes and cancellations update without duplicates", async ({ page }) => {
     await signIn(page, "dana@demo.sevgio.com", "demo-password-2026");
     await page.goto("/host/bookings?view=upcoming");
-    await row(page, "bookingcom", "Platform Test House").getByRole("button", { name: "Yes, a guest reservation" }).click();
+    await row(page, "bookingcom", "Platform Test House").getByText("Know what it is?").click();
+    await row(page, "bookingcom", "Platform Test House").getByRole("button", { name: "It's a guest reservation" }).click();
     await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Confirmed on Booking.com");
-    await row(page, "vrbo", "Unconfirmed").getByRole("button", { name: "No, dates I closed" }).click();
-    await expect(row(page, "vrbo", "Unconfirmed")).toHaveCount(0);
+    await row(page, "vrbo", "External calendar block").getByText("Know what it is?").click();
+    await row(page, "vrbo", "External calendar block").getByRole("button", { name: "It's dates I closed" }).click();
+    await expect(row(page, "vrbo", "External calendar block")).toHaveCount(0);
     // The Booking.com reference and guest name, copied from the Booking.com extranet.
     const bdc = row(page, "bookingcom", "Platform Test House");
     await bdc.getByText("Add details").click();
@@ -142,20 +148,17 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     sync(feeds.bdc, ics([...BDC.map(e => e[0] === "bdc-1@booking.com" ? [e[0], U + 21, U + 24, e[3]] as typeof e : e), ["bdc-3@booking.com", U + 60, U + 62, "CLOSED - Not available"]]));
     await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
     await page.goto("/admin/bookings?when=upcoming");
-    const item = page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "Unconfirmed" });
+    const item = page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "External calendar block" });
     await expect(item).toHaveCount(1);
-    await expect(item).toContainText("No reference");
-    await expect(item).toContainText("Booking.com marks these dates “CLOSED - Not available”");
-    await expect(item).toContainText("Missing reference and guest name");
-    await item.getByRole("button", { name: "Yes, a guest reservation" }).click();
-    await expect(page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "Unconfirmed" })).toHaveCount(0);
-    const open = page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "Missing reference and guest name" });
-    await expect(open).toHaveCount(1);
-    await open.getByText("Add details").click();
-    await open.getByLabel("Guest full name").fill("Tomas Berg");
-    await open.getByLabel("Booking.com reference").fill("4455998877");
-    await open.getByRole("button", { name: "Save details" }).click();
-    await expect(page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "Missing reference and guest name" })).toHaveCount(0);
+    await expect(item).toContainText("Calendar block");
+    await expect(item).toContainText("Booking.com shows these dates as “CLOSED - Not available”");
+    await expect(item).not.toContainText("Missing");
+    // Adding the guest's name and the Booking.com number makes the block a confirmed reservation by itself.
+    await item.getByText("Add reservation details").click();
+    await item.getByLabel("Guest full name").fill("Tomas Berg");
+    await item.getByLabel("Booking.com reference").fill("4455998877");
+    await item.getByRole("button", { name: "Save details" }).click();
+    await expect(page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "External calendar block" })).toHaveCount(0);
     await page.goto("/admin/bookings?q=berg");
     await expect(page.locator(".rs-list li", { hasText: "4455998877" })).toContainText("Tomas Berg");
     await expect(page.locator(".rs-list li", { hasText: "4455998877" })).not.toContainText("Missing");
@@ -238,5 +241,33 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     await expect(page.getByRole("status").filter({ hasText: "Import undone" })).toBeVisible();
     expect((await sql("SELECT 1 FROM channel_reservations WHERE external_ref = '4000111222'")).length).toBe(0);
     await signOut(page);
+  });
+  test("Calendar sync shows each link's health; a failing link is retried, reported and emailed to admins without stopping the others", async ({ page }) => {
+    const [{ id: house }] = await sql<{ id: string }>("SELECT id FROM properties WHERE slug = 'plat-test-house'");
+    const [{ id: bad }] = await sql<{ id: string }>("INSERT INTO ical_feeds (property_id, name, url) VALUES ($1, 'Vrbo', 'https://127.0.0.1/plat-bad.ics') RETURNING id", [house]);
+    try {
+      await signIn(page, "dana@demo.sevgio.com", "demo-password-2026");
+      await page.goto("/host/calendar-sync");
+      await expect(page.getByRole("heading", { name: "Calendar sync" })).toBeVisible();
+      const started = new Date().toISOString();
+      await page.getByRole("button", { name: "Sync all now" }).click();
+      await expect(page.getByRole("status").filter({ hasText: /Synced \d+ calendar links; \d+ failed/ })).toBeVisible({ timeout: 60_000 }); // each failing link is retried once after 2 seconds
+      const badRow = page.locator(`tr[data-feed="${bad}"]`);
+      await expect(badRow).toHaveAttribute("data-state", "failing");
+      await expect(badRow).toContainText("1 failed try in a row");
+      await expect(badRow).toContainText("that address isn't allowed");
+      await expect(page.getByRole("link", { name: /Calendar sync/ })).toContainText(/\d/);
+      // One failing link doesn't stop the rest: every other link of the house was tried in the same run.
+      const tried = await sql<{ n: number }>("SELECT count(*)::int AS n FROM ical_feeds WHERE url LIKE 'https://127.0.0.1/plat-%' AND id <> $2 AND last_attempt_at >= $1", [started, bad]);
+      expect(tried[0].n).toBe(3);
+      // Third failure in a row: admins are emailed once.
+      await sql("UPDATE ical_feeds SET fail_count = 2 WHERE id = $1", [bad]);
+      await badRow.getByRole("button", { name: "Sync now" }).click();
+      await expect(badRow).toContainText("3 failed tries in a row", { timeout: 30_000 });
+      await expect(badRow).toContainText("Admins emailed");
+      await signOut(page);
+    } finally {
+      await sql("DELETE FROM ical_feeds WHERE id = $1", [bad]);
+    }
   });
 });
