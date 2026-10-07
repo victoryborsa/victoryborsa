@@ -6,6 +6,7 @@ const MESSAGES: Record<string, { tone: "ok" | "warn"; text: string }> = {
   guestcancelled: { tone: "ok", text: "Booking cancelled. The host has been told." },
   deleted: { tone: "ok", text: "Listing deleted." },
   paid: { tone: "ok", text: "Payment recorded. The guest has been emailed." },
+  paylinksent: { tone: "ok", text: "Payment link emailed to the guest." },
   resadded: { tone: "ok", text: "Reservation added. Its dates are now blocked on Sevgio." },
   resdeleted: { tone: "ok", text: "Reservation deleted." },
   manualadded: { tone: "ok", text: "Reservation saved. The dates are blocked on your calendar and the guest has been emailed a confirmation." },

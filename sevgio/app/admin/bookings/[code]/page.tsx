@@ -17,6 +17,10 @@ import { CopyButton } from "@/components/CopyButton.tsx";
 import { PaymentPill, PriceBreakdown } from "@/components/booking-summary.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { decideBookingAction, editReservationAction, markPaidAction, markRefundedAction } from "@/app/actions/host.ts";
+import { sendPaymentLinkAction } from "@/app/actions/bookings.ts";
+import { getSettings } from "@/lib/settings.ts";
+import { onlineMethods } from "@/lib/payments.ts";
+import { canPayBalance } from "@/lib/payment-flow.ts";
 
 export const metadata: Metadata = { title: "Reservation", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -52,6 +56,7 @@ export default async function AdminReservation({ params, searchParams }: { param
     && !(b.status === "awaiting_payment" && (b.payment_method === "card" || b.payment_method === "ach"));
   const canCancel = ["awaiting_payment", "confirmed"].includes(b.status) && b.check_out >= today;
   const canEdit = ["pending", "awaiting_payment", "confirmed"].includes(b.status);
+  const canSendPayLink = canPayBalance(b) && onlineMethods(await getSettings()).length > 0;
   const canRefund = ["cancelled", "declined", "expired"].includes(b.status) && b.paid_cents > 0 && b.payment_status !== "refunded";
   const taken = canEdit ? await unavailableNights(b.property_id, b.check_in < today ? b.check_in : today, addDays(today, 3 * 366), undefined, b.id) : [];
   return (
@@ -125,7 +130,7 @@ export default async function AdminReservation({ params, searchParams }: { param
           )}
         </section>
 
-        {(b.status === "pending" || canPay || canCancel || canEdit || canRefund) && (
+        {(b.status === "pending" || canPay || canSendPayLink || canCancel || canEdit || canRefund) && (
           <section className="box" aria-labelledby="rd-act">
             <h3 id="rd-act">Actions</h3>
             {b.status === "pending" && (
@@ -154,6 +159,12 @@ export default async function AdminReservation({ params, searchParams }: { param
                   <div><SubmitButton className="btn btn-primary">Record payment</SubmitButton></div>
                 </ActionForm>
               </details>
+            )}
+            {canSendPayLink && (
+              <ActionForm action={sendPaymentLinkAction} className="rd-act" confirmText={`Email ${b.guest_name} a link to pay ${money(b.total_cents - b.paid_cents)} online?`}>
+                <input type="hidden" name="id" value={b.id} />
+                <SubmitButton className="btn btn-ghost" pendingText="Sending…">Email payment link</SubmitButton>
+              </ActionForm>
             )}
             {canEdit && (
               <details className="rd-act">

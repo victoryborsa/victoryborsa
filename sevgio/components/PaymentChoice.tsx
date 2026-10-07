@@ -3,7 +3,7 @@ import { money } from "@/lib/money.ts";
 import type { Settings } from "@/lib/settings.ts";
 
 /** Radio list of payment options with what each one costs the guest now and later. */
-export function PaymentChoice({ methods, total, s, request }: { methods: PayMethod[]; total: number; s: Settings; request: boolean }) {
+export function PaymentChoice({ methods, total, s, request, later = false, payLaterOnline = false }: { methods: PayMethod[]; total: number; s: Settings; request: boolean; later?: boolean; payLaterOnline?: boolean }) {
   const hours = s.manual_payment_hours;
   const detail = (m: PayMethod) => {
     const d = dueNow(m, total, s);
@@ -22,7 +22,13 @@ export function PaymentChoice({ methods, total, s, request }: { methods: PayMeth
           <span><b>{METHOD_LABEL[m]}</b><br /><span className="hint">{detail(m)}</span></span>
         </label>
       ))}
-      <span className="hint">{request ? "You'll pay after the host accepts your request. Your dates are held until then." : "Your dates are held while you pay. If payment doesn't arrive in time, the booking is cancelled automatically."}</span>
+      {later && (
+        <label className="chk" style={{ alignItems: "flex-start" }}>
+          <input type="radio" name="payment_method" value="later" defaultChecked={!methods.length} style={{ marginTop: 3 }} />
+          <span><b>Pay at the property</b><br /><span className="hint">{request ? "Once the host accepts, your" : "Your"} booking is confirmed with nothing to pay now. Pay {money(total)} when you arrive{payLaterOnline ? ", or online any time before from your booking page" : ""}.</span></span>
+        </label>
+      )}
+      <span className="hint">{request ? "You'll pay after the host accepts your request. Your dates are held until then." : later ? "If you pay now, your dates are held while you pay. If payment doesn't arrive in time, the booking is cancelled automatically." : "Your dates are held while you pay. If payment doesn't arrive in time, the booking is cancelled automatically."}</span>
     </fieldset>
   );
 }

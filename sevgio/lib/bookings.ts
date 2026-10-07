@@ -106,7 +106,8 @@ function newCode() {
 }
 
 /** When payments are on: how the guest will pay, and how long the dates are held waiting for it. */
-export type PaymentChoice = { method: PayMethod; card_fee_percent: number; card_fee_fixed_cents: number; deposit_percent: number; holdMinutes: number };
+/** `later`: the guest pays at the property (or online later), so the booking doesn't wait for a payment. */
+export type PaymentChoice = { method: PayMethod; card_fee_percent: number; card_fee_fixed_cents: number; deposit_percent: number; holdMinutes: number; later?: boolean };
 export type NewBooking = { propertyId: string; guestId: string; ci: string; co: string; party: Party; name: string; phone: string; arrival: string; message: string; taxPercent: number; pay: PaymentChoice | null; serviceDetails?: Record<string, string> };
 export type CreateResult = { ok: true; booking: Booking; property: Property } | { ok: false; error: string; reason: "invalid" | "unavailable" | "not_found" };
 
@@ -123,7 +124,8 @@ export async function createBooking(b: NewBooking): Promise<CreateResult> {
       const pr = quote(p, b.ci, b.co, b.taxPercent, b.party);
       const guests = b.party.adults + b.party.children + b.party.free_children;
       // Instant bookings wait for payment when payments are on; requests wait for the host first either way.
-      const status = p.booking_mode === "request" ? "pending" : b.pay ? "awaiting_payment" : "confirmed";
+      const waits = !!b.pay && !b.pay.later;
+      const status = p.booking_mode === "request" ? "pending" : waits ? "awaiting_payment" : "confirmed";
       const due = b.pay ? dueNow(b.pay.method, pr.total, b.pay) : { fee: 0, now: 0 };
       const deadline = status === "awaiting_payment" ? new Date(Date.now() + b.pay!.holdMinutes * 60_000).toISOString() : null;
       for (let attempt = 0; ; attempt++) {
@@ -135,7 +137,7 @@ export async function createBooking(b: NewBooking): Promise<CreateResult> {
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32) RETURNING *`,
             [newCode(), p.id, b.guestId, b.ci, b.co, guests, status, pr.nights, pr.nightly, pr.cleaning, pr.tax, pr.total, b.name, b.phone, b.arrival, b.message,
               b.party.adults, b.party.children, b.party.free_children, pr.base, pr.discount, p.management_fee_percent,
-              b.pay?.method ?? null, due.fee, due.now, b.pay ? "pending" : "none", deadline, pr.pets, pr.petFee, JSON.stringify(pr.extras.map(x => { const details = [b.serviceDetails?.[x.key], FIXED_SERVICE_NOTES[x.key]].filter(Boolean).join(" · "); return details ? { ...x, details } : x; })), pr.extrasTotal, p.security_deposit_cents || 0],
+              b.pay?.method ?? null, due.fee, due.now, waits ? "pending" : "none", deadline, pr.pets, pr.petFee, JSON.stringify(pr.extras.map(x => { const details = [b.serviceDetails?.[x.key], FIXED_SERVICE_NOTES[x.key]].filter(Boolean).join(" · "); return details ? { ...x, details } : x; })), pr.extrasTotal, p.security_deposit_cents || 0],
             c,
           );
           return { ok: true, booking: booking!, property: p } as const;

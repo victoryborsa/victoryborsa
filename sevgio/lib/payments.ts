@@ -30,4 +30,10 @@ export function forListing(s: Settings, p: { owner_zelle?: string | null; owner_
   return out;
 }
 
+/** Ways a guest can pay a balance from their booking page without waiting for the host: card and bank transfer through Stripe. */
+export function onlineMethods(s: Settings): ("card" | "ach")[] {
+  if (!stripeReady()) return [];
+  return [...(s.pay_card ? ["card" as const] : []), ...(s.pay_ach ? ["ach" as const] : [])];
+}
+
 export const isOnline = (m: string | null) => m === "card" || m === "ach";

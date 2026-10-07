@@ -15,6 +15,7 @@ import { processPhoto } from "@/lib/photos.ts";
 import { syncFeed } from "@/lib/calendar-sync.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { isOnline } from "@/lib/payments.ts";
+import { paysAtProperty } from "@/lib/payment-rules.ts";
 import { bookingInfo, emailManualConfirmation, emailReservationUpdate, notifyBooking, recordPayment } from "@/lib/payment-flow.ts";
 import { fetchPublic } from "@/lib/safe-fetch.ts";
 import { moveListingFamily } from "@/lib/homes.ts";
@@ -500,7 +501,7 @@ export async function decideBookingAction(_: ActionState, fd: FormData): Promise
   const dates = `${fmtDate(b.check_in)} - ${fmtDate(b.check_out)}`;
   if (decision === "accept") {
     // With payments on, an accepted request waits for the guest's payment; otherwise it's confirmed now.
-    const needsPay = !!b.payment_method;
+    const needsPay = !!b.payment_method && !paysAtProperty(b);
     const settings = await getSettings();
     const hours = isOnline(b.payment_method) ? 24 : settings.manual_payment_hours;
     const r = await one<Booking>(

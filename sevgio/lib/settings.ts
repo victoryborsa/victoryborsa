@@ -2,7 +2,7 @@ import { q } from "./db.ts";
 
 export type Settings = {
   tax_percent: number; contact_email: string; contact_phone: string; payment_note: string; site_notice: string;
-  pay_card: boolean; pay_ach: boolean; pay_zelle: boolean; pay_venmo: boolean; pay_cash: boolean;
+  pay_card: boolean; pay_ach: boolean; pay_zelle: boolean; pay_venmo: boolean; pay_cash: boolean; pay_later: boolean;
   card_fee_percent: number; card_fee_fixed_cents: number; zelle_to: string; venmo_handle: string;
   deposit_percent: number; manual_payment_hours: number;
   listing_fee_enabled: boolean; listing_fee_cents: number;
@@ -19,6 +19,8 @@ export async function getSettings(): Promise<Settings> {
     payment_note: String(m.payment_note ?? ""),
     site_notice: String(m.site_notice ?? ""),
     pay_card: m.pay_card === true, pay_ach: m.pay_ach === true, pay_zelle: m.pay_zelle === true, pay_venmo: m.pay_venmo === true, pay_cash: m.pay_cash === true,
+    // On unless switched off: guests may book now and pay at the property, or online later from their booking page.
+    pay_later: m.pay_later !== false,
     card_fee_percent: num("card_fee_percent", 2.9), card_fee_fixed_cents: num("card_fee_fixed_cents", 30),
     zelle_to: String(m.zelle_to ?? ""), venmo_handle: String(m.venmo_handle ?? ""),
     deposit_percent: num("deposit_percent", 30), manual_payment_hours: num("manual_payment_hours", 24),

@@ -9,7 +9,10 @@ import { money } from "@/lib/money.ts";
 import { CANCELLATION, placeFull } from "@/lib/constants.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { getSettings } from "@/lib/settings.ts";
-import { forListing } from "@/lib/payments.ts";
+import { forListing, onlineMethods } from "@/lib/payments.ts";
+import { cardFee } from "@/lib/payment-rules.ts";
+import { canPayBalance } from "@/lib/payment-flow.ts";
+import { paymentLater } from "@/lib/statuses.ts";
 import { directionsUrl, mailUrl, telUrl } from "@/lib/links.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { StatusPill } from "@/components/ui.tsx";
@@ -18,7 +21,7 @@ import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { CopyButton } from "@/components/CopyButton.tsx";
 import { PaymentPill, PriceBreakdown } from "@/components/booking-summary.tsx";
 import { KEEP_REFERENCE } from "@/lib/booking-ref.ts";
-import { guestCancelAction, payNowAction } from "@/app/actions/bookings.ts";
+import { guestCancelAction, payBalanceAction, payNowAction } from "@/app/actions/bookings.ts";
 
 export const metadata: Metadata = { title: "Your booking", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -43,10 +46,14 @@ export default async function TripPage({ params, searchParams }: { params: Promi
   const settings = forListing(await getSettings(), b);
   const confirmed = b.status === "confirmed";
   const today = todayLocal();
+  const online = onlineMethods(settings);
+  const balance = b.total_cents - b.paid_cents;
+  const payNow = b.guest_id === u.id && canPayBalance(b) && online.length > 0;
+  const later = paymentLater(b, payNow);
   const canCancel = b.guest_id === u.id && ["pending", "awaiting_payment", "confirmed"].includes(b.status) && b.check_in >= today;
   const steps: Record<string, string[]> = {
     pending: ["The host reviews your request, usually within a few hours (48 hours at most).", "If they accept, you'll get a confirmation email with the address.", "If they decline or don't reply in time, the dates are released and nothing is owed."],
-    confirmed: [settings.payment_note, `Check-in instructions are shown below and emailed to you. Arrive after ${b.check_in_time} on ${fmtDate(b.check_in)}.`, `Check out before ${b.check_out_time} on ${fmtDate(b.check_out)}.`],
+    confirmed: [later, `Check-in instructions are shown below and emailed to you. Arrive after ${b.check_in_time} on ${fmtDate(b.check_in)}.`, `Check out before ${b.check_out_time} on ${fmtDate(b.check_out)}.`],
     declined: ["The host couldn't host you for these dates. Nothing is owed.", "Try other dates or a similar home nearby."],
     cancelled: ["This booking is cancelled. The dates are open to other guests again."],
     expired: [b.payment_method ? "The booking wasn't paid in time, so it expired and the dates were released." : "The host didn't reply in time, so the request expired. Nothing is owed.", "Try again, or pick another home."],
@@ -58,7 +65,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
       <div className="checkout-grid" style={{ paddingTop: 8 }}>
         <div className="box">
           <Flash msg={sp.msg} />
-          {sp.paid === "1" && b.status === "awaiting_payment" && <div className="notice info" role="status">Thanks! We're confirming your payment with Stripe. Refresh this page in a moment.</div>}
+          {sp.paid === "1" && (b.status === "awaiting_payment" || payNow) && <div className="notice info" role="status">Thanks! We're confirming your payment with Stripe. Refresh this page in a moment.</div>}
           {sp.payerror === "1" && <div className="notice error" role="alert">We couldn't open the payment page. Your dates are held. Try the Pay button below, or contact us.</div>}
           {b.status === "awaiting_payment" && b.guest_id === u.id && (
             <div className="box" style={{ borderColor: "var(--warn)" }}>
@@ -75,6 +82,24 @@ export default async function TripPage({ params, searchParams }: { params: Promi
                 </div>
               )}
             </div>
+          )}
+          {payNow && (
+            <section className="box" style={{ borderColor: "var(--accent, var(--warn))" }} aria-labelledby="paynow-h" data-testid="pay-now">
+              <h3 id="paynow-h">Pay now</h3>
+              <p><b>Amount due: {money(balance)}</b>{b.paid_cents > 0 ? ` (${money(b.paid_cents)} already paid)` : ""}</p>
+              <p className="hint">Pay securely online through Stripe now, or pay at the property when you arrive. Card details never reach Sevgio.</p>
+              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                {online.map(m => (
+                  <ActionForm key={m} action={payBalanceAction}>
+                    <input type="hidden" name="id" value={b.id} /><input type="hidden" name="method" value={m} />
+                    <SubmitButton className={m === online[0] ? "btn btn-primary" : "btn btn-ghost"} pendingText="Opening secure payment…">
+                      {m === "card" ? `Pay ${money(balance + cardFee(balance, settings.card_fee_percent, settings.card_fee_fixed_cents))} by card` : `Pay ${money(balance)} by bank transfer`}
+                    </SubmitButton>
+                  </ActionForm>
+                ))}
+              </div>
+              {online.includes("card") && cardFee(balance, settings.card_fee_percent, settings.card_fee_fixed_cents) > 0 && <p className="hint">Card payments include a {money(cardFee(balance, settings.card_fee_percent, settings.card_fee_fixed_cents))} processing fee.{online.includes("ach") ? " Bank transfer has no fee." : ""}</p>}
+            </section>
           )}
           {isNew && (
             <div className={`notice ${confirmed ? "ok" : "warn"}`} role="status">

@@ -56,8 +56,8 @@ export function paymentStatus(b: PayFields): PayStatus {
   if (["cancelled", "declined", "expired"].includes(b.status)) return make("unpaid", "neutral", "Nothing is owed");
   if (b.payment_status === "failed") return make("unpaid", "danger", "The last payment attempt failed");
   if (b.status === "pending") return make("unpaid", "neutral", "Nothing is due until the host accepts");
-  // No payment was taken or recorded through Sevgio, so it can't be shown as paid or unpaid.
-  if (!b.payment_method) return make("unavailable", "neutral");
+  // A website booking made before a payment option was chosen still owes its total.
+  if (!b.payment_method) return make("unpaid", "warn", `${money(balance)} due`);
   if (b.payment_method === "cash" && !b.due_now_cents) return make("unpaid", "warn", `${money(balance)} due at the property`);
   return make("unpaid", "warn", "Waiting for payment");
 }
@@ -65,9 +65,12 @@ export function paymentStatus(b: PayFields): PayStatus {
 /** "Unpaid · $850 due at the property" for emails and plain text. */
 export const paymentText = (b: PayFields) => { const p = paymentStatus(b); return p.detail ? `${p.label} · ${p.detail}` : p.label; };
 
-/** What a guest is told about paying later, on the confirmation page and in the email. */
-export function paymentLater(b: PayFields): string {
+/** What a guest is told about paying later, on the confirmation page and in the email. `online`: card or bank transfer can be paid from the booking page. */
+export function paymentLater(b: PayFields, online = false): string {
   if (!["confirmed", "awaiting_payment"].includes(b.status) || b.total_cents - b.paid_cents <= 0) return "";
+  if (b.status === "confirmed" && online && (!b.payment_method || (b.payment_method === "cash" && !b.due_now_cents))) {
+    return `Pay the ${money(b.total_cents - b.paid_cents)} online now from your booking page, or pay at the property.`;
+  }
   if (b.payment_method === "cash" && !b.due_now_cents) return "Payment due at property.";
   if (!b.payment_method) return "Host will contact you regarding payment.";
   return "";

@@ -2,6 +2,18 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-07 — Guests can pay online after booking
+
+**What changed**
+- **Pay now** on the guest's booking page: a confirmed booking with money still owed shows the amount due and a "Pay by card" (and "Pay by bank transfer") button through Stripe, next to "or pay at the property". This includes bookings made before today, which used to show "Payment unavailable".
+- **Pay at the property** is a choice on the booking form beside card, bank transfer, Zelle and Venmo (Admin → Settings → Payments, on by default). It confirms the booking straight away.
+- Confirmation, reservation-update, manual-reservation and check-in emails include the pay-online link when online payment is on.
+- **Email payment link** button on Admin → Bookings → a reservation.
+- A website booking with nothing paid now reads "Unpaid · $110 due" instead of "Payment unavailable" (that label stays for stays from other sites).
+- Fixed: accepting a request booked as "pay at the property" no longer puts it on a payment deadline.
+
+**Needs:** STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in Render, then tick Card in Admin → Settings → Payments.
+
 ## 2026-10-07 — Fix list: statuses, payments, Operations log, editing, listing facts, SEO, legal pages
 
 **What changed**

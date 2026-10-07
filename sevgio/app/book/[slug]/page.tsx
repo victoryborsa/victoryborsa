@@ -13,7 +13,7 @@ import { money } from "@/lib/money.ts";
 import { CANCELLATION, FLIGHT_SERVICES } from "@/lib/constants.ts";
 import { partyFromParams, partyLabel } from "@/lib/party.ts";
 import { arrivalOptions } from "@/lib/arrival.ts";
-import { enabledMethods, forListing } from "@/lib/payments.ts";
+import { enabledMethods, forListing, onlineMethods } from "@/lib/payments.ts";
 import { PaymentChoice } from "@/components/PaymentChoice.tsx";
 import { NightlyRates } from "@/components/NightlyRates.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
@@ -52,6 +52,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   await withNightPricing(p, ci, co);
   const pr = quote(p, ci, co, settings.tax_percent, party);
   const methods = enabledMethods(settings);
+  const later = settings.pay_later, payLaterOnline = onlineMethods(settings).length > 0;
   const instant = p.booking_mode === "instant";
 
   return (
@@ -116,7 +117,9 @@ export default async function BookPage({ params, searchParams }: { params: Promi
             <span>{instant ? <>Note for the host <span className="muted" style={{ fontWeight: 400 }}>(optional)</span></> : "Message to the host"}</span>
             <textarea className="input" name="message" placeholder={instant ? "Anything the host should know?" : "Say hello and tell the host a little about your trip."} />
           </label>
-          {methods.length ? <PaymentChoice methods={methods} total={pr.total} s={settings} request={!instant} /> : <div className="notice info">{settings.payment_note}</div>}
+          {methods.length ? <PaymentChoice methods={methods} total={pr.total} s={settings} request={!instant} later={later} payLaterOnline={payLaterOnline} />
+            : later ? <div className="notice info">Nothing to pay now. Pay {money(pr.total)} at the property{payLaterOnline ? ", or online any time from your booking page" : ""}.</div>
+            : <div className="notice info">{settings.payment_note}</div>}
           <div className="rules-summary" style={{ fontSize: 14 }}>
             <b>House rules</b>
             <ul>
@@ -130,7 +133,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
           </div>
           <p style={{ fontSize: 14 }}><b>Cancellation:</b> {CANCELLATION[p.cancellation_policy]?.text}</p>
           <label className="chk"><input type="checkbox" name="agree" /> I agree to the house rules and cancellation policy.</label>
-          <div><SubmitButton pendingText={instant ? "Booking…" : "Sending…"}>{!instant ? "Send request" : methods.length ? "Book and pay" : `Confirm booking · ${money(pr.total)}`}</SubmitButton></div>
+          <div><SubmitButton pendingText={instant ? "Booking…" : "Sending…"}>{!instant ? "Send request" : methods.length && !later ? "Book and pay" : methods.length ? "Book now" : `Confirm booking · ${money(pr.total)}`}</SubmitButton></div>
         </ActionForm>
         )}
 

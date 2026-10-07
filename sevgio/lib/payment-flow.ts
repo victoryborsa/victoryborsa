@@ -3,8 +3,8 @@ import type pg from "pg";
 import { one, q, tx } from "./db.ts";
 import type { Booking } from "./bookings.ts";
 import { getSettings, type Settings } from "./settings.ts";
-import { METHOD_LABEL } from "./payment-rules.ts";
-import { forListing, stripe } from "./payments.ts";
+import { METHOD_LABEL, cardFee } from "./payment-rules.ts";
+import { forListing, onlineMethods, stripe } from "./payments.ts";
 import { sendEmail, siteUrl } from "./email.ts";
 import { logEvent } from "./log.ts";
 import { fmtDate, fmtWhen } from "./dates.ts";
@@ -43,7 +43,7 @@ export function manualInstructions(b: Booking, s: Settings): string {
 }
 
 /** The booking's key facts as they appear in every guest email, led by the reference. */
-export function guestSummary(b: Booking & { title: string }): string {
+export function guestSummary(b: Booking & { title: string }, online = false): string {
   return [
     `Booking reference: ${b.code}`,
     `Guest name: ${b.guest_name}`,
@@ -53,9 +53,16 @@ export function guestSummary(b: Booking & { title: string }): string {
     `Guests: ${partyLabel(b)}`,
     `Total price: ${money(b.total_cents + b.card_fee_cents)}`,
     `Payment status: ${paymentText(b)}`,
-    paymentLater(b),
+    paymentLater(b, online && canPayBalance(b)),
   ].filter(Boolean).join("\n") + `\n\n${KEEP_REFERENCE}`;
 }
+
+/** A confirmed booking with money still owed, and no bank transfer already on its way, can be paid online from the booking page. */
+export const canPayBalance = (b: Pick<Booking, "status" | "total_cents" | "paid_cents" | "payment_status">) =>
+  b.status === "confirmed" && b.total_cents - b.paid_cents > 0 && b.payment_status !== "processing" && b.payment_status !== "refunded";
+
+/** True when the guest can pay what's left online right now (Stripe set up and card or bank transfer switched on). */
+export const payOnlineNow = (b: Booking, s: Settings) => onlineMethods(s).length > 0 && canPayBalance(b);
 
 /** Emails after a booking is created or accepted, depending on whether payment is still needed. */
 /** Admins get a copy of every host notice, so nothing is missed when the host is someone else. */
@@ -71,10 +78,11 @@ export async function notifyBooking(b: Info) {
   const deposit = b.security_deposit_cents > 0 ? `\nRefundable security deposit: ${money(b.security_deposit_cents)} (collected separately by your host, returned after check-out)` : "";
   const first = b.guest_name.split(" ")[0];
   const link = `${siteUrl()}/trips/${b.code}`;
+  const online = payOnlineNow(b, s);
   if (b.status === "confirmed") {
     const paid = b.paid_cents > 0 ? `\nPaid: ${money(b.paid_cents)}${b.payment_status === "processing" ? " (bank transfer processing)" : ""}` : "";
     const balance = b.payment_method === "cash" ? `\nDue in cash at arrival: ${money(b.total_cents - b.paid_cents)}` : "";
-    await sendEmail(b.guest_email, `Booking confirmed ${b.code}: ${b.title}`, `Hi ${first},\n\nYour stay at ${b.title} is confirmed.\n\n${guestSummary(b)}${extras ? "\n" + extras : ""}${paid}${balance}${deposit}\n\nView your booking and arrival details: ${link}`);
+    await sendEmail(b.guest_email, `Booking confirmed ${b.code}: ${b.title}`, `Hi ${first},\n\nYour stay at ${b.title} is confirmed.\n\n${guestSummary(b, online)}${extras ? "\n" + extras : ""}${paid}${balance}${deposit}\n\n${online ? `Pay online now: ${link}\n` : ""}View your booking and arrival details: ${link}`);
     await toHostAndAdmins(b, `Confirmed booking ${b.code}: ${b.title}, ${dates(b)}`, `${b.guest_name} is booked at ${b.title} for ${dates(b)} (${partyLabel(b)}).${extras}${b.security_deposit_cents > 0 ? `\nCollect the ${money(b.security_deposit_cents)} security deposit.` : ""}\nPhone: ${b.guest_phone}\n${b.payment_method ? `Payment: ${METHOD_LABEL[b.payment_method]}, ${money(b.paid_cents)} received\n` : ""}${b.message ? "\nMessage: " + b.message + "\n" : ""}\nReference: ${b.code}\nDetails: ${siteUrl()}/trips/${b.code}`);
   } else if (b.status === "awaiting_payment") {
     const how = b.payment_method === "card" || b.payment_method === "ach"
@@ -90,27 +98,37 @@ export async function notifyBooking(b: Info) {
 
 /** Starts a Stripe Checkout for what's due now. The dates stay held until the deadline. */
 export async function startCheckout(b: Info): Promise<string> {
-  const s = stripe();
-  const method = b.payment_method === "ach" ? "us_bank_account" : "card";
   // Stripe sessions must last 30 min–24 h.
   const deadline = b.payment_deadline ? new Date(b.payment_deadline).getTime() : Date.now() + 3600_000;
-  const expires = Math.floor(Math.min(Math.max(deadline, Date.now() + 31 * 60_000), Date.now() + 23.5 * 3600_000) / 1000);
-  const session = await s.checkout.sessions.create({
+  return checkout(b, { method: b.payment_method === "ach" ? "ach" : "card", amountCents: b.total_cents, feeCents: b.card_fee_cents, recordCents: b.due_now_cents, deadline });
+}
+
+/** Starts a Stripe Checkout for what's still owed on a confirmed booking (booked to pay at the property, or partly paid). */
+export async function startBalanceCheckout(b: Info, method: "card" | "ach", s: Settings): Promise<string> {
+  const amountCents = b.total_cents - b.paid_cents;
+  const feeCents = method === "card" ? cardFee(amountCents, s.card_fee_percent, s.card_fee_fixed_cents) : 0;
+  return checkout(b, { method, amountCents, feeCents, recordCents: amountCents, deadline: Date.now() + 3600_000, balance: true });
+}
+
+async function checkout(b: Info, o: { method: "card" | "ach"; amountCents: number; feeCents: number; recordCents: number; deadline: number; balance?: boolean }): Promise<string> {
+  const expires = Math.floor(Math.min(Math.max(o.deadline, Date.now() + 31 * 60_000), Date.now() + 23.5 * 3600_000) / 1000);
+  const metadata = { booking_id: b.id, code: b.code, fee_cents: String(o.feeCents), ...(o.balance ? { balance: "1" } : {}) };
+  const session = await stripe().checkout.sessions.create({
     mode: "payment",
-    payment_method_types: [method],
+    payment_method_types: [o.method === "ach" ? "us_bank_account" : "card"],
     customer_email: b.guest_email,
     client_reference_id: b.id,
-    metadata: { booking_id: b.id, code: b.code },
-    payment_intent_data: { metadata: { booking_id: b.id, code: b.code }, description: `${b.code} · ${b.title}` },
+    metadata,
+    payment_intent_data: { metadata, description: `${b.code} · ${b.title}` },
     line_items: [
-      { quantity: 1, price_data: { currency: "usd", unit_amount: b.total_cents, product_data: { name: `${b.title}`, description: `${dates(b)} · ${b.nights} night${b.nights === 1 ? "" : "s"} · ${b.code}` } } },
-      ...(b.card_fee_cents > 0 ? [{ quantity: 1, price_data: { currency: "usd", unit_amount: b.card_fee_cents, product_data: { name: "Card processing fee" } } }] : []),
+      { quantity: 1, price_data: { currency: "usd", unit_amount: o.amountCents, product_data: { name: `${b.title}`, description: `${dates(b)} · ${b.nights} night${b.nights === 1 ? "" : "s"} · ${b.code}${o.balance && b.paid_cents > 0 ? " · balance" : ""}` } } },
+      ...(o.feeCents > 0 ? [{ quantity: 1, price_data: { currency: "usd", unit_amount: o.feeCents, product_data: { name: "Card processing fee" } } }] : []),
     ],
     expires_at: expires,
     success_url: `${siteUrl()}/trips/${b.code}?paid=1`,
     cancel_url: `${siteUrl()}/trips/${b.code}`,
   });
-  await q("INSERT INTO payments (booking_id, method, amount_cents, status, stripe_session) VALUES ($1, $2, $3, 'pending', $4)", [b.id, b.payment_method, b.due_now_cents, session.id]);
+  await q("INSERT INTO payments (booking_id, method, amount_cents, status, stripe_session) VALUES ($1, $2, $3, 'pending', $4)", [b.id, o.method, o.recordCents, session.id]);
   return session.url!;
 }
 
@@ -120,11 +138,13 @@ export async function startCheckout(b: Info): Promise<string> {
  * Safe to call twice for the same Stripe session. If the hold had already expired and someone else took
  * the dates, the booking stays expired and admins are told to refund.
  */
-export async function recordPayment(bookingId: string, grossCents: number, opts: { method: string; processing?: boolean; stripeSession?: string; stripeIntent?: string; recordedBy?: string; note?: string }) {
+export async function recordPayment(bookingId: string, grossCents: number, opts: { method: string; processing?: boolean; stripeSession?: string; stripeIntent?: string; recordedBy?: string; note?: string; feeCents?: number; balance?: boolean }) {
   const result = await tx(async c => {
     const b = await one<Booking>("SELECT * FROM bookings WHERE id = $1 FOR UPDATE", [bookingId], c);
     if (!b) return { ok: false as const, reason: "missing" as const };
-    const toward = Math.max(0, opts.method === "card" ? grossCents - b.card_fee_cents : grossCents);
+    // The card fee is on top of the booking total. Checkouts started before fee_cents was stored fall back to the booking's fee.
+    const fee = opts.method === "card" ? (opts.feeCents ?? b.card_fee_cents) : 0;
+    const toward = Math.max(0, grossCents - fee);
     let add = toward;
     const newStatus = opts.processing ? "processing" : "succeeded";
     if (opts.stripeSession) {
@@ -141,6 +161,12 @@ export async function recordPayment(bookingId: string, grossCents: number, opts:
     await c.query("SAVEPOINT confirm");
     try {
       await q(`UPDATE bookings SET paid_cents = $2, payment_status = $3, status = CASE WHEN status IN ('awaiting_payment', 'expired') THEN 'confirmed' ELSE status END, updated_at = now() WHERE id = $1`, [bookingId, paid, payStatus], c);
+      // A balance paid online: the card fee joins the booking's total paid, and a pay-at-property booking now shows how it was paid.
+      if (opts.balance && add > 0) {
+        await q(`UPDATE bookings SET card_fee_cents = card_fee_cents + $2,
+                   payment_method = CASE WHEN payment_method IS NULL OR (payment_method = 'cash' AND due_now_cents = 0) THEN $3 ELSE payment_method END WHERE id = $1`,
+          [bookingId, fee, opts.method], c);
+      }
     } catch (e) {
       if ((e as pg.DatabaseError).code !== "23P01") throw e;
       await c.query("ROLLBACK TO SAVEPOINT confirm");
@@ -166,11 +192,11 @@ export async function recordPayment(bookingId: string, grossCents: number, opts:
 
 /** A bank transfer that bounced. The booking stays confirmed; the host decides what to do. */
 export async function paymentFailed(stripeSession: string, reason: string) {
-  const p = await one<{ booking_id: string }>("UPDATE payments SET status = 'failed', note = $2, updated_at = now() WHERE stripe_session = $1 RETURNING booking_id", [stripeSession, reason.slice(0, 300)]);
+  const p = await one<{ booking_id: string; amount_cents: number }>("UPDATE payments SET status = 'failed', note = $2, updated_at = now() WHERE stripe_session = $1 RETURNING booking_id, amount_cents", [stripeSession, reason.slice(0, 300)]);
   if (!p) return;
   const b = await bookingInfo(p.booking_id);
   if (!b) return;
-  await q("UPDATE bookings SET payment_status = 'failed', paid_cents = greatest(0, paid_cents - $2), updated_at = now() WHERE id = $1", [b.id, b.due_now_cents]);
+  await q("UPDATE bookings SET payment_status = 'failed', paid_cents = greatest(0, paid_cents - $2), updated_at = now() WHERE id = $1", [b.id, p.amount_cents]);
   await logEvent("error", "Payment", `Bank transfer failed for ${b.code}: ${reason}`, { booking: b.id });
   await sendEmail(b.host_email, `Payment failed: ${b.code}`, `The bank transfer for ${b.guest_name}'s booking ${b.code} (${b.title}, ${dates(b)}) failed: ${reason}.\n\nContact the guest to arrange payment, or cancel the booking: ${siteUrl()}/host/bookings`);
   await sendEmail(b.guest_email, `Your payment didn't go through: ${b.code}`, `Your bank transfer for ${b.title} (${dates(b)}) didn't go through. Please contact us to arrange payment so we can keep your booking: ${siteUrl()}/contact`);
@@ -179,6 +205,7 @@ export async function paymentFailed(stripeSession: string, reason: string) {
 /** Confirmation for a reservation the host entered by hand: nothing paid yet, the guest pays at the property. */
 export async function emailManualConfirmation(b: Info) {
   const first = b.guest_name.split(" ")[0] || "there";
+  const online = payOnlineNow(b, await getSettings());
   const lines = [
     `Booking reference: ${b.code}`,
     `Guest name: ${b.guest_name}`,
@@ -190,7 +217,7 @@ export async function emailManualConfirmation(b: Info) {
     `Balance due: ${money(b.total_cents - b.paid_cents)}`,
   ].join("\n");
   return sendEmail(b.guest_email, `Reservation confirmed ${b.code}: ${b.title}`,
-    `Hi ${first},\n\nYour reservation at ${b.title} is confirmed.\n\n${lines}\n\nPayment is due at the property unless otherwise arranged.\n\n${KEEP_REFERENCE}\n\n`
+    `Hi ${first},\n\nYour reservation at ${b.title} is confirmed.\n\n${lines}\n\nPayment is due at the property unless otherwise arranged.${online ? `\nYou can also pay online now: ${siteUrl()}/trips/${b.code}` : ""}\n\n${KEEP_REFERENCE}\n\n`
     + `See your reservation and arrival details online: ${siteUrl()}/trips/${b.code}\n(Sign in with this email address. The first time, choose "Forgot password" to set one.)`);
 }
 
@@ -207,8 +234,9 @@ export async function emailPaymentReceived(b: Info, amountCents: number) {
 /** Tells the guest what changed after an admin edits their reservation. */
 export async function emailReservationUpdate(b: Info, changes: string[]) {
   const first = b.guest_name.split(" ")[0] || "there";
+  const online = payOnlineNow(b, await getSettings());
   return sendEmail(b.guest_email, `Reservation updated ${b.code}: ${b.title}`,
-    `Hi ${first},\n\nYour reservation at ${b.title} was updated.\n\nWhat changed:\n${changes.map(c => `- ${c}`).join("\n")}\n\n${guestSummary(b)}\n\n`
+    `Hi ${first},\n\nYour reservation at ${b.title} was updated.\n\nWhat changed:\n${changes.map(c => `- ${c}`).join("\n")}\n\n${guestSummary(b, online)}\n\n`
     + `See your reservation: ${siteUrl()}/trips/${b.code}\nIf anything looks wrong, reply to this email or contact us: ${siteUrl()}/contact`);
 }
 
@@ -224,20 +252,21 @@ export async function sendCheckInInstructions(): Promise<{ sent: number }> {
        AND b.check_in BETWEEN (now() AT TIME ZONE 'America/New_York')::date AND (now() AT TIME ZONE 'America/New_York')::date + 2
      LIMIT 100`);
   let sent = 0;
+  const online = onlineMethods(await getSettings()).length > 0;
   for (const b of rows) {
     // Claim it first so two servers never send it twice.
     const claimed = await one("UPDATE bookings SET checkin_email_at = now() WHERE id = $1 AND checkin_email_at IS NULL RETURNING id", [b.id]);
     if (!claimed) continue;
-    const r = await sendEmail(b.guest_email, `Check-in instructions ${b.code}: ${b.title}`, checkInText(b));
+    const r = await sendEmail(b.guest_email, `Check-in instructions ${b.code}: ${b.title}`, checkInText(b, online));
     if (r.ok || r.queued) sent++;
     else await q("UPDATE bookings SET checkin_email_at = NULL WHERE id = $1", [b.id]); // not configured: try again next hour
   }
   return { sent };
 }
 
-export function checkInText(b: ArrivalInfo): string {
+export function checkInText(b: ArrivalInfo, online = false): string {
   const first = b.guest_name.split(" ")[0] || "there";
-  const later = paymentLater(b);
+  const later = paymentLater(b, online && canPayBalance(b));
   return [
     `Hi ${first},`, "",
     `Your stay at ${b.title} starts ${fmtDate(b.check_in)}. Here is everything you need to arrive.`, "",

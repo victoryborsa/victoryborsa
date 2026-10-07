@@ -151,7 +151,7 @@ export async function saveSettingsAction(_: ActionState, fd: FormData): Promise<
   if (on("pay_zelle") && !zelle) return { error: "Add the email or phone number guests should send Zelle payments to." };
   if (on("pay_venmo") && !venmo) return { error: "Add your Venmo username (like @Sevgio-Stays)." };
   if (on("pay_cash") && !zelle && !venmo) return { error: "Cash at arrival needs Zelle or Venmo for the deposit. Add at least one." };
-  for (const k of ["pay_card", "pay_ach", "pay_zelle", "pay_venmo", "pay_cash"] as const) await saveSetting(k, on(k));
+  for (const k of ["pay_card", "pay_ach", "pay_zelle", "pay_venmo", "pay_cash", "pay_later"] as const) await saveSetting(k, on(k));
   await saveSetting("card_fee_percent", feePct);
   await saveSetting("card_fee_fixed_cents", feeFixed);
   await saveSetting("deposit_percent", deposit);

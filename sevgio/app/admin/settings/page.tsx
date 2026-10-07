@@ -24,15 +24,16 @@ export default async function Settings() {
         <label className="field"><span>Contact email (shown on the site; receives contact messages)</span><input className="input" name="contact_email" type="email" defaultValue={s.contact_email} /></label>
         <label className="field"><span>Contact phone (optional)</span><input className="input" name="contact_phone" defaultValue={s.contact_phone} /></label>
       </div>
-      <label className="field"><span>Payment note (shown when guests book)</span><textarea className="input" name="payment_note" defaultValue={s.payment_note} style={{ minHeight: 70 }} /><span className="hint">Online payment isn't switched on. This tells guests how they'll pay.</span></label>
+      <label className="field"><span>Payment note (shown when guests book)</span><textarea className="input" name="payment_note" defaultValue={s.payment_note} style={{ minHeight: 70 }} /><span className="hint">Shown on the booking form when no payment option below is on.</span></label>
       <label className="field"><span>Site-wide notice (optional banner at the top of every page)</span><input className="input" name="site_notice" defaultValue={s.site_notice} placeholder="e.g. Winter weekends are booking fast. Reserve early!" /></label>
       <h2 style={{ marginTop: 12 }}>Host listing fee</h2>
       <label className="chk"><input type="checkbox" name="listing_fee_enabled" defaultChecked={s.listing_fee_enabled} />Charge hosts a yearly fee for each listing</label>
       <label className="field" style={{ maxWidth: 260 }}><span>Fee per listing, per year (USD)</span><input className="input mono" name="listing_fee" inputMode="decimal" defaultValue={(s.listing_fee_cents / 100).toFixed(0)} /><span className="hint">Hosts pay you by Zelle or Venmo (below). Mark it paid or waive it in Admin → Listings. Your own listings never pay.</span></label>
       <h2 style={{ marginTop: 12 }}>Payments</h2>
-      <p className="muted">Choose how guests can pay. When at least one option is on, bookings wait for payment before they're confirmed, and unpaid bookings are cancelled automatically.</p>
+      <p className="muted">Choose how guests can pay. A guest who picks card, bank transfer, Zelle, Venmo or a cash deposit has their dates held until it's paid, and unpaid holds are cancelled automatically. A guest who picks "Pay at the property" is confirmed straight away.</p>
       {!stripe && <div className="notice warn">Card and bank transfer need a Stripe account. Add STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in Render → Environment, then they can be switched on.</div>}
       <div className="stack" style={{ gap: 10 }}>
+        <label className="chk"><input type="checkbox" name="pay_later" defaultChecked={s.pay_later} />Pay at the property. The booking is confirmed now; the guest pays when they arrive, or online any time from their booking page when card or bank transfer is on.</label>
         <label className="chk"><input type="checkbox" name="pay_card" defaultChecked={s.pay_card} disabled={!stripe} />Credit or debit card (Stripe). The card processing fee is added to the guest's total.</label>
         <div className="grid-2" style={{ paddingLeft: 28 }}>
           <label className="field"><span>Card fee (%)</span><input className="input mono" name="card_fee_percent" inputMode="decimal" defaultValue={s.card_fee_percent} /></label>

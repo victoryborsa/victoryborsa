@@ -6,9 +6,9 @@ import { checkConflicts } from "@/lib/conflicts.ts";
 import { one } from "@/lib/db.ts";
 import { requireUser } from "@/lib/auth.ts";
 import { createBooking, setBookingStatus, type Booking, type PaymentChoice } from "@/lib/bookings.ts";
-import { enabledMethods, forListing, isOnline } from "@/lib/payments.ts";
+import { enabledMethods, forListing, isOnline, onlineMethods } from "@/lib/payments.ts";
 import type { PayMethod } from "@/lib/payment-rules.ts";
-import { bookingInfo, notifyBooking, startCheckout } from "@/lib/payment-flow.ts";
+import { bookingInfo, canPayBalance, notifyBooking, startBalanceCheckout, startCheckout } from "@/lib/payment-flow.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { str, type ActionState } from "@/lib/validate.ts";
 import { partyFromForm, partyLabel } from "@/lib/party.ts";
@@ -47,8 +47,12 @@ export async function createBookingAction(_: ActionState, fd: FormData): Promise
   const settings = forListing(await getSettings(), p);
   const methods = enabledMethods(settings);
   let pay: PaymentChoice | null = null;
-  if (methods.length) {
-    const method = str(fd, "payment_method") as PayMethod;
+  const choice = str(fd, "payment_method");
+  if (settings.pay_later && (choice === "later" || !methods.length)) {
+    // Pay at the property: recorded like a hand-entered reservation (cash, nothing due now), so it's confirmed straight away.
+    pay = { method: "cash", card_fee_percent: 0, card_fee_fixed_cents: 0, deposit_percent: 0, holdMinutes: 0, later: true };
+  } else if (methods.length) {
+    const method = choice as PayMethod;
     if (!methods.includes(method)) return { error: "Choose how you'd like to pay." };
     pay = { method, card_fee_percent: settings.card_fee_percent, card_fee_fixed_cents: settings.card_fee_fixed_cents, deposit_percent: settings.deposit_percent,
       holdMinutes: isOnline(method) ? 45 : settings.manual_payment_hours * 60 };
@@ -98,6 +102,41 @@ export async function payNowAction(_: ActionState, fd: FormData): Promise<Action
     return { error: "We couldn't open the payment page. Please try again in a minute, or contact us." };
   }
   redirect(url);
+}
+
+/** Guest → booking page → Pay now: pays what's still owed on a confirmed booking by card or bank transfer through Stripe. */
+export async function payBalanceAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const u = await requireUser();
+  const b = await bookingInfo(str(fd, "id", 40));
+  if (!b || b.guest_id !== u.id) return { error: "We couldn't find that booking on your account." };
+  if (!canPayBalance(b)) return { error: "There's nothing left to pay on this booking." };
+  const settings = await getSettings();
+  const method = str(fd, "method") as "card" | "ach";
+  if (!onlineMethods(settings).includes(method)) return { error: "Online payment isn't available right now. You can pay at the property, or contact us." };
+  let url: string;
+  try {
+    url = await startBalanceCheckout(b, method, settings);
+  } catch (e) {
+    await logEvent("error", "Payment", `Could not start Stripe checkout for ${b.code}`, { error: String(e) }, u.id);
+    return { error: "We couldn't open the payment page. Please try again in a minute, or contact us." };
+  }
+  redirect(url);
+}
+
+/** Admin → reservation page → Email payment link: tells the guest they can pay what's owed online. */
+export async function sendPaymentLinkAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireUser(["admin"]);
+  const b = await bookingInfo(str(fd, "id", 40));
+  if (!b) return { error: "Booking not found." };
+  if (!canPayBalance(b)) return { error: "This booking has nothing left to pay." };
+  if (!onlineMethods(await getSettings()).length) return { error: "Online payment isn't switched on. Add the Stripe keys in Render, then tick Card in Admin → Settings." };
+  const due = money(b.total_cents - b.paid_cents);
+  const link = `${siteUrl()}/trips/${b.code}`;
+  const r = await sendEmail(b.guest_email, `Pay online for your stay ${b.code}: ${b.title}`,
+    `Hi ${b.guest_name.split(" ")[0] || "there"},\n\nYou can now pay for your stay at ${b.title} (${fmtDate(b.check_in)} - ${fmtDate(b.check_out)}) online.\n\nAmount due: ${due}\nPay securely here: ${link}\n(Sign in with this email address, then press Pay now.)\n\nIf you'd rather pay at the property, that's fine too.\n\nBooking reference: ${b.code}`);
+  await logEvent("info", "Payment", `Payment link for ${b.code} (${due}) emailed to the guest`, { booking: b.code }, admin.id);
+  if (!r.ok && !r.queued) return { error: "The email couldn't be sent. Check the email settings, then try again." };
+  redirect(`/admin/bookings/${b.code}?msg=paylinksent`);
 }
 
 export async function guestCancelAction(_: ActionState, fd: FormData): Promise<ActionState> {

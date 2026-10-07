@@ -24,6 +24,8 @@ export async function POST(req: Request) {
         processing: event.type === "checkout.session.completed" && s.payment_status === "unpaid",
         stripeSession: s.id,
         stripeIntent: typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id,
+        feeCents: s.metadata?.fee_cents ? Number(s.metadata.fee_cents) : undefined,
+        balance: s.metadata?.balance === "1",
       });
     } else if (event.type === "checkout.session.async_payment_failed") {
       await paymentFailed(s.id, "the bank declined the transfer");

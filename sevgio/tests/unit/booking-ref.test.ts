@@ -27,17 +27,22 @@ test("stay phase: upcoming, staying now, past, cancelled", () => {
   for (const s of ["cancelled", "declined", "expired"]) assert.equal(stayPhase(s, addDays(T, 3), addDays(T, 5), T), "cancelled");
 });
 
-test("payment status in words: Unpaid, Partially Paid, Paid, Refunded, Payment unavailable", () => {
+test("payment status in words: Unpaid, Partially Paid, Paid, Refunded", () => {
   const b = { status: "confirmed", payment_method: "zelle", payment_status: "pending", total_cents: 50000, paid_cents: 0 };
   assert.equal(paymentText(b), "Unpaid · Waiting for payment");
   assert.equal(paymentText({ ...b, payment_status: "paid", paid_cents: 50000 }), "Paid");
   assert.equal(paymentText({ ...b, payment_status: "deposit_paid", paid_cents: 10000 }), "Partially Paid · $400 due");
   assert.equal(paymentText({ ...b, payment_status: "failed" }), "Unpaid · The last payment attempt failed");
   assert.equal(paymentText({ ...b, status: "pending" }), "Unpaid · Nothing is due until the host accepts");
-  assert.equal(paymentText({ ...b, payment_method: null, payment_status: "none" }), "Payment unavailable");
+  assert.equal(paymentText({ ...b, payment_method: null, payment_status: "none" }), "Unpaid · $500 due");
+  assert.equal(paymentText({ ...b, payment_method: "cash", due_now_cents: 0, payment_status: "none" }), "Unpaid · $500 due at the property");
   assert.equal(paymentText({ ...b, status: "cancelled" }), "Unpaid · Nothing is owed");
   assert.equal(paymentText({ ...b, status: "cancelled", payment_status: "refunded", paid_cents: 50000 }), "Refunded · $500 returned to the guest");
   assert.equal(paymentLater({ ...b, payment_method: null, payment_status: "none" }), "Host will contact you regarding payment.");
+  // With card or bank transfer switched on, a booking to pay later can be paid online from the booking page.
+  assert.equal(paymentLater({ ...b, payment_method: null, payment_status: "none" }, true), "Pay the $500 online now from your booking page, or pay at the property.");
+  assert.equal(paymentLater({ ...b, payment_method: "cash", due_now_cents: 0, payment_status: "none" }, true), "Pay the $500 online now from your booking page, or pay at the property.");
+  assert.equal(paymentLater({ ...b, payment_method: "cash", due_now_cents: 0, payment_status: "none" }), "Payment due at property.");
 });
 
 test("reservation statuses: one set of names for every source", () => {
