@@ -5,6 +5,7 @@ import { BedsEditor } from "./BedsEditor.tsx";
 import { RoomsEditor } from "./RoomsEditor.tsx";
 import { ServicesEditor } from "./ServicesEditor.tsx";
 import { CameraField } from "./CameraField.tsx";
+import { SMOKING } from "@/lib/policies.ts";
 import { ListingKind } from "./ListingKind.tsx";
 import { PetsAmenity } from "./PetsAmenity.tsx";
 import type { Property } from "@/lib/bookings.ts";
@@ -85,6 +86,10 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
         <label className="field"><span>Shared spaces <span className="muted" style={{ fontWeight: 400 }}>(leave empty if guests have the whole place)</span></span><input className="input" name="shared_spaces" defaultValue={p?.shared_spaces} placeholder="e.g. Everything except your bedroom: kitchen, bathrooms, living room, dining area and terrace" /></label>
         <label className="field"><span>Stairs <span className="muted" style={{ fontWeight: 400 }}>(leave empty if none)</span></span><input className="input" name="stairs_info" defaultValue={p?.stairs_info} placeholder="e.g. The room is on the 2nd floor, up one flight of stairs. No elevator." /></label>
         <CameraField has={!!p?.has_exterior_cameras} locations={p?.camera_locations || ""} />
+        <label className="field"><span>Smoking</span>
+          <select className="input" name="smoking" defaultValue={p?.smoking || "no"}>{Object.entries(SMOKING).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+          <span className="hint">Shown to guests in House rules. No need to repeat it in the house rules text.</span>
+        </label>
       </div>
 
       <div className="box" id="pricing">

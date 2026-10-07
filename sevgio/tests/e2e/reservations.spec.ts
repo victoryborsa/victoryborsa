@@ -29,7 +29,7 @@ test("guest sees the booking reference, stay details, payment status and the kee
   await expect(page.getByTestId("booking-ref")).toHaveText(CODES.up);
   await expect(page.getByText(KEEP)).toBeVisible();
   const kv = page.locator("dl.kv").first();
-  for (const t of ["Rosalind Search-Test", "Check-in", "Check-out", "2 adults", "$500", "Paid in full"]) await expect(kv).toContainText(t);
+  for (const t of ["Rosalind Search-Test", "Check-in", "Check-out", "2 adults", "$500", "Paid"]) await expect(kv).toContainText(t);
 
   await page.getByRole("link", { name: "View or print invoice" }).click();
   await expect(page.getByTestId("invoice-ref")).toHaveText(CODES.up);
@@ -80,7 +80,7 @@ test("admin finds reservations by partial name in any capitalization, tells same
   await expect(results.locator("a[data-ref]").first()).toHaveAttribute("data-ref", CODES.up);
   await results.locator(`a[data-ref="${CODES.up}"]`).click();
   await expect(page.getByTestId("booking-ref")).toHaveText(CODES.up);
-  for (const t of ["Rosalind Search-Test", "guest@demo.sevgio.com", "412-555-0199", "Upcoming", "Confirmed", "Paid in full"]) await expect(page.locator(".rd")).toContainText(t);
+  for (const t of ["Rosalind Search-Test", "guest@demo.sevgio.com", "412-555-0199", "Confirmed", "Paid"]) await expect(page.locator(".rd")).toContainText(t);
   await page.getByRole("link", { name: /Back to search results/ }).click();
   await expect(page).toHaveURL(/q=svrsup22/);
 

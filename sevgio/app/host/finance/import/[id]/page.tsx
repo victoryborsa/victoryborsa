@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth.ts";
-import { fmtDate } from "@/lib/dates.ts";
+import { fmtDate, fmtWhen, type Instant } from "@/lib/dates.ts";
 import { channelLabel } from "@/lib/channels.ts";
 import { canUndo, getImport, importChanges, undoStep } from "@/lib/import-undo.ts";
 import { putBackImportAction, undoImportAction } from "@/app/actions/channel.ts";
 
-const when = (t: string) => new Date(t).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+const when = (t: Instant) => fmtWhen(t);
 
 const DONE: Record<string, string> = {
   undone: "Import undone. The reservations it added are gone and the ones it changed are back as they were. A copy of everything was saved first, so you can put it back below.",

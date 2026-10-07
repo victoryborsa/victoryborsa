@@ -51,3 +51,8 @@ export function fmtWhen(v: Instant, style: keyof typeof WHEN_STYLES = "full"): s
   const d = toInstant(v);
   return d ? d.toLocaleString("en-US", { timeZone: "America/New_York", ...WHEN_STYLES[style] }) : "";
 }
+/** "Oct 6, 2026" for a moment in Pennsylvania time; "" when unknown. */
+export function fmtDay(v: Instant): string {
+  const d = toInstant(v);
+  return d ? d.toLocaleDateString("en-US", { timeZone: "America/New_York", dateStyle: "medium" }) : "";
+}

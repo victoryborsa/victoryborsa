@@ -2,6 +2,7 @@ import Link from "next/link";
 import { q } from "@/lib/db.ts";
 import { channelLabel } from "@/lib/channels.ts";
 import { Icon } from "./Icon.tsx";
+import { fmtWhen, type Instant } from "@/lib/dates.ts";
 
 /**
  * A notice at the top of Bookings for files imported in the last two days that added or changed reservations,
@@ -13,7 +14,7 @@ export async function RecentImports({ userId }: { userId: string | null }) {
      WHERE status <> 'undone' AND (created > 0 OR updated > 0) AND created_at > now() - interval '2 days' AND ($1::uuid IS NULL OR user_id = $1)
      ORDER BY created_at DESC LIMIT 4`, [userId]);
   if (!rows.length) return null;
-  const when = (t: string) => new Date(t).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+  const when = (t: Instant) => fmtWhen(t);
   return (
     <aside className="notice mn" role="status" aria-labelledby="ri-h">
       <Icon name="info" size={20} />

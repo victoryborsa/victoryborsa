@@ -30,7 +30,7 @@ test.describe.serial("manual reservation", () => {
     // Email isn't set up in the test site, so the page says the email couldn't go out (in production it says it was sent).
     await expect(page.getByRole("status").or(page.locator(".notice")).first()).toContainText("Reservation saved");
     await expect(page.getByText("Pay at the property", { exact: true })).toBeVisible();
-    await expect(page.getByText(/Unpaid, \$[\d,.]+ due at the property/).first()).toBeVisible();
+    await expect(page.getByText(/\$[\d,.]+ due at the property/).first()).toBeVisible();
     await expect(page.getByText("Amount due", { exact: true })).toBeVisible();
     if (shots) {
       await page.screenshot({ path: `${shots}/computer-reservation.png`, fullPage: true });
@@ -76,6 +76,33 @@ test.describe.serial("manual reservation", () => {
     // The hourly cleanup only expires unanswered requests and unpaid holds with a deadline.
     const [b] = await sql<{ payment_deadline: string | null }>("SELECT payment_deadline FROM bookings WHERE guest_name = 'Morgan Phonecall'");
     expect(b.payment_deadline).toBeNull();
+  });
+
+  test("admin edits the reservation: new dates are re-checked, price follows the nights, cancelling frees the dates", async ({ page }) => {
+    await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+    const [b] = await sql<{ code: string; total_cents: number; nightly_price_cents: number }>("SELECT code, total_cents, nightly_price_cents FROM bookings WHERE guest_name = 'Morgan Phonecall'");
+    await page.goto(`/admin/bookings/${b.code}`);
+    await page.getByText("Edit reservation").click();
+    // One more night at the end, and a corrected name.
+    await page.evaluate(([a, c]) => {
+      const set = (n: string, v: string) => { const el = document.querySelector<HTMLInputElement>(`.rd-act form input[name="${n}"]`)!; el.value = v; };
+      set("check_in", a); set("check_out", c);
+    }, [CI, iso(724)]);
+    await page.locator('.rd-act form input[name="name"]').fill("Morgan Phonecall-Smith");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.locator(".notice").first()).toContainText("Reservation updated");
+    await expect(page.locator(".rd")).toContainText("Morgan Phonecall-Smith");
+    const [after] = await sql<{ nights: number; total_cents: number; check_out: string }>("SELECT nights, total_cents, check_out::text FROM bookings WHERE code = $1", [b.code]);
+    expect(after.nights).toBe(4);
+    expect(after.check_out).toBe(iso(724));
+    expect(after.total_cents).toBeGreaterThan(b.total_cents);
+    // Cancel: the reference stays, the dates open up again.
+    await page.getByText("Cancel booking…").click();
+    await page.locator('.rd-act form input[name="note"]').fill("Guest changed plans");
+    page.once("dialog", d => d.accept());
+    await page.getByRole("button", { name: "Cancel booking", exact: true }).click();
+    await expect(page.locator(".rd")).toContainText("Cancelled");
+    expect(await sql("SELECT 1 FROM bookings WHERE code = $1 AND status = 'cancelled'", [b.code])).toHaveLength(1);
   });
 
   test("dashboard and calendar have the button too", async ({ page }) => {

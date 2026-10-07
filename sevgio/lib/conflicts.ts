@@ -1,7 +1,7 @@
 import "server-only";
 import { one, q, tx } from "./db.ts";
 import type { User } from "./auth.ts";
-import { fmtDate, fmtShort, nightsBetween, todayLocal } from "./dates.ts";
+import { fmtDate, fmtShort, nightsBetween, todayLocal, fmtWhen, type Instant } from "./dates.ts";
 import { channelLabel } from "./channels.ts";
 import { findConflicts, hoursLabel, type ConflictStay, type ConflictUnit } from "./conflict-core.ts";
 import { sendEmail, siteUrl } from "./email.ts";
@@ -99,7 +99,7 @@ export async function checkConflicts(): Promise<{ found: number; opened: number;
   }
 }
 
-const when = (t: string) => new Date(t).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const when = (t: Instant) => fmtWhen(t, "short");
 
 /** How a reservation from another site reaches Sevgio, and when that site's calendar was last read successfully. */
 export function syncDelayNote(site: string, feed: FeedInfo | null): string {
@@ -238,3 +238,4 @@ export async function turnoverSettings(u: User) {
     `SELECT p.id, p.title, h.title AS parent_title, p.turnaround_hours, p.check_in_time, p.check_out_time FROM properties p LEFT JOIN properties h ON h.id = p.parent_id
      WHERE ${u.role === "admin" ? "TRUE" : "p.host_id = $1"} ORDER BY coalesce(h.title, p.title), p.parent_id NULLS FIRST, p.title`, u.role === "admin" ? [] : [u.id]);
 }
+

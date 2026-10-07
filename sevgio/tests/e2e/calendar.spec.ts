@@ -89,13 +89,13 @@ test.describe.serial("reservations calendar", () => {
     // Earliest first: the three same-day arrivals, then Dee (and the Airbnb guest), then Eli.
     const order = await page.locator(".ar:not(.mc-phone-list) a.ar-card").evaluateAll(as => as.map(a => a.getAttribute("href")).filter(h => h?.startsWith("/trips/CALT")));
     expect(order.slice(3)).toEqual(["/trips/CALTB1", "/trips/CALTC1"]);
-    await expect(page.locator(".ar-card", { hasText: "Booked on Airbnb" })).toBeVisible();
+    await expect(page.locator(".ar-card", { hasText: "Confirmed · Airbnb" })).toBeVisible();
 
     // Status filter: only bookings from other sites.
     await page.getByLabel("Status").selectOption({ label: "Booked on other sites" });
     await expect(page).toHaveURL(/status=other/);
     await expect(page.locator(".ar:not(.mc-phone-list) a.ar-card")).toHaveCount(0);
-    await expect(page.locator(".ar-card", { hasText: "Booked on Airbnb" })).toBeVisible();
+    await expect(page.locator(".ar-card", { hasText: "Confirmed · Airbnb" })).toBeVisible();
     // Property filter keeps the status and view.
     await page.getByLabel("Property").selectOption({ label: props[1].title });
     await expect(page).toHaveURL(/view=arrivals/);
@@ -143,7 +143,7 @@ test.describe.serial("reservations calendar", () => {
     await page.keyboard.press("Escape");
     // The Airbnb booking opens too, and says the guest count lives on Airbnb.
     await page.locator(".mg-tag.ch-airbnb").first().click();
-    await expect(page.getByRole("dialog", { name: "Reservation: Booked on Airbnb" })).toContainText("Not provided by the site's calendar link");
+    await expect(page.getByRole("dialog", { name: "Reservation: Confirmed · Airbnb" })).toContainText("Not provided by the site's calendar link");
     await page.keyboard.press("Escape");
     // The month's reservations are listed under the calendar.
     await expect(page.getByRole("heading", { name: /Reservations in/ })).toBeVisible();

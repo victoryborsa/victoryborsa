@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { one, q } from "@/lib/db.ts";
+import { nextStages, type Stage } from "@/lib/stages.ts";
 import nodeCrypto from "node:crypto";
 import { clearFailedSignIns, hashPassword, linkToken, requireUser, sha256 } from "@/lib/auth.ts";
 import { ROLES } from "@/lib/constants.ts";
@@ -103,12 +104,28 @@ export async function setRatingAction(_: ActionState, fd: FormData): Promise<Act
   return { ok: "Rating saved." };
 }
 
-export async function resolveEventAction(fd: FormData) {
-  await requireUser(["admin"]);
-  const id = Number(str(fd, "id")), resolved = str(fd, "resolved") === "1";
-  await q("UPDATE event_log SET resolved_at = CASE WHEN $2 THEN now() ELSE NULL END WHERE id = $1", [id, resolved]);
+/** Errors move through New → Investigating → Fix Deployed → Verified → Resolved. Resolved is only possible after Verified,
+ *  so an error can't disappear just because someone clicked a button. Any stage can be sent back to Investigating. */
+export async function setStageAction(fd: FormData) {
+  const admin = await requireUser(["admin"]);
+  const id = Number(str(fd, "id")), to = str(fd, "stage"), note = str(fd, "note", 500);
+  const cur = await one<{ stage: string; level: string }>("SELECT stage, level FROM event_log WHERE id = $1", [id]);
+  if (!cur || cur.level === "info") return;
+  // One step forward at a time, or back to Investigating (for example when a "fixed" error comes back).
+  if (!nextStages(cur.stage).includes(to as Stage)) return;
+  await q(`UPDATE event_log SET stage = $2, stage_at = now(), stage_by = $3, stage_note = CASE WHEN $4 = '' THEN stage_note ELSE $4 END,
+             resolved_at = CASE WHEN $2 = 'resolved' THEN now() ELSE NULL END WHERE id = $1`, [id, to, admin.id, note]);
   revalidatePath("/admin/log");
   revalidatePath("/admin");
+}
+
+/** Operations → email outbox: send a waiting or failed email again now. */
+export async function retryEmailAction(fd: FormData) {
+  await requireUser(["admin"]);
+  const { retryOutbox } = await import("@/lib/email.ts");
+  const id = Number(str(fd, "id"));
+  if (id) await retryOutbox(id); else await retryOutbox();
+  revalidatePath("/admin/log");
 }
 
 export async function saveSettingsAction(_: ActionState, fd: FormData): Promise<ActionState> {

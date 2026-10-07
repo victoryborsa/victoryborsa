@@ -18,24 +18,26 @@ import { ListingStats } from "@/components/ListingStats.tsx";
 import { listingStats, VISITOR_COOKIE } from "@/lib/listing-stats.ts";
 import { cookies } from "next/headers";
 import { siteUrl } from "@/lib/email.ts";
-import { PET_FEE_PER } from "@/lib/pricing.ts";
 import { money } from "@/lib/money.ts";
 import { AvailabilitySection, BookingPanel, BookingProvider, MobileBookBar } from "@/components/booking.tsx";
 import { Check, Rating } from "@/components/ui.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { askHostAction } from "@/app/actions/messages.ts";
-import { priceNote, isWebUrl, isPdf, availableLabel } from "@/lib/corporate.ts";
+import { priceNote, isWebUrl, isPdf, availableLabel, firstFreeStart } from "@/lib/corporate.ts";
 import { UTILITIES } from "@/lib/constants.ts";
 import { Icon } from "@/components/Icon.tsx";
 import type { Property } from "@/lib/bookings.ts";
+import { guestDescription, guestRules, policies } from "@/lib/policies.ts";
+import { JsonLd, listingLd } from "@/lib/seo.tsx";
 
 /** Long-term lease homes: rent, fees and Request / Apply buttons in place of the booking calendar. */
-function LeasePanel({ p, phone }: { p: Property; phone: string }) {
+function LeasePanel({ p, phone, freeFrom }: { p: Property; phone: string; freeFrom: string | null }) {
   const fees: [string, number, string][] = [
     ["Security deposit", p.corp_deposit_cents || 0, ""],
     ["Application fee", p.corp_app_fee_cents || 0, "per household"],
     ["Cleaning fee", p.corp_cleaning_cents || 0, "one time"],
-    ["Pet fee", p.corp_pet_fee_cents || 0, "non-refundable, if you bring a pet"],
+    // The pet fee only appears when the Pets setting allows pets, so the page never contradicts itself.
+    ["Pet fee", p.amenities.includes("pets") ? p.corp_pet_fee_cents || 0 : 0, "non-refundable, if you bring a pet"],
   ];
   const apply = p.corp_apply_url && isWebUrl(p.corp_apply_url) ? p.corp_apply_url : "";
   return (
@@ -43,7 +45,7 @@ function LeasePanel({ p, phone }: { p: Property; phone: string }) {
       <div className="panel-price"><b>{money(p.corp_monthly_cents || 0)}</b><span className="muted">/ month</span></div>
       <p className="lease-note">{priceNote(p)}</p>
       {p.utilities && UTILITIES[p.utilities] && <p className={`util-line ${p.utilities}`}><Icon name="bolt" size={14} />{UTILITIES[p.utilities]}</p>}
-      <p className={`ch-avail${p.corp_available_from && p.corp_available_from > todayLocal() ? "" : " now"}`}>{availableLabel(p.corp_available_from ?? null)}</p>
+      <p className={`ch-avail${freeFrom === null || freeFrom > todayLocal() ? "" : " now"}`}>{availableLabel(freeFrom)}</p>
       <dl className="ch-fees">
         {fees.filter(([, c]) => c > 0).map(([k, c, sub]) => <div key={k}><dt>{k}{sub && <small>{sub}</small>}</dt><dd>{money(c)}</dd></div>)}
       </dl>
@@ -77,7 +79,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const photos = await photosFor(p.id);
   return {
     title: `${p.title}, ${p.city}`,
-    description: p.description.slice(0, 160),
+    description: guestDescription(p).replace(/\s+/g, " ").slice(0, 160),
+    alternates: { canonical: `/stays/${p.slug}` },
     openGraph: { title: `${p.title} · Sevgio`, description: p.description.slice(0, 160), url: `/stays/${p.slug}`, type: "website", ...(photos[0] ? { images: [{ url: photoUrl(photos[0].id), alt: p.title }] } : {}) },
     twitter: { card: photos[0] ? "summary_large_image" : "summary", title: `${p.title} · Sevgio` },
   };
@@ -103,6 +106,8 @@ export default async function StayPage({ params, searchParams }: Params) {
   const prices = await manualPrices([p.id, ...linked.rooms.map(r => r.id)], today, addDays(today, 560));
   const hostFirst = (host?.name || "your host").split(" ")[0];
   const bookable = p.status === "published";
+  // House rules and policies all come from the listing's own fields (one master record).
+  const pol = policies(p), rules = guestRules(p), about = guestDescription(p);
   const beds = parseBeds(p.beds_detail);
   // Bedroom cards: the host's room-by-room details, or (for a whole house) its separately listed rooms.
   const myPhotos = new Set(photos.map(ph => ph.id));
@@ -113,13 +118,15 @@ export default async function StayPage({ params, searchParams }: Params) {
 
   return (
     <div className="wrap has-mobile-book">
+      {bookable && <JsonLd data={listingLd(siteUrl(), p, photos.slice(0, 5).map(ph => siteUrl() + photoUrl(ph.id)))} />}
       <div className="crumbs"><Link href="/stays">← All stays</Link></div>
       {!bookable && <div className="notice warn" style={{ marginBottom: 12 }}>Preview: this listing is <b>{p.status}</b> and not visible to guests.</div>}
       <div className="row" style={{ alignItems: "end", marginBottom: 16 }}>
         <div className="stack" style={{ gap: 6, flex: 1, minWidth: 240 }}>
           <h1 style={{ fontSize: "clamp(26px,4vw,36px)" }}>{p.title}</h1>
           <div className="row" style={{ gap: "8px 16px" }}>
-            <Rating rating={p.rating} count={p.review_count} />
+            <Rating rating={p.rating} count={p.review_count} since={p.created_at} />
+            <span className="pill neutral">{PROPERTY_TYPES[p.property_type] || "Home"}</span>
             <span className="muted">{placeFull(p.city, p.area)}</span>
             {host?.name && <span className="muted">Hosted by <b style={{ color: "var(--ink)" }}>{hostFirst}</b></span>}
             {p.corp_lease_only ? <span className="pill neutral">Long-term lease</span> : p.booking_mode === "instant" ? <span className="pill ok">Instant booking</span> : <span className="pill warn">Request to book</span>}
@@ -161,7 +168,7 @@ export default async function StayPage({ params, searchParams }: Params) {
             )}
             <section>
               <h2>About this {(PROPERTY_TYPES[p.property_type] || "home").toLowerCase()}</h2>
-              <p className="prose">{p.description}</p>
+              <p className="prose">{about}</p>
               <p className="muted">Hosted by {host?.name}. {placeFull(p.city, p.area)}. The exact address is shared once your {p.corp_lease_only ? "application is approved" : "booking is confirmed"}.</p>
             </section>
             {p.corp_furnished !== false && (rooms.length > 0 || beds.length > 0) && (
@@ -196,7 +203,6 @@ export default async function StayPage({ params, searchParams }: Params) {
                 <dt>Kitchen</dt><dd>{ACCESS[p.kitchen_access]}</dd>
                 <dt>Laundry</dt><dd>{ACCESS[p.laundry_access]}</dd>
                 {p.stairs_info && <><dt>Stairs</dt><dd style={{ fontWeight: 400 }}>{p.stairs_info}</dd></>}
-                <dt>Security cameras</dt><dd style={{ fontWeight: 400 }}>{p.has_exterior_cameras ? `Exterior cameras: ${p.camera_locations || "see host for locations"}. No cameras inside.` : "No security cameras on the property."}</dd>
                 {!p.corp_lease_only && <><dt>Children</dt><dd style={{ fontWeight: 400 }}>{p.children_free_age > 0 ? `Children aged ${p.children_free_age} and under stay free.` : "Infants under 1 stay free."}</dd></>}
               </dl>
             </section>
@@ -235,14 +241,18 @@ export default async function StayPage({ params, searchParams }: Params) {
               <h2>House rules</h2>
               <dl className="kv">
                 {p.corp_lease_only ? <><dt>Lease</dt><dd>Long-term lease{p.corp_furnished === false ? ", unfurnished" : ""}</dd></> : <>
-                <dt>Check-in</dt><dd>After {p.check_in_time}</dd>
-                <dt>Check-out</dt><dd>Before {p.check_out_time}</dd>
-                <dt>Minimum stay</dt><dd>{p.min_nights} night{p.min_nights > 1 ? "s" : ""}</dd></>}
-                <dt>Maximum guests</dt><dd>{p.max_guests}</dd>
-                {!p.corp_lease_only && p.security_deposit_cents > 0 && <><dt>Security deposit</dt><dd>{money(p.security_deposit_cents)}, refundable after check-out</dd></>}
-                <dt>Pets</dt><dd>{!p.amenities.includes("pets") ? "Not allowed" : p.pet_fee_cents ? `Allowed · ${money(p.pet_fee_cents)} ${PET_FEE_PER[p.pet_fee_per]}` : "Allowed · free"}</dd>
+                <dt>Check-in</dt><dd>{pol.checkIn}</dd>
+                <dt>Check-out</dt><dd>{pol.checkOut}</dd>
+                <dt>Minimum stay</dt><dd>{pol.minStay}</dd>
+                <dt>Cleaning fee</dt><dd>{pol.cleaningFee}</dd></>}
+                <dt>Maximum guests</dt><dd>{pol.maxGuests}</dd>
+                <dt>Security deposit</dt><dd>{pol.deposit}</dd>
+                <dt>Pets</dt><dd>{pol.pets}</dd>
+                <dt>Smoking</dt><dd>{pol.smoking}</dd>
+                <dt>Parking</dt><dd>{pol.parking}</dd>
+                <dt>Security cameras</dt><dd>{pol.cameras}</dd>
               </dl>
-              {p.house_rules.length > 0 && <ul className="rules">{p.house_rules.map((r, i) => <li key={i}>{r}</li>)}</ul>}
+              {rules.length > 0 && <ul className="rules">{rules.map((r, i) => <li key={i}>{r}</li>)}</ul>}
             </section>
             {!p.corp_lease_only && <section>
               <h2>Cancellation policy</h2>
@@ -263,7 +273,7 @@ export default async function StayPage({ params, searchParams }: Params) {
               </ActionForm>
             </section>
           </div>
-          {p.corp_lease_only ? <LeasePanel p={p} phone={settings.contact_phone} /> : <BookingPanel paymentNote={settings.payment_note} />}
+          {p.corp_lease_only ? <LeasePanel p={p} phone={settings.contact_phone} freeFrom={await firstFreeStart(p.id, p.corp_available_from ?? null, Math.max(30, p.min_nights))} /> : <BookingPanel paymentNote={settings.payment_note} />}
         </div>
         {p.corp_lease_only
           ? <div className="mobile-book"><div style={{ flex: 1, minWidth: 0 }}><b className="mono">{money(p.corp_monthly_cents || 0)}</b> <span className="muted">/ month</span></div><Link className="btn btn-primary" href={`/corporate-housing?home=${p.id}#request`}>Request this home</Link></div>

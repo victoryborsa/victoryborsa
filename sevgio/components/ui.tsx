@@ -1,8 +1,16 @@
-import { BOOKING_STATUS } from "@/lib/constants.ts";
+import { reservationStatus } from "@/lib/statuses.ts";
 
-export function StatusPill({ status }: { status: string }) {
-  const s = BOOKING_STATUS[status] || { label: status, tone: "neutral" };
-  return <span className={`pill ${s.tone}`}>{s.label}</span>;
+/** Status pill for any reservation, from any source, with the reason underneath. */
+export function ResPill({ s }: { s: Parameters<typeof reservationStatus>[0] }) {
+  const st = reservationStatus(s);
+  return <><span className={`pill ${st.tone}`}>{st.label}</span>{st.detail && <div className="hint">{st.detail}</div>}</>;
+}
+import { todayLocal, toInstant, type Instant } from "@/lib/dates.ts";
+
+/** Reservation status pill (Confirmed, Pending, Checked In, …), with the reason underneath when there is one. */
+export function StatusPill({ b, detail = true }: { b: { status: string; check_in: string; check_out: string }; detail?: boolean }) {
+  const s = reservationStatus({ ...b, today: todayLocal() });
+  return <><span className={`pill ${s.tone}`}>{s.label}</span>{detail && s.detail && <span className="hint"> {s.detail}</span>}</>;
 }
 
 export function Star() {
@@ -13,8 +21,12 @@ export function Star() {
   );
 }
 
-export function Rating({ rating, count }: { rating: number | null; count: number }) {
-  if (!rating) return <span className="pill neutral">New</span>;
+/** Listings show "New" for this many days after they were added, then nothing until they have reviews. */
+export const NEW_BADGE_DAYS = 45;
+export const isNewListing = (since: Instant, now = Date.now()) => { const d = toInstant(since); return !!d && now - d.getTime() < NEW_BADGE_DAYS * 86_400_000; };
+
+export function Rating({ rating, count, since }: { rating: number | null; count: number; since?: Instant }) {
+  if (!rating) return isNewListing(since ?? null) ? <span className="pill neutral">New</span> : null;
   return (
     <span className="rating">
       <Star />

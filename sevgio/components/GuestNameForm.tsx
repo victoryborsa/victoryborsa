@@ -3,7 +3,7 @@ import { Badge } from "./Badge.tsx";
 import { saveStayDetailsAction, setKindAction } from "@/app/actions/channel.ts";
 
 /** A period a site's calendar link shows as unavailable without saying whether a guest booked it (Booking.com "CLOSED - Not available"). */
-export const CAL_BLOCK = "External calendar block";
+export const CAL_BLOCK = "External Calendar Block";
 /** What shows instead of a guest name the site's calendar link didn't send. Not an error: calendar links carry dates, not guests. */
 export const noName = (site: string) => `Not provided by ${site}`;
 

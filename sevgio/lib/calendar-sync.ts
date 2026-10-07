@@ -4,7 +4,7 @@ import { parseIcs } from "./ical.ts";
 import { fetchPublic } from "./safe-fetch.ts";
 import { logEvent } from "./log.ts";
 import { sendEmail, siteUrl } from "./email.ts";
-import { todayLocal } from "./dates.ts";
+import { todayLocal, fmtWhen } from "./dates.ts";
 import { channelOf } from "./channels.ts";
 import { applyFeedEvents, type FeedResult } from "./channel-res.ts";
 import { checkConflicts } from "./conflicts.ts";
@@ -57,7 +57,7 @@ export async function syncFeed(feedId: string, opts: { checkAfter?: boolean; ret
 async function alertFailing(f: { id: string; name: string }, row: { fail_count: number; last_synced_at: string | null; place: string }, msg: string) {
   await q("UPDATE ical_feeds SET alerted_at = now() WHERE id = $1", [f.id]);
   const admins = await q<{ email: string }>("SELECT email FROM users WHERE role = 'admin'");
-  const last = row.last_synced_at ? new Date(row.last_synced_at).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" }) : "never";
+  const last = row.last_synced_at ? fmtWhen(row.last_synced_at) : "never";
   const subject = `Calendar sync failing: ${f.name} for ${row.place}`;
   const text = [`Sevgio couldn't read the ${f.name} calendar link for ${row.place} ${row.fail_count} times in a row.`, `Error: ${msg}`, `Last successful sync: ${last}.`, "",
     "Until it works again, new bookings and cancellations on that site won't reach Sevgio's calendar. Check the link on the site, then press Sync now:",

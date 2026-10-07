@@ -10,8 +10,9 @@ import { ActionForm, SubmitButton } from "./forms.tsx";
 import { PushToggle } from "./PushToggle.tsx";
 import { ConflictCard, ConflictStatus, ConflictStrip, StayPanel, type Base } from "./Conflicts.tsx";
 import { checkConflictsNowAction, reopenConflictAction, resolveConflictAction, setTurnaroundAction } from "@/app/actions/conflicts.ts";
+import { fmtWhen, type Instant } from "@/lib/dates.ts";
 
-const when = (t: string) => new Date(t).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const when = (t: Instant) => fmtWhen(t, "short");
 const TURNOVER = [0, 1, 2, 3, 4, 5, 6, 8, 12, 24, 48];
 
 /** Double bookings: the list (Needs review / Resolved), how alerts reach you, calendar freshness and turnover times. */

@@ -7,10 +7,11 @@ import { METHOD_LABEL } from "./payment-rules.ts";
 import { forListing, stripe } from "./payments.ts";
 import { sendEmail, siteUrl } from "./email.ts";
 import { logEvent } from "./log.ts";
-import { fmtDate } from "./dates.ts";
+import { fmtDate, fmtWhen } from "./dates.ts";
 import { money } from "./money.ts";
 import { extrasOf, partyLabel } from "./party.ts";
-import { KEEP_REFERENCE, paymentLabel } from "./booking-ref.ts";
+import { KEEP_REFERENCE } from "./booking-ref.ts";
+import { paymentLater, paymentText } from "./statuses.ts";
 
 type Info = Booking & { title: string; host_id: string; host_email: string; guest_email: string; owner_zelle: string; owner_venmo: string };
 
@@ -24,7 +25,7 @@ export async function bookingInfo(id: string) {
 
 const dates = (b: Booking) => `${fmtDate(b.check_in)} - ${fmtDate(b.check_out)}`;
 const deadlineText = (b: Booking) =>
-  b.payment_deadline ? new Date(b.payment_deadline).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" }) + " ET" : "";
+  b.payment_deadline ? fmtWhen(b.payment_deadline) + " ET" : "";
 
 /** How to pay by Zelle / Venmo, as plain text (for email) — the trip page shows the same details. */
 export function manualInstructions(b: Booking, s: Settings): string {
@@ -51,8 +52,9 @@ export function guestSummary(b: Booking & { title: string }): string {
     `Check-out: ${fmtDate(b.check_out)} (${b.nights} night${b.nights === 1 ? "" : "s"})`,
     `Guests: ${partyLabel(b)}`,
     `Total price: ${money(b.total_cents + b.card_fee_cents)}`,
-    `Payment status: ${paymentLabel(b).label}`,
-  ].join("\n") + `\n\n${KEEP_REFERENCE}`;
+    `Payment status: ${paymentText(b)}`,
+    paymentLater(b),
+  ].filter(Boolean).join("\n") + `\n\n${KEEP_REFERENCE}`;
 }
 
 /** Emails after a booking is created or accepted, depending on whether payment is still needed. */
@@ -152,9 +154,11 @@ export async function recordPayment(bookingId: string, grossCents: number, opts:
   }
   if (result.ok && result.changed) {
     await logEvent("info", "Payment", `${money(grossCents)} received for ${result.b.code} (${opts.method})${opts.processing ? ", bank transfer processing" : ""}`, {}, opts.recordedBy ?? null);
+    const info = await bookingInfo(bookingId);
     if (result.nowConfirmed) {
-      const info = await bookingInfo(bookingId);
       if (info?.status === "confirmed") await notifyBooking(info);
+    } else if (info && !opts.processing) {
+      await emailPaymentReceived(info, grossCents);
     }
   }
   return result;
@@ -188,4 +192,62 @@ export async function emailManualConfirmation(b: Info) {
   return sendEmail(b.guest_email, `Reservation confirmed ${b.code}: ${b.title}`,
     `Hi ${first},\n\nYour reservation at ${b.title} is confirmed.\n\n${lines}\n\nPayment is due at the property unless otherwise arranged.\n\n${KEEP_REFERENCE}\n\n`
     + `See your reservation and arrival details online: ${siteUrl()}/trips/${b.code}\n(Sign in with this email address. The first time, choose "Forgot password" to set one.)`);
+}
+
+/** Tells the guest a payment was recorded (when the booking was already confirmed, so no confirmation email goes out). */
+export async function emailPaymentReceived(b: Info, amountCents: number) {
+  const first = b.guest_name.split(" ")[0] || "there";
+  const balance = Math.max(0, b.total_cents - b.paid_cents);
+  return sendEmail(b.guest_email, `Payment received ${b.code}: ${b.title}`,
+    `Hi ${first},\n\nWe received your payment of ${money(amountCents)} for ${b.title} (${dates(b)}).\n\n`
+    + `Booking reference: ${b.code}\nTotal: ${money(b.total_cents)}\nPaid so far: ${money(b.paid_cents)}\n${balance > 0 ? `Balance due: ${money(balance)}` : "Paid in full. Thank you!"}\n\n`
+    + `See your booking: ${siteUrl()}/trips/${b.code}`);
+}
+
+/** Tells the guest what changed after an admin edits their reservation. */
+export async function emailReservationUpdate(b: Info, changes: string[]) {
+  const first = b.guest_name.split(" ")[0] || "there";
+  return sendEmail(b.guest_email, `Reservation updated ${b.code}: ${b.title}`,
+    `Hi ${first},\n\nYour reservation at ${b.title} was updated.\n\nWhat changed:\n${changes.map(c => `- ${c}`).join("\n")}\n\n${guestSummary(b)}\n\n`
+    + `See your reservation: ${siteUrl()}/trips/${b.code}\nIf anything looks wrong, reply to this email or contact us: ${siteUrl()}/contact`);
+}
+
+type ArrivalInfo = Info & { address: string; city: string; arrival_instructions: string; check_in_time: string; check_out_time: string; host_name: string; host_phone: string };
+
+/** Check-in instructions, emailed automatically two days before arrival (or straight away for a booking made closer than that). */
+export async function sendCheckInInstructions(): Promise<{ sent: number }> {
+  const rows = await q<ArrivalInfo>(
+    `SELECT b.*, p.title, p.host_id, p.owner_zelle, p.owner_venmo, p.address, p.city, p.arrival_instructions, p.check_in_time, p.check_out_time,
+            h.email AS host_email, h.name AS host_name, h.phone AS host_phone, g.email AS guest_email
+     FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users h ON h.id = p.host_id JOIN users g ON g.id = b.guest_id
+     WHERE b.status = 'confirmed' AND b.checkin_email_at IS NULL
+       AND b.check_in BETWEEN (now() AT TIME ZONE 'America/New_York')::date AND (now() AT TIME ZONE 'America/New_York')::date + 2
+     LIMIT 100`);
+  let sent = 0;
+  for (const b of rows) {
+    // Claim it first so two servers never send it twice.
+    const claimed = await one("UPDATE bookings SET checkin_email_at = now() WHERE id = $1 AND checkin_email_at IS NULL RETURNING id", [b.id]);
+    if (!claimed) continue;
+    const r = await sendEmail(b.guest_email, `Check-in instructions ${b.code}: ${b.title}`, checkInText(b));
+    if (r.ok || r.queued) sent++;
+    else await q("UPDATE bookings SET checkin_email_at = NULL WHERE id = $1", [b.id]); // not configured: try again next hour
+  }
+  return { sent };
+}
+
+export function checkInText(b: ArrivalInfo): string {
+  const first = b.guest_name.split(" ")[0] || "there";
+  const later = paymentLater(b);
+  return [
+    `Hi ${first},`, "",
+    `Your stay at ${b.title} starts ${fmtDate(b.check_in)}. Here is everything you need to arrive.`, "",
+    `Booking reference: ${b.code}`,
+    `Address: ${b.address || `${b.city} (your host will send the exact address)`}`,
+    `Check-in: ${fmtDate(b.check_in)}, after ${b.check_in_time}`,
+    `Check-out: ${fmtDate(b.check_out)}, by ${b.check_out_time}`,
+    ...(b.arrival_instructions ? ["", "How to get in:", b.arrival_instructions] : []),
+    "", `Your host: ${b.host_name}${b.host_phone ? `, ${b.host_phone}` : ""}, ${b.host_email}`,
+    ...(later ? ["", later] : []),
+    "", `Your booking online: ${siteUrl()}/trips/${b.code}`,
+  ].join("\n");
 }

@@ -1,7 +1,7 @@
 import type { Booking } from "@/lib/bookings.ts";
 import { money } from "@/lib/money.ts";
 import { extrasOf } from "@/lib/party.ts";
-import { paymentLabel } from "@/lib/booking-ref.ts";
+import { paymentStatus } from "@/lib/statuses.ts";
 
 /** The booking's price, line by line, with what has been paid. Used on the trip page, the invoice and the admin record. */
 export function PriceBreakdown({ b }: { b: Booking }) {
@@ -25,6 +25,6 @@ export function PriceBreakdown({ b }: { b: Booking }) {
 
 /** Payment status as a colored pill. */
 export function PaymentPill({ b }: { b: Booking }) {
-  const p = paymentLabel(b);
-  return <span className={`pill ${p.tone}`}>{p.label}</span>;
+  const p = paymentStatus(b);
+  return <><span className={`pill ${p.tone}`}>{p.label}</span>{p.detail && <span className="hint"> {p.detail}</span>}</>;
 }

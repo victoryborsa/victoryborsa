@@ -4,13 +4,13 @@ import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth.ts";
 import { one } from "@/lib/db.ts";
 import type { Booking } from "@/lib/bookings.ts";
-import { fmtDate } from "@/lib/dates.ts";
+import { todayLocal, fmtDate, fmtDay } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
 import { partyLabel } from "@/lib/party.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { methodLabel } from "@/lib/payment-rules.ts";
-import { KEEP_REFERENCE, paymentLabel } from "@/lib/booking-ref.ts";
-import { BOOKING_STATUS } from "@/lib/constants.ts";
+import { KEEP_REFERENCE } from "@/lib/booking-ref.ts";
+import { paymentText, reservationStatus } from "@/lib/statuses.ts";
 import { BrandLogo } from "@/components/BrandLogo.tsx";
 import { PriceBreakdown } from "@/components/booking-summary.tsx";
 import { PrintButton } from "@/components/PrintButton.tsx";
@@ -32,7 +32,8 @@ export default async function Invoice({ params }: { params: Promise<{ code: stri
   // Same rule as the booking page: only the guest, the listing's host, or an admin.
   if (!b || !(b.guest_id === u.id || b.host_id === u.id || u.role === "admin")) notFound();
   const s = await getSettings();
-  const pay = paymentLabel(b);
+  const pay = paymentText(b);
+  const st = reservationStatus({ ...b, today: todayLocal() });
   const total = b.total_cents + b.card_fee_cents;
   const paid = b.paid_cents + (b.payment_method === "card" ? b.card_fee_cents : 0);
   const cancelled = ["cancelled", "declined", "expired"].includes(b.status);
@@ -52,7 +53,7 @@ export default async function Invoice({ params }: { params: Promise<{ code: stri
             <div className="hint">Booking reference and invoice number</div>
           </div>
         </div>
-        {cancelled && <div className="notice warn" role="status">This booking is {BOOKING_STATUS[b.status]?.label.toLowerCase() || b.status}. The reference stays the same for your records.</div>}
+        {cancelled && <div className="notice warn" role="status">This booking is cancelled{st.detail ? ` (${st.detail.toLowerCase()})` : ""}. The reference stays the same for your records.</div>}
         <div className="inv-cols">
           <section>
             <h2 className="inv-h">Billed to</h2>
@@ -65,9 +66,9 @@ export default async function Invoice({ params }: { params: Promise<{ code: stri
           <section>
             <h2 className="inv-h">Details</h2>
             <dl className="kv inv-kv">
-              <dt>Issued</dt><dd>{new Date(b.created_at).toLocaleDateString("en-US", { timeZone: "America/New_York", dateStyle: "medium" })}</dd>
-              <dt>Status</dt><dd>{BOOKING_STATUS[b.status]?.label || b.status}</dd>
-              <dt>Payment</dt><dd>{pay.label}</dd>
+              <dt>Issued</dt><dd>{fmtDay(b.created_at)}</dd>
+              <dt>Status</dt><dd>{st.label}</dd>
+              <dt>Payment</dt><dd>{pay}</dd>
               {b.payment_method && <><dt>Method</dt><dd>{methodLabel(b)}</dd></>}
             </dl>
           </section>
@@ -79,7 +80,7 @@ export default async function Invoice({ params }: { params: Promise<{ code: stri
         {b.security_deposit_cents > 0 && <p className="hint">Refundable security deposit of {money(b.security_deposit_cents)} is collected separately and is not part of this invoice.</p>}
         <div className="inv-foot">
           <p><b>{KEEP_REFERENCE}</b></p>
-          <p className="hint">Sevgio Stays · Pittsburgh, PA{s.contact_email ? ` · ${s.contact_email}` : ""}{s.contact_phone ? ` · ${s.contact_phone}` : ""}</p>
+          <p className="hint">Sevgio · Pittsburgh, PA{s.contact_email ? ` · ${s.contact_email}` : ""}{s.contact_phone ? ` · ${s.contact_phone}` : ""}</p>
         </div>
       </article>
     </div>

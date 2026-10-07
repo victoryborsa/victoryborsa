@@ -1,7 +1,7 @@
 import { requireManageable } from "@/lib/access.ts";
 import { q } from "@/lib/db.ts";
 import { RELATED } from "@/lib/bookings.ts";
-import { addDays, eachNight, fmtDate, todayLocal } from "@/lib/dates.ts";
+import { addDays, eachNight, fmtDate, todayLocal, fmtWhen } from "@/lib/dates.ts";
 import { siteUrl } from "@/lib/email.ts";
 import { HostCalendar } from "@/components/HostCalendar.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
@@ -67,7 +67,7 @@ export default async function CalendarPage({ params }: { params: Promise<{ id: s
               <div style={{ flex: 1, minWidth: 220 }}>
                 <b>{f.name}</b>
                 <div className="hint" style={{ wordBreak: "break-all" }}>{f.url.slice(0, 80)}{f.url.length > 80 ? "…" : ""}</div>
-                <div className="hint">{f.last_synced_at ? `Last updated ${new Date(f.last_synced_at).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" })}` : "Not imported yet"}</div>
+                <div className="hint">{f.last_synced_at ? `Last updated ${fmtWhen(f.last_synced_at)}` : "Not imported yet"}</div>
                 {f.last_error && <div className="err-text">{f.last_error}</div>}
               </div>
               <form action={syncFeedAction}><input type="hidden" name="id" value={p.id} /><input type="hidden" name="feed" value={f.id} /><button className="btn btn-ghost btn-sm">Refresh now</button></form>

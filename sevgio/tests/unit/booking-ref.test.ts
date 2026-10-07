@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import { pool, q, one } from "../../lib/db.ts";
 import { addDays, todayLocal } from "../../lib/dates.ts";
 import { createBooking } from "../../lib/bookings.ts";
-import { compactRef, likeSafe, paymentLabel, sortResults, stayPhase, type SearchRow } from "../../lib/booking-ref.ts";
+import { paymentLater, paymentText, reservationStatus } from "../../lib/statuses.ts";
+import { compactRef, likeSafe, sortResults, stayPhase, type SearchRow } from "../../lib/booking-ref.ts";
 import { searchReservations } from "../../lib/reservation-search.ts";
 
 const T = todayLocal();
@@ -26,15 +27,34 @@ test("stay phase: upcoming, staying now, past, cancelled", () => {
   for (const s of ["cancelled", "declined", "expired"]) assert.equal(stayPhase(s, addDays(T, 3), addDays(T, 5), T), "cancelled");
 });
 
-test("payment status in words", () => {
+test("payment status in words: Unpaid, Partially Paid, Paid, Refunded, Payment unavailable", () => {
   const b = { status: "confirmed", payment_method: "zelle", payment_status: "pending", total_cents: 50000, paid_cents: 0 };
-  assert.equal(paymentLabel(b).label, "Waiting for payment");
-  assert.equal(paymentLabel({ ...b, payment_status: "paid", paid_cents: 50000 }).label, "Paid in full");
-  assert.equal(paymentLabel({ ...b, payment_status: "deposit_paid", paid_cents: 10000 }).label, "Partly paid, $400 due");
-  assert.equal(paymentLabel({ ...b, payment_status: "failed" }).label, "Payment failed");
-  assert.equal(paymentLabel({ ...b, status: "pending" }).label, "Not due yet");
-  assert.equal(paymentLabel({ ...b, payment_method: null, payment_status: "none" }).label, "Payment status unavailable");
-  assert.equal(paymentLabel({ ...b, status: "cancelled" }).label, "Not paid");
+  assert.equal(paymentText(b), "Unpaid · Waiting for payment");
+  assert.equal(paymentText({ ...b, payment_status: "paid", paid_cents: 50000 }), "Paid");
+  assert.equal(paymentText({ ...b, payment_status: "deposit_paid", paid_cents: 10000 }), "Partially Paid · $400 due");
+  assert.equal(paymentText({ ...b, payment_status: "failed" }), "Unpaid · The last payment attempt failed");
+  assert.equal(paymentText({ ...b, status: "pending" }), "Unpaid · Nothing is due until the host accepts");
+  assert.equal(paymentText({ ...b, payment_method: null, payment_status: "none" }), "Payment unavailable");
+  assert.equal(paymentText({ ...b, status: "cancelled" }), "Unpaid · Nothing is owed");
+  assert.equal(paymentText({ ...b, status: "cancelled", payment_status: "refunded", paid_cents: 50000 }), "Refunded · $500 returned to the guest");
+  assert.equal(paymentLater({ ...b, payment_method: null, payment_status: "none" }), "Host will contact you regarding payment.");
+});
+
+test("reservation statuses: one set of names for every source", () => {
+  const r = (x: object) => reservationStatus({ status: "confirmed", check_in: addDays(T, 3), check_out: addDays(T, 5), today: T, ...x }).label;
+  assert.equal(r({}), "Confirmed");
+  assert.equal(r({ status: "pending" }), "Pending");
+  assert.equal(r({ status: "awaiting_payment" }), "Pending");
+  assert.equal(r({ kind: "unknown" }), "External Calendar Block");
+  assert.equal(r({ kind: "blocked" }), "External Calendar Block");
+  assert.equal(r({ kind: "reservation" }), "Confirmed");
+  assert.equal(r({ needsReview: true }), "Needs Review");
+  assert.equal(r({ status: "cancelled", needsReview: true }), "Cancelled");
+  assert.equal(r({ status: "declined" }), "Cancelled");
+  assert.equal(r({ check_in: addDays(T, -1), check_out: addDays(T, 2) }), "Checked In");
+  assert.equal(r({ check_in: addDays(T, -5), check_out: addDays(T, -2) }), "Checked Out");
+  // A calendar block never reads as an unconfirmed reservation, even with no name or reference.
+  assert.notEqual(r({ kind: "unknown" }), "Unconfirmed");
 });
 
 test("results: exact reference first, then staying now, upcoming soonest, past latest, cancelled", () => {

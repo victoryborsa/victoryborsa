@@ -4,7 +4,8 @@ import { q } from "@/lib/db.ts";
 import { expireStaleRequests } from "@/lib/bookings.ts";
 import { todayLocal } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
-import { EventTable, type Ev } from "@/components/EventTable.tsx";
+import { EventTable } from "@/components/EventTable.tsx";
+import { opsEvents } from "@/lib/ops.ts";
 import { emailReady, missingEmailSettings } from "@/lib/email.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { testEmailAction } from "@/app/actions/admin.ts";
@@ -30,7 +31,7 @@ export default async function AdminHome() {
             (SELECT count(*) FROM messages WHERE NOT handled AND property_id IS NULL) AS new_messages`,
     [today],
   );
-  const recent = await q<Ev>("SELECT e.*, u.email FROM event_log e LEFT JOIN users u ON u.id = e.user_id WHERE e.level <> 'info' AND e.resolved_at IS NULL ORDER BY e.at DESC LIMIT 8");
+  const recent = await opsEvents("e.level <> 'info' AND e.stage <> 'resolved'", [], 8);
   return (
     <>
       {!emailReady() && (

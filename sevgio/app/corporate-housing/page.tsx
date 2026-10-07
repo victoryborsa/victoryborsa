@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { corporateHomes, availableLabel, isFurnishedFinderUrl, isWebUrl, isPdf, priceNote, type CorpHome } from "@/lib/corporate.ts";
+import { corporateHomes, withRealAvailability, availableLabel, isFurnishedFinderUrl, isWebUrl, isPdf, priceNote, type CorpHome } from "@/lib/corporate.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { money } from "@/lib/money.ts";
 import { getSettings } from "@/lib/settings.ts";
@@ -15,9 +15,12 @@ import { CopyField } from "@/components/CopyField.tsx";
 import { PickHome } from "@/components/PickHome.tsx";
 import { DatePicker } from "@/components/DatePicker.tsx";
 import { corporateRequestAction } from "@/app/actions/messages.ts";
+import { JsonLd, businessLd } from "@/lib/seo.tsx";
 
 export const metadata: Metadata = {
-  title: "Furnished & Corporate Housing",
+  alternates: { canonical: "/corporate-housing" },
+  openGraph: { title: "Furnished & Corporate Housing in Pittsburgh · Sevgio", url: "/corporate-housing", description: "Fully furnished monthly homes in Pittsburgh for travel nurses, traveling physicians, corporate teams, relocating employees and extended stays." },
+  title: "Furnished & Corporate Housing in Pittsburgh",
   description: "Fully furnished monthly homes in Pittsburgh and Indiana, PA for travel nurses, doctors, corporate teams and extended stays. One fixed price, all inclusive.",
 };
 export const dynamic = "force-dynamic";
@@ -42,13 +45,13 @@ function bathText(p: CorpHome) {
   return `${full} bath${full === 1 ? "" : "s"}${half ? ` + ${half} half` : ""}`;
 }
 
-function HomeCard({ p, today }: { p: CorpHome; today: string }) {
+function HomeCard({ p, today }: { p: CorpHome & { free_from: string | null }; today: string }) {
   const ff = isFurnishedFinderUrl(p.furnished_finder_url) ? p.furnished_finder_url : "";
-  const avail = availableLabel(p.corp_available_from, today);
+  const avail = availableLabel(p.free_from, today);
   return (
     <article className="ch-home">
       <Link href={`/stays/${p.slug}`} className="ch-ph" tabIndex={-1} aria-hidden="true">
-        {p.cover_id ? <img src={photoUrl(p.cover_id, "large")} alt="" loading="lazy" decoding="async" width={640} height={480} /> : <span className="noph">Photos coming soon</span>}
+        {p.cover_id ? <img src={photoUrl(p.cover_id, "large")} alt={p.title} loading="lazy" decoding="async" width={640} height={480} /> : <span className="noph">Photos coming soon</span>}
       </Link>
       <div className="ch-body">
         <p className={`ch-avail${avail === "Available now" ? " now" : ""}`}>{avail}</p>
@@ -82,13 +85,14 @@ function HomeCard({ p, today }: { p: CorpHome; today: string }) {
 }
 
 export default async function CorporateHousing({ searchParams }: { searchParams: Promise<{ home?: string }> }) {
-  const [homes, s, u, sp] = await Promise.all([corporateHomes(), getSettings(), currentUser(), searchParams]);
+  const [homes, s, u, sp] = await Promise.all([corporateHomes().then(withRealAvailability), getSettings(), currentUser(), searchParams]);
   const picked = homes.some(h => h.id === sp.home) ? sp.home : "";
   const anyUnfurnished = homes.some(h => !h.corp_furnished);
   const today = todayLocal();
   const pageUrl = siteUrl() + "/corporate-housing";
   return (
     <div className="ch theme-light">
+      <JsonLd data={businessLd(siteUrl(), { email: s.contact_email, phone: s.contact_phone })} />
       <section className="wrap ch-hero">
         <div className="ch-hero-text">
           <p className="eyebrow">Furnished and corporate housing</p>

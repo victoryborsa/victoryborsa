@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth.ts";
 import { one } from "@/lib/db.ts";
-import { fmtDate, nightsBetween } from "@/lib/dates.ts";
+import { fmtDate, nightsBetween, fmtWhen, type Instant } from "@/lib/dates.ts";
 import { financeListings, placeName } from "@/lib/finance.ts";
 import { channelLabel } from "@/lib/channels.ts";
 import { Flash } from "@/components/Flash.tsx";
@@ -13,7 +13,7 @@ import { deleteChannelResAction, setManualStatusAction } from "@/app/actions/cha
 type Res = ChannelResValues & { guest_name_source: string; phone_last4: string; feed_detail: string; ref_source: string; guest_name_at: string | null; guest_name_by_name: string | null; id: string; property_id: string; channel: string; source: string; status: string; eff_kind: string; check_in: string; check_out: string; summary: string;
   feed_name: string | null; first_seen_at: string; last_seen_at: string; modified_at: string | null; cancelled_at: string | null; finance_source: string };
 
-const when = (t: string) => new Date(t).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+const when = (t: Instant) => fmtWhen(t);
 
 export default async function OtherSiteReservation({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ msg?: string }> }) {
   const { id } = await params;

@@ -5,6 +5,7 @@ import { todayLocal } from "@/lib/dates.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { BookingTable, type BookingRow } from "@/components/BookingTable.tsx";
 import { markSeen } from "@/lib/alerts.ts";
+import { reviewKeys } from "@/lib/review.ts";
 import { searchReservations } from "@/lib/reservation-search.ts";
 import { ReservationResults, ReservationSearchForm } from "@/components/ReservationResults.tsx";
 import type { Phase } from "@/lib/booking-ref.ts";
@@ -63,7 +64,7 @@ export default async function AdminBookings({ searchParams }: { searchParams: Pr
         <Link className="btn btn-ghost" href="/host/bookings/other-sites">Reservations from other sites</Link>
       </form>
       {fresh.size > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}>{fresh.size} new booking{fresh.size === 1 ? "" : "s"} since you last looked, marked <b>New</b> below.</div>}
-      <BookingTable fresh={fresh} rows={rows} today={todayLocal()} back={`/admin/bookings?status=${status}`} detailBase="/admin/bookings/" />
+      <BookingTable fresh={fresh} review={await reviewKeys()} rows={rows} today={todayLocal()} back={`/admin/bookings?status=${status}`} detailBase="/admin/bookings/" />
     </>
   );
 }

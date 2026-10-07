@@ -4,6 +4,7 @@ import { listImports } from "@/lib/import-undo.ts";
 import { financeListings, placeName } from "@/lib/finance.ts";
 import { CHANNELS, channelLabel } from "@/lib/channels.ts";
 import { PayoutImport } from "@/components/PayoutImport.tsx";
+import { fmtWhen, type Instant } from "@/lib/dates.ts";
 
 /** Bring prices, fees and payouts in from a site's payout file, since calendar links carry only dates. */
 export default async function ImportPayouts() {
@@ -12,7 +13,7 @@ export default async function ImportPayouts() {
   const options = listings.map(l => ({ id: l.id, name: placeName(listings, l.id) })).sort((a, b) => a.name.localeCompare(b.name));
   const history = await listImports(u);
   const last = history.find(h => h.status !== "undone");
-  const when = (t: string) => new Date(t).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+  const when = (t: Instant) => fmtWhen(t);
   return (
     <div className="stack" style={{ gap: 16 }}>
       <p><Link href="/host/finance">‹ Finance</Link></p>

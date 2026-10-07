@@ -7,15 +7,15 @@ import { hashPassword, requireUser, safeNext, type User } from "@/lib/auth.ts";
 import nodeCrypto from "node:crypto";
 import { withMsg } from "@/components/Flash.tsx";
 import { requireManageable } from "@/lib/access.ts";
-import { addBlock, createManualBooking, setBookingStatus, type Booking } from "@/lib/bookings.ts";
+import { addBlock, changeReservation, createManualBooking, setBookingStatus, type Booking } from "@/lib/bookings.ts";
 import { ACCESS, AMENITIES, CANCELLATION, PROPERTY_TYPES, parseBeds, parseRooms, parseServices } from "@/lib/constants.ts";
 import { int, isEmail, lines, slugify, str, type ActionState } from "@/lib/validate.ts";
-import { toCents } from "@/lib/money.ts";
+import { money, toCents } from "@/lib/money.ts";
 import { processPhoto } from "@/lib/photos.ts";
 import { syncFeed } from "@/lib/calendar-sync.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { isOnline } from "@/lib/payments.ts";
-import { bookingInfo, emailManualConfirmation, notifyBooking, recordPayment } from "@/lib/payment-flow.ts";
+import { bookingInfo, emailManualConfirmation, emailReservationUpdate, notifyBooking, recordPayment } from "@/lib/payment-flow.ts";
 import { fetchPublic } from "@/lib/safe-fetch.ts";
 import { moveListingFamily } from "@/lib/homes.ts";
 import { feePayText, feeState, type FeeRow } from "@/lib/listing-fee.ts";
@@ -46,6 +46,7 @@ function readListing(fd: FormData) {
     beds: beds.filter(b => b.kind !== "crib").reduce((n, b) => n + b.count, 0),
     kitchen_access: str(fd, "kitchen_access"), laundry_access: str(fd, "laundry_access"), stairs_info: str(fd, "stairs_info", 300), shared_spaces: str(fd, "shared_spaces", 400),
     has_exterior_cameras: fd.get("has_exterior_cameras") === "on", camera_locations: str(fd, "camera_locations", 300),
+    smoking: ["no", "outside", "yes"].includes(str(fd, "smoking")) ? str(fd, "smoking") : "no",
     base_occupancy: baseOcc === "" ? null : Number(baseOcc), extra_guest_fee: toCents(str(fd, "extra_guest_fee") || "0"),
     fewer_guest_discount_percent: pct(fd, "fewer_guest_discount_percent"), weekly_discount_percent: pct(fd, "weekly_discount_percent"), monthly_discount_percent: pct(fd, "monthly_discount_percent"),
     children_free_age: int(fd, "children_free_age"),
@@ -136,7 +137,7 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     check_in_time: v.check_in_time || "3:00 pm", check_out_time: v.check_out_time || "11:00 am", amenities: v.amenities, house_rules: v.house_rules,
     arrival_instructions: v.arrival_instructions, parent_id: v.parent_id, bathroom_type: v.bathroom_type, beds_detail: JSON.stringify(v.beds_detail),
     kitchen_access: v.kitchen_access, laundry_access: v.laundry_access, stairs_info: v.stairs_info, shared_spaces: v.shared_spaces, has_exterior_cameras: v.has_exterior_cameras,
-    camera_locations: v.has_exterior_cameras ? v.camera_locations : "", base_occupancy: v.base_occupancy, extra_guest_fee_cents: v.extra_guest_fee,
+    camera_locations: v.has_exterior_cameras ? v.camera_locations : "", smoking: v.smoking, base_occupancy: v.base_occupancy, extra_guest_fee_cents: v.extra_guest_fee,
     fewer_guest_discount_percent: v.fewer_guest_discount_percent, weekly_discount_percent: v.weekly_discount_percent, monthly_discount_percent: v.monthly_discount_percent,
     children_free_age: v.children_free_age, owner_zelle: v.owner_zelle, owner_venmo: v.owner_venmo,
     pet_fee_cents: v.pet_fee || 0, pet_fee_per: v.pet_fee_per,
@@ -219,7 +220,7 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
   const fd = new FormData();
   const set = (k: string, v: unknown) => { if (v !== undefined && v !== null) fd.set(k, String(v)); };
   const plain = ["title", "property_type", "city", "area", "address", "description", "max_guests", "bedrooms", "bathrooms", "half_bathrooms", "bathroom_type",
-    "kitchen_access", "laundry_access", "stairs_info", "shared_spaces", "camera_locations", "min_nights", "max_nights", "booking_mode", "cancellation_policy", "check_in_time",
+    "kitchen_access", "laundry_access", "stairs_info", "shared_spaces", "camera_locations", "smoking", "min_nights", "max_nights", "booking_mode", "cancellation_policy", "check_in_time",
     "check_out_time", "arrival_instructions", "base_occupancy", "fewer_guest_discount_percent", "weekly_discount_percent", "monthly_discount_percent",
     "children_free_age", "management_fee_percent", "owner_zelle", "owner_venmo", "pet_fee_per", "monthly_price",
     "corp_monthly", "corp_deposit", "corp_cleaning", "corp_pet_fee", "furnished_finder_url",
@@ -558,6 +559,40 @@ export async function markPaidAction(_: ActionState, fd: FormData): Promise<Acti
   if (!r.ok) return { error: r.reason === "taken" ? "The payment was recorded, but these dates were already taken by someone else. Please refund the guest." : "Booking not found." };
   const back = safeNext(str(fd, "back", 300), "/host/bookings");
   redirect(withMsg(back, "paid"));
+}
+
+/** Admin → reservation page → Edit reservation. New dates are re-checked against every source; the guest is emailed what changed. */
+export async function editReservationAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireUser(["admin"]);
+  const id = str(fd, "id", 40), totalText = str(fd, "total", 20);
+  const totalCents = totalText ? toCents(totalText) : null;
+  if (totalText && (totalCents == null || totalCents < 0)) return { error: "Enter the total as an amount, for example 850 or 850.00, or leave it empty." };
+  const r = await changeReservation(id, { checkIn: str(fd, "check_in", 10), checkOut: str(fd, "check_out", 10), guestName: str(fd, "name", 120), guestPhone: str(fd, "phone", 40), guests: int(fd, "guests"), totalCents });
+  if (!r.ok) return { error: r.error };
+  const { before: a, after: b } = r;
+  const changes = [
+    (a.check_in !== b.check_in || a.check_out !== b.check_out) && `Dates: ${fmtDate(a.check_in)} - ${fmtDate(a.check_out)} → ${fmtDate(b.check_in)} - ${fmtDate(b.check_out)}`,
+    a.guest_name !== b.guest_name && `Guest name: ${a.guest_name} → ${b.guest_name}`,
+    a.guest_phone !== b.guest_phone && `Phone: ${a.guest_phone || "none"} → ${b.guest_phone || "none"}`,
+    a.guests !== b.guests && `Guests: ${a.guests} → ${b.guests}`,
+    a.total_cents !== b.total_cents && `Total: ${money(a.total_cents)} → ${money(b.total_cents)}`,
+  ].filter((x): x is string => !!x);
+  const self = `/admin/bookings/${b.code}`;
+  if (!changes.length) redirect(withMsg(self, "nochange"));
+  await logEvent("info", "Bookings", `Reservation ${b.code} edited: ${changes.join("; ")}`, { booking: b.code, property: b.property_id, platform: "sevgio" }, admin.id);
+  after(() => checkConflicts());
+  const info = await bookingInfo(b.id);
+  const sent = info && str(fd, "notify") !== "0" ? await emailReservationUpdate(info, changes) : null;
+  redirect(withMsg(self, sent && !sent.ok && !sent.queued ? "editednomail" : "edited"));
+}
+
+/** Admin: the money for a cancelled booking was returned to the guest. */
+export async function markRefundedAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireUser(["admin"]);
+  const b = await one<Booking>("UPDATE bookings SET payment_status = 'refunded', updated_at = now() WHERE id = $1 AND status IN ('cancelled', 'declined', 'expired') AND paid_cents > 0 RETURNING *", [str(fd, "id", 40)]);
+  if (!b) return { error: "Only a cancelled booking with a recorded payment can be marked refunded." };
+  await logEvent("info", "Payment", `Booking ${b.code} marked refunded (${money(b.paid_cents)})`, { booking: b.code }, admin.id);
+  redirect(withMsg(`/admin/bookings/${b.code}`, "refunded"));
 }
 
 /** Admin → Add Manual Reservation: a guest who called or wrote directly. Confirmed with nothing paid; the guest is emailed. */

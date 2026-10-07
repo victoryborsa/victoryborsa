@@ -8,7 +8,9 @@ import { money } from "@/lib/money.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { AutoSubmit } from "@/components/AutoSubmit.tsx";
 import { BookingTabs } from "@/components/BookingTabs.tsx";
-import { CAL_BLOCK, GuestCell } from "@/components/GuestNameForm.tsx";
+import { GuestCell } from "@/components/GuestNameForm.tsx";
+import { ResPill } from "@/components/ui.tsx";
+import { reviewKeys } from "@/lib/review.ts";
 
 type Row = { id: string; property_id: string; channel: string; external_ref: string; guest_name: string; guest_name_source: string; check_in: string; check_out: string; status: string; kind: string; eff_kind: string;
   source: string; expected_payout_cents: number | null; received_payout_cents: number | null; rent_cents: number | null; modified_at: Instant };
@@ -28,6 +30,7 @@ export default async function OtherSites({ searchParams }: { searchParams: Promi
   const needs = sp.needs === "1";
   const ids = listings.filter(l => !property || l.id === property || l.parent_id === property).map(l => l.id);
   const today = todayLocal();
+  const review = await reviewKeys();
   const rows = ids.length ? await q<Row>(
     `SELECT id, property_id, channel, external_ref, guest_name, guest_name_source, check_in, check_out, status, kind, eff_kind, source, expected_payout_cents, received_payout_cents, rent_cents, modified_at
      FROM channel_stays WHERE property_id = ANY($1)
@@ -69,12 +72,7 @@ export default async function OtherSites({ searchParams }: { searchParams: Promi
                   <td style={{ minWidth: 170 }}>{r.eff_kind === "reservation" ? <GuestCell name={r.guest_name} source={r.guest_name_source} site={channelLabel(r.channel)} /> : r.guest_name || <span className="muted">No guest details</span>}</td>
                   <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} – {fmtShort(r.check_out)}{localDateOf(r.modified_at) && <div className="hint">Dates changed {fmtShort(localDateOf(r.modified_at)!)}</div>}</td>
                   <td className="num">{nightsBetween(r.check_in, r.check_out)}</td>
-                  <td>{r.status === "cancelled" ? <span className="pill danger">Cancelled</span>
-                    : r.eff_kind === "unknown" ? <span className="pill neutral">{CAL_BLOCK}</span>
-                    : r.eff_kind === "blocked" ? <span className="pill neutral">Blocked</span>
-                    : r.eff_kind === "mirror" ? <span className="pill neutral">Copy of another booking</span>
-                    : r.check_in <= today && today < r.check_out ? <span className="pill ok">Staying now</span>
-                    : <span className="pill ok">Confirmed</span>}</td>
+                  <td><ResPill s={{ status: r.status, check_in: r.check_in, check_out: r.check_out, today, kind: r.eff_kind, needsReview: review.has("c:" + r.id) }} /></td>
                   <td className="num">{r.expected_payout_cents != null ? money(r.expected_payout_cents) : r.eff_kind === "reservation" ? <span className="needs">Needs entry</span> : <span className="muted">–</span>}</td>
                   <td className="num">{r.received_payout_cents == null ? <span className="muted">–</span> : money(r.received_payout_cents)}</td>
                   <td style={{ whiteSpace: "nowrap" }}>

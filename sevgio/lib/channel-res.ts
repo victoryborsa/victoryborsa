@@ -37,6 +37,23 @@ export async function applyFeedEvents(feed: { id: string; property_id: string },
         continue;
       }
       if (!match) {
+        // The same stay typed in by hand (or from a file) before the calendar link had it: link that record instead of adding a second one.
+        const typed = await one<{ id: string }>(
+          `SELECT id FROM channel_reservations
+           WHERE property_id = $1 AND channel = $2 AND feed_id IS NULL AND ical_uid IS NULL AND status = 'confirmed'
+             AND ((check_in = $3 AND check_out = $4) OR ($5 <> '' AND lower(external_ref) = lower($5)))
+           ORDER BY (check_in = $3 AND check_out = $4) DESC LIMIT 1`,
+          [feed.property_id, channel, e.start, e.end, cls.ref || ""], c);
+        if (typed) {
+          await q(`UPDATE channel_reservations SET feed_id = $2, ical_uid = $3, check_in = $4, check_out = $5, summary = $6, feed_detail = $7,
+                     phone_last4 = CASE WHEN $8 = '' THEN phone_last4 ELSE $8 END, last_seen_at = now(), updated_at = now() WHERE id = $1`,
+            [typed.id, feed.id, e.uid || null, e.start, e.end, e.summary, detail, phone], c);
+          // Its nights are now blocked by the calendar link itself.
+          await q("DELETE FROM blocks WHERE source = $1", ["res:" + typed.id], c);
+          seen.add(typed.id);
+          out.updated++;
+          continue;
+        }
         const ref = cls.ref && !(await refTaken(c, channel, cls.ref, null)) ? cls.ref : "";
         const row = await one<{ id: string }>(
           `INSERT INTO channel_reservations (property_id, feed_id, channel, kind, source, ical_uid, external_ref, check_in, check_out, summary, guest_name, guest_name_source,

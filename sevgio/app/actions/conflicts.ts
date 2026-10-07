@@ -47,7 +47,7 @@ export async function checkConflictsNowAction(_: ActionState, fd: FormData): Pro
   await requireUser(["host", "admin"]);
   const r = await checkConflicts();
   revalidate();
-  if (!r) return { error: "The check couldn't run. The error is in Errors & activity." };
+  if (!r) return { error: "The check couldn't run. The error is in the Operations log." };
   return { ok: r.found ? `Checked. ${r.found} conflict${r.found === 1 ? "" : "s"} found${r.opened ? `, ${r.opened} new` : ""}.` : "Checked. No double bookings found." };
 }
 

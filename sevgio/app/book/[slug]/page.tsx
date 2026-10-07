@@ -17,6 +17,7 @@ import { enabledMethods, forListing } from "@/lib/payments.ts";
 import { PaymentChoice } from "@/components/PaymentChoice.tsx";
 import { NightlyRates } from "@/components/NightlyRates.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
+import { guestRules, policies, type PolicyInput } from "@/lib/policies.ts";
 import { createBookingAction } from "@/app/actions/bookings.ts";
 import { resendCodeAction, verifyCodeAction } from "@/app/actions/auth.ts";
 import { verificationRequired } from "@/lib/email.ts";
@@ -36,6 +37,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   if (!p || p.status !== "published") notFound();
   // Long-term leases are requested or applied for on the property page, not booked by date.
   if (p.corp_lease_only) redirect(`/stays/${p.slug}`);
+  const pol = policies(p as unknown as PolicyInput), rules = guestRules(p as unknown as PolicyInput);
   const problem = stayProblem(p, ci, co, party) || (!(await isRangeFree(p.id, ci, co)) ? "Some of these nights were just booked. Please choose different dates." : null);
   if (problem) {
     return (
@@ -115,6 +117,17 @@ export default async function BookPage({ params, searchParams }: { params: Promi
             <textarea className="input" name="message" placeholder={instant ? "Anything the host should know?" : "Say hello and tell the host a little about your trip."} />
           </label>
           {methods.length ? <PaymentChoice methods={methods} total={pr.total} s={settings} request={!instant} /> : <div className="notice info">{settings.payment_note}</div>}
+          <div className="rules-summary" style={{ fontSize: 14 }}>
+            <b>House rules</b>
+            <ul>
+              <li>Check-in {pol.checkIn.toLowerCase()}, check-out {pol.checkOut.toLowerCase()}</li>
+              <li>Up to {pol.maxGuests}</li>
+              <li>Pets: {pol.pets}</li>
+              <li>{pol.smoking}</li>
+              <li>{pol.cameras}</li>
+              {rules.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          </div>
           <p style={{ fontSize: 14 }}><b>Cancellation:</b> {CANCELLATION[p.cancellation_policy]?.text}</p>
           <label className="chk"><input type="checkbox" name="agree" /> I agree to the house rules and cancellation policy.</label>
           <div><SubmitButton pendingText={instant ? "Booking…" : "Sending…"}>{!instant ? "Send request" : methods.length ? "Book and pay" : `Confirm booking · ${money(pr.total)}`}</SubmitButton></div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle, ClockCountdown, IdentificationCard, Question, Warning, WarningOctagon } from "@phosphor-icons/react/dist/ssr";
-import { fmtDate, fmtShort, nightsBetween } from "@/lib/dates.ts";
+import { fmtDate, fmtShort, nightsBetween, fmtWhen } from "@/lib/dates.ts";
 import { conflictSummary, conflictTitle, syncDelayNote, type ConflictRow, type FeedInfo, type StaySnap } from "@/lib/conflicts.ts";
 import { hoursLabel } from "@/lib/conflict-core.ts";
 import "./conflicts.css";
@@ -82,8 +82,8 @@ export function StayPanel({ s, n, base, feed, gone }: { s: StaySnap; n: number; 
         </div>
       </header>
       <dl className="cf-facts">
-        <div><dt>Reference</dt><dd className="mono">{s.ref || <Missing>No reference number from {s.site}</Missing>}</dd></div>
-        <div><dt>Guest</dt><dd>{s.guest || <Missing>Guest name unavailable</Missing>}</dd></div>
+        <div><dt>Reference</dt><dd className="mono">{s.ref || <Missing>Reference not sent by {s.site}</Missing>}</dd></div>
+        <div><dt>Guest</dt><dd>{s.guest || <Missing>Name not sent by {s.site}</Missing>}</dd></div>
         <div><dt>Dates</dt><dd>{fmtDate(s.check_in)} → {fmtDate(s.check_out)}<span className="hint"> · {nights} night{nights === 1 ? "" : "s"}</span></dd></div>
         <div><dt>Booking</dt><dd>{gone ? <span className="cf-chip amber"><ClockCountdown size={14} weight="bold" aria-hidden />No longer active</span>
           : s.channel === "sevgio" ? (STATUS_WORDS[s.status] || s.status) : `Reservation on ${s.site}`}</dd></div>
@@ -101,7 +101,7 @@ export function ConflictCard({ c, base }: { c: ConflictRow; base: Base }) {
     <article className={`cf-card${c.status === "resolved" ? " done" : c.cleared_at ? " calm" : ""}`} data-conflict={c.id}>
       <div className="cf-card-top">
         <ConflictStatus c={c} />
-        <span className="hint">Found {new Date(c.first_detected_at).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+        <span className="hint">Found {fmtWhen(c.first_detected_at, "short")}</span>
       </div>
       <h3 className="cf-card-title">{conflictTitle(c)}</h3>
       <p className="cf-card-sum">{conflictSummary(c)}</p>
@@ -109,7 +109,7 @@ export function ConflictCard({ c, base }: { c: ConflictRow; base: Base }) {
       <ul className="cf-pair">
         {[a, b].map((s, i) => (
           <li key={s.key}><span className="cf-num sm" aria-hidden>{i + 1}</span><i className={`cf-dot ch-${s.channel}`} aria-hidden /><b>{s.site}</b>
-            <span className="mono">{s.ref || <Missing>No code</Missing>}</span><span>{s.guest || <Missing>Guest name unavailable</Missing>}</span>
+            <span className="mono">{s.ref || <Missing>No reference</Missing>}</span><span>{s.guest || <Missing>Name not sent by {s.site}</Missing>}</span>
             <span className="hint">{fmtShort(s.check_in)} - {fmtShort(s.check_out)}</span></li>
         ))}
       </ul>

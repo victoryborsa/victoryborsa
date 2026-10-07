@@ -46,7 +46,7 @@ test.describe.serial("finance with reservations from other sites", () => {
 
     // The Booking.com period is a reservation: once marked, it counts.
     await page.getByRole("link", { name: "See them" }).click();
-    await expect(page.locator("tr", { hasText: "Finance Test House" })).toContainText("External calendar block");
+    await expect(page.locator("tr", { hasText: "Finance Test House" })).toContainText("External Calendar Block");
     await page.locator("tr", { hasText: "Finance Test House" }).getByRole("link", { name: "Open" }).click();
     await page.getByText("Know what it is?").click();
     await page.getByRole("button", { name: "It's a guest reservation" }).click();

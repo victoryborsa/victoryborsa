@@ -27,7 +27,7 @@ export function PropertyCard({ p, ci, co, guests, taxPercent, eager, demand, pri
       <div className="card-body">
         <div className="card-top">
           <span className="muted" style={{ fontSize: 14 }}>{placeLabel(p.city, p.area)}</span>
-          <Rating rating={p.rating} count={p.review_count} />
+          <Rating rating={p.rating} count={p.review_count} since={p.created_at} />
         </div>
         <span className="card-title">{p.title}</span>
         {p.host_name && <span className="card-host">Hosted by {p.host_name.split(" ")[0]}</span>}

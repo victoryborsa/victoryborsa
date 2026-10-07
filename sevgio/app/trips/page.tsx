@@ -30,7 +30,7 @@ export default async function Trips() {
     <Link key={r.id} href={`/trips/${r.code}`} className="trip-card">
       <span className="trip-ph">
         {r.cover_id ? <img src={photoUrl(r.cover_id, "thumb")} alt="" loading="lazy" /> : <span className="noph">Photos coming soon</span>}
-        <span className="trip-status"><StatusPill status={r.status} /></span>
+        <span className="trip-status"><StatusPill b={r} detail={false} /></span>
       </span>
       <span className="trip-body">
         <b className="trip-title">{r.title}</b>

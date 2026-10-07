@@ -13,6 +13,8 @@ import { getT, LANGS_AZ } from "@/lib/i18n.ts";
 import { LangMenu } from "@/components/LangMenu.tsx";
 import { HostSwitch, UserMenu } from "@/components/UserMenu.tsx";
 import { ProtectPage } from "@/components/ProtectPage.tsx";
+import { SITE_DESCRIPTION } from "@/lib/seo.tsx";
+import { LEGAL_LINKS } from "@/components/LegalPage.tsx";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-display", display: "swap" });
 const body = Figtree({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-body", display: "swap" });
@@ -21,8 +23,8 @@ const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variabl
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL || "http://localhost:3000"),
   title: { default: "Sevgio · Yinz Are Home in Pittsburgh", template: "%s · Sevgio" },
-  description: "Cozy private rooms and whole houses in Pittsburgh, booked direct with your hosts.",
-  openGraph: { siteName: "Sevgio", type: "website", title: "Sevgio · Yinz Are Home in Pittsburgh", description: "Cozy private rooms and whole houses in Pittsburgh, booked direct with your hosts." },
+  description: SITE_DESCRIPTION,
+  openGraph: { siteName: "Sevgio", type: "website", title: "Sevgio · Yinz Are Home in Pittsburgh", description: SITE_DESCRIPTION },
   twitter: { card: "summary_large_image", title: "Sevgio · Yinz Are Home in Pittsburgh" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#101820" };
@@ -93,6 +95,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <span className="eyebrow">{t("foot.hosts")}</span>
               <Link href="/host">{t("foot.hostSignin")}</Link>
             </div>
+            <nav className="stack" style={{ gap: 6 }} aria-label="Policies">
+              <span className="eyebrow">Policies</span>
+              {LEGAL_LINKS.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}
+            </nav>
           </div>
           <div className="wrap foot-legal">© {new Date().getFullYear()} Sevgio. All rights reserved. The photos, text, design and layout of this website belong to Sevgio and may not be copied, reproduced or reused without written permission.</div>
         </footer>

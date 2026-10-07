@@ -19,7 +19,7 @@ export function ReservationResults({ rows, back }: { rows: SearchRow[]; back: st
           <li key={r.source + r.id}>
             <Link className="rs-row" href={href} data-ref={r.ref || undefined}>
               <span className="rs-ref">
-                {r.ref ? <b className="mono">{r.ref}</b> : <b className="rs-noref">{r.channel?.eff_kind === "unknown" ? "Calendar block" : "No reference"}</b>}
+                {r.ref ? <b className="mono">{r.ref}</b> : <b className="rs-noref">{r.channel?.eff_kind === "unknown" ? "External Calendar Block" : `Reference not sent by ${r.site}`}</b>}
                 {r.source === "channel" && <span className="rs-site">{r.site}</span>}
               </span>
               <span className="rs-guest">{r.guest_name ? <b>{r.guest_name}</b> : <span className="gn-none">{r.channel?.eff_kind === "unknown" ? "No guest details" : r.channel ? noName(r.site) : "No name"}</span>}{r.guest_email && <span className="hint">{r.guest_email}</span>}</span>

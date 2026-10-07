@@ -16,8 +16,9 @@ import { priceTag } from "@/lib/pricing.ts";
 import { money } from "@/lib/money.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { AutoSubmit } from "@/components/AutoSubmit.tsx";
+import { pageMeta } from "@/lib/seo.tsx";
 
-export const metadata: Metadata = { title: "Find a stay" };
+export const metadata: Metadata = pageMeta("/stays", "Find a furnished stay in Pittsburgh", "Search furnished rooms, apartments and houses in Pittsburgh by dates, price, bedrooms, private bathroom and length of stay. Nightly and monthly rates, booked direct.");
 export const dynamic = "force-dynamic";
 
 type SP = Record<string, string | string[] | undefined>;

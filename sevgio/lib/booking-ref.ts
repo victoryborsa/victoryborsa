@@ -53,23 +53,6 @@ export function stayPhase(status: string, checkIn: string, checkOut: string, tod
   return "current";
 }
 
-type PayFields = { status: string; payment_method: string | null; payment_status: string; total_cents: number; paid_cents: number; card_fee_cents?: number; due_now_cents?: number };
-
-/** Payment status in words, with a tone for the colored pill. */
-export function paymentLabel(b: PayFields): { label: string; tone: "ok" | "warn" | "danger" | "neutral" } {
-  const balance = b.total_cents - b.paid_cents;
-  if (b.payment_status === "paid" || (b.paid_cents > 0 && balance <= 0)) return { label: "Paid in full", tone: "ok" };
-  if (b.payment_status === "processing") return { label: "Bank transfer processing", tone: "warn" };
-  if (b.payment_status === "failed") return { label: "Payment failed", tone: "danger" };
-  if (b.paid_cents > 0) return { label: `Partly paid, ${money(balance)} due`, tone: "warn" };
-  if (["cancelled", "declined", "expired"].includes(b.status)) return { label: "Not paid", tone: "neutral" };
-  // No payment was taken or recorded through Sevgio, so it can't be shown as paid.
-  if (!b.payment_method) return { label: b.status === "pending" ? "Not due yet" : "Payment status unavailable", tone: "neutral" };
-  if (b.status === "pending") return { label: "Not due yet", tone: "neutral" };
-  if (b.payment_method === "cash" && b.due_now_cents === 0) return { label: `Unpaid, ${money(balance)} due at the property`, tone: "warn" };
-  return { label: "Waiting for payment", tone: "warn" };
-}
-
 export type SearchRow = {
   source: "sevgio" | "channel";
   id: string;

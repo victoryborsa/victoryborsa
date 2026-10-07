@@ -70,18 +70,18 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Phone ends in 4321");
     await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Not provided by Airbnb");
     await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Calendar details only");
-    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Payment status unavailable");
-    await expect(row(page, "vrbo", "External calendar block")).toHaveCount(1); // the one labelled "Blocked" (its copy of the Airbnb stay is left out)
-    await expect(row(page, "vrbo", "External calendar block")).toContainText("Vrbo shows these dates as “Blocked”");
+    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Payment unavailable");
+    await expect(row(page, "vrbo", "External Calendar Block")).toHaveCount(1); // the one labelled "Blocked" (its copy of the Airbnb stay is left out)
+    await expect(row(page, "vrbo", "External Calendar Block")).toContainText("Vrbo shows these dates as “Blocked”");
     const bdc = row(page, "bookingcom", "Platform Test House");
-    await expect(bdc).toContainText("External calendar block");
+    await expect(bdc).toContainText("External Calendar Block");
     await expect(bdc).toContainText("Booking.com shows these dates as “CLOSED - Not available”");
-    await expect(bdc).toContainText("Calendar block");
+    await expect(bdc).toContainText("External Calendar Block");
     await expect(bdc).toContainText("No guest details");
     await expect(bdc).toContainText("Dates only, from the Booking.com calendar link.");
     await expect(bdc).not.toContainText("Missing");
     await expect(bdc).not.toContainText("Unconfirmed");
-    await expect(bdc).not.toContainText("Payment status unavailable");
+    await expect(bdc).not.toContainText("Payment unavailable");
     await expect(bdc).toContainText("Upcoming");
     await expect(bdc).not.toContainText("Paid on");
     // The stay going on now is under Staying now, not Upcoming.
@@ -90,9 +90,9 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     if (process.env.GN_SHOTS) await page.screenshot({ path: `${process.env.GN_SHOTS}/computer-all-platforms-before-check.png`, fullPage: true });
 
     await page.getByRole("tab", { name: "Staying now" }).click();
-    await expect(row(page, "airbnb", "HMPLAT0003")).toContainText("Staying now");
+    await expect(row(page, "airbnb", "HMPLAT0003")).toContainText("Checked In");
     await page.getByRole("tab", { name: "Past" }).click();
-    await expect(row(page, "airbnb", "HMPLAT0002")).toContainText("Checked out");
+    await expect(row(page, "airbnb", "HMPLAT0002")).toContainText("Checked Out");
     await expect(row(page, "vrbo", "Platform Test House")).toHaveCount(1);
     await expect(row(page, "bookingcom", "Platform Test House")).toHaveCount(1);
     await expect(page.locator("tbody tr", { hasText: "Platform Test House" })).toHaveCount(3);
@@ -108,10 +108,10 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     await page.goto("/host/bookings?view=upcoming");
     await row(page, "bookingcom", "Platform Test House").getByText("Know what it is?").click();
     await row(page, "bookingcom", "Platform Test House").getByRole("button", { name: "It's a guest reservation" }).click();
-    await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Confirmed on Booking.com");
-    await row(page, "vrbo", "External calendar block").getByText("Know what it is?").click();
-    await row(page, "vrbo", "External calendar block").getByRole("button", { name: "It's dates I closed" }).click();
-    await expect(row(page, "vrbo", "External calendar block")).toHaveCount(0);
+    await expect(row(page, "bookingcom", "Platform Test House")).toContainText(/Confirmed\s*on Booking\.com/);
+    await row(page, "vrbo", "External Calendar Block").getByText("Know what it is?").click();
+    await row(page, "vrbo", "External Calendar Block").getByRole("button", { name: "It's dates I closed" }).click();
+    await expect(row(page, "vrbo", "External Calendar Block")).toHaveCount(0);
     // The Booking.com reference and guest name, copied from the Booking.com extranet.
     const bdc = row(page, "bookingcom", "Platform Test House");
     await bdc.getByText("Add details").click();
@@ -127,7 +127,7 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     sync(feeds.air, ics(AIRBNB));
     await page.reload();
     await expect(row(page, "bookingcom", "Platform Test House")).toHaveCount(1);
-    await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Confirmed on Booking.com"); // the host's choice is kept
+    await expect(row(page, "bookingcom", "Platform Test House")).toContainText(/Confirmed\s*on Booking\.com/); // the host's choice is kept
     await expect(row(page, "bookingcom", "Platform Test House")).toContainText("4455112233"); // and the typed details
     await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Ines Duarte");
     await expect(row(page, "bookingcom", "Platform Test House")).toContainText("Complete");
@@ -148,9 +148,9 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     sync(feeds.bdc, ics([...BDC.map(e => e[0] === "bdc-1@booking.com" ? [e[0], U + 21, U + 24, e[3]] as typeof e : e), ["bdc-3@booking.com", U + 60, U + 62, "CLOSED - Not available"]]));
     await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
     await page.goto("/admin/bookings?when=upcoming");
-    const item = page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "External calendar block" });
+    const item = page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "External Calendar Block" });
     await expect(item).toHaveCount(1);
-    await expect(item).toContainText("Calendar block");
+    await expect(item).toContainText("External Calendar Block");
     await expect(item).toContainText("Booking.com shows these dates as “CLOSED - Not available”");
     await expect(item).not.toContainText("Missing");
     // Adding the guest's name and the Booking.com number makes the block a confirmed reservation by itself.
@@ -158,7 +158,7 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     await item.getByLabel("Guest full name").fill("Tomas Berg");
     await item.getByLabel("Booking.com reference").fill("4455998877");
     await item.getByRole("button", { name: "Save details" }).click();
-    await expect(page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "External calendar block" })).toHaveCount(0);
+    await expect(page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "External Calendar Block" })).toHaveCount(0);
     await page.goto("/admin/bookings?q=berg");
     await expect(page.locator(".rs-list li", { hasText: "4455998877" })).toContainText("Tomas Berg");
     await expect(page.locator(".rs-list li", { hasText: "4455998877" })).not.toContainText("Missing");
@@ -188,7 +188,7 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Jordan Lee");
     await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("From payout file");
     await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("2 guests");
-    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("Payout not received");
+    await expect(row(page, "airbnb", "HMPLAT0001")).toContainText("expected from Airbnb");
     await signOut(page);
   });
   test("a Booking.com file import can be reviewed and undone without touching anything else, and the undo reversed", async ({ page }) => {

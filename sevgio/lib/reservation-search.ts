@@ -1,7 +1,8 @@
 import { q } from "./db.ts";
-import { BOOKING_STATUS } from "./constants.ts";
+import { paymentStatus, reservationStatus } from "./statuses.ts";
+import { reviewKeys } from "./review.ts";
 import { channelLabel } from "./channels.ts";
-import { compactRef, likeSafe, localNow, nameWords, paymentLabel, sortResults, stayPhase, type Phase, type SearchRow } from "./booking-ref.ts";
+import { compactRef, likeSafe, localNow, nameWords, sortResults, stayPhase, type Phase, type SearchRow } from "./booking-ref.ts";
 
 type BookingHit = { id: string; code: string; guest_name: string; guest_email: string; title: string; check_in: string; check_out: string; guests: number; status: string;
   payment_method: string | null; payment_status: string; total_cents: number; paid_cents: number; created_at: string; check_in_time: string; check_out_time: string };
@@ -26,7 +27,8 @@ export async function searchReservations(term: string, today: string, opts: { ho
   const refCond = (col: string) => `($2 <> '' AND length($2) >= 3 AND regexp_replace(upper(${col}), '[^A-Z0-9]', '', 'g') LIKE '%' || $2 || '%')`;
   const any = words.length === 0;
 
-  const [bookings, channel] = await Promise.all([
+  const [review, bookings, channel] = await Promise.all([
+    reviewKeys(),
     q<BookingHit>(
       `SELECT b.id, b.code, b.guest_name, g.email AS guest_email, coalesce(hp.title || ' › ' || p.title, p.title) AS title, b.check_in::text, b.check_out::text, b.guests, b.status,
               b.payment_method, b.payment_status, b.total_cents, b.paid_cents, b.created_at, p.check_in_time, p.check_out_time
@@ -50,22 +52,22 @@ export async function searchReservations(term: string, today: string, opts: { ho
   const clock = (x: { check_in_time: string; check_out_time: string }) => today === now.date ? { minutes: now.minutes, checkInTime: x.check_in_time, checkOutTime: x.check_out_time } : undefined;
   const rows: SearchRow[] = [
     ...bookings.map(b => {
-      const st = BOOKING_STATUS[b.status] || { label: b.status, tone: "neutral" as const };
-      const pay = paymentLabel(b);
+      const st = reservationStatus({ ...b, today, clock: clock(b), needsReview: review.has("b:" + b.id) });
+      const pay = paymentStatus(b);
       return {
         source: "sevgio" as const, id: b.id, ref: b.code, guest_name: b.guest_name, guest_email: b.guest_email, title: b.title, check_in: b.check_in, check_out: b.check_out,
-        guests: b.guests, status: b.status, status_label: st.label, status_tone: st.tone, pay_label: pay.label, pay_tone: pay.tone,
+        guests: b.guests, status: b.status, status_label: st.label, status_tone: st.tone, pay_label: pay.detail ? `${pay.label} · ${pay.detail}` : pay.label, pay_tone: pay.tone,
         phase: stayPhase(b.status, b.check_in, b.check_out, today, clock(b)), href: `/admin/bookings/${b.code}`, site: "Sevgio.com", created_at: b.created_at,
       };
     }),
     ...channel.map(c => {
       const site = channelLabel(c.channel);
+      const cst = reservationStatus({ status: c.status, check_in: c.check_in, check_out: c.check_out, today, kind: c.eff_kind, clock: clock(c), needsReview: review.has("c:" + c.id) });
       return {
         source: "channel" as const, id: c.id, ref: c.external_ref, guest_name: c.guest_name, guest_email: "", title: c.title, check_in: c.check_in, check_out: c.check_out,
-        guests: c.guests, status: c.status, status_label: c.status === "cancelled" ? "Cancelled" : c.eff_kind === "unknown" ? "External calendar block" : "Confirmed",
-        status_tone: c.status === "cancelled" ? "danger" as const : c.eff_kind === "unknown" ? "neutral" as const : "ok" as const,
-        pay_label: c.received_payout_cents != null ? "Payout received" : c.expected_payout_cents != null ? "Payout not received" : "Payment status unavailable",
-        pay_tone: c.received_payout_cents != null ? "ok" as const : c.expected_payout_cents != null ? "warn" as const : "neutral" as const,
+        guests: c.guests, status: c.status, status_label: cst.label, status_tone: cst.tone,
+        pay_label: c.received_payout_cents != null ? "Paid · payout received" : c.expected_payout_cents != null ? "Payment unavailable · payout not received yet" : "Payment unavailable",
+        pay_tone: c.received_payout_cents != null ? "ok" as const : "neutral" as const,
         phase: stayPhase(c.status, c.check_in, c.check_out, today, clock(c)), href: `/host/bookings/other-sites/${c.id}`, site, created_at: c.created_at,
         channel: { key: c.channel, eff_kind: c.eff_kind, summary: c.summary },
       };

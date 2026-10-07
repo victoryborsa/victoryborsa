@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { forgotPasswordAction } from "@/app/actions/auth.ts";
 
-export const metadata: Metadata = { title: "Reset your password" };
+export const metadata: Metadata = { title: "Reset your password", robots: { index: false } };
 
 export default function Forgot() {
   return (

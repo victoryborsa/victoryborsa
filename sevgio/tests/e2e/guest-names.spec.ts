@@ -58,10 +58,10 @@ test.describe.serial("guest names on reservations from other sites", () => {
     await expect(air).toContainText("Confirmed");
     const vrbo = page.locator("tr[data-platform=vrbo]", { hasText: "Lee Park" });
     await expect(vrbo).toContainText("From Vrbo");
-    await expect(vrbo).toContainText("No reference");
+    await expect(vrbo).toContainText("Reference not sent by Vrbo");
     await expect(vrbo).toContainText("Calendar details only");
     await expect(vrbo).toContainText("Vrbo's calendar link didn't send a reference.");
-    await expect(air).toContainText("Payment status unavailable");
+    await expect(air).toContainText("Payment unavailable");
     await expect(air).toContainText("Upcoming");
     await expect(air).not.toContainText("Paid on");
     // Sevgio's own bookings are still in the same list.
@@ -115,7 +115,7 @@ test.describe.serial("guest names on reservations from other sites", () => {
     const bdc = page.locator("tr[data-platform=bookingcom]", { hasText: "4455667788" });
     await expect(bdc).toContainText("Oskar Nowak");
     await expect(bdc).toContainText("Booking.com");
-    await expect(bdc).toContainText("Checked out");
+    await expect(bdc).toContainText("Checked Out");
     await expect(bdc).toContainText("Payout received");
     await expect(bdc).toContainText("$300");
     await expect(bdc).toContainText("Complete");

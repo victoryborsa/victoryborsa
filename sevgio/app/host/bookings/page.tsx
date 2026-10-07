@@ -10,6 +10,7 @@ import { BookingTable, type BookingRow, type PlatformRow } from "@/components/Bo
 import { markSeen } from "@/lib/alerts.ts";
 import { BookingTabs } from "@/components/BookingTabs.tsx";
 import { MissingNames } from "@/components/MissingNames.tsx";
+import { reviewKeys } from "@/lib/review.ts";
 import { RecentImports } from "@/components/RecentImports.tsx";
 
 // `platform` picks the reservations from Airbnb, Booking.com, Vrbo and other sites that belong in the same list.
@@ -87,7 +88,7 @@ export default async function HostBookings({ searchParams }: { searchParams: Pro
       </form>
       {term && <p className="hint" role="status" style={{ marginTop: -8, marginBottom: 12 }}><b>{count}</b> {v.label.toLowerCase()} reservation{count === 1 ? "" : "s"} matching “{term}”. Other tabs keep this search.</p>}
       {fresh.size > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}>{fresh.size} new booking{fresh.size === 1 ? "" : "s"} since you last looked, marked <b>New</b> below.</div>}
-      <BookingTable fresh={fresh} rows={rows} platform={platform} order={v.order} today={today} now={now} back={back} />
+      <BookingTable fresh={fresh} review={await reviewKeys()} rows={rows} platform={platform} order={v.order} today={today} now={now} back={back} />
       <p className="hint" style={{ marginTop: 10 }}>
         Guest phone numbers and emails are shown only for active bookings.
         {v.platform && <> Reservations from Airbnb, Booking.com, Vrbo and other sites are included. Calendar links carry dates, and rarely the guest&apos;s name or booking reference: import the site&apos;s reservations file, or use <b>Add details</b>. What you enter is kept when the calendars refresh.

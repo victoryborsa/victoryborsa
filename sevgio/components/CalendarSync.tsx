@@ -4,8 +4,9 @@ import { nextScheduledSync, syncHealth, type FeedHealth } from "@/lib/sync-healt
 import { syncNowAction } from "@/app/actions/sync.ts";
 import { ALERT_AFTER_FAILS } from "@/lib/calendar-sync.ts";
 import { Badge } from "./Badge.tsx";
+import { fmtWhen, type Instant } from "@/lib/dates.ts";
 
-const when = (t: string | Date) => new Date(t).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+const when = (t: Instant) => fmtWhen(t);
 
 const STATE: Record<FeedHealth["state"], [tone: "ok" | "warn" | "danger" | "neutral", icon: "check" | "warn" | "cross" | "wait", label: string]> = {
   ok: ["ok", "check", "Working"], warning: ["warn", "warn", "Working, with a warning"], failing: ["danger", "cross", "Failing"], never: ["neutral", "wait", "Not synced yet"],

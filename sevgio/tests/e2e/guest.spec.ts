@@ -140,7 +140,7 @@ test("request-to-book is pending, and the guest can withdraw it", async ({ page 
   await page.getByLabel(/I agree/).check();
   await page.getByRole("button", { name: "Send request" }).click();
   await expect(page.getByText("Request sent to the host.")).toBeVisible();
-  await expect(page.getByText("Awaiting host")).toBeVisible();
+  await expect(page.getByText("Pending", { exact: true })).toBeVisible();
   page.on("dialog", d => d.accept());
   await page.getByRole("button", { name: "Withdraw request" }).click();
   await expect(page.getByText("Booking cancelled. The host has been told.")).toBeVisible();
@@ -197,6 +197,22 @@ test("contact form and host question are saved", async ({ page }) => {
   await page.getByLabel("Message").fill("Do you have anything near Erie?");
   await page.getByRole("button", { name: "Send message" }).click();
   await expect(page.getByText(/Message sent/)).toBeVisible();
+  // The reservation details are optional; when given they're saved with the message.
+  await page.goto("/contact");
+  await page.getByLabel("Name").fill("Pat Visitor");
+  await page.getByLabel("Email").fill("pat2@example.com");
+  await page.getByLabel("Reservation number").fill("HMABC123");
+  await page.getByLabel("Phone").fill("412-555-0142");
+  await page.getByLabel("Property").selectOption({ label: "Jim Thorpe Mountain Cabin" });
+  await page.getByLabel("Check-in date").fill("2030-05-01");
+  await page.getByLabel("Message").fill("What time can we check in?");
+  await page.getByRole("button", { name: "Send message" }).click();
+  await expect(page.getByText(/Message sent/)).toBeVisible();
+  const m = await sql<{ body: string; property_id: string | null }>("SELECT body, property_id FROM messages WHERE email = 'pat2@example.com'");
+  expect(m[0].body).toContain("Reservation number: HMABC123");
+  expect(m[0].body).toContain("Phone: 412-555-0142");
+  expect(m[0].body).toContain("Check-in date: 2030-05-01");
+  expect(m[0].property_id).not.toBeNull();
   await page.goto("/stays/jim-thorpe-mountain-cabin");
   await page.getByLabel("Your name").fill("Pat Visitor");
   await page.getByLabel("Email", { exact: true }).fill("pat@example.com");
@@ -205,12 +221,16 @@ test("contact form and host question are saved", async ({ page }) => {
   await expect(page.getByText(/Question sent/)).toBeVisible();
 });
 
-test("phone layout has no sideways scrolling", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  for (const path of ["/", "/stays", "/stays/lake-harmony-lodge", "/signin"]) {
-    await page.goto(path);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow, path).toBeLessThanOrEqual(0);
+test("phone, tablet and computer layouts have no sideways scrolling", async ({ page }) => {
+  const sizes = { "iPhone": [390, 844], "small Android": [360, 740], "tablet": [820, 1180], "computer": [1440, 900] } as const;
+  const paths = ["/", "/stays", "/stays/lake-harmony-lodge", "/signin", "/signup", "/contact", "/corporate-housing", "/privacy", "/terms", "/cancellation-policy"];
+  for (const [name, [w, h]] of Object.entries(sizes)) {
+    await page.setViewportSize({ width: w, height: h });
+    for (const path of paths) {
+      await page.goto(path);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, `${path} on ${name}`).toBeLessThanOrEqual(0);
+    }
   }
 });
 
@@ -392,7 +412,7 @@ test("listing shows views, favourites, interested and shares; Save and I'm inter
   await page.goto("/stays/jim-thorpe-mountain-cabin");
   const stats = page.getByRole("list", { name: "Listing activity" });
   await expect(stats).toContainText("1 view");
-  await expect(stats).toContainText("0 times saved as favourite");
+  await expect(stats).not.toContainText("saved as favourite"); // zero counts are hidden
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(stats).toContainText("1 time saved as favourite");
   await expect(page.getByRole("button", { name: "Saved" })).toHaveAttribute("aria-pressed", "true");
@@ -406,7 +426,7 @@ test("listing shows views, favourites, interested and shares; Save and I'm inter
   await expect(stats).toContainText("1 view");
   await expect(page.getByRole("button", { name: "Saved" })).toBeVisible();
   await page.getByRole("button", { name: "Saved" }).click();
-  await expect(stats).toContainText("0 times saved as favourite");
+  await expect(stats).not.toContainText("saved as favourite");
   // A different visitor adds a view.
   const other = await browser.newPage();
   await other.goto("/stays/jim-thorpe-mountain-cabin");

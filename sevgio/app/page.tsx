@@ -14,8 +14,13 @@ import { priceTag } from "@/lib/pricing.ts";
 import { PROPERTY_TYPES } from "@/lib/constants.ts";
 import { VISITOR_COOKIE } from "@/lib/listing-stats.ts";
 import { getT, LANGS_AZ } from "@/lib/i18n.ts";
+import { pageMeta, businessLd, JsonLd } from "@/lib/seo.tsx";
+import { siteUrl } from "@/lib/email.ts";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = pageMeta("/", "Furnished Rentals & Corporate Housing in Pittsburgh",
+  "Furnished short-term and monthly rentals in Pittsburgh for travel nurses, traveling physicians, corporate teams, relocating employees and young professionals. Book direct with Sevgio.", { title: { absolute: "Sevgio · Furnished Rentals & Corporate Housing in Pittsburgh" } });
 
 /** "Apartment in Wilkinsburg", "Room in Indiana": the kind of stay and its neighborhood (or town). */
 function kindIn(p: CardProperty) {
@@ -67,6 +72,7 @@ export default async function Home() {
 
   return (
     <div className="ab-home">
+      <JsonLd data={businessLd(siteUrl(), {})} />
       <div className="ab-band">
         <nav className="ab-tabs" aria-label="Browse">
           {TABS.map(([href, label, icon], i) => (

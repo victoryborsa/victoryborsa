@@ -10,7 +10,7 @@ import { AutoSubmit } from "./AutoSubmit.tsx";
 import { CalDetails, type StayDetail } from "./CalDetails.tsx";
 import { extrasOf, partyLabel } from "@/lib/party.ts";
 import { CalSettings, type CalSettingsData } from "./CalSettings.tsx";
-import { BOOKING_STATUS } from "@/lib/constants.ts";
+import { reservationStatus } from "@/lib/statuses.ts";
 import { assignLanes, barLines, groupByArrival, inView, propertyColor } from "@/lib/cal-layout.ts";
 import { channelLabel } from "@/lib/channels.ts";
 
@@ -247,7 +247,7 @@ function toStays(res: Res[], blocks: Blk[], byId: Map<string, Prop>, placeName: 
   const place = (id: string) => { const p = byId.get(id); return p ? placeName(p) : ""; };
   return [
     ...res.map(b => {
-      const st = BOOKING_STATUS[b.status] || { label: b.status, tone: "neutral" };
+      const st = reservationStatus({ status: b.status, check_in: b.check_in, check_out: b.check_out, today: todayLocal() });
       return { key: b.id, pid: b.property_id, from: b.check_in, to: b.check_out, kind: "res" as const,
         cls: b.status === "confirmed" ? "ok" : b.status === "cancelled" ? "cx" : "warn", label: b.guest_name, status: st.label, tone: st.tone,
         place: place(b.property_id), href: `/trips/${b.code}`, guests: b.guests, code: b.code,
@@ -266,8 +266,7 @@ function toStays(res: Res[], blocks: Blk[], byId: Map<string, Prop>, placeName: 
     }),
     ...blocks.map(b => {
       const ch = siteOf(b);
-      const what = !ch ? "Blocked by you" : b.status === "cancelled" ? `Cancelled on ${ch.label}` : b.kind === "blocked" ? `Blocked on ${ch.label}`
-        : b.kind === "unknown" ? `${ch.label}: reservation or closed?` : `Booked on ${ch.label}`;
+      const what = !ch ? "Blocked by you" : `${reservationStatus({ status: b.status, check_in: b.start_date, check_out: b.end_date, today: todayLocal(), kind: b.kind }).label} · ${ch.label}`;
       const href = ch ? `/host/bookings/other-sites/${b.id}` : `/host/listings/${b.property_id}/calendar`;
       // Dates blocked on another site have no guest arriving, so they count like your own blocked dates.
       return { key: b.id, pid: b.property_id, from: b.start_date, to: b.end_date, kind: ch && b.kind !== "blocked" ? "ext" as const : "blk" as const,

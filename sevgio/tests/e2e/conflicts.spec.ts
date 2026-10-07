@@ -63,7 +63,7 @@ test.describe.serial("double-booking detection and alerts", () => {
     await expect(c).toContainText("2 nights booked twice");
     await expect(c).toContainText("SV-CNFL01");
     await expect(c).toContainText("Sarah Miller");
-    await expect(c).toContainText("Guest name unavailable"); // Airbnb's calendar doesn't give names
+    await expect(c).toContainText("Name not sent by Airbnb"); // Airbnb's calendar doesn't give names
     // A normal same-day changeover (room guest leaves, Booking.com guest arrives) is not a conflict.
     await expect(card(page, "4455667788")).toHaveCount(0);
     if (shots) await page.screenshot({ path: `${shots}/computer-conflict-list.png`, fullPage: true });

@@ -2,6 +2,28 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-07 — Fix list: statuses, payments, Operations log, editing, listing facts, SEO, legal pages
+
+**What changed**
+- **Reservation statuses** are one set everywhere: Confirmed, Pending, External Calendar Block, Needs Review, Cancelled, Checked In, Checked Out. "Unconfirmed" is gone; calendar-only events say **External Calendar Block**, overlapping stays say **Needs Review**. Missing names and references say what's missing ("Name not sent by Airbnb") instead of inventing anything.
+- **Payment status** is separate: Unpaid, Partially Paid, Paid, Refunded, Payment unavailable. Admins can **Mark refunded**. Confirmation emails and pages say "Payment due at property" or "Host will contact you regarding payment".
+- **Dates**: every timestamp on every page goes through one safe formatter, so a date stored as text or as a date can't break a page again.
+- **Edit reservation** on Admin → Bookings → a reservation: dates, name, phone, guests and total. New dates are checked against every booking and blocked night; the price follows the nights at the agreed rate; the guest can be emailed what changed.
+- **Calendar sync**: a stay typed in by hand is linked to the calendar event when it arrives instead of being added twice.
+- **Emails**: failed emails wait in an outbox and are retried (10 min, 30 min, 2 h, 6 h, 24 h); Operations log shows the outbox with Retry/Resend. Payment receipts and check-in instructions (0–2 days before arrival) are sent once each.
+- **Operations log** (was "Errors & activity"): each error shows time, version, area, message, stack trace, route, related reservation, property and platform, and moves New → Investigating → Fix Deployed → Verified → Resolved. Passwords, card numbers, keys and door codes are removed before saving.
+- **Listings**: one master set of rules (pets, smoking, cameras, parking, check-in/out, guests, deposit). Description or house-rule lines that contradict a setting are hidden from guests and listed in a **Listing check** box on the listing editor. New **Smoking** setting. Cameras are described once. Zero counts in listing activity are hidden. The "New" badge shows for 45 days.
+- **Booking page** shows the house rules summary before "I agree".
+- **Corporate housing** "Available" dates come from the real calendar.
+- **Contact page** has optional reservation number, phone, property and check-in date.
+- **SEO**: page titles, descriptions, canonical links, structured data (business and each listing), alt text on listing and event photos; sign-in pages are not indexed.
+- **Legal pages**: Privacy, Terms, Cancellation policy, Accessibility, Host terms, linked under "Policies" in the footer and in the sitemap.
+- "Sevgio" is the only brand name used.
+
+**Database:** `043_operations_and_outbox` (error stages, email outbox, refunded payment status, check-in email time) and `044_smoking_policy` (smoking setting; listings whose rules say "smoking outside" get "Outside only"). No reservation records are rewritten. Undo files are in `migrations/down/`.
+
+**Check:** run the production checklist in `fix-list/status.md`.
+
 ## 2026-10-07 — Add Manual Reservation
 
 **What changed**

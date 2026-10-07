@@ -33,7 +33,7 @@ test("Zelle: dates are held until the host marks the payment received", async ({
   await book(page, "rittenhouse-square-loft", 200, 202, /^Zelle/);
   await expect(page.getByRole("heading", { name: "Payment needed to confirm" })).toBeVisible();
   await expect(page.getByText("pay@sevgio.test")).toBeVisible();
-  await expect(page.getByText("Awaiting payment").first()).toBeVisible();
+  await expect(page.getByText("Waiting for payment").first()).toBeVisible();
   const code = (await page.locator(".code").textContent())!.trim();
   await page.goto(`/stays?ci=${iso(200)}&co=${iso(202)}&loc=Philadelphia`);
   await expect(page.getByRole("heading", { name: "No stays match your search" })).toBeVisible();
@@ -67,7 +67,7 @@ test("cash at arrival: deposit now, the rest at check-in", async ({ page }) => {
   await row.getByText("Mark payment received").click();
   await row.getByRole("button", { name: "Record payment" }).click();
   await expect(page.getByText("Payment recorded.")).toBeVisible();
-  await expect(page.locator("tr", { hasText: code })).toContainText("Deposit paid");
+  await expect(page.locator("tr", { hasText: code })).toContainText("Partially Paid");
   await expect(page.locator("tr", { hasText: code })).toContainText("to collect");
   await signOut(page);
 });

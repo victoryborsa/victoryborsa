@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth.ts";
 import { one } from "@/lib/db.ts";
 import { expireStaleRequests, type Booking } from "@/lib/bookings.ts";
-import { addDays, fmtDate, todayLocal } from "@/lib/dates.ts";
+import { addDays, fmtDate, todayLocal, fmtWhen } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
 import { CANCELLATION, placeFull } from "@/lib/constants.ts";
 import { photoUrl } from "@/lib/queries.ts";
@@ -64,7 +64,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
             <div className="box" style={{ borderColor: "var(--warn)" }}>
               <h3>Payment needed to confirm</h3>
               <p><b>Due now: {money(b.due_now_cents)}</b>{b.payment_method === "cash" ? ` deposit. The remaining ${money(b.total_cents - b.due_now_cents)} is paid in cash at check-in.` : ""}{b.card_fee_cents > 0 ? ` (includes a ${money(b.card_fee_cents)} card processing fee)` : ""}</p>
-              {b.payment_deadline && <p className="hint">Please pay by {new Date(b.payment_deadline).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" })} ET. After that the booking is cancelled and the dates are released.</p>}
+              {b.payment_deadline && <p className="hint">Please pay by {fmtWhen(b.payment_deadline)} ET. After that the booking is cancelled and the dates are released.</p>}
               {b.payment_method === "card" || b.payment_method === "ach" ? (
                 <ActionForm action={payNowAction}><input type="hidden" name="id" value={b.id} /><div><SubmitButton pendingText="Opening secure payment…">{b.payment_method === "ach" ? "Pay by bank transfer" : "Pay by card"}</SubmitButton></div></ActionForm>
               ) : (
@@ -89,7 +89,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
             <p className="ref-keep">{KEEP_REFERENCE}</p>
           </section>
           <dl className="kv">
-            <dt>Status</dt><dd><StatusPill status={b.status} /></dd>
+            <dt>Status</dt><dd><StatusPill b={b} /></dd>
             <dt>Guest name</dt><dd>{b.guest_name}</dd>
             <dt>Property</dt><dd><Link href={`/stays/${b.slug}`}>{b.title}</Link>, {b.city}</dd>
             <dt>Check-in</dt><dd>{fmtDate(b.check_in)}<span className="muted" style={{ fontWeight: 400 }}> · after {b.check_in_time}</span></dd>

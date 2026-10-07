@@ -7,6 +7,7 @@ import { getT } from "@/lib/i18n.ts";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
+  alternates: { canonical: "/events" },
   title: "Pittsburgh events: games, concerts and festivals",
   description: "What's on in Pittsburgh today, this week and this month: Steelers, Pirates and Penguins games, concerts, shows and festivals.",
 };
@@ -107,7 +108,7 @@ function EventCard({ e }: { e: Ev }) {
   const body = (
     <>
       <div className="event-pic" style={{ "--tone": TONE[key] ?? TONE.Other } as React.CSSProperties}>
-        {img ? <img src={img} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="guide-icon" aria-hidden>{ICON[key] ?? ICON.Other}</span>}
+        {img ? <img src={img} alt={e.title} loading="lazy" referrerPolicy="no-referrer" /> : <span className="guide-icon" aria-hidden>{ICON[key] ?? ICON.Other}</span>}
         <span className="event-date" aria-label={fmtDate(e.local_date)}>
           <small>{d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }).toUpperCase()}</small>
           <b>{d.getUTCDate()}<sup>{ord(d.getUTCDate())}</sup></b>
