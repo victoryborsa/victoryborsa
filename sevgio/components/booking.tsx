@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { createContext, useContext, useMemo, useState } from "react";
 import { Calendar, addDaysC } from "./Calendar.tsx";
+import { DateRangePicker } from "./DatePicker.tsx";
+import { dayLook, pickDay, validRange, type RangeRules } from "@/lib/date-range.ts";
 import { PET_FEE_PER, baseLabel, priceTag, quote, type Party, type PricingInput } from "@/lib/pricing.ts";
 import { UTILITIES, parseServices, servicePrice } from "@/lib/constants.ts";
 import { money, moneyShort } from "@/lib/money.ts";
@@ -9,7 +11,7 @@ import { nightPrice } from "@/lib/smart-pricing.ts";
 import { NightlyRates } from "./NightlyRates.tsx";
 
 type P = PricingInput & { security_deposit_cents?: number; utilities?: string; slug: string; min_nights: number; max_nights: number; booking_mode: "instant" | "request"; children_free_age: number };
-type Ctx = { p: P; today: string; taken: Set<string>; taxPercent: number; ci: string; co: string; party: Party; msg: string; pick: (d: string) => void; clear: () => void; setParty: (p: Party) => void; bookable: boolean };
+type Ctx = { p: P; today: string; taken: Set<string>; rules: RangeRules; taxPercent: number; ci: string; co: string; party: Party; msg: string; pick: (d: string) => void; setRange: (ci: string, co: string) => void; datesDone: () => void; clear: () => void; setParty: (p: Party) => void; bookable: boolean };
 const BookingCtx = createContext<Ctx | null>(null);
 const use = () => useContext(BookingCtx)!;
 const MAX_PETS = 3;
@@ -18,8 +20,9 @@ const fmt = (s: string) => (s ? new Date(s + "T12:00:00Z").toLocaleDateString("e
 
 export function BookingProvider({ p, today, unavailable, taxPercent, initial, bookable, children }: { p: P; today: string; unavailable: string[]; taxPercent: number; initial: { ci: string; co: string; party: Party }; bookable: boolean; children: React.ReactNode }) {
   const taken = useMemo(() => new Set(unavailable), [unavailable]);
-  const rangeFree = (a: string, b: string) => { for (let d = a; d < b; d = addDaysC(d, 1)) if (taken.has(d)) return false; return true; };
-  const validInitial = initial.ci && initial.co && initial.ci >= today && initial.co > initial.ci && rangeFree(initial.ci, initial.co);
+  // The same rules as every date picker on the site: no past days, no booked nights inside a stay, the home's minimum and maximum stay.
+  const rules: RangeRules = useMemo(() => ({ min: today, taken, minNights: p.min_nights, maxNights: p.max_nights }), [today, taken, p.min_nights, p.max_nights]);
+  const validInitial = validRange({ ci: initial.ci, co: initial.co }, rules);
   const [ci, setCi] = useState(validInitial ? initial.ci : "");
   const [co, setCo] = useState(validInitial ? initial.co : "");
   const [party, setParty] = useState<Party>(() => {
@@ -29,19 +32,8 @@ export function BookingProvider({ p, today, unavailable, taxPercent, initial, bo
   });
   const [msg, setMsg] = useState(initial.ci && !validInitial ? "The dates from your search aren't available here. Pick new dates below." : "");
 
-  const pick = (d: string) => {
-    setMsg("");
-    if (!ci || co || d <= ci) {
-      if (taken.has(d)) return setMsg("That night is already booked. Pick another check-in date.");
-      setCi(d); setCo("");
-      return;
-    }
-    if (!rangeFree(ci, d)) return setMsg("Your stay can't include nights that are already booked. Pick an earlier check-out date or different dates.");
-    const n = nights(ci, d);
-    if (n < p.min_nights) return setMsg(`This home has a ${p.min_nights}-night minimum stay. Pick a check-out on or after ${fmt(addDaysC(ci, p.min_nights))}.`);
-    if (n > p.max_nights) return setMsg(`Stays here can be up to ${p.max_nights} nights.`);
-    setCo(d);
-    // Dates done: move on to who's coming.
+  // Dates done: move on to who's coming.
+  const datesDone = () => {
     setTimeout(() => {
       const box = document.getElementById("party");
       if (!box) return;
@@ -51,22 +43,26 @@ export function BookingProvider({ p, today, unavailable, taxPercent, initial, bo
       box.classList.remove("flash"); void box.offsetWidth; box.classList.add("flash");
     }, 60);
   };
-  const value: Ctx = { p, today, taken, taxPercent, ci, co, party, msg, pick, clear: () => { setCi(""); setCo(""); setMsg(""); }, setParty, bookable };
+  const pick = (d: string) => {
+    setMsg("");
+    const n = pickDay(d, ci && !co ? "co" : "ci", { ci, co }, rules);
+    setCi(n.ci); setCo(n.co);
+    if (n.done) datesDone();
+  };
+  const setRange = (a: string, b: string) => { setMsg(""); setCi(a); setCo(b); };
+  const value: Ctx = { p, today, taken, rules, taxPercent, ci, co, party, msg, pick, setRange, datesDone, clear: () => { setCi(""); setCo(""); setMsg(""); }, setParty, bookable };
   return <BookingCtx.Provider value={value}>{children}</BookingCtx.Provider>;
 }
 
 export function AvailabilitySection() {
-  const { p, today, taken, ci, co, msg, pick, clear } = use();
-  const choosingCheckout = !!ci && !co;
+  const { p, today, taken, rules, ci, co, msg, pick, clear } = use();
+  const [hover, setHover] = useState("");
+  const phase = ci && !co ? "co" : "ci";
   const dayState = (d: string) => {
-    const past = d < today;
-    const isTaken = taken.has(d);
-    let canCheckout = false;
-    if (choosingCheckout && d > ci) { canCheckout = true; for (let x = ci; x < d; x = addDaysC(x, 1)) if (taken.has(x)) { canCheckout = false; break; } }
-    const className = d === ci || d === co ? "sel" : ci && co && d > ci && d < co ? "in" : !past && isTaken ? (canCheckout ? "taken checkout-ok" : "taken") : "";
+    const look = dayLook(d, phase, { ci, co }, rules, hover);
     // Each open night shows its rate (Smart Pricing and nights the host priced by hand included), the same amount checkout charges.
-    const price = !past && !isTaken && !p.monthly_price_cents ? moneyShort(nightPrice(p, d, today)) : undefined;
-    return { disabled: past || (isTaken && !canCheckout), className, price, note: isTaken ? (canCheckout ? "booked that night, available as check-out day" : "unavailable") : undefined };
+    const price = d >= today && !taken.has(d) && !p.monthly_price_cents ? moneyShort(nightPrice(p, d, today)) : undefined;
+    return { ...look, price };
   };
   return (
     <section id="availability">
@@ -75,7 +71,7 @@ export function AvailabilitySection() {
         {!ci ? "Select your check-in date." : !co ? `Now select your check-out date. Minimum stay: ${p.min_nights} night${p.min_nights > 1 ? "s" : ""}.` : `${nights(ci, co)} nights: ${fmt(ci)} to ${fmt(co)}.`}
       </p>
       {msg && <div className="notice error" role="alert">{msg}</div>}
-      <Calendar today={today} startMonth={ci || today} dayState={dayState} onPick={pick} boxed />
+      <Calendar today={today} startMonth={ci || today} dayState={dayState} onPick={pick} onHover={phase === "co" ? setHover : undefined} boxed />
       <div className="legend cal-legend"><span><i className="lg-sel" />Your dates</span><span><i className="lg-free" />Available</span><span><i className="lg-taken" />Booked / unavailable</span>{!p.monthly_price_cents && <span>Prices are per night</span>}</div>
     </section>
   );
@@ -153,17 +149,15 @@ function ExtrasPicker() {
 }
 
 export function BookingPanel({ paymentNote }: { paymentNote: string }) {
-  const { p, ci, co, party, bookable, taxPercent } = use();
+  const { p, ci, co, party, bookable, taxPercent, today, rules, setRange, datesDone } = use();
   const { pr, problem } = useQuote();
   const ready = !!(ci && co && pr && !problem && bookable);
   return (
     <aside className="panel sticky" aria-label="Book this home" id="book">
       <div className="panel-price"><b>{money(priceTag(p).cents)}</b><span className="muted">/ {priceTag(p).unit}{p.monthly_price_cents && p.utilities !== "tenant" ? " · all-inclusive" : ""}</span></div>
       {p.utilities && UTILITIES[p.utilities] && <p className={`util-line ${p.utilities}`}>{UTILITIES[p.utilities]}</p>}
-      <a href="#availability" className="datepair" style={{ color: "inherit", textDecoration: "none" }}>
-        <div><small>Check-in</small>{fmt(ci)}</div>
-        <div><small>Check-out</small>{fmt(co)}</div>
-      </a>
+      <DateRangePicker id="book-dates" today={today} min={rules.min} taken={rules.taken} minNights={rules.minNights} maxNights={rules.maxNights}
+        value={{ ci, co }} onChange={v => setRange(v.ci, v.co)} onDone={datesDone} names={["", ""]} />
       <PartyPicker />
       <ExtrasPicker />
       {pr && !problem && (

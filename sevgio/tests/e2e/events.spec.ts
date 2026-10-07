@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import http from "node:http";
 import path from "node:path";
 import fs from "node:fs";
-import { iso, signIn, signOut, sql } from "./helpers.ts";
+import { iso, pickInPicker, signIn, signOut, sql } from "./helpers.ts";
 
 test.describe.configure({ mode: "serial" });
 
@@ -43,8 +43,7 @@ test("events page: Ticketmaster games and concerts, admin-added events, day/week
     const sharp = (await import("sharp")).default;
     await sharp({ create: { width: 1200, height: 675, channels: 3, background: "#C47A00" } }).png().toFile(f);
     await page.getByLabel("Event name").fill("Prostburgh! Oktoberfest");
-    await page.getByLabel("Date (first day)").fill(iso(1));
-    await page.getByLabel(/Last day/).fill(iso(5));
+    await pickInPicker(page, /^Date \(first day\)/, [iso(1), iso(5)]);
     await page.getByLabel(/Start time/).fill("12:00");
     await page.getByLabel("Place").fill("Market Square");
     await page.getByLabel("Type of event").first().selectOption("Festivals");

@@ -13,6 +13,7 @@ import { UTILITIES } from "@/lib/constants.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { CopyField } from "@/components/CopyField.tsx";
 import { PickHome } from "@/components/PickHome.tsx";
+import { DatePicker } from "@/components/DatePicker.tsx";
 import { corporateRequestAction } from "@/app/actions/messages.ts";
 
 export const metadata: Metadata = {
@@ -160,7 +161,7 @@ export default async function CorporateHousing({ searchParams }: { searchParams:
           <label className="field"><span>Home or room</span>
             <select className="input" name="home" id="ch-home" defaultValue={picked}><option value="">Any home or room that fits</option>{homes.map(p => <option key={p.id} value={p.id}>{p.title} ({money(p.corp_monthly_cents)}/mo)</option>)}</select>
           </label>
-          <label className="field"><span>Move-in date</span><input className="input" name="movein" type="date" min={today} required /></label>
+          <DatePicker name="movein" label="Move-in date" today={today} min={today} required />
           <label className="field"><span>Length of stay</span><select className="input" name="length">{LENGTHS.map(l => <option key={l}>{l}</option>)}</select></label>
           <label className="field"><span>Number of guests</span><input className="input" name="guests" type="number" min={1} max={20} defaultValue={1} /></label>
           <label className="field"><span>Pets</span><select className="input" name="pets"><option>No pets</option><option>Dog</option><option>Cat</option><option>Other</option></select></label>

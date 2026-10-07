@@ -1,5 +1,5 @@
 import { test, expect, type Locator } from "@playwright/test";
-import { iso, signIn, signOut, sql } from "./helpers.ts";
+import { iso, pickInPicker, signIn, signOut, sql } from "./helpers.ts";
 
 const add = (d: string, n: number) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
 // A quiet stretch well in the future: the 5th of a month, so a whole stay fits in one month's arrivals.
@@ -122,8 +122,9 @@ test.describe.serial("reservations calendar", () => {
     await expect(page.getByRole("dialog", { name: "Reservation: Dee Backtoback" })).toBeVisible();
     await page.keyboard.press("Escape");
     // Picking a month jumps there, keeping the view.
-    await page.getByLabel("Go to month").fill(D.slice(0, 7).replace(/-\d\d$/, "-01"));
-    await expect(page).toHaveURL(/month=\d{4}-01/);
+    const jan1 = D.slice(0, 4) + "-01-01";
+    await pickInPicker(page, /Go to date/, [jan1]);
+    await expect(page).toHaveURL(new RegExp(`start=${jan1}`));
     await expect(page).toHaveURL(/view=day/);
     await expect(page.locator(".mc-period")).toContainText("January 1");
     await signOut(page);

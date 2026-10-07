@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { iso, signIn, sql } from "./helpers.ts";
+import { iso, pickInPicker, signIn, sql } from "./helpers.ts";
 
 // Admin → Add Manual Reservation: a phone guest, confirmed with nothing paid, dates blocked, no double booking.
 const CI = iso(720), CO = iso(723); // far from other tests' dates
@@ -21,8 +21,9 @@ test.describe.serial("manual reservation", () => {
     await page.locator('form input[name="name"]').fill("Morgan Phonecall");
     await page.locator('form input[name="email"]').fill("morgan.phonecall@example.com");
     await page.locator('form input[name="phone"]').fill("412-555-0199");
-    await page.locator('form input[name="check_in"]').fill(CI);
-    await page.locator('form input[name="check_out"]').fill(CO);
+    await pickInPicker(page, /Check-in date/, [CI, CO]);
+    await expect(page.locator('form input[name="check_in"]')).toHaveValue(CI);
+    await expect(page.locator('form input[name="check_out"]')).toHaveValue(CO);
     if (shots) await page.screenshot({ path: `${shots}/computer-form.png`, fullPage: true });
     await page.getByRole("button", { name: "Save Reservation" }).click();
     await expect(page).toHaveURL(/\/admin\/bookings\/SV-/);
@@ -54,8 +55,18 @@ test.describe.serial("manual reservation", () => {
     await page.locator('form select[name="property"]').selectOption(home.id);
     await page.locator('form input[name="name"]').fill("Second Caller");
     await page.locator('form input[name="email"]').fill("second.caller@example.com");
-    await page.locator('form input[name="check_in"]').fill(iso(721));
-    await page.locator('form input[name="check_out"]').fill(iso(725));
+    // The calendar greys out the booked nights…
+    await page.getByRole("button", { name: /Check-in date/ }).click();
+    await page.locator(".dr-pop").getByLabel("Year", { exact: true }).selectOption(String(Number(iso(721).slice(0, 4))));
+    await page.locator(".dr-pop").getByLabel("Month", { exact: true }).selectOption(String(Number(iso(721).slice(5, 7))));
+    await expect(page.locator(`.dr-pop [data-day="${iso(721)}"]`)).toBeDisabled();
+    await page.keyboard.press("Escape");
+    // …and the server still refuses them if they're sent anyway.
+    await page.evaluate(([a, b]) => {
+      const set = (n: string, v: string) => { const el = document.querySelector<HTMLInputElement>(`form input[name="${n}"]`)!; el.value = v; };
+      set("check_in", a); set("check_out", b);
+      document.querySelector<HTMLInputElement>("form .dp-req")!.value = "ok";
+    }, [iso(721), iso(725)]);
     await page.getByRole("button", { name: "Save Reservation" }).click();
     await expect(page.locator(".notice.error")).toContainText("already booked");
     expect(await sql("SELECT 1 FROM bookings WHERE guest_name = 'Second Caller'")).toHaveLength(0);

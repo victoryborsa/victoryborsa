@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
-import { todayLocal } from "@/lib/dates.ts";
+import { addDays, todayLocal } from "@/lib/dates.ts";
+import { unavailableNights } from "@/lib/bookings.ts";
+import { ManualResDates } from "@/components/ManualResDates.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { addManualReservationAction } from "@/app/actions/host.ts";
 
@@ -13,6 +15,8 @@ export default async function AddManualReservation() {
      FROM properties p LEFT JOIN properties h ON h.id = p.parent_id
      ORDER BY coalesce(h.title, p.title), p.parent_id IS NOT NULL, p.title`);
   const today = todayLocal();
+  // Booked and blocked nights for each property (its rooms and whole home included), so the calendar greys them out.
+  const takenBy = Object.fromEntries(await Promise.all(homes.map(async h => [h.id, await unavailableNights(h.id, today, addDays(today, 3 * 366))] as const)));
   return (
     <div className="stack" style={{ gap: 16, maxWidth: 640 }}>
       <p><Link href="/admin/bookings">‹ Back to Bookings</Link></p>
@@ -30,10 +34,7 @@ export default async function AddManualReservation() {
           <label className="field"><span>Email</span><input className="input" name="email" type="email" autoComplete="off" required /></label>
           <label className="field"><span>Phone number</span><input className="input" name="phone" type="tel" autoComplete="off" /></label>
         </div>
-        <div className="grid-2">
-          <label className="field"><span>Check-in date</span><input className="input" name="check_in" type="date" defaultValue={today} required /></label>
-          <label className="field"><span>Check-out date</span><input className="input" name="check_out" type="date" required /></label>
-        </div>
+        <ManualResDates today={today} takenBy={takenBy} />
         <div><SubmitButton pendingText="Checking dates and saving…">Save Reservation</SubmitButton></div>
       </ActionForm>
     </div>

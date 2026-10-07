@@ -3,6 +3,7 @@ import type { User } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
 import { addDays, fmtDate, fmtShort, isIsoDate, nightsBetween, todayLocal } from "@/lib/dates.ts";
 import { demandBetween, manualPrices } from "@/lib/demand.ts";
+import { DatePicker } from "./DatePicker.tsx";
 import { nightPrice, priceWhy, type Demand } from "@/lib/smart-pricing.ts";
 import { smartPricingAction } from "@/app/actions/pricing.ts";
 import { AutoSubmit } from "./AutoSubmit.tsx";
@@ -180,10 +181,9 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
         {picked && <input type="hidden" name="property" value={picked.id} />}
         {room && <input type="hidden" name="room" value={room.id} />}
         {status && <input type="hidden" name="status" value={status} />}
-        <label className="cal-field">
-          <span className="cal-field-l">Go to month</span>
-          <input className="input" type="month" name="month" defaultValue={start.slice(0, 7)} />
-        </label>
+        <div className="cal-field cal-goto">
+          <DatePicker key={start} name="start" label="Go to date" initial={start} today={today} maxMonths={24} clearable={false} />
+        </div>
         <noscript><button className="btn btn-ghost btn-sm">Go</button></noscript>
       </form>
       </div>

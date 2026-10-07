@@ -3,7 +3,7 @@ import { getT } from "@/lib/i18n.ts";
 import { q } from "@/lib/db.ts";
 import { WherePicker, type Place } from "./WherePicker.tsx";
 import { AutoAdvance } from "./AutoAdvance.tsx";
-import { DateRangeField } from "./DateRangeField.tsx";
+import { DateRangePicker } from "./DatePicker.tsx";
 
 /** The places offered under "Where": Pittsburgh, Downtown, Indiana, then every neighborhood and town with a stay. */
 export async function searchPlaces(): Promise<Place[]> {
@@ -35,7 +35,7 @@ export async function SearchBar({ loc = "", ci = "", co = "", guests = 2, compac
     <form className="searchbar" action="/stays" method="get" role="search" style={compact ? { marginTop: 0 } : undefined}>
       <AutoAdvance />
       <WherePicker name="loc" label={t("search.where")} initial={loc} places={places} anywhere={t("search.anywhere")} />
-      <DateRangeField today={today} initialCi={ci} initialCo={co} ciLabel={t("search.checkin")} coLabel={t("search.checkout")} />
+      <DateRangePicker variant="search" today={today} min={today} initial={{ ci, co }} labels={[t("search.checkin"), t("search.checkout")]} />
       <label className="field">
         <span>{t("search.guests")}</span>
         <select className="input" name="guests" defaultValue={String(Math.min(guests, 10))}>

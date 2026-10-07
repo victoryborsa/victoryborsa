@@ -1,5 +1,5 @@
 import { ACCESS, AMENITY_GROUPS, CANCELLATION, UTILITIES, parseBeds, parseRooms, parseServices } from "@/lib/constants.ts";
-import { DateField } from "./DateField.tsx";
+import { DatePicker } from "./DatePicker.tsx";
 import { todayLocal } from "@/lib/dates.ts";
 import { BedsEditor } from "./BedsEditor.tsx";
 import { RoomsEditor } from "./RoomsEditor.tsx";
@@ -150,7 +150,7 @@ export function ListingForm({ action, p, hosts, homes = [], isAdmin = false, sub
             </select>
             <span className="hint">Shown under the price on the listing and the Corporate Housing page.</span>
           </label>
-          <DateField name="corp_available_from" label="Available from" initial={p?.corp_available_from || ""} today={todayLocal()} emptyText="Available now" hint="Leave empty = Available now." />
+          <DatePicker name="corp_available_from" label="Available from" initial={p?.corp_available_from || ""} today={todayLocal()} min={todayLocal()} emptyText="Available now" hint="Leave empty = Available now." />
           <label className="field"><span>Security deposit (USD)</span><input className="input mono" name="corp_deposit" inputMode="decimal" defaultValue={dollars(p?.corp_deposit_cents) || "0"} /></label>
           <label className="field"><span>Cleaning fee (USD, one time)</span><input className="input mono" name="corp_cleaning" inputMode="decimal" defaultValue={dollars(p?.corp_cleaning_cents) || "0"} /></label>
           <label className="field"><span>Pet fee (USD, non-refundable, 0 = none)</span><input className="input mono" name="corp_pet_fee" inputMode="decimal" defaultValue={dollars(p?.corp_pet_fee_cents) || "0"} /></label>

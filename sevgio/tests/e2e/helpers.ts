@@ -32,6 +32,21 @@ export async function signOut(page: Page) {
   await expect(page.getByRole("banner").getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
 }
 
+/**
+ * Uses the site's shared date picker: opens the field called `label`, then for each date jumps to its
+ * month and year with the lists in the calendar title and clicks the day. A check-in / check-out pair
+ * moves from the first date to the second by itself.
+ */
+export async function pickInPicker(page: Page, label: string | RegExp, dates: string[]) {
+  await page.getByRole("button", { name: label }).first().click();
+  for (const d of dates) {
+    const pop = page.locator(".dr-pop");
+    await pop.getByLabel("Year", { exact: true }).selectOption(String(Number(d.slice(0, 4))));
+    await pop.getByLabel("Month", { exact: true }).selectOption(String(Number(d.slice(5, 7))));
+    await pop.locator(`[data-day="${d}"]`).first().click();
+  }
+}
+
 /** Clicks check-in and check-out days on the property calendar, paging forward to the right month. */
 export async function pickDates(page: Page, ci: string, co: string) {
   // Wait for the calendar before paging through it.

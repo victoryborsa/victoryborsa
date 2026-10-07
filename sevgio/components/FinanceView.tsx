@@ -4,6 +4,7 @@ import { dataGaps, financeListings, monthRange, monthsBetween, occupancyFor, rea
 import { CHANNELS, unitsOf } from "@/lib/channels.ts";
 import { money } from "@/lib/money.ts";
 import { addDays, fmtDate, fmtShort, todayLocal } from "@/lib/dates.ts";
+import { DateRangePicker } from "./DatePicker.tsx";
 import { AutoSubmit } from "./AutoSubmit.tsx";
 
 const monthName = (m: string) => fmtDate(m + "-15", { month: "long", year: "numeric" });
@@ -69,8 +70,7 @@ export async function FinanceView({ u, basePath, sp }: { u: User; basePath: stri
     <div className="stack fin" style={{ gap: 24 }}>
       <form className="fin-filters" method="get" action={basePath} aria-label="Report filters">
         <AutoSubmit />
-        <label className="field"><span>From</span><input className="input" type="date" name="from" defaultValue={f.from} /></label>
-        <label className="field"><span>To</span><input className="input" type="date" name="to" defaultValue={f.to} /></label>
+        <DateRangePicker key={f.from + f.to} id="fin-dates" today={today} minNights={0} maxMonths={24} names={["from", "to"]} labels={["From", "To"]} initial={{ ci: f.from, co: f.to }} />
         <label className="field"><span>Property</span>
           <select className="input" name="property" defaultValue={f.property || ""}>
             <option value="">All properties</option>

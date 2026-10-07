@@ -5,7 +5,8 @@ import { requireUser } from "@/lib/auth.ts";
 import { propertyBySlug, photosFor, photoUrl } from "@/lib/queries.ts";
 import { isRangeFree, stayProblem } from "@/lib/bookings.ts";
 import { getSettings } from "@/lib/settings.ts";
-import { fmtDate } from "@/lib/dates.ts";
+import { fmtDate, todayLocal } from "@/lib/dates.ts";
+import { DatePicker } from "@/components/DatePicker.tsx";
 import { baseLabel, quote } from "@/lib/pricing.ts";
 import { withNightPricing } from "@/lib/demand.ts";
 import { money } from "@/lib/money.ts";
@@ -27,6 +28,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   const { slug } = await params;
   const sp = await searchParams;
   const ci = sp.ci || "", co = sp.co || "", party = partyFromParams(sp);
+  const today = todayLocal();
   const qs = new URLSearchParams({ ci, co, adults: String(party.adults), children: String(party.children), infants: String(party.free_children), ...(party.pets ? { pets: String(party.pets) } : {}), ...(party.services?.length ? { svc: party.services.join(",") } : {}) });
   const back = `/stays/${slug}?${qs}`;
   const u = await requireUser(undefined, `/book/${slug}?${qs}`);
@@ -102,7 +104,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
             <fieldset key={x.key} className="flight-box">
               <legend>{x.name}: your flight</legend>
               <div className="grid-3">
-                <label className="field"><span>Date</span><input className="input" type="date" name={`fl_${x.key}_date`} defaultValue={FLIGHT_SERVICES[x.key].when === "ci" ? ci : co} required /></label>
+                <DatePicker name={`fl_${x.key}_date`} label="Date" initial={FLIGHT_SERVICES[x.key].when === "ci" ? ci : co} today={today} min={today} required />
                 <label className="field"><span>{FLIGHT_SERVICES[x.key].timeLabel}</span><input className="input" type="time" name={`fl_${x.key}_time`} required /></label>
                 <label className="field"><span>Airline and flight number</span><input className="input" name={`fl_${x.key}_flight`} placeholder="Delta DL 1234" maxLength={60} required /></label>
               </div>

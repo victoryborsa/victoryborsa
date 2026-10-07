@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Calendar, addDaysC } from "./Calendar.tsx";
 import { ActionForm, SubmitButton } from "./forms.tsx";
+import { DateRangePicker } from "./DatePicker.tsx";
 import type { ActionState } from "@/lib/validate.ts";
 import { money, moneyShort } from "@/lib/money.ts";
 import { nightPrice, priceWhy, type SmartListing } from "@/lib/smart-pricing.ts";
@@ -48,11 +49,9 @@ export function HostCalendar({ propertyId, today, booked, blocked, pricing, mont
           <b>{fmt(start)}</b>: {money(nightPrice(pricing, start, today))} a night. <span className="muted">{priceWhy(pricing, start, today)}</span>
         </p>
       )}
-      <p className="muted" style={{ marginTop: 12 }}>Click the first night and then the day after the last night (like check-in and check-out), or type the dates. One click picks a single night.</p>
-      <div className="grid-2">
-        <label className="field"><span>First night</span><input className="input" type="date" min={today} value={start} onChange={e => setStart(e.target.value)} /></label>
-        <label className="field"><span>Day after the last night</span><input className="input" type="date" min={start ? addDaysC(start, 1) : today} value={end} onChange={e => setEnd(e.target.value)} /></label>
-      </div>
+      <p className="muted" style={{ marginTop: 12 }}>Click the first night and then the day after the last night (like check-in and check-out), or pick them below. One click picks a single night.</p>
+      <DateRangePicker id="pc-dates" today={today} min={today} names={["", ""]} labels={["First night", "Day after the last night"]} endOptional
+        value={{ ci: start, co: end }} onChange={v => { setStart(v.ci); setEnd(v.co); }} />
       <div className="pc-tools" style={{ marginTop: 12 }}>
         {!monthly && (
           <ActionForm action={priceAction} className="pc-tool stack" resetOnOk>

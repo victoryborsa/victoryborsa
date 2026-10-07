@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Calendar } from "./Calendar.tsx";
+import { RangePanel } from "./DatePicker.tsx";
 import type { Place } from "./WherePicker.tsx";
 
 const RECENT_KEY = "sevgio.recentSearches";
@@ -41,11 +41,6 @@ export function PillSearch({ places, today, labels }: { places: Place[]; today: 
   const typing = !!q && q !== (places.find(p => p.value === loc)?.label ?? loc).toLowerCase();
   const matches = typing ? places.filter(p => (p.label + " " + p.sub).toLowerCase().includes(q)) : places;
   const pickPlace = (p: Place) => { setLoc(p.value); setText(p.value ? p.label : ""); setOpen("ci"); };
-  const pickDay = (d: string) => {
-    if (open === "ci" || !ci || d <= ci) { setCi(d); if (co && co <= d) setCo(""); setOpen("co"); return; }
-    setCo(d); setOpen("who");
-  };
-  const dayState = (d: string) => ({ disabled: d < today || (open === "co" && !!ci && d < ci), className: d === ci || d === co ? "sel" : ci && co && d > ci && d < co ? "in" : "" });
   const guests = party.adults + party.children;
   const whoText = guests ? `${guests} guest${guests === 1 ? "" : "s"}${party.infants ? `, ${party.infants} infant${party.infants === 1 ? "" : "s"}` : ""}${party.pets ? `, ${party.pets} pet${party.pets === 1 ? "" : "s"}` : ""}` : "";
   const step = (k: keyof typeof party, n: number) => setParty(p => {
@@ -118,13 +113,8 @@ export function PillSearch({ places, today, labels }: { places: Place[]; today: 
       )}
       {(open === "ci" || open === "co") && (
         <div className="ps-pop ps-pop-when" role="dialog" aria-label={open === "ci" ? "Choose check-in" : "Choose check-out"}>
-          <p className="ps-head ps-when-head" aria-live="polite">{open === "ci" ? "When do you arrive?" : `When do you leave? Check-in ${show(ci)}`}</p>
-          <Calendar key={open === "co" ? ci : "ci"} today={today} startMonth={ci || today} dayState={dayState} onPick={pickDay} />
-          <div className="ps-foot">
-            {(ci || co) && <button type="button" className="linkbtn" onClick={() => { setCi(""); setCo(""); setOpen("ci"); }}>Clear dates</button>}
-            <span className="spacer" />
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen("who")}>Skip</button>
-          </div>
+          <RangePanel phase={open} value={{ ci, co }} rules={{ min: today }} today={today} labels={["Check-in", "Check-out"]} closeText={ci && co ? "Next" : "Skip"}
+            onChange={(v, phase, done) => { setCi(v.ci); setCo(v.co); setOpen(done ? "who" : phase || "ci"); }} onClose={() => setOpen("who")} />
         </div>
       )}
       {open === "who" && (
