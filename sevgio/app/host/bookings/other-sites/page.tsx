@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
-import { fmtShort, nightsBetween, todayLocal } from "@/lib/dates.ts";
+import { fmtShort, localDateOf, nightsBetween, todayLocal, type Instant } from "@/lib/dates.ts";
 import { financeListings, placeName } from "@/lib/finance.ts";
 import { CHANNELS, channelLabel, isChannel } from "@/lib/channels.ts";
 import { money } from "@/lib/money.ts";
@@ -11,7 +11,7 @@ import { BookingTabs } from "@/components/BookingTabs.tsx";
 import { CAL_BLOCK, GuestCell } from "@/components/GuestNameForm.tsx";
 
 type Row = { id: string; property_id: string; channel: string; external_ref: string; guest_name: string; guest_name_source: string; check_in: string; check_out: string; status: string; kind: string; eff_kind: string;
-  source: string; expected_payout_cents: number | null; received_payout_cents: number | null; rent_cents: number | null; modified_at: Date | string | null };
+  source: string; expected_payout_cents: number | null; received_payout_cents: number | null; rent_cents: number | null; modified_at: Instant };
 
 const WHEN: Record<string, string> = { upcoming: "Upcoming and current", past: "Past", all: "All dates" };
 const KINDS: Record<string, string> = { "": "Reservations and calendar blocks", reservation: "Confirmed reservations only", unknown: "External calendar blocks", blocked: "Blocked on the other site", mirror: "Copies of other bookings", cancelled: "Cancelled" };
@@ -67,7 +67,7 @@ export default async function OtherSites({ searchParams }: { searchParams: Promi
                   <td className="mono">{r.external_ref || <span className="muted">–</span>}</td>
                   <td>{placeName(listings, r.property_id)}</td>
                   <td style={{ minWidth: 170 }}>{r.eff_kind === "reservation" ? <GuestCell name={r.guest_name} source={r.guest_name_source} site={channelLabel(r.channel)} /> : r.guest_name || <span className="muted">No guest details</span>}</td>
-                  <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} – {fmtShort(r.check_out)}{r.modified_at && <div className="hint">Dates changed {fmtShort(todayLocal("America/New_York", new Date(r.modified_at)))}</div>}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} – {fmtShort(r.check_out)}{localDateOf(r.modified_at) && <div className="hint">Dates changed {fmtShort(localDateOf(r.modified_at)!)}</div>}</td>
                   <td className="num">{nightsBetween(r.check_in, r.check_out)}</td>
                   <td>{r.status === "cancelled" ? <span className="pill danger">Cancelled</span>
                     : r.eff_kind === "unknown" ? <span className="pill neutral">{CAL_BLOCK}</span>
