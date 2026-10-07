@@ -11,6 +11,7 @@
     "build": "node scripts/copy-maplibre-worker.mjs && next build",
     "start": "next start",
     "migrate": "node scripts/migrate.mjs",
+    "migrate:down": "node scripts/migrate-down.mjs",
     "create-admin": "node scripts/create-admin.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
     "typecheck": "tsc --noEmit",

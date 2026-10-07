@@ -34,6 +34,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ] },
         { title: "System", items: [
           { href: "/admin/log", label: "Errors & activity", icon: "activity", badge: errs?.n || 0 },
+          { href: "/admin/features", label: "Feature switches", icon: "settings" },
           { href: "/admin/settings", label: "Settings", icon: "settings" },
         ] },
       ]} />
