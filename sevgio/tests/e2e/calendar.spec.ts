@@ -124,9 +124,17 @@ test.describe.serial("reservations calendar", () => {
     // Picking a month jumps there, keeping the view.
     const jan1 = D.slice(0, 4) + "-01-01";
     await pickInPicker(page, /Go to date/, [jan1]);
+    await page.locator(".dr-pop").getByRole("button", { name: "Done" }).click();
     await expect(page).toHaveURL(new RegExp(`start=${jan1}`));
     await expect(page).toHaveURL(/view=day/);
     await expect(page.locator(".mc-period")).toContainText("January 1");
+    // A first and last day shows just that stretch, highlighted in the picker.
+    await pickInPicker(page, /Go to date/, [D, add(D, 8)]);
+    await expect(page).toHaveURL(new RegExp(`start=${D}&end=${add(D, 8)}`));
+    await expect(page.locator(".mc-day")).toHaveCount(9);
+    await page.getByRole("button", { name: /Go to date/ }).click();
+    await expect(page.locator(`.dr-pop [data-day="${add(D, 4)}"]`)).toHaveClass(/\bin\b/);
+    await page.keyboard.press("Escape");
     await signOut(page);
   });
 

@@ -144,9 +144,10 @@ export function DateRangePicker(props: DateRangeProps) {
     return () => { form?.removeEventListener("sevgio:where-picked", onWhere); form?.removeEventListener("reset", onReset); };
   }, []);
   useEffect(() => {
+    // Remember the dates when the calendar opens (not when it moves on to check-out), and announce a change when it closes.
     if (open) { opened.current = cur; return; }
     if (opened.current.ci !== cur.ci || opened.current.co !== cur.co) { opened.current = cur; announce(box.current); }
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [!!open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const change = (v: Range, phase: Phase | "", done: boolean) => {
     set(v);

@@ -989,6 +989,8 @@ a.cs-card:hover { border-color: var(--accent); }
 @media (min-width: 900px) { .dp > .dr-pop { left: 0; right: auto; width: min(720px, calc(100vw - 48px)); } }
 .dp-req { position: absolute; left: 12px; top: 40px; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; pointer-events: none; }
 .dr-legend { margin-top: 10px; }
+/* Today is ringed on every calendar, so the calendar always opens showing where "now" is. */
+.cal button.today:not(.sel) { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 700; }
 /* Month and year lists in the calendar title: jump straight to a far-off month. */
 .cal-jump { display: flex; justify-content: center; gap: 4px; }
 .cal-jump select { appearance: none; -webkit-appearance: none; border: 1px solid transparent; background: none; color: var(--ink); font: inherit; font-weight: 700; font-size: 15px; padding: 4px 18px 4px 6px; border-radius: 8px; cursor: pointer;

@@ -54,7 +54,7 @@ export function Calendar({ today, startMonth, dayState, onPick, onHover, min, ma
                 const ds = `${y}-${pad(mo)}-${pad(i + 1)}`;
                 const st = dayState(ds);
                 return (
-                  <button key={ds} type="button" data-day={ds} className={st.className} disabled={st.disabled} onClick={() => onPick(ds)} onMouseEnter={onHover && (() => onHover(ds))}
+                  <button key={ds} type="button" data-day={ds} className={`${st.className}${ds === today ? " today" : ""}`} aria-current={ds === today ? "date" : undefined} disabled={st.disabled} onClick={() => onPick(ds)} onMouseEnter={onHover && (() => onHover(ds))}
                     aria-label={label(ds) + (st.price ? `, ${st.price} a night` : "") + (st.note ? ", " + st.note : "")}>
                     {boxed ? <><span className="cal-n">{i + 1}</span>{st.price && <span className={`cal-p${st.priceTone ? " " + st.priceTone : ""}`} data-price={ds}>{st.price}</span>}</> : i + 1}
                   </button>

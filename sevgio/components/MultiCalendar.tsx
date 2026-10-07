@@ -3,7 +3,7 @@ import type { User } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
 import { addDays, fmtDate, fmtShort, isIsoDate, nightsBetween, todayLocal } from "@/lib/dates.ts";
 import { demandBetween, manualPrices } from "@/lib/demand.ts";
-import { DatePicker } from "./DatePicker.tsx";
+import { DateRangePicker } from "./DatePicker.tsx";
 import { nightPrice, priceWhy, type Demand } from "@/lib/smart-pricing.ts";
 import { smartPricingAction } from "@/app/actions/pricing.ts";
 import { AutoSubmit } from "./AutoSubmit.tsx";
@@ -29,7 +29,7 @@ function siteOf(b: Blk): { key: string; label: string } | null {
 
 const COLS = `id, title, city, parent_id, status, nightly_price_cents, smart_pricing, min_price_cents, max_price_cents,
   (SELECT ph.id FROM photos ph WHERE ph.property_id = p.id ORDER BY ph.position, ph.created_at LIMIT 1) AS cover_id`;
-const LENGTHS = [14, 30, 60];
+const MAX_RANGE = 92;
 const VIEWS = [["day", "Day"], ["week", "Week"], ["month", "Month"], ["arrivals", "Arrivals"]] as const;
 type View = "day" | "week" | "month" | "arrivals" | "range";
 const STATUSES = [["", "All active"], ["confirmed", "Confirmed"], ["pending", "Awaiting approval"], ["awaiting_payment", "Awaiting payment"],
@@ -51,9 +51,13 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
   const today = todayLocal();
   // "Go to month" sends ?month=YYYY-MM; every view then opens on the 1st of that month.
   const anchor = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month || "") ? sp.month + "-01" : isIsoDate(sp.start) ? sp.start! : null;
+  // "Go to date" with a last day (?start=…&end=…) shows exactly those days, e.g. Oct 7 to Oct 15.
+  const pickedDays = anchor && isIsoDate(sp.end) && sp.end! >= anchor ? Math.min(nightsBetween(anchor, sp.end!) + 1, MAX_RANGE) : 0;
   // Older links used ?days=14/30/60; they still work as a plain date range.
-  const view: View = sp.view === "day" || sp.view === "week" || sp.view === "month" || sp.view === "arrivals" ? sp.view
-    : LENGTHS.includes(Number(sp.days)) ? "range" : "month";
+  const rangeDays = pickedDays || (Number.isInteger(Number(sp.days)) && Number(sp.days) >= 1 && Number(sp.days) <= MAX_RANGE ? Number(sp.days) : 0);
+  const view: View = pickedDays ? "range"
+    : sp.view === "day" || sp.view === "week" || sp.view === "month" || sp.view === "arrivals" ? sp.view
+    : rangeDays ? "range" : "month";
   const status = STATUSES.some(([v]) => v === sp.status) ? sp.status! : "";
   let start: string, days: number, prev: string, next: string, todayStart: string;
   if (view === "day") {
@@ -64,7 +68,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
     // Month is a wall calendar: the whole calendar month, Sunday to Saturday. Arrivals lists the same month.
     start = monthStart(anchor || today); days = nightsBetween(start, nextMonth(start)); prev = prevMonth(start); next = nextMonth(start); todayStart = monthStart(today);
   } else {
-    days = Number(sp.days); start = anchor || today; prev = addDays(start, -days); next = addDays(start, days); todayStart = today;
+    days = rangeDays; start = anchor || today; prev = addDays(start, -days); next = addDays(start, days); todayStart = today;
   }
   const end = addDays(start, days);
   const demand = await demandBetween(start, end);
@@ -178,11 +182,13 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
       <form className="cal-month" method="get" action={basePath}>
         <AutoSubmit />
         <input type="hidden" name="view" value={view === "range" ? "week" : view} />
+        {/* Opens on today when today is on screen; pick one day to jump there, or a first and last day to see just that stretch. */}
         {picked && <input type="hidden" name="property" value={picked.id} />}
         {room && <input type="hidden" name="room" value={room.id} />}
         {status && <input type="hidden" name="status" value={status} />}
         <div className="cal-field cal-goto">
-          <DatePicker key={start} name="start" label="Go to date" initial={start} today={today} maxMonths={24} clearable={false} />
+          <DateRangePicker key={start + days} id="cal-goto" names={["start", "end"]} labels={["Go to date", "Until"]} today={today} minNights={0} maxNights={MAX_RANGE - 1} maxMonths={24} endOptional
+            initial={view === "range" ? { ci: start, co: addDays(end, -1) } : { ci: start <= today && today < end ? today : start }} />
         </div>
         <noscript><button className="btn btn-ghost btn-sm">Go</button></noscript>
       </form>
@@ -235,7 +241,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
   );
 }
 
-export type CalParams = { start?: string; month?: string; days?: string; property?: string; room?: string; status?: string; view?: string };
+export type CalParams = { start?: string; end?: string; month?: string; days?: string; property?: string; room?: string; status?: string; view?: string };
 
 /** A reservation or blocked dates, ready to draw. `from`/`to` are check-in and check-out days. */
 type Stay = {
