@@ -5,6 +5,7 @@ import nodeCrypto from "node:crypto";
 import { clearFailedSignIns, hashPassword, linkToken, requireUser, sha256 } from "@/lib/auth.ts";
 import { ROLES } from "@/lib/constants.ts";
 import { saveSetting } from "@/lib/settings.ts";
+import { FLAGS, saveFlag } from "@/lib/flags.ts";
 import { isEmail, str, type ActionState } from "@/lib/validate.ts";
 import { toCents } from "@/lib/money.ts";
 import { logEvent } from "@/lib/log.ts";
@@ -289,4 +290,15 @@ export async function listingFeeAction(fd: FormData) {
   if (p) await logEvent("info", "Listing fees", `${p.title}: ${cmd === "paid" ? `fee paid until ${p.until}` : cmd === "waive" ? "fee waived" : "fee charged again"}`, { property: id }, admin.id);
   revalidatePath("/admin/listings");
   revalidatePath("/host/listings");
+}
+
+/** Turns one upgrade feature on or off (Admin → Feature switches). Only built features can be switched. */
+export async function setFlagAction(fd: FormData) {
+  const admin = await requireUser(["admin"]);
+  const key = str(fd, "key", 80), on = str(fd, "on", 5) === "1";
+  const f = FLAGS.find(x => x.key === key);
+  if (!f || !f.ready) return;
+  await saveFlag(key, on);
+  await logEvent("info", "Feature switches", `${f.name} turned ${on ? "on" : "off"}`, { key }, admin.id);
+  revalidatePath("/admin/features");
 }
