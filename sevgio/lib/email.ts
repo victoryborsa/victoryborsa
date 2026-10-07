@@ -60,13 +60,38 @@ export async function sendEmail(to: string, subject: string, text: string, opts:
     console.log(`\n[email skipped: sending is failing] To: ${to}\nSubject: ${subject}\n${body}\n`);
     return { ok: false, error: "failing" };
   }
+  const mail = { from: fromAddress(), to, subject, text: body, html: toHtml(body) };
   try {
-    await t.sendMail({ from: fromAddress(), to, subject, text: body, html: toHtml(body) });
+    try {
+      await t.sendMail(mail);
+    } catch (e) {
+      // A dropped connection or slow mail server usually works on a second try a moment later.
+      if (!isTemporary(e)) throw e;
+      await new Promise(r => setTimeout(r, 2000));
+      await t.sendMail(mail);
+    }
     lastSuccess = Date.now();
     return { ok: true };
   } catch (e) {
     lastFailure = Date.now();
-    await logEvent("error", "Email", `Could not send "${subject}" to ${to}`, { error: String(e) });
+    // Never keep sign-in codes in the admin log.
+    await logEvent("error", "Email", `Could not send "${subject.replace(/\d{6}/g, "######")}" to ${to}`, { error: String(e), reason: failureReason(e) });
     return { ok: false, error: String(e) };
   }
+}
+
+const TEMPORARY = new Set(["ETIMEDOUT", "ECONNRESET", "ECONNECTION", "ESOCKET", "EDNS", "ECONNREFUSED", "EPIPE"]);
+const errCode = (e: unknown) => (e && typeof e === "object" && "code" in e ? String((e as { code: unknown }).code) : "");
+const errStatus = (e: unknown) => (e && typeof e === "object" && "responseCode" in e ? Number((e as { responseCode: unknown }).responseCode) : 0);
+/** Network hiccups and 4xx "try again later" replies from the mail server. */
+export const isTemporary = (e: unknown) => TEMPORARY.has(errCode(e)) || (errStatus(e) >= 400 && errStatus(e) < 500);
+
+/** A plain-English reason for the admin log. */
+export function failureReason(e: unknown): string {
+  const status = errStatus(e);
+  if (errCode(e) === "EAUTH" || status === 535 || status === 534) return "The mail server refused the email password. In Render, check SMTP_USER and SMTP_PASS (for Gmail, use an app password).";
+  if (status === 550 || status === 553) return "The address was refused. It may be mistyped or the mailbox may not exist.";
+  if (status === 552 || /daily (user )?sending limit|quota/i.test(String(e))) return "The mail account hit its sending limit. Sending usually works again within 24 hours.";
+  if (isTemporary(e)) return "The mail server could not be reached for a moment. Later emails should go out normally.";
+  return "The mail server rejected the email. See the error above.";
 }

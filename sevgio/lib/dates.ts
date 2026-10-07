@@ -28,3 +28,26 @@ export function eachNight(ci: string, co: string): string[] {
   for (let d = ci; d < co; d = addDays(d, 1)) out.push(d);
   return out;
 }
+
+/** A moment in time from the database: Postgres timestamps arrive as Date objects, JSON and forms give ISO text.
+ *  Accepts either (or null/undefined) and returns a valid Date, or null when there is nothing usable. */
+export type Instant = Date | string | number | null | undefined;
+export function toInstant(v: Instant): Date | null {
+  if (v === null || v === undefined || v === "") return null;
+  const d = v instanceof Date ? v : new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+/** The Pennsylvania calendar date ("YYYY-MM-DD") of a moment, or null. Never call string methods on a timestamp. */
+export function localDateOf(v: Instant, tz = "America/New_York"): string | null {
+  const d = toInstant(v);
+  return d ? todayLocal(tz, d) : null;
+}
+const WHEN_STYLES = {
+  full: { dateStyle: "medium", timeStyle: "short" },
+  short: { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" },
+} satisfies Record<string, Intl.DateTimeFormatOptions>;
+/** "Oct 6, 2026, 12:52 AM" (or "Oct 6, 12:52 AM" with style "short") in Pennsylvania time; "" when unknown. */
+export function fmtWhen(v: Instant, style: keyof typeof WHEN_STYLES = "full"): string {
+  const d = toInstant(v);
+  return d ? d.toLocaleString("en-US", { timeZone: "America/New_York", ...WHEN_STYLES[style] }) : "";
+}
