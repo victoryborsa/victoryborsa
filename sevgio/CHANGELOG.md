@@ -2,6 +2,11 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-07 — Guests change their own dates; Pay now on every unpaid booking
+
+- **Change dates** on the guest's booking page (confirmed stays). New nights are checked against every booking and blocked night and the listing's minimum and maximum stay, then repriced at the booked nightly rate. After check-in only check-out can move. A paid stay can't be shortened online (the guest is asked to contact us). Guest, host and admins are emailed.
+- **Pay now** box on every unpaid booking: Stripe buttons when card or bank transfer is on, Zelle or Venmo details when those are on, otherwise "Contact us to pay now" with the reference filled in on the contact form.
+
 ## 2026-10-07 — Guests can pay online after booking
 
 **What changed**

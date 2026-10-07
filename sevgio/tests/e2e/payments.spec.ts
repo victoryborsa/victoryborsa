@@ -164,12 +164,15 @@ test("a confirmed booking with nothing paid can be paid online from the booking 
      VALUES ('SV-BAL001', $1, $2, $3, $4, 1, 1, 'confirmed', 1, 11000, 0, 0, 11000, 11000, 'Josh Test', '555', NULL, 0, 0, 'none') RETURNING id`,
     [p.id, g.id, iso(320), iso(321)]);
 
-  // Without card switched on there's no Pay now button.
+  // Pay now shows on every unpaid booking. Before card is on, it offers to arrange payment instead.
   await signIn(page, "guest@demo.sevgio.com", "demo-password-2026");
   await page.goto("/trips/SV-BAL001");
   await expect(page.getByText("Unpaid").first()).toBeVisible();
   await expect(page.getByText("Payment unavailable")).toHaveCount(0);
-  await expect(page.getByTestId("pay-now")).toHaveCount(0);
+  await expect(page.getByTestId("pay-now")).toContainText("Amount due: $110");
+  await expect(page.getByRole("link", { name: "Contact us to pay now" })).toBeVisible();
+  await page.getByRole("link", { name: "Contact us to pay now" }).click();
+  await expect(page.locator('input[name="reservation"]')).toHaveValue("SV-BAL001");
   await signOut(page);
 
   await setPayments(page, { card: true });

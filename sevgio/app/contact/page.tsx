@@ -10,7 +10,8 @@ import { q } from "@/lib/db.ts";
 export const metadata: Metadata = pageMeta("/contact", "Contact us", "Questions about a furnished stay, a reservation or corporate housing in Pittsburgh? Contact Sevgio. We reply within a few hours, every day.");
 export const dynamic = "force-dynamic";
 
-export default async function Contact() {
+export default async function Contact({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
+  const ref = ((await searchParams).ref || "").replace(/[^A-Za-z0-9-]/g, "").slice(0, 20);
   const [u, s, homes] = await Promise.all([currentUser(), getSettings(), q<{ id: string; title: string }>("SELECT id, title FROM properties WHERE status = 'published' ORDER BY title")]);
   return (
     <div className="wrap photo-page theme-light">
@@ -28,7 +29,7 @@ export default async function Contact() {
         <fieldset className="contact-extra">
           <legend>Reservation details <span className="muted">(optional)</span></legend>
           <div className="grid-2">
-            <label className="field"><span>Reservation number</span><input className="input mono" name="reservation" placeholder="SV-… or the other site's code" autoComplete="off" /></label>
+            <label className="field"><span>Reservation number</span><input className="input mono" name="reservation" placeholder="SV-… or the other site's code" autoComplete="off" defaultValue={ref} /></label>
             <label className="field"><span>Phone</span><input className="input" name="phone" type="tel" autoComplete="tel" /></label>
             <label className="field"><span>Property</span>
               <select className="input" name="property" defaultValue=""><option value="">Not about a specific home</option>{homes.map(h => <option key={h.id} value={h.id}>{h.title}</option>)}</select>
