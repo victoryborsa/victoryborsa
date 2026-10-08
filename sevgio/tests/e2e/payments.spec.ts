@@ -187,7 +187,7 @@ test("a confirmed booking with nothing paid can be paid online from the booking 
   // The admin can email the guest the link.
   await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
   await page.goto("/admin/bookings/SV-BAL001");
-  await expect(page.getByRole("button", { name: "Email payment link" })).toBeVisible();
+  await expect(page.getByTestId("quick-pay").getByRole("button", { name: "Email payment link" })).toBeVisible();
   await signOut(page);
 
   // Stripe reports the balance paid by card: the fee is kept apart from the $110 and the booking reads Paid, by card.

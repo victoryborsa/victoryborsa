@@ -5,6 +5,7 @@ Changes to the Sevgio site, newest first. Nothing existing is removed or renamed
 ## 2026-10-08 — Clickable dashboards
 
 - Every number on the host and admin dashboards opens the list behind it (listings, requests, upcoming stays, booking value, questions, guests, hosts, errors, messages).
+- **Mark as paid** sits right under the Unpaid label at the top of each reservation (amount and method filled in), with **Email payment link** beside it when online payment is on.
 - Tapping anywhere on a booking row opens the reservation (admins get the full reservation page). On phones, booking tables show as cards so nothing is cut off.
 
 ## 2026-10-07 — Guests change their own dates; Pay now on every unpaid booking

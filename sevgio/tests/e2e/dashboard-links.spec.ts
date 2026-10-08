@@ -32,6 +32,18 @@ test.describe.serial("clickable dashboards", () => {
       await page.locator("a.stat-link", { hasText: new RegExp(`^\\S+${label}`) }).first().click();
       await expect(page).toHaveURL(url);
     }
+
+    // An unpaid reservation can be marked paid right next to its Unpaid label.
+    await page.goto("/admin/bookings/SV-DASH01");
+    const quick = page.getByTestId("quick-pay");
+    page.on("dialog", d => d.accept());
+    await quick.getByText("Mark as paid").click();
+    await expect(quick.locator('input[name="amount"]')).toHaveValue("110.00");
+    await quick.getByRole("button", { name: "Save payment" }).click();
+    await expect(page.getByText("Payment recorded.")).toBeVisible();
+    const [b] = await sql<{ paid_cents: number; payment_status: string }>("SELECT paid_cents, payment_status FROM bookings WHERE code = 'SV-DASH01'");
+    expect(b).toEqual({ paid_cents: 11000, payment_status: "paid" });
+    await expect(page.getByTestId("quick-pay")).toHaveCount(0);
     await signOut(page);
   });
 });

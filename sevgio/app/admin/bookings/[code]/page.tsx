@@ -73,6 +73,32 @@ export default async function AdminReservation({ params, searchParams }: { param
           <StatusPill b={b} />
           <PaymentPill b={b} />
         </div>
+        {(canPay || canSendPayLink) && (
+          <div className="row rd-pay" style={{ gap: 8, flexWrap: "wrap", alignItems: "flex-start" }} data-testid="quick-pay">
+            {canPay && (
+              <details className="rd-act">
+                <summary className="btn btn-primary btn-sm">Mark as paid</summary>
+                <ActionForm action={markPaidAction} className="stack" confirmText="Record this payment?">
+                  <input type="hidden" name="id" value={b.id} />
+                  <input type="hidden" name="back" value={self} />
+                  <label className="field"><span>Amount received</span><input className="input mono" name="amount" inputMode="decimal" defaultValue={((b.status === "awaiting_payment" ? b.due_now_cents - b.paid_cents : b.total_cents - b.paid_cents) / 100).toFixed(2)} /></label>
+                  <label className="field"><span>Paid by</span>
+                    <select className="input" name="method" defaultValue={!b.payment_method || paysAtProperty(b) ? "cash" : b.payment_method}>
+                      <option value="cash">Cash</option><option value="zelle">Zelle</option><option value="venmo">Venmo</option><option value="card">Card</option><option value="ach">Bank transfer</option>
+                    </select>
+                  </label>
+                  <div><SubmitButton className="btn btn-primary">Save payment</SubmitButton></div>
+                </ActionForm>
+              </details>
+            )}
+            {canSendPayLink && (
+              <ActionForm action={sendPaymentLinkAction} confirmText={`Email ${b.guest_name} a link to pay ${money(b.total_cents - b.paid_cents)} online?`}>
+                <input type="hidden" name="id" value={b.id} />
+                <SubmitButton className="btn btn-ghost btn-sm" pendingText="Sending…">Email payment link</SubmitButton>
+              </ActionForm>
+            )}
+          </div>
+        )}
         <div className="row rd-links">
           <Link className="btn btn-ghost btn-sm" href={`/trips/${b.code}/invoice`}>Invoice</Link>
           <Link className="btn btn-ghost btn-sm" href={`/trips/${b.code}`}>Guest's confirmation page</Link>
