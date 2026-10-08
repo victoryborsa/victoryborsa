@@ -2,6 +2,11 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-08 — Colour category icons
+
+- The homepage category tabs (All, Homes, Rooms, Monthly, Corporate, Things to do, Events) use the new Sevgio colour icons instead of black line icons, on phone and computer. The "Find things to do in Pittsburgh" card uses the balloon icon.
+- The icons are SVG files in `public/icons/categories/`. Links and labels are unchanged.
+
 ## 2026-10-08 — Listings grouped by host
 
 - Host tools → Listings (admin view) and Admin → Listings group listings under a heading for each host, hosts A–Z and each host's listings A–Z, with the number of listings beside the name.
