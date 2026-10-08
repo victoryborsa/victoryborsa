@@ -8,7 +8,9 @@ import { currentUser } from "@/lib/auth.ts";
 import { siteUrl } from "@/lib/email.ts";
 import { mailUrl, telUrl } from "@/lib/links.ts";
 import { todayLocal } from "@/lib/dates.ts";
-import { Icon, type IconName } from "@/components/Icon.tsx";
+import { Icon } from "@/components/Icon.tsx";
+import { Thumb } from "@/components/Thumb.tsx";
+import type { ThumbName } from "@/lib/thumbs.ts";
 import { UTILITIES } from "@/lib/constants.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { CopyField } from "@/components/CopyField.tsx";
@@ -29,15 +31,15 @@ export const metadata: Metadata = {
 };
 export const dynamic = "force-dynamic";
 
-const WHO: [IconName, string][] = [["stethoscope", "Travel nurses"], ["check", "Doctors and residents"], ["briefcase", "Corporate teams"], ["wrench", "Contractors"], ["family", "Relocating families"]];
+const WHO: [ThumbName, string][] = [["travel-nurses", "Travel nurses"], ["doctors", "Doctors and residents"], ["corporate", "Corporate teams"], ["contractors", "Contractors"], ["relocating-families", "Relocating families"]];
 
-const INCLUDED: [IconName, string, string][] = [
-  ["sofa", "Fully furnished", "Beds, sofas, desk and dining set. Bring your suitcase."],
-  ["bolt", "All utilities", "Electric, gas, water, sewer and trash."],
+const INCLUDED: [ThumbName, string, string][] = [
+  ["furnished", "Fully furnished", "Beds, sofas, desk and dining set. Bring your suitcase."],
+  ["utilities", "All utilities", "Electric, gas, water, sewer and trash."],
   ["wifi", "Fast Wi-Fi", "Ready for charting, video calls and streaming."],
   ["kitchen", "Stocked kitchen", "Cookware, dishes, coffee maker and basics."],
   ["washer", "Washer and dryer", "Laundry in the home."],
-  ["calendar", "Flexible stays", "From 1 month up to 12 months."],
+  ["free-cancellation", "Flexible stays", "From 1 month up to 12 months."],
 ];
 
 const LENGTHS = ["1 month", "2 months", "3 months (13 weeks)", "6 months", "12 months", "Not sure yet"];
@@ -117,7 +119,7 @@ export default async function CorporateHousing({ searchParams }: { searchParams:
       </section>
 
       <section className="wrap ch-who" aria-label="Who we host">
-        <ul>{WHO.map(([ic, label]) => <li key={label}><Icon name={ic} size={20} />{label}</li>)}</ul>
+        <ul>{WHO.map(([ic, label]) => <li key={label}><Thumb name={ic} size={48} />{label}</li>)}</ul>
       </section>
 
       <section className="wrap" id="homes">
@@ -137,7 +139,7 @@ export default async function CorporateHousing({ searchParams }: { searchParams:
           <h2 className="ch-h2">One fixed price. All inclusive.</h2>
           <p className="ch-sub">{anyUnfurnished ? "Every furnished home and room includes all of this in the monthly price." : "No utility bills, no setup, no surprises. Just the monthly price."}</p>
           <ul className="ch-inc">
-            {INCLUDED.map(([ic, t, d]) => <li key={t}><span className="ch-inc-ic"><Icon name={ic} size={22} /></span><span><b>{t}</b><span>{d}</span></span></li>)}
+            {INCLUDED.map(([ic, t, d]) => <li key={t}><Thumb name={ic} size={56} className="ch-inc-ic" /><span><b>{t}</b><span>{d}</span></span></li>)}
           </ul>
         </div>
       </section>
@@ -146,10 +148,10 @@ export default async function CorporateHousing({ searchParams }: { searchParams:
         <div>
           <h2 className="ch-h2">For housing coordinators and companies</h2>
           <ul className="ch-biz-list">
-            <li><Icon name="receipt" size={20} />Monthly invoices and receipts for reimbursement</li>
-            <li><Icon name="buildings" size={20} />Company or agency billing on request</li>
-            <li><Icon name="key" size={20} />Self check-in, so late arrivals after a shift are easy</li>
-            <li><Icon name="talk" size={20} />One local contact for every home</li>
+            <li><Thumb name="invoices" size={44} />Monthly invoices and receipts for reimbursement</li>
+            <li><Thumb name="company-billing" size={44} />Company or agency billing on request</li>
+            <li><Thumb name="self-checkin" size={44} />Self check-in, so late arrivals after a shift are easy</li>
+            <li><Thumb name="local-contact" size={44} />One local contact for every home</li>
           </ul>
         </div>
         <div className="ch-share">

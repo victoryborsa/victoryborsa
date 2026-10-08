@@ -4,7 +4,7 @@ import { mailUrl, telUrl } from "@/lib/links.ts";
 
 export const LEGAL_LINKS: [string, string][] = [
   ["/privacy", "Privacy Policy"], ["/terms", "Terms & Conditions"], ["/cancellation-policy", "Cancellation Policy"],
-  ["/accessibility", "Accessibility"], ["/host-terms", "Host Terms"], ["/contact", "Contact"],
+  ["/accessibility", "Accessibility"], ["/host-terms", "Host Terms"], ["/photo-credits", "Photo credits"], ["/contact", "Contact"],
 ];
 
 /** Shared frame for Sevgio's policy pages: same header, footer, fonts and colors as the rest of the site. */

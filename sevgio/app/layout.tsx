@@ -100,7 +100,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {LEGAL_LINKS.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}
             </nav>
           </div>
-          <div className="wrap foot-legal">© {new Date().getFullYear()} Sevgio. All rights reserved. The photos, text, design and layout of this website belong to Sevgio and may not be copied, reproduced or reused without written permission.</div>
+          <div className="wrap foot-legal">© {new Date().getFullYear()} Sevgio. All rights reserved. The photos, text, design and layout of this website belong to Sevgio and may not be copied, reproduced or reused without written permission, except the small category photos, which are used under the licenses listed on <Link href="/photo-credits">Photo credits</Link>.</div>
         </footer>
       </body>
     </html>
