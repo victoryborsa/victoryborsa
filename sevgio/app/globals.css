@@ -1854,3 +1854,14 @@ a.stat-link:hover, a.stat-link:focus-visible { border-color: var(--accent); box-
 a.stat-link:active { transform: scale(.98); }
 tr.click-row { cursor: pointer; }
 tr.click-row:hover td { background: color-mix(in srgb, var(--accent-soft, #fff4d6) 40%, transparent); }
+
+/* Admin listings grouped by host */
+.al-host-filter { grid-template-columns: minmax(200px, 320px); }
+.al-host { font-size: 18px; margin: 16px 0 -2px; }
+.al-list > .al-host:first-child { margin-top: 0; }
+.al-host .muted, .tbl .host-head .muted { font-size: 14px; font-weight: 500; }
+.tbl tbody.host-group .host-head th { font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--ink, inherit); background: var(--surface-2); padding: 12px 14px; border-top: 1px solid var(--line); }
+.tbl tbody.host-group:first-of-type .host-head th { border-top: 0; }
+.tbl tbody.host-group tr:last-child td { border-bottom: 1px solid var(--line); }
+.tbl tbody.host-group:last-of-type tr:last-child td { border-bottom: 0; }
+@media (max-width: 640px) { .al-host-filter { grid-template-columns: 1fr; } }

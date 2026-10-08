@@ -9,14 +9,17 @@ import { money } from "@/lib/money.ts";
 import { priceTag } from "@/lib/pricing.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { todayLocal } from "@/lib/dates.ts";
+import { AutoSubmit } from "@/components/AutoSubmit.tsx";
+import { groupByHost } from "@/lib/host-groups.ts";
 
-type Row = { id: string; slug: string; title: string; city: string; status: string; booking_mode: string; nightly_price_cents: number; monthly_price_cents: number | null; min_nights: number; cover_id: string | null; photo_count: number; host_name: string; next_in: string | null; listing_paid_until: string | null; listing_fee_waived: boolean; host_role: string };
+type Row = { id: string; slug: string; title: string; city: string; status: string; booking_mode: string; nightly_price_cents: number; monthly_price_cents: number | null; min_nights: number; cover_id: string | null; photo_count: number; host_id: string; host_name: string; next_in: string | null; listing_paid_until: string | null; listing_fee_waived: boolean; host_role: string };
 
-export default async function Listings({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
+export default async function Listings({ searchParams }: { searchParams: Promise<{ msg?: string; host?: string }> }) {
+  const sp = await searchParams;
   const u = await requireUser(["host", "admin"], "/host/listings");
   const s = scopeSql(u);
   const rows = await q<Row>(
-    `SELECT p.id, p.slug, p.title, p.city, p.status, p.booking_mode, p.nightly_price_cents, p.monthly_price_cents, p.min_nights, h.name AS host_name,
+    `SELECT p.id, p.slug, p.title, p.city, p.status, p.booking_mode, p.nightly_price_cents, p.monthly_price_cents, p.min_nights, p.host_id, h.name AS host_name,
             p.listing_paid_until::text, p.listing_fee_waived, h.role AS host_role,
             (SELECT id FROM photos ph WHERE ph.property_id = p.id ORDER BY position LIMIT 1) AS cover_id,
             (SELECT count(*) FROM photos ph WHERE ph.property_id = p.id) AS photo_count,
@@ -26,10 +29,13 @@ export default async function Listings({ searchParams }: { searchParams: Promise
   );
   const fee = await feePayText();
   const due = u.role === "host" ? rows.filter(r => feeState(r, fee.enabled) === "due") : [];
+  // Admins see every host's listings, so they're grouped under each host (A–Z) with a host filter.
+  const grouped = u.role === "admin";
+  const { groups, hosts, selected } = groupByHost(rows, grouped ? sp.host ?? "" : "");
   const statusPill = (st: string) => <span className={`pill ${st === "published" ? "ok" : st === "draft" ? "warn" : "neutral"}`}>{st === "published" ? "Live" : st === "draft" ? "Draft" : "Hidden"}</span>;
   return (
     <>
-      <Flash msg={(await searchParams).msg} />
+      <Flash msg={sp.msg} />
       {due.length > 0 && (
         <div className="notice warn" style={{ marginBottom: 16 }}>
           <b>Yearly listing fee: {fee.amount} per listing.</b> {due.length === 1 ? `“${due[0].title}” needs` : `${due.length} listings need`} the fee before going live. {fee.how} We'll switch {due.length === 1 ? "it" : "them"} on once it arrives.
@@ -40,12 +46,21 @@ export default async function Listings({ searchParams }: { searchParams: Promise
         <Link className="btn btn-ghost" href="/host/listings/import">Import from file</Link>
         <Link className="btn btn-primary" href="/host/listings/new">Add a listing</Link>
       </div>
+      {grouped && hosts.length > 0 && (
+        <form className="fin-filters al-host-filter" method="get" aria-label="Filter by host" style={{ marginBottom: 16 }}>
+          <AutoSubmit />
+          <label className="field"><span>Host</span><select className="input" name="host" aria-label="Host" defaultValue={selected}><option value="">All hosts ({rows.length} listings)</option>{hosts.map(h => <option key={h.id} value={h.id}>{h.name} ({h.count})</option>)}</select></label>
+          <noscript><button className="btn btn-ghost" type="submit">Show</button></noscript>
+        </form>
+      )}
       {rows.length === 0 ? <div className="empty"><p>No listings yet.</p></div> : (
         <div className="tbl-wrap">
           <table className="tbl">
             <thead><tr><th>Listing</th><th>Status</th><th>Booking</th><th className="num">Price</th><th className="num">Photos</th><th>Next arrival</th><th /></tr></thead>
-            <tbody>
-              {rows.map(r => (
+            {groups.map(g => (
+              <tbody key={g.hostId} className={grouped ? "host-group" : undefined}>
+                {grouped && <tr className="host-head"><th colSpan={7} scope="colgroup"><span className="host-name">{g.hostName}</span> <span className="muted">· {g.rows.length} {g.rows.length === 1 ? "listing" : "listings"}</span></th></tr>}
+                {g.rows.map(r => (
                 <tr key={r.id}>
                   <td>
                     <div className="row" style={{ gap: 10, flexWrap: "nowrap" }}>
@@ -68,8 +83,9 @@ export default async function Listings({ searchParams }: { searchParams: Promise
                     </div>
                   </td>
                 </tr>
-              ))}
-            </tbody>
+                ))}
+              </tbody>
+            ))}
           </table>
         </div>
       )}

@@ -2,6 +2,11 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-08 — Listings grouped by host
+
+- Host tools → Listings (admin view) and Admin → Listings group listings under a heading for each host, hosts A–Z and each host's listings A–Z, with the number of listings beside the name.
+- A **Host** filter at the top (All hosts, or one host) shows only that host's listings. Columns and buttons are unchanged; hosts still see only their own listings, with no filter.
+
 ## 2026-10-08 — Clickable dashboards
 
 - Every number on the host and admin dashboards opens the list behind it (listings, requests, upcoming stays, booking value, questions, guests, hosts, errors, messages).
