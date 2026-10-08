@@ -2,6 +2,11 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-08 — Clickable dashboards
+
+- Every number on the host and admin dashboards opens the list behind it (listings, requests, upcoming stays, booking value, questions, guests, hosts, errors, messages).
+- Tapping anywhere on a booking row opens the reservation (admins get the full reservation page). On phones, booking tables show as cards so nothing is cut off.
+
 ## 2026-10-07 — Guests change their own dates; Pay now on every unpaid booking
 
 - **Change dates** on the guest's booking page (confirmed stays). New nights are checked against every booking and blocked night and the listing's minimum and maximum stay, then repriced at the booked nightly rate. After check-in only check-out can move. A paid stay can't be shortened online (the guest is asked to contact us). Guest, host and admins are emailed.

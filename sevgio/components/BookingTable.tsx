@@ -1,6 +1,7 @@
 import { mailUrl, telUrl } from "@/lib/links.ts";
 import { extrasOf } from "@/lib/party.ts";
 import Link from "next/link";
+import { ClickRow } from "./ClickRow.tsx";
 import { fmtDate, fmtShort } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
 import { ActionForm, SubmitButton } from "./forms.tsx";
@@ -65,14 +66,14 @@ export function BookingTable({ rows, today, now, back, showActions = true, fresh
     .sort((x, y) => (order === "in-asc" ? (x.k < y.k ? -1 : x.k > y.k ? 1 : 0) : (x.k > y.k ? -1 : x.k < y.k ? 1 : 0)));
   return (
     <div className="tbl-wrap">
-      <table className={site ? "tbl bk-tbl" : "tbl"}>
+      <table className="tbl bk-tbl">
         <thead><tr><th>Reservation</th><th>Guest</th><th>Stay</th><th>Booking</th><th>Payment</th>{site && <th>Details</th>}{showActions && <th><span className="sr-only">Actions</span></th>}</tr></thead>
         <tbody>
           {items.map(({ b, r }) => {
             if (r) {
               const label = channelLabel(r.channel), n = nightsBetween(r.check_in, r.check_out), phase = phaseOf(r.status, r);
               return (
-                <tr key={"c" + r.id} data-platform={r.channel} data-phase={phase}>
+                <ClickRow key={"c" + r.id} href={`/host/bookings/other-sites/${r.id}`} data-platform={r.channel} data-phase={phase}>
                   <td data-label="Reservation">
                     <Link className="mono" href={`/host/bookings/other-sites/${r.id}`}>{r.external_ref || <span className="bk-noref">{r.eff_kind === "unknown" ? "External Calendar Block" : `Reference not sent by ${label}`}</span>}</Link>
                     <div className="bk-site"><span className={`pill neutral ch-dot ch-${r.channel}`}>{label}</span></div>
@@ -96,14 +97,14 @@ export function BookingTable({ rows, today, now, back, showActions = true, fresh
                   </td>
                   <td data-label="Details"><DetailsCell id={r.id} channel={r.channel} site={label} name={r.guest_name} refCode={r.external_ref} block={r.eff_kind === "unknown"} /></td>
                   {showActions && <td data-label="" />}
-                </tr>
+                </ClickRow>
               );
             }
             b = b!;
             const active = ["pending", "awaiting_payment", "confirmed"].includes(b.status) && b.check_out >= today;
             const phase = phaseOf(b.status, b), pay = paymentStatus(b);
             return (
-              <tr key={b.id} className={fresh?.has(b.id) ? "row-new" : undefined} data-phase={phase}>
+              <ClickRow key={b.id} href={`${detailBase}${b.code}`} className={fresh?.has(b.id) ? "row-new" : undefined} data-phase={phase}>
                 <td data-label="Reservation">
                   <Link className="mono" href={`${detailBase}${b.code}`}>{b.code}</Link>{fresh?.has(b.id) && <span className="badge-new">New</span>}
                   {site && <div className="bk-site"><span className="pill neutral ch-dot ch-sevgio">Sevgio.com</span></div>}
@@ -169,7 +170,7 @@ export function BookingTable({ rows, today, now, back, showActions = true, fresh
                     )}
                   </td>
                 )}
-              </tr>
+              </ClickRow>
             );
           })}
         </tbody>

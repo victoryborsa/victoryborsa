@@ -53,14 +53,14 @@ export default async function AdminHome() {
       {hostReqs > 0 && <div className="notice warn" role="status" style={{ marginBottom: 16 }}><div><b>{hostReqs} host request{hostReqs === 1 ? "" : "s"}.</b> <Link href="/admin/users?role=requests">Review in Users &amp; roles</Link> to approve them as hosts.</div></div>}
       {fresh > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}><div><b>{fresh} new booking{fresh === 1 ? "" : "s"}.</b> <Link href="/admin/bookings">Open Bookings</Link> to see {fresh === 1 ? "it" : "them"}.</div></div>}
       <div className="stats">
-        <div className="stat"><b>{s.customers}</b><span>Guests</span></div>
-        <div className="stat"><b>{s.hosts}</b><span>Hosts</span></div>
-        <div className="stat"><b>{s.live}/{s.listings}</b><span>Listings live</span></div>
-        <div className="stat"><b>{s.upcoming}</b><span>Upcoming confirmed stays</span></div>
-        <div className="stat"><b style={{ color: s.pending ? "var(--warn)" : undefined }}>{s.pending}</b><span>Requests awaiting hosts</span></div>
-        <div className="stat"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(s.booked30)}</b><span>Booked in the last 30 days</span></div>
-        <div className="stat"><b style={{ color: s.open_errors ? "var(--danger)" : undefined }}>{s.open_errors}</b><span><Link href="/admin/log?level=error">Unresolved errors</Link></span></div>
-        <div className="stat"><b>{s.new_messages}</b><span><Link href="/admin/messages">New contact messages</Link></span></div>
+        <Link className="stat stat-link" href="/admin/users?role=customer"><b>{s.customers}</b><span>Guests</span></Link>
+        <Link className="stat stat-link" href="/admin/users?role=host"><b>{s.hosts}</b><span>Hosts</span></Link>
+        <Link className="stat stat-link" href="/admin/listings"><b>{s.live}/{s.listings}</b><span>Listings live</span></Link>
+        <Link className="stat stat-link" href="/admin/bookings?when=upcoming"><b>{s.upcoming}</b><span>Upcoming confirmed stays</span></Link>
+        <Link className="stat stat-link" href="/admin/bookings?status=pending"><b style={{ color: s.pending ? "var(--warn)" : undefined }}>{s.pending}</b><span>Requests awaiting hosts</span></Link>
+        <Link className="stat stat-link" href="/admin/bookings"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(s.booked30)}</b><span>Booked in the last 30 days</span></Link>
+        <Link className="stat stat-link" href="/admin/log?level=error"><b style={{ color: s.open_errors ? "var(--danger)" : undefined }}>{s.open_errors}</b><span>Unresolved errors</span></Link>
+        <Link className="stat stat-link" href="/admin/messages"><b>{s.new_messages}</b><span>New contact messages</span></Link>
       </div>
       <h2 style={{ marginBottom: 12 }}>Needs attention</h2>
       {recent.length ? <EventTable rows={recent} /> : <div className="notice ok">No unresolved errors or warnings.</div>}

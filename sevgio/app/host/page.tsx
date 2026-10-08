@@ -29,17 +29,19 @@ export default async function HostHome({ searchParams }: { searchParams: Promise
   const arrivals = await q<BookingRow>(
     `SELECT b.*, p.title, g.email AS guest_email FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users g ON g.id = b.guest_id
      WHERE ${s.sql} AND b.status = 'confirmed' AND b.check_in BETWEEN $${n + 1} AND $${n + 2} ORDER BY b.check_in`, [...s.params, today, addDays(today, 14)]);
+  // Admins open the full reservation page; hosts open the booking page they share with the guest.
+  const detailBase = u.role === "admin" ? "/admin/bookings/" : "/trips/";
   const noPhotos = await one<{ n: number }>(`SELECT count(*) AS n FROM properties p WHERE ${s.sql} AND NOT EXISTS (SELECT 1 FROM photos ph WHERE ph.property_id = p.id)`, s.params);
 
   return (
     <>
       <Flash msg={(await searchParams).msg} />
       <div className="stats">
-        <div className="stat"><b>{stats.live}/{stats.listings}</b><span>Listings live</span></div>
-        <div className="stat"><b style={{ color: stats.pending ? "var(--warn)" : undefined }}>{stats.pending}</b><span>Requests waiting for you</span></div>
-        <div className="stat"><b>{stats.upcoming}</b><span>Upcoming stays</span></div>
-        <div className="stat"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(stats.revenue)}</b><span>Upcoming booking value</span></div>
-        <div className="stat"><b>{stats.unread}</b><span><Link href="/host/messages">Unanswered questions</Link></span></div>
+        <Link className="stat stat-link" href="/host/listings"><b>{stats.live}/{stats.listings}</b><span>Listings live</span></Link>
+        <Link className="stat stat-link" href="/host/bookings?view=requests"><b style={{ color: stats.pending ? "var(--warn)" : undefined }}>{stats.pending}</b><span>Requests waiting for you</span></Link>
+        <Link className="stat stat-link" href="/host/bookings?view=upcoming"><b>{stats.upcoming}</b><span>Upcoming stays</span></Link>
+        <Link className="stat stat-link" href="/host/bookings?view=upcoming"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(stats.revenue)}</b><span>Upcoming booking value</span></Link>
+        <Link className="stat stat-link" href="/host/messages"><b>{stats.unread}</b><span>Unanswered questions</span></Link>
       </div>
       {stats.listings === 0 && (
         <div className="empty" style={{ marginBottom: 24 }}>
@@ -50,9 +52,9 @@ export default async function HostHome({ searchParams }: { searchParams: Promise
       )}
       {noPhotos && noPhotos.n > 0 && <div className="notice warn" style={{ marginBottom: 16 }}>{noPhotos.n} listing{noPhotos.n > 1 ? "s have" : " has"} no photos yet. <Link href="/host/listings">Add photos</Link> so guests can book.</div>}
       <h2 style={{ marginBottom: 12 }}>Requests waiting for you</h2>
-      {requests.length ? <BookingTable rows={requests} today={today} back="/host" /> : <p className="muted" style={{ marginBottom: 8 }}>No requests right now. Requests expire after 48 hours without a reply.</p>}
+      {requests.length ? <BookingTable rows={requests} today={today} back="/host" detailBase={detailBase} /> : <p className="muted" style={{ marginBottom: 8 }}>No requests right now. Requests expire after 48 hours without a reply.</p>}
       <h2 style={{ margin: "28px 0 12px" }}>Arrivals in the next 14 days</h2>
-      {arrivals.length ? <BookingTable rows={arrivals} today={today} back="/host" /> : <p className="muted">No arrivals in the next two weeks.</p>}
+      {arrivals.length ? <BookingTable rows={arrivals} today={today} back="/host" detailBase={detailBase} /> : <p className="muted">No arrivals in the next two weeks.</p>}
     </>
   );
 }
