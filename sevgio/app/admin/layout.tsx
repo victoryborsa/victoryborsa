@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth.ts";
 import { DashNav } from "@/components/DashNav.tsx";
 import { AdminFind } from "@/components/AdminFind.tsx";
@@ -8,6 +9,7 @@ import { one } from "@/lib/db.ts";
 import { failingFeedCount } from "@/lib/sync-health.ts";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const u = await requireUser(["admin"], "/admin");

@@ -155,7 +155,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
           {dateError && <div className="notice warn" style={{ marginBottom: 18 }} role="alert">{dateError}</div>}
           {!ci && !dateError && <div className="notice info" style={{ marginBottom: 18 }}>Add your dates to see only homes that are free, with the total price for your stay.</div>}
           {list.length ? (
-            <div className="cards results-cards">{list.map((p, i) => <PropertyCard key={p.id} p={p} demand={demand} prices={prices[p.id]} ci={ci} co={co} guests={guests} taxPercent={settings.tax_percent} eager={i < 3} />)}</div>
+            <div className="cards results-cards">{list.map((p, i) => <PropertyCard key={p.id} p={p} demand={demand} prices={prices[p.id]} ci={ci} co={co} guests={guests} taxPercent={settings.tax_percent} eager={i < 3} first={i === 0} />)}</div>
           ) : (
             <div className="empty">
               <h3>No stays match your search</h3>

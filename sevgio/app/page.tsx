@@ -14,7 +14,7 @@ import { priceTag } from "@/lib/pricing.ts";
 import { PROPERTY_TYPES } from "@/lib/constants.ts";
 import { VISITOR_COOKIE } from "@/lib/listing-stats.ts";
 import { getT, LANGS_AZ } from "@/lib/i18n.ts";
-import { pageMeta, businessLd, JsonLd } from "@/lib/seo.tsx";
+import { pageMeta, businessLd, websiteLd, JsonLd } from "@/lib/seo.tsx";
 import { siteUrl } from "@/lib/email.ts";
 import type { Metadata } from "next";
 
@@ -29,14 +29,14 @@ function kindIn(p: CardProperty) {
   return `${kind} in ${place}`;
 }
 
-function MiniCard({ p, saved, eager }: { p: CardProperty; saved: boolean; eager?: boolean }) {
+function MiniCard({ p, saved, eager, first }: { p: CardProperty; saved: boolean; eager?: boolean; first?: boolean }) {
   const tag = priceTag(p);
   const fav = p.rating && p.rating >= 4.8 && p.review_count >= 5;
   return (
     <div className="ab-card" data-pid={p.id}>
       <Link href={`/stays/${p.slug}`} className="ab-card-link">
         <span className="ab-ph">
-          {p.cover_id ? <img src={photoUrl(p.cover_id, "thumb")} alt={p.title} loading={eager ? "eager" : "lazy"} decoding="async" width={360} height={342} /> : <span className="noph">Photos coming soon</span>}
+          {p.cover_id ? <img src={photoUrl(p.cover_id, "thumb")} alt={p.title} loading={eager ? "eager" : "lazy"} decoding={eager ? undefined : "async"} fetchPriority={first ? "high" : undefined} width={360} height={342} /> : <span className="noph">Photos coming soon</span>}
           {fav && <span className="ab-badge">Guest favorite</span>}
         </span>
         <span className="ab-c1">{kindIn(p)}</span>
@@ -73,6 +73,7 @@ export default async function Home() {
 
   return (
     <div className="ab-home">
+      <JsonLd data={websiteLd(siteUrl())} />
       <JsonLd data={businessLd(siteUrl(), {})} />
       <div className="ab-band">
         <nav className="ab-tabs" aria-label="Browse">
@@ -87,7 +88,7 @@ export default async function Home() {
       <div className="ab-body">
         {rows.length ? rows.map((r, ri) => (
           <CardRow key={r.title} title={r.title} href={r.href}>
-            {r.list.map((p, i) => <MiniCard key={p.id} p={p} saved={saved.has(p.id)} eager={ri === 0 && i < 4} />)}
+            {r.list.map((p, i) => <MiniCard key={p.id} p={p} saved={saved.has(p.id)} eager={ri === 0 && i < 4} first={ri === 0 && i === 0} />)}
           </CardRow>
         )) : <div className="empty"><h3>New homes are on the way</h3><p className="muted">Check back soon, or contact us and we'll help you find a stay.</p></div>}
 
@@ -106,7 +107,7 @@ export default async function Home() {
               <p className="home-welcome">{t("home.welcome")}</p>
               <nav className="hello" aria-label={t("home.pickLang")}>
                 {LANGS_AZ.map(l => (
-                  <a key={l.code} href={`/lang/${l.code}?next=/`} lang={l.code} hrefLang={l.code} className={l.code === lang ? "on" : undefined} aria-current={l.code === lang ? "true" : undefined} title={l.name}>{l.hello}</a>
+                  <a key={l.code} href={`/lang/${l.code}?next=/`} rel="nofollow" lang={l.code} hrefLang={l.code} className={l.code === lang ? "on" : undefined} aria-current={l.code === lang ? "true" : undefined} title={l.name}>{l.hello}</a>
                 ))}
               </nav>
               <p className="hint" style={{ marginTop: 6 }}>{t("home.pickLang")}</p>

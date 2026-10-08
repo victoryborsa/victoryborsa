@@ -7,7 +7,7 @@ import { priceTag, quote } from "@/lib/pricing.ts";
 import type { Demand } from "@/lib/smart-pricing.ts";
 import { Rating } from "./ui.tsx";
 
-export function PropertyCard({ p, ci, co, guests, taxPercent, eager, demand, prices }: { p: CardProperty; ci?: string; co?: string; guests?: number; taxPercent: number; eager?: boolean; demand?: Demand; prices?: Record<string, number> }) {
+export function PropertyCard({ p, ci, co, guests, taxPercent, eager, first, demand, prices }: { p: CardProperty; ci?: string; co?: string; guests?: number; taxPercent: number; eager?: boolean; first?: boolean; demand?: Demand; prices?: Record<string, number> }) {
   const pr = ci && co ? quote({ ...p, demand, prices }, ci, co, taxPercent, guests ? { adults: guests, children: 0, free_children: 0 } : undefined) : null;
   const qs = new URLSearchParams();
   if (ci && co) { qs.set("ci", ci); qs.set("co", co); }
@@ -18,7 +18,7 @@ export function PropertyCard({ p, ci, co, guests, taxPercent, eager, demand, pri
     <Link className="card" href={href} data-pid={p.id}>
       <div className="ph">
         {p.cover_id ? (
-          <img src={photoUrl(p.cover_id, "thumb")} alt={p.title} loading={eager ? "eager" : "lazy"} decoding="async" width={720} height={540} />
+          <img src={photoUrl(p.cover_id, "thumb")} alt={p.title} loading={eager ? "eager" : "lazy"} decoding={eager ? undefined : "async"} fetchPriority={first ? "high" : undefined} width={720} height={540} />
         ) : (
           <div className="noph">Photos coming soon</div>
         )}

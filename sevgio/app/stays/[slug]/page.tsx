@@ -28,7 +28,7 @@ import { UTILITIES } from "@/lib/constants.ts";
 import { Icon } from "@/components/Icon.tsx";
 import type { Property } from "@/lib/bookings.ts";
 import { guestDescription, guestRules, policies } from "@/lib/policies.ts";
-import { JsonLd, listingLd } from "@/lib/seo.tsx";
+import { JsonLd, breadcrumbLd, listingLd } from "@/lib/seo.tsx";
 
 /** Long-term lease homes: rent, fees and Request / Apply buttons in place of the booking calendar. */
 function LeasePanel({ p, phone, freeFrom }: { p: Property; phone: string; freeFrom: string | null }) {
@@ -116,10 +116,18 @@ export default async function StayPage({ params, searchParams }: Params) {
     : linked.rooms.map(r => ({ name: r.title.split(/ [-\u2013\u2014] /).length > 1 ? r.title.split(/ [-\u2013\u2014] /).slice(1).join(" - ") : r.title, sqft: null, beds: parseBeds(r.beds_detail), img: r.cover_id ? photoUrl(r.cover_id) : null,
         note: `${r.bathroom_type === "shared" ? "Shared" : "Private"} bathroom · also bookable on its own`, href: `/stays/${r.slug}` }));
 
+  // Home › Stays › (the whole house, for a room in it) › this stay.
+  const crumbs = [{ name: "Home", href: "/" }, { name: "Stays", href: "/stays" }, ...(linked.parent ? [{ name: linked.parent.title, href: `/stays/${linked.parent.slug}` }] : []), { name: p.title, href: `/stays/${p.slug}` }];
+
   return (
     <div className="wrap has-mobile-book">
       {bookable && <JsonLd data={listingLd(siteUrl(), p, photos.slice(0, 5).map(ph => siteUrl() + photoUrl(ph.id)))} />}
-      <div className="crumbs"><Link href="/stays">← All stays</Link></div>
+      {bookable && <JsonLd data={breadcrumbLd(siteUrl(), crumbs.map(c => ({ name: c.name, path: c.href })))} />}
+      <nav className="crumbs" aria-label="Breadcrumb">
+        <ol>
+          {crumbs.map((c, i) => <li key={c.href}>{i < crumbs.length - 1 ? <Link href={c.href}>{c.name}</Link> : <span aria-current="page">{c.name}</span>}</li>)}
+        </ol>
+      </nav>
       {!bookable && <div className="notice warn" style={{ marginBottom: 12 }}>Preview: this listing is <b>{p.status}</b> and not visible to guests.</div>}
       <div className="row" style={{ alignItems: "end", marginBottom: 16 }}>
         <div className="stack" style={{ gap: 6, flex: 1, minWidth: 240 }}>

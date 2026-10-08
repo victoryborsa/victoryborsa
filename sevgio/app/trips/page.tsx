@@ -9,7 +9,7 @@ import { money } from "@/lib/money.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { StatusPill } from "@/components/ui.tsx";
 
-export const metadata: Metadata = { title: "My trips" };
+export const metadata: Metadata = { title: "My trips", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
 type Row = Booking & { title: string; slug: string; city: string; cover_id: string | null };

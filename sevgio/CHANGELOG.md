@@ -2,6 +2,14 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-08 — Search engines, redirects and faster first screen
+
+- **robots.txt:** Google, Bing and ChatGPT search (OAI-SearchBot) may crawl every public page and the listing and guide photos (`/api/photos/`, `/api/site-photos/` were blocked before). `/host-terms` is no longer blocked by mistake (the old `Disallow: /host` matched it). Language-switch links (`/lang/…`) are not crawled. AI training crawlers (GPTBot, Google-Extended, CCBot and the rest) stay blocked.
+- **Private pages:** admin, host tools, trips, account, booking, sign-in and password pages send `X-Robots-Tag: noindex` and a noindex tag.
+- **One address per page:** `www.sevgio.com/…` redirects permanently to `sevgio.com/…`. Addresses from the previous website (`/login`, `/contact-us`, `/terms-of-service`, `/property/…`, `/become-host` and others) redirect in one step to the page that replaced them.
+- **Listing pages:** a Home › Stays › (house) › listing breadcrumb, with matching breadcrumb structured data. The star rating stays on the page but is no longer in structured data, because it is typed in by an admin rather than collected from Sevgio guests. The homepage names the site (WebSite structured data).
+- **Speed:** the first listing photo on the homepage and Stays page loads first; phones get a 1000px copy of a listing's main photo instead of the 1800px one; the corporate housing skyline is served as AVIF/WebP at 800/1200/1600px with the JPEG as fallback; the monospace font no longer delays the first screen.
+
 ## 2026-10-08 — Colour filter bar
 
 - The quick filters on the Stays page (Filters, Entire home, Private room, Allows pets, Self check-in, Free parking, Free cancellation, Wifi, Kitchen, Washer, Air conditioning, Workspace, Hot tub, Fireplace, Instant book, Private bathroom, Monthly stays) are rounded pills with full-colour icons, in one row. Phones swipe sideways; computers scroll the row sideways.

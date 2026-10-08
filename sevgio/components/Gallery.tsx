@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 type Ph = { id: string; caption: string };
-const src = (id: string, s: "thumb" | "large") => `/api/photos/${id}?s=${s}`;
+const src = (id: string, s: "thumb" | "medium" | "large") => `/api/photos/${id}?s=${s}`;
 
 export function Gallery({ photos, title }: { photos: Ph[]; title: string }) {
   const [open, setOpen] = useState<number | null>(null);
@@ -26,7 +26,9 @@ export function Gallery({ photos, title }: { photos: Ph[]; title: string }) {
       <div className="gallery" style={photos.length < 3 ? { gridTemplateColumns: "1fr", height: "auto" } : undefined}>
         {shown.map((ph, i) => (
           <button key={ph.id} type="button" className={`g${i} ${i >= 3 ? "gx" : ""}`} onClick={() => setOpen(i)} aria-label={`Open photo ${i + 1} of ${photos.length}${ph.caption ? ": " + ph.caption : ""}`}>
-            <img src={src(ph.id, i === 0 ? "large" : "thumb")} alt={ph.caption || `${title}, photo ${i + 1}`} loading={i === 0 ? "eager" : "lazy"} fetchPriority={i === 0 ? "high" : "auto"} />
+            {i === 0
+              ? <img src={src(ph.id, "large")} srcSet={`${src(ph.id, "medium")} 1000w, ${src(ph.id, "large")} 1800w`} sizes="(min-width: 760px) 560px, 100vw" alt={ph.caption || `${title}, photo 1`} fetchPriority="high" />
+              : <img src={src(ph.id, "thumb")} alt={ph.caption || `${title}, photo ${i + 1}`} loading="lazy" decoding="async" />}
             {i === 0 && photos.length > 1 && <span className="more">View all {photos.length} photos</span>}
           </button>
         ))}

@@ -10,7 +10,7 @@ export function LangMenu({ current, label, langs }: { current: string; label: st
       <summary aria-label={label}><span aria-hidden>🌐</span> {current.toUpperCase()}</summary>
       <ul>
         {langs.map(l => (
-          <li key={l.code}><a href={`/lang/${l.code}?next=${encodeURIComponent(path)}`} hrefLang={l.code} lang={l.code} aria-current={l.code === now?.code ? "true" : undefined}>{l.name}</a></li>
+          <li key={l.code}><a href={`/lang/${l.code}?next=${encodeURIComponent(path)}`} rel="nofollow" hrefLang={l.code} lang={l.code} aria-current={l.code === now?.code ? "true" : undefined}>{l.name}</a></li>
         ))}
       </ul>
     </details>

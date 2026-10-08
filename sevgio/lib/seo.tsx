@@ -28,7 +28,7 @@ const TYPES: Record<string, string> = { apartment: "Apartment", house: "House", 
 
 /** One home: what it is, where (town only, never the street address), how many it sleeps, and its price. */
 export function listingLd(site: string, p: { slug: string; title: string; description: string; property_type: string; city: string; area: string; bedrooms: number; bathrooms: number; max_guests: number;
-  nightly_price_cents: number; corp_lease_only?: boolean; corp_monthly_cents?: number | null; amenities: string[]; rating: number | null; review_count: number }, images: string[]) {
+  nightly_price_cents: number; corp_lease_only?: boolean; corp_monthly_cents?: number | null; amenities: string[] }, images: string[]) {
   const monthly = p.corp_lease_only && p.corp_monthly_cents;
   return {
     "@context": "https://schema.org", "@type": TYPES[p.property_type] || "Accommodation", name: p.title, url: `${site}/stays/${p.slug}`,
@@ -38,7 +38,20 @@ export function listingLd(site: string, p: { slug: string; title: string; descri
     petsAllowed: p.amenities.includes("pets"),
     offers: { "@type": "Offer", priceCurrency: "USD", price: ((monthly || p.nightly_price_cents) / 100).toFixed(2), availability: "https://schema.org/InStock",
       priceSpecification: { "@type": "UnitPriceSpecification", price: ((monthly || p.nightly_price_cents) / 100).toFixed(2), priceCurrency: "USD", unitText: monthly ? "MONTH" : "NIGHT" } },
-    ...(p.rating && p.review_count ? { aggregateRating: { "@type": "AggregateRating", ratingValue: p.rating, reviewCount: p.review_count } } : {}),
+    // No aggregateRating: the star rating shown on the page is typed in by an admin (often from other booking sites), and search engines only accept ratings collected on this site.
+  };
+}
+
+/** The site itself, so search engines know its name is Sevgio. */
+export function websiteLd(site: string) {
+  return { "@context": "https://schema.org", "@type": "WebSite", name: "Sevgio", url: `${site}/` };
+}
+
+/** Breadcrumb trail, matching the one shown on the page. The last item is the page itself. */
+export function breadcrumbLd(site: string, trail: { name: string; path: string }[]) {
+  return {
+    "@context": "https://schema.org", "@type": "BreadcrumbList",
+    itemListElement: trail.map((t, i) => ({ "@type": "ListItem", position: i + 1, name: t.name, item: site + t.path })),
   };
 }
 

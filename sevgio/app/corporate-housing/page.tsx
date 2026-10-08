@@ -17,6 +17,10 @@ import { DatePicker } from "@/components/DatePicker.tsx";
 import { corporateRequestAction } from "@/app/actions/messages.ts";
 import { JsonLd, businessLd } from "@/lib/seo.tsx";
 
+// The skyline photo in AVIF and WebP at three widths; the original JPEG stays as the fallback.
+const SKYLINE = (ext: string) => [800, 1200, 1600].map(w => `/img/pittsburgh-skyline-${w}.${ext} ${w}w`).join(", ");
+const SKYLINE_SIZES = "(min-width: 901px) 55vw, 100vw";
+
 export const metadata: Metadata = {
   alternates: { canonical: "/corporate-housing" },
   openGraph: { title: "Furnished & Corporate Housing in Pittsburgh · Sevgio", url: "/corporate-housing", description: "Fully furnished monthly homes in Pittsburgh for travel nurses, traveling physicians, corporate teams, relocating employees and extended stays." },
@@ -105,7 +109,11 @@ export default async function CorporateHousing({ searchParams }: { searchParams:
             <a className="btn btn-ghost" href="#homes">See homes and rooms</a>
           </div>
         </div>
-        <img className="ch-hero-img" src="/img/pittsburgh-skyline.jpg" alt="The Pittsburgh skyline over the rivers" width={1600} height={1067} fetchPriority="high" />
+        <picture>
+          <source type="image/avif" srcSet={SKYLINE("avif")} sizes={SKYLINE_SIZES} />
+          <source type="image/webp" srcSet={SKYLINE("webp")} sizes={SKYLINE_SIZES} />
+          <img className="ch-hero-img" src="/img/pittsburgh-skyline.jpg" alt="The Pittsburgh skyline over the rivers" width={1600} height={1067} fetchPriority="high" />
+        </picture>
       </section>
 
       <section className="wrap ch-who" aria-label="Who we host">

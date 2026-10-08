@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth.ts";
 import { DashNav } from "@/components/DashNav.tsx";
 import { unseenBookings } from "@/lib/alerts.ts";
@@ -6,6 +7,7 @@ import { ConflictBanner } from "@/components/Conflicts.tsx";
 import { failingFeedCount } from "@/lib/sync-health.ts";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function HostLayout({ children }: { children: React.ReactNode }) {
   const u = await requireUser(["host", "admin"], "/host");

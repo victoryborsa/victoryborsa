@@ -8,7 +8,7 @@ import { one } from "@/lib/db.ts";
 import { PasswordInput } from "@/components/PasswordInput.tsx";
 import { Icon } from "@/components/Icon.tsx";
 
-export const metadata: Metadata = { title: "Account" };
+export const metadata: Metadata = { title: "Account", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
 export default async function Account({ searchParams }: { searchParams: Promise<{ reset?: string }> }) {
