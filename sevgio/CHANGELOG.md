@@ -2,6 +2,11 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-08 — Colour filter bar
+
+- The quick filters on the Stays page (Filters, Entire home, Private room, Allows pets, Self check-in, Free parking, Free cancellation, Wifi, Kitchen, Washer, Air conditioning, Workspace, Hot tub, Fireplace, Instant book, Private bathroom, Monthly stays) are rounded pills with full-colour icons, in one row. Phones swipe sideways; computers scroll the row sideways.
+- Each pill keeps the filter it already had. The icons are SVG files in `public/icons/filters/`.
+
 ## 2026-10-08 — Colour category icons
 
 - The homepage category tabs (All, Homes, Rooms, Monthly, Corporate, Things to do, Events) use the new Sevgio colour icons instead of black line icons, on phone and computer. The "Find things to do in Pittsburgh" card uses the balloon icon.
