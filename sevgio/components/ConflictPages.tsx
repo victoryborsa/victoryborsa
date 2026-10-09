@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BellRinging, CalendarCheck, CheckCircle, EnvelopeSimple, Gauge, Warning } from "@phosphor-icons/react/dist/ssr";
+import { ColorIcon } from "./Icon.tsx";
 import type { User } from "@/lib/auth.ts";
 import { checkConflicts, conflictSummary, conflictTitle, feedStatus, feedsById, getConflict, listConflicts, openConflictCounts, stillActive, turnoverSettings } from "@/lib/conflicts.ts";
 import { RESOLUTIONS, hoursLabel } from "@/lib/conflict-core.ts";
@@ -40,7 +40,7 @@ export async function ConflictsList({ u, base, tab }: { u: User; base: Base; tab
         <div className="cf-list">
           {rows.length ? rows.map(c => <ConflictCard key={c.id} c={c} base={base} />) : (
             <div className="cf-empty">
-              <CheckCircle size={32} weight="bold" aria-hidden />
+              <ColorIcon file="check" size={32} />
               <b>{which === "open" ? "No double bookings" : "Nothing resolved yet"}</b>
               <p className="muted">{which === "open" ? "Sevgio checks again after every calendar refresh and every new or changed reservation." : "Conflicts you mark as resolved are kept here."}</p>
             </div>
@@ -48,15 +48,15 @@ export async function ConflictsList({ u, base, tab }: { u: User; base: Base; tab
         </div>
         <aside className="cf-side">
           <section className="cf-box">
-            <h3><BellRinging size={18} weight="bold" aria-hidden />How you&apos;re alerted</h3>
+            <h3><ColorIcon file="bell" size={18} />How you&apos;re alerted</h3>
             <ul className="cf-alerts">
-              <li><EnvelopeSimple size={18} weight="bold" aria-hidden /><span><b>Email</b> to every admin and the listing&apos;s host{emailReady() ? "." : <><br /><span className="cf-warn-text">Email isn&apos;t set up on the server yet (SMTP settings), so emails can&apos;t go out.</span></>}</span></li>
-              <li><Warning size={18} weight="bold" aria-hidden /><span><b>Dashboard notice</b> at the top of every host and admin page until each conflict is resolved.</span></li>
+              <li><ColorIcon file="envelope" size={18} /><span><b>Email</b> to every admin and the listing&apos;s host{emailReady() ? "." : <><br /><span className="cf-warn-text">Email isn&apos;t set up on the server yet (SMTP settings), so emails can&apos;t go out.</span></>}</span></li>
+              <li><ColorIcon file="warn" size={18} /><span><b>Dashboard notice</b> at the top of every host and admin page until each conflict is resolved.</span></li>
             </ul>
             <PushToggle publicKey={keys.publicKey} />
           </section>
           <section className="cf-box">
-            <h3><CalendarCheck size={18} weight="bold" aria-hidden />Calendar links</h3>
+            <h3><ColorIcon file="calcheck" size={18} />Calendar links</h3>
             <p className="hint">Other sites update their calendar links on their own schedule, and Sevgio reads each link every hour, so a reservation made there can reach Sevgio a few hours later.</p>
             {feeds.length ? (
               <ul className="cf-feeds">
@@ -68,7 +68,7 @@ export async function ConflictsList({ u, base, tab }: { u: User; base: Base; tab
             ) : <p className="hint">No calendar links yet. Add them in Listings › Calendar.</p>}
           </section>
           <section className="cf-box" id="turnover">
-            <h3><Gauge size={18} weight="bold" aria-hidden />Turnover time</h3>
+            <h3><ColorIcon file="dashboard" size={18} />Turnover time</h3>
             <p className="hint">Extra time needed between check-out and the next check-in. With 0, a same-day changeover is fine as long as check-in is after check-out.</p>
             <ul className="cf-turn">
               {turnover.map(t => (

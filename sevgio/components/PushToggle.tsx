@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { BellRinging, BellSlash, DeviceMobile } from "@phosphor-icons/react";
+import { ColorIcon } from "./Icon.tsx";
 import { removePushSubscriptionAction, savePushSubscriptionAction, testPushAction } from "@/app/actions/conflicts.ts";
 
 type State = "loading" | "unsupported" | "ios-home" | "blocked" | "off" | "on";
@@ -67,7 +67,7 @@ export function PushToggle({ publicKey }: { publicKey: string }) {
   return (
     <div className="cf-push" data-state={state}>
       <div className="cf-push-head">
-        {state === "on" ? <BellRinging size={22} weight="bold" aria-hidden /> : state === "blocked" || state === "unsupported" ? <BellSlash size={22} weight="bold" aria-hidden /> : <DeviceMobile size={22} weight="bold" aria-hidden />}
+        {state === "on" ? <ColorIcon file="bell" size={22} /> : state === "blocked" || state === "unsupported" ? <ColorIcon file="bellslash" size={22} /> : <ColorIcon file="phone" size={22} />}
         <div>
           <b>Phone and computer alerts</b>
           <p className="hint">

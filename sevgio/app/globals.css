@@ -979,8 +979,8 @@ a.cs-card:hover { border-color: var(--accent); }
 .df { position: relative; }
 .df-box { position: relative; display: flex; }
 .df-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; cursor: pointer; color: var(--ink); font: inherit; padding-right: 44px; }
-.df-btn svg { position: absolute; right: 12px; color: var(--muted); pointer-events: none; }
-.df-box:has(.df-clear) .df-btn svg { right: 44px; }
+.df-btn svg, .df-btn .ic { position: absolute; right: 12px; color: var(--muted); pointer-events: none; }
+.df-box:has(.df-clear) .df-btn svg, .df-box:has(.df-clear) .df-btn .ic { right: 44px; }
 .df-box:has(.df-clear) .df-btn { padding-right: 76px; }
 .df-btn.on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
 .df-ph { color: var(--muted); }
@@ -1237,6 +1237,9 @@ body:has(.photo-page) footer { position: relative; }
 
 /* Icons: black (the text color), bold lines, easy to see. */
 .ic { flex: none; color: var(--ink); }
+/* Colour icon images keep their own colours and never stretch. */
+img.ic-color, img.dn-ic-color { display: inline-block; object-fit: contain; vertical-align: middle; }
+.amen li img { flex: none; }
 .chip .ic { width: 17px; height: 17px; }
 .chip.on .ic { color: #101820; }
 .ab-tabs a .ab-tab-ico { color: var(--ink); width: 24px; height: 24px; }

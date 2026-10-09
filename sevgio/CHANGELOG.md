@@ -2,6 +2,12 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-09 — Colour icons on every page
+
+- Every icon that names a thing (amenities, places, people, statuses, menus) is now a full-colour icon in the same style as the homepage tabs and the Stays filter bar. Files are in `public/icons/color/`; the `Icon` component picks them up automatically.
+- Covered: homepage promos, listing amenities and beds, Corporate Housing (what's included, who we host, coordinator list, utilities), Events team tabs, Pittsburgh guide tabs and tips, guest account and trips, reservation lists, status badges, host and admin side menus, double-booking pages and alert settings.
+- Action marks (open link, send, edit) and controls (search, menu, arrows, close) are unchanged. Photos are unchanged.
+
 ## 2026-10-09 — Corporate Housing: Who we host panels
 
 - The five "Who we host" pills (Travel nurses, Doctors and residents, Corporate teams, Contractors, Relocating families) are now buttons, icon and label alike, with their original icons. Each opens a panel right below the row with a photo, heading, subtitle, full description, the shared "Property features… vary by listing" note and its own Request button. The open button is highlighted; clicking it again closes the panel.

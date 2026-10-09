@@ -984,7 +984,7 @@ test("listing settings on phone and computer: Utilities line under the price and
     await expect(page.getByText("Leave empty = Available now.")).toBeVisible();
 
     // Tapping the field (or its calendar icon) opens the calendar; move ahead a few months and pick a day.
-    await (device === "phone" ? field.locator("svg") : field).click({ force: device === "phone" });
+    await (device === "phone" ? field.locator(".ic") : field).click({ force: device === "phone" });
     const cal = page.getByRole("dialog", { name: "Choose available from" });
     await expect(cal).toBeVisible();
     for (let i = 0; i < 4 && !(await cal.locator(`[data-day="${target}"]`).count()); i++) await cal.getByRole("button", { name: "Next month" }).click();

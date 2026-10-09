@@ -9,7 +9,7 @@ import { currentUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { one } from "@/lib/db.ts";
 import { addDays, todayLocal } from "@/lib/dates.ts";
-import { placeFull, ACCESS, AMENITY_GROUPS, CANCELLATION, PROPERTY_TYPES, bedLabelLong, parseBeds, parseRooms, parseServices, servicePrice } from "@/lib/constants.ts";
+import { placeFull, ACCESS, AMENITY_GROUPS, AMENITY_GROUP_ICON, AMENITY_ICON, CANCELLATION, PROPERTY_TYPES, bedLabelLong, parseBeds, parseRooms, parseServices, servicePrice } from "@/lib/constants.ts";
 import { partyFromParams } from "@/lib/party.ts";
 import { Gallery } from "@/components/Gallery.tsx";
 import { StayChooser } from "@/components/StayChooser.tsx";
@@ -20,12 +20,12 @@ import { cookies } from "next/headers";
 import { siteUrl } from "@/lib/email.ts";
 import { money } from "@/lib/money.ts";
 import { AvailabilitySection, BookingPanel, BookingProvider, MobileBookBar } from "@/components/booking.tsx";
-import { Check, Rating } from "@/components/ui.tsx";
+import { Rating } from "@/components/ui.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { askHostAction } from "@/app/actions/messages.ts";
 import { priceNote, isWebUrl, isPdf, availableLabel, firstFreeStart } from "@/lib/corporate.ts";
 import { UTILITIES } from "@/lib/constants.ts";
-import { Icon } from "@/components/Icon.tsx";
+import { Icon, ColorIcon } from "@/components/Icon.tsx";
 import type { Property } from "@/lib/bookings.ts";
 import { guestDescription, guestRules, policies } from "@/lib/policies.ts";
 import { JsonLd, breadcrumbLd, listingLd } from "@/lib/seo.tsx";
@@ -200,7 +200,7 @@ export default async function StayPage({ params, searchParams }: Params) {
                     })}
                   </div>
                 )}
-                {beds.length > 0 && <><h3 style={{ marginTop: rooms.length ? 18 : 0 }}>All beds</h3><ul className="amen">{beds.map((b, i) => <li key={i}><Check />{bedLabelLong(b)}</li>)}</ul></>}
+                {beds.length > 0 && <><h3 style={{ marginTop: rooms.length ? 18 : 0 }}>All beds</h3><ul className="amen">{beds.map((b, i) => <li key={i}><ColorIcon file="room" size={22} />{bedLabelLong(b)}</li>)}</ul></>}
               </section>
             )}
             <section>
@@ -222,7 +222,7 @@ export default async function StayPage({ params, searchParams }: Params) {
                   return have.length ? (
                     <div key={g.name} className="stack" style={{ gap: 8, marginBottom: 8 }}>
                       <h3 style={{ fontSize: 15 }}>{g.name}</h3>
-                      <ul className="amen">{have.map(a => <li key={a}><Check />{g.items[a]}</li>)}</ul>
+                      <ul className="amen">{have.map(a => <li key={a}><ColorIcon file={AMENITY_ICON[a] ?? AMENITY_GROUP_ICON[g.name] ?? "check"} size={22} />{g.items[a]}</li>)}</ul>
                     </div>
                   ) : null;
                 })}

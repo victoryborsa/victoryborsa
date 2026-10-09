@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle, ClockCountdown, IdentificationCard, Question, Warning, WarningOctagon } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import { ColorIcon } from "./Icon.tsx";
 import { fmtDate, fmtShort, nightsBetween, fmtWhen } from "@/lib/dates.ts";
 import { conflictSummary, conflictTitle, syncDelayNote, type ConflictRow, type FeedInfo, type StaySnap } from "@/lib/conflicts.ts";
 import { hoursLabel } from "@/lib/conflict-core.ts";
@@ -14,7 +15,7 @@ export function ConflictBanner({ base, active, cleared }: { base: Base; active: 
   if (!active && !cleared) return null;
   return (
     <div className={`cf-banner${active ? "" : " calm"}`} role="status">
-      <span className="cf-banner-ic">{active ? <WarningOctagon size={24} weight="fill" aria-hidden /> : <ClockCountdown size={24} weight="bold" aria-hidden />}</span>
+      <span className="cf-banner-ic">{active ? <ColorIcon file="cross" size={24} /> : <ColorIcon file="clock" size={24} />}</span>
       <div className="cf-banner-text">
         <b>{active ? `${active} double booking${active === 1 ? "" : "s"} need${active === 1 ? "s" : ""} your review` : `${cleared} conflict${cleared === 1 ? "" : "s"} no longer overlap${cleared === 1 ? "s" : ""}`}</b>
         <span>{active ? "Two reservations share the same nights. Nothing was cancelled." : "One of the reservations changed. Review and mark it resolved."}{active && cleared ? ` ${cleared} more no longer overlap.` : ""}</span>
@@ -26,9 +27,9 @@ export function ConflictBanner({ base, active, cleared }: { base: Base; active: 
 
 /** Text + icon status, never color alone. */
 export function ConflictStatus({ c }: { c: Pick<ConflictRow, "status" | "cleared_at" | "kind"> }) {
-  if (c.status === "resolved") return <span className="cf-chip ok"><CheckCircle size={16} weight="bold" aria-hidden />Resolved</span>;
-  if (c.cleared_at) return <span className="cf-chip amber"><ClockCountdown size={16} weight="bold" aria-hidden />No longer overlapping · review</span>;
-  return <span className="cf-chip red"><Warning size={16} weight="fill" aria-hidden />{c.kind === "overlap" ? "Double booked" : "Turnover too short"}</span>;
+  if (c.status === "resolved") return <span className="cf-chip ok"><ColorIcon file="check" size={16} />Resolved</span>;
+  if (c.cleared_at) return <span className="cf-chip amber"><ColorIcon file="clock" size={16} />No longer overlapping · review</span>;
+  return <span className="cf-chip red"><ColorIcon file="warn" size={16} />{c.kind === "overlap" ? "Double booked" : "Turnover too short"}</span>;
 }
 
 /** Both stays on one date line, with the shared nights hatched (or the changeover marked). */
@@ -65,7 +66,7 @@ export function ConflictStrip({ c }: { c: Pick<ConflictRow, "kind" | "start_date
 }
 
 function Missing({ children }: { children: React.ReactNode }) {
-  return <span className="cf-missing"><Question size={14} weight="bold" aria-hidden />{children}</span>;
+  return <span className="cf-missing"><ColorIcon file="question" size={14} />{children}</span>;
 }
 
 /** One reservation in a conflict, with a link to its full record. */
@@ -85,11 +86,11 @@ export function StayPanel({ s, n, base, feed, gone }: { s: StaySnap; n: number; 
         <div><dt>Reference</dt><dd className="mono">{s.ref || <Missing>Reference not sent by {s.site}</Missing>}</dd></div>
         <div><dt>Guest</dt><dd>{s.guest || <Missing>Name not sent by {s.site}</Missing>}</dd></div>
         <div><dt>Dates</dt><dd>{fmtDate(s.check_in)} → {fmtDate(s.check_out)}<span className="hint"> · {nights} night{nights === 1 ? "" : "s"}</span></dd></div>
-        <div><dt>Booking</dt><dd>{gone ? <span className="cf-chip amber"><ClockCountdown size={14} weight="bold" aria-hidden />No longer active</span>
+        <div><dt>Booking</dt><dd>{gone ? <span className="cf-chip amber"><ColorIcon file="clock" size={14} />No longer active</span>
           : s.channel === "sevgio" ? (STATUS_WORDS[s.status] || s.status) : `Reservation on ${s.site}`}</dd></div>
       </dl>
-      {s.channel !== "sevgio" && <p className="cf-sync"><ClockCountdown size={16} weight="bold" aria-hidden /><span>{syncDelayNote(s.site, feed ?? null)}</span></p>}
-      {href && <Link className="btn btn-ghost btn-sm cf-open" href={href}><IdentificationCard size={16} weight="bold" aria-hidden />Open reservation {n}</Link>}
+      {s.channel !== "sevgio" && <p className="cf-sync"><ColorIcon file="clock" size={16} /><span>{syncDelayNote(s.site, feed ?? null)}</span></p>}
+      {href && <Link className="btn btn-ghost btn-sm cf-open" href={href}><ColorIcon file="idcard" size={16} />Open reservation {n}</Link>}
     </section>
   );
 }

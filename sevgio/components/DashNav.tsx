@@ -24,8 +24,10 @@ const PATHS: Record<NavIcon, string> = {
   conflict: "M12 3l10 17H2zM12 10v4M12 17.5h.01",
   sync: "M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4",
 };
+// Full-colour versions in public/icons/color; PATHS above is kept as the plain fallback.
+const COLOR: Record<NavIcon, string> = { dashboard: "dashboard", inbox: "inbox", calendar: "calendar", bookings: "bookings", listings: "listings", finance: "finance", users: "users", events: "ticket", photos: "photos", activity: "activity", settings: "settings", home: "home", conflict: "conflict", sync: "sync" };
 export function Icon({ name }: { name: NavIcon }) {
-  return <svg className="dn-ic" viewBox="0 0 24 24" aria-hidden><path d={PATHS[name]} /></svg>;
+  return <img className="dn-ic dn-ic-color" src={`/icons/color/${COLOR[name]}.svg`} width={20} height={20} alt="" aria-hidden="true" />;
 }
 
 /** Dashboard menu: a fixed column on the left on computers; on phones and tablets, a button that opens the full list. */

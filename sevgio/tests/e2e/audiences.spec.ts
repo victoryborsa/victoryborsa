@@ -36,7 +36,7 @@ test("who we host on a computer: each button opens its own panel with a photo be
 
   for (const [i, g] of GROUPS.entries()) {
     // The icon is part of the button, so clicking it opens the panel too.
-    if (i % 2) await btn(page, g.label).locator("svg").click();
+    if (i % 2) await btn(page, g.label).locator(".ic").click();
     else await btn(page, g.label).click();
     await expect(btn(page, g.label)).toHaveAttribute("aria-expanded", "true");
     for (const o of GROUPS.filter(o => o !== g)) {
