@@ -1370,9 +1370,25 @@ footer .brand-tag { font-size: 8px; }
 .ch-cta .btn { border-radius: 999px; padding: 13px 22px; }
 .ch-hero picture { display: block; min-width: 0; }
 .ch-hero-img { width: 100%; height: clamp(260px, 34vw, 440px); object-fit: cover; border-radius: 20px; display: block; }
-.ch-who ul { list-style: none; padding: 0; margin: 28px 0 8px; display: flex; flex-wrap: wrap; gap: 10px; }
-.ch-who li { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; font-weight: 600; font-size: 15px; }
-.ch-who .ic { color: var(--gold); }
+.ch-who-row { list-style: none; padding: 0; margin: 28px 0 8px; display: flex; flex-wrap: wrap; gap: 10px; }
+/* Who we host: each pill is one button (icon and label), and the open one is filled gold. */
+.ch-who-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; font: 600 15px/1.2 var(--f-body); color: var(--ink); background: #FFFFFF; cursor: pointer; transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease; }
+.ch-who-btn:hover { border-color: #9AA3AA; }
+.ch-who-btn[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.ch-who-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 999px; }
+.ch-who .ic { color: var(--gold); flex: none; }
+.ch-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 40px; align-items: start; margin-top: 18px; padding: 24px; border: 1px solid #EBEBEB; border-radius: 20px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(16,24,32,.05), 0 12px 32px rgba(16,24,32,.07); animation: ch-panel-in .4s cubic-bezier(.16,1,.3,1); }
+.ch-panel[hidden] { display: none; }
+@keyframes ch-panel-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.ch-panel-ph { margin: 0; position: sticky; top: 96px; }
+.ch-panel-ph img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; background: #F1F1F1; }
+.ch-panel-ph figcaption { margin-top: 8px; font-size: 13px; color: var(--muted); }
+.ch-panel-ph figcaption a { text-decoration: underline; text-underline-offset: 2px; }
+.ch-panel-text h3 { font-size: clamp(24px, 2.6vw, 30px); letter-spacing: -.01em; line-height: 1.15; margin: 4px 0 6px; color: var(--ink); }
+.ch-panel-sub { font-size: 18px; font-weight: 600; color: #8A6400; margin: 0 0 14px; }
+.ch-panel-text p:not(.ch-panel-sub):not(.ch-panel-note) { color: #3F4A54; line-height: 1.65; margin: 0 0 12px; max-width: 62ch; }
+.ch-panel-note { font-size: 13.5px; color: var(--muted); margin: 18px 0 20px; padding-left: 12px; border-left: 3px solid var(--accent); max-width: 62ch; }
+.ch-panel-cta { border-radius: 999px; padding: 13px 22px; }
 .ch-h2 { font-size: clamp(24px, 3vw, 32px); letter-spacing: -.01em; margin: 56px 0 6px; color: var(--ink); }
 .ch-sub { margin: 0 0 24px; max-width: 60ch; }
 .ch-homes { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 28px; }
@@ -1430,6 +1446,9 @@ footer .brand-tag { font-size: 8px; }
   .ch-hero, .ch-biz { grid-template-columns: 1fr; gap: 24px; }
   .ch-hero-img { height: clamp(200px, 52vw, 360px); }
   .ch-inc { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ch-panel { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .ch-panel-ph { position: static; }
+  .ch-panel-ph img { aspect-ratio: 3 / 2; }
 }
 @media (max-width: 600px) {
   .ch-hero { padding-top: 8px; }
@@ -1437,10 +1456,14 @@ footer .brand-tag { font-size: 8px; }
   .ch-h2 { margin-top: 44px; }
   .ch-inc, .ch-form { grid-template-columns: 1fr; }
   .ch-form { padding: 18px; }
-  .ch-who li { font-size: 14px; padding: 8px 12px; }
+  .ch-who-btn { font-size: 14px; padding: 8px 12px; }
+  .ch-panel { padding: 14px 14px 20px; }
+  .ch-panel-text { padding: 0 4px; }
+  .ch-panel-cta { white-space: normal; text-align: center; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ch-home, .ch-ph img { transition: none; }
+  .ch-home, .ch-ph img, .ch-who-btn { transition: none; }
+  .ch-panel { animation: none; }
   .ch-home:hover { transform: none; }
   .ch-home:hover .ch-ph img { transform: none; }
 }

@@ -2,6 +2,14 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-09 — Corporate Housing: Who we host panels
+
+- The five "Who we host" pills (Travel nurses, Doctors and residents, Corporate teams, Contractors, Relocating families) are now buttons, icon and label alike, with their original icons. Each opens a panel right below the row with a photo, heading, subtitle, full description, the shared "Property features… vary by listing" note and its own Request button. The open button is highlighted; clicking it again closes the panel.
+- Photo beside the text on computers, above it on phones and tablets. Rounded, size reserved (no layout shift), loaded only when a panel opens (warmed up when the pointer or keyboard reaches its button). The fade-in is off for visitors who ask for less motion.
+- Keyboard: Tab, Enter and Space as usual, plus arrow keys, Home and End between the buttons. Buttons say whether their panel is open (`aria-expanded`). All five descriptions are in the page's HTML for search engines. `#travel-nurses` or `?for=travel-nurses` opens a group from a link, without JavaScript too.
+- Request buttons fill "I am a" in the request form (new choices: Corporate team, Relocating family) and move to it; the choice is in the request email and Admin messages.
+- Photos: each group ships with a licensed lifestyle photo from Unsplash (free for commercial use; sources in `lib/audiences.ts`), in `public/img/audiences/` at 640, 960 and 1280px, captioned "Illustrative photo, not a Sevgio listing." so no one takes it for an available home. An admin can replace any of them with a real Sevgio photo in **Admin → Settings → Corporate Housing photos**, with its own description for screen readers; the caption then goes away.
+
 ## 2026-10-09 — Reservations list, read-only rules and guest messages
 
 - **Calendar → Reservations (now the first tab):** cards like the Booking.com app, grouped by date and then by property, each room named. Every card shows the guest, check-in and check-out, nights, guests, property and room, booking source, confirmation number, reservation status and payment status. Anything a site didn't send says "not provided by Airbnb" (or the site) instead of a guess.

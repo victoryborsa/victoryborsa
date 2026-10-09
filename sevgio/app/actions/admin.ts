@@ -16,6 +16,7 @@ import { withMsg } from "@/components/Flash.tsx";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { processPhoto } from "@/lib/photos.ts";
 import { moveListingFamily } from "@/lib/homes.ts";
+import { audienceBySlug, audienceSlot } from "@/lib/audiences.ts";
 
 // The guide page banner photo (place photos are managed in app/actions/guide.ts).
 const GUIDE_SLUGS = new Set(["guide-banner"]);
@@ -272,6 +273,36 @@ export async function removeGuidePhotoAction(fd: FormData) {
   await q("DELETE FROM site_photos WHERE slot = $1", [str(fd, "slot", 80)]);
   revalidatePath("/admin/guide");
   revalidatePath("/pittsburgh");
+}
+
+// ---------- Corporate Housing: one photo per "Who we host" group ----------
+
+/** Sets (or replaces) the photo shown in one group's panel. The uploader sends the group's slug as "id". */
+export async function uploadAudiencePhotoAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  await requireUser(["admin"]);
+  const a = audienceBySlug(str(fd, "id", 80));
+  if (!a) return { error: "Unknown group." };
+  const file = fd.getAll("photos").find((f): f is File => f instanceof File && f.size > 0);
+  if (!file) return { error: "Choose a photo to upload." };
+  const r = await processPhoto(file);
+  if ("error" in r) return { error: r.error };
+  const old = await one<{ caption: string }>("SELECT caption FROM site_photos WHERE slot = $1", [audienceSlot(a.slug)]);
+  await q("DELETE FROM site_photos WHERE slot = $1", [audienceSlot(a.slug)]);
+  await q("INSERT INTO site_photos (slot, caption, large, thumb, width, height) VALUES ($1, $2, $3, $4, $5, $6)", [audienceSlot(a.slug), old?.caption ?? "", r.large, r.thumb, r.width, r.height]);
+  revalidatePath("/admin/settings");
+  revalidatePath("/corporate-housing");
+  return { ok: "Photo added." };
+}
+
+/** Saves the photo description (read by screen readers and search engines), or removes the photo so a Sevgio home photo shows again. */
+export async function audiencePhotoCommandAction(fd: FormData) {
+  await requireUser(["admin"]);
+  const a = audienceBySlug(str(fd, "slug", 80));
+  if (!a) return;
+  if (str(fd, "cmd", 10) === "remove") await q("DELETE FROM site_photos WHERE slot = $1", [audienceSlot(a.slug)]);
+  else await q("UPDATE site_photos SET caption = $2 WHERE slot = $1", [audienceSlot(a.slug), str(fd, "caption", 200)]);
+  revalidatePath("/admin/settings");
+  revalidatePath("/corporate-housing");
 }
 
 /** Approves someone who chose "List my home" at sign-up: they become a host and get an email. */

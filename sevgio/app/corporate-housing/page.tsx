@@ -16,6 +16,9 @@ import { PickHome } from "@/components/PickHome.tsx";
 import { DatePicker } from "@/components/DatePicker.tsx";
 import { corporateRequestAction } from "@/app/actions/messages.ts";
 import { JsonLd, businessLd } from "@/lib/seo.tsx";
+import { AudiencePanels } from "@/components/AudiencePanels.tsx";
+import { audienceBySlug, WHO_OPTIONS } from "@/lib/audiences.ts";
+import { audiencePhotos } from "@/lib/audience-photos.ts";
 
 // The skyline photo in AVIF and WebP at three widths; the original JPEG stays as the fallback.
 const SKYLINE = (ext: string) => [800, 1200, 1600].map(w => `/img/pittsburgh-skyline-${w}.${ext} ${w}w`).join(", ");
@@ -28,8 +31,6 @@ export const metadata: Metadata = {
   description: "Fully furnished monthly homes in Pittsburgh and Indiana, PA for travel nurses, doctors, corporate teams and extended stays. One fixed price, all inclusive.",
 };
 export const dynamic = "force-dynamic";
-
-const WHO: [IconName, string][] = [["stethoscope", "Travel nurses"], ["check", "Doctors and residents"], ["briefcase", "Corporate teams"], ["wrench", "Contractors"], ["family", "Relocating families"]];
 
 const INCLUDED: [IconName, string, string][] = [
   ["sofa", "Fully furnished", "Beds, sofas, desk and dining set. Bring your suitcase."],
@@ -88,9 +89,10 @@ function HomeCard({ p, today }: { p: CorpHome & { free_from: string | null }; to
   );
 }
 
-export default async function CorporateHousing({ searchParams }: { searchParams: Promise<{ home?: string }> }) {
-  const [homes, s, u, sp] = await Promise.all([corporateHomes().then(withRealAvailability), getSettings(), currentUser(), searchParams]);
+export default async function CorporateHousing({ searchParams }: { searchParams: Promise<{ home?: string; for?: string }> }) {
+  const [homes, s, u, sp, photos] = await Promise.all([corporateHomes().then(withRealAvailability), getSettings(), currentUser(), searchParams, audiencePhotos()]);
   const picked = homes.some(h => h.id === sp.home) ? sp.home : "";
+  const forWho = audienceBySlug(sp.for);
   const anyUnfurnished = homes.some(h => !h.corp_furnished);
   const today = todayLocal();
   const pageUrl = siteUrl() + "/corporate-housing";
@@ -116,8 +118,9 @@ export default async function CorporateHousing({ searchParams }: { searchParams:
         </picture>
       </section>
 
-      <section className="wrap ch-who" aria-label="Who we host">
-        <ul>{WHO.map(([ic, label]) => <li key={label}><Icon name={ic} size={20} />{label}</li>)}</ul>
+      <section className="wrap ch-who" aria-labelledby="who-we-host">
+        <h2 id="who-we-host" className="sr-only">Who we host</h2>
+        <AudiencePanels photos={photos} initial={forWho?.slug} />
       </section>
 
       <section className="wrap" id="homes">
@@ -168,7 +171,7 @@ export default async function CorporateHousing({ searchParams }: { searchParams:
           <label className="field"><span>Email</span><input className="input" name="email" type="email" autoComplete="email" defaultValue={u?.email} required /></label>
           <label className="field"><span>Phone (optional)</span><input className="input" name="phone" type="tel" autoComplete="tel" /></label>
           <label className="field"><span>I am a</span>
-            <select className="input" name="who"><option>Travel nurse or medical staff</option><option>Doctor or resident</option><option>Corporate housing company</option><option>Company HR or relocation</option><option>Contractor or crew</option><option>Other</option></select>
+            <select className="input" name="who" defaultValue={forWho?.who}>{WHO_OPTIONS.map(w => <option key={w}>{w}</option>)}</select>
           </label>
           <label className="field"><span>Home or room</span>
             <select className="input" name="home" id="ch-home" defaultValue={picked}><option value="">Any home or room that fits</option>{homes.map(p => <option key={p.id} value={p.id}>{p.title} ({money(p.corp_monthly_cents)}/mo)</option>)}</select>

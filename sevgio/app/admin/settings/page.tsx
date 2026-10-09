@@ -2,7 +2,8 @@ import { requireUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { stripeReady } from "@/lib/payments.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
-import { saveSettingsAction, slideCommandAction, uploadSlideAction } from "@/app/actions/admin.ts";
+import { audiencePhotoCommandAction, saveSettingsAction, slideCommandAction, uploadAudiencePhotoAction, uploadSlideAction } from "@/app/actions/admin.ts";
+import { AUDIENCES, audienceSlot } from "@/lib/audiences.ts";
 import { PhotoUploader } from "@/components/PhotoUploader.tsx";
 import { q } from "@/lib/db.ts";
 
@@ -11,6 +12,7 @@ export default async function Settings() {
   const s = await getSettings();
   const stripe = stripeReady();
   const slides = await q<{ id: string; caption: string }>("SELECT id, caption FROM site_photos WHERE slot IS NULL ORDER BY position, created_at");
+  const groupPhotos = await q<{ id: string; slot: string; caption: string }>("SELECT id, slot, caption FROM site_photos WHERE slot LIKE 'audience:%'");
   return (
     <div className="stack" style={{ gap: 24 }}>
     <ActionForm action={saveSettingsAction} className="box" id="settings">
@@ -77,6 +79,33 @@ export default async function Settings() {
           ))}
         </div>
       )}
+    </section>
+
+    <section className="stack" id="corporate-photos" style={{ gap: 14 }}>
+      <h2>Corporate Housing photos</h2>
+      <p className="muted">One photo for each group under &quot;Who we host&quot; on the Corporate Housing page. Until you add one, each group shows a licensed stock photo marked &quot;Illustrative photo&quot;. A photo you upload, such as one of your own homes, replaces it without that note. Only use photos you took or have the right to use (for example from unsplash.com or pexels.com). Landscape photos look best.</p>
+      <div className="photo-grid">
+        {AUDIENCES.map(a => {
+          const ph = groupPhotos.find(g => g.slot === audienceSlot(a.slug));
+          return (
+            <div className="photo-tile" key={a.slug}>
+              <b>{a.label}</b>
+              {ph ? <div className="thumb"><img src={`/api/site-photos/${ph.id}?s=thumb`} alt={ph.caption || a.label} loading="lazy" /></div> : <p className="hint">Showing the stock photo.</p>}
+              <PhotoUploader id={a.slug} action={uploadAudiencePhotoAction} compact label={ph ? "Replace photo" : "Add photo"} />
+              {ph && (
+                <>
+                  <form action={audiencePhotoCommandAction} className="tools">
+                    <input type="hidden" name="slug" value={a.slug} />
+                    <input className="input" name="caption" defaultValue={ph.caption} placeholder="Describe the photo, e.g. Nurse relaxing on a sofa" style={{ minHeight: 34, padding: "4px 8px", fontSize: 13 }} aria-label={`Photo description for ${a.label}`} />
+                    <button className="btn btn-ghost btn-sm" type="submit" name="cmd" value="caption">Save</button>
+                  </form>
+                  <form action={audiencePhotoCommandAction}><input type="hidden" name="slug" value={a.slug} /><button className="linkbtn" type="submit" name="cmd" value="remove">Remove photo</button></form>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </section>
     </div>
   );
