@@ -2,6 +2,14 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-09 — Illustrated Pittsburgh panorama replaces the skyline photo
+
+- The skyline photo (UPMC tower and yellow bridges) is replaced by the illustrated panorama (Point fountain, downtown, yellow bridges, red incline car) everywhere it appeared: the Corporate Housing banner and the background of Sign in, Sign up, Contact, Verify email, Forgot password and Reset password.
+- HD: upscaled 4x to 3740 x 912 px, then exported as AVIF and WebP at 800, 1200, 1600, 2400 and 3200 px with a JPEG fallback (`public/img/pittsburgh-panorama-*`). Width and height are reserved, so nothing jumps while it loads.
+- Corporate Housing: the panorama is now a full-width banner under the heading and buttons, so computers see the whole picture. Tablets show it at 3:1 and phones at 2.3:1, keeping the fountain, downtown and the big yellow bridge.
+- Sign-in and similar pages: the whole panorama runs along the bottom of the screen under a warm sky that matches it; phones show its middle (downtown and the bridges).
+- The old skyline files stay in `public/img/` but are no longer used.
+
 ## 2026-10-09 — Colour icons on every button, tab and label
 
 - Events: Day, Week, Month and Today buttons, All events, and the Sports, Music, Arts & Theatre, Family, Festivals and Food & Drink categories have colour icons; team icons are bigger.

@@ -1225,9 +1225,9 @@ body:has(.ab-home) footer, body:has(.theme-light) footer { background: #F7F7F7; 
 .theme-light .chip.on { background: var(--accent); border-color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .theme-light .card:hover { transform: none; } }
 
-/* Sign in, sign up, contact and friends: the Pittsburgh skyline behind a white card. */
-.photo-page::before { content: ""; position: fixed; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 30%, rgba(16,24,32,.15) 100%), url("/img/pittsburgh-skyline.jpg") center 35% / cover no-repeat; }
-@media (max-width: 899px) { .photo-page::before { background-image: linear-gradient(180deg, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 30%, rgba(16,24,32,.15) 100%), url("/img/pittsburgh-skyline-sm.jpg"); } }
+/* Sign in, sign up, contact and friends: the whole illustrated Pittsburgh panorama along the bottom, under a warm sky that matches its top edge, behind a white card. */
+.photo-page::before { content: ""; position: fixed; inset: 0; z-index: -1; background: url("/img/pittsburgh-panorama.jpg") center bottom / 100% auto no-repeat, linear-gradient(180deg, #FFF8EC 0%, #FDD89E calc(100% - 24vw)); background-image: image-set(url("/img/pittsburgh-panorama.avif") type("image/avif"), url("/img/pittsburgh-panorama.webp") type("image/webp"), url("/img/pittsburgh-panorama.jpg") type("image/jpeg")), linear-gradient(180deg, #FFF8EC 0%, #FDD89E calc(100% - 24vw)); }
+@media (max-width: 899px) { .photo-page::before { background-image: url("/img/pittsburgh-panorama-sm.jpg"), linear-gradient(180deg, #FFF8EC 0%, #FDD89E calc(100% - 75vw)); background-image: image-set(url("/img/pittsburgh-panorama-sm.avif") type("image/avif"), url("/img/pittsburgh-panorama-sm.webp") type("image/webp"), url("/img/pittsburgh-panorama-sm.jpg") type("image/jpeg")), linear-gradient(180deg, #FFF8EC 0%, #FDD89E calc(100% - 75vw)); } }
 .photo-page { position: relative; padding-block: 8px; }
 .photo-page .auth.box { background: rgba(255,255,255,.96); border: 1px solid rgba(255,255,255,.7); border-radius: 20px; box-shadow: 0 18px 50px rgba(16,24,32,.28); }
 @supports (backdrop-filter: blur(8px)) { .photo-page .auth.box { background: rgba(255,255,255,.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); } }
@@ -1366,13 +1366,14 @@ footer .brand-tag { font-size: 8px; }
 
 /* ============ Corporate housing page ============ */
 .ch { padding-bottom: 48px; }
-.ch-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: center; padding-top: 24px; padding-bottom: 8px; }
+.ch-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 24px; padding-bottom: 8px; }
 .ch-hero h1 { font-size: clamp(32px, 4.4vw, 52px); line-height: 1.06; letter-spacing: -.02em; margin: 10px 0 14px; color: var(--ink); }
 .ch-hero .lede { font-size: 18px; color: #3F4A54; max-width: 46ch; margin: 0; }
 .ch-cta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
 .ch-cta .btn { border-radius: 999px; padding: 13px 22px; }
 .ch-hero picture { display: block; min-width: 0; }
-.ch-hero-img { width: 100%; height: clamp(260px, 34vw, 440px); object-fit: cover; border-radius: 20px; display: block; }
+/* The panorama is about 4:1. Computers see all of it; narrower screens keep the fountain, downtown and the big yellow bridge. */
+.ch-hero-img { width: 100%; height: auto; aspect-ratio: 3740 / 912; object-fit: cover; object-position: 50% 50%; border-radius: 20px; display: block; background: #E8DCC0; }
 .ch-who-row { list-style: none; padding: 0; margin: 28px 0 8px; display: flex; flex-wrap: wrap; gap: 10px; }
 /* Who we host: each pill is one button (icon and label), and the open one is filled gold. */
 .ch-who-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; font: 600 15px/1.2 var(--f-body); color: var(--ink); background: #FFFFFF; cursor: pointer; transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease; }
@@ -1447,7 +1448,7 @@ footer .brand-tag { font-size: 8px; }
 .ch-direct a { font-weight: 700; color: var(--gold) !important; }
 @media (max-width: 900px) {
   .ch-hero, .ch-biz { grid-template-columns: 1fr; gap: 24px; }
-  .ch-hero-img { height: clamp(200px, 52vw, 360px); }
+  .ch-hero-img { aspect-ratio: 3 / 1; object-position: 45% 50%; }
   .ch-inc { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ch-panel { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .ch-panel-ph { position: static; }
@@ -1456,6 +1457,7 @@ footer .brand-tag { font-size: 8px; }
 @media (max-width: 600px) {
   .ch-hero { padding-top: 8px; }
   .ch-hero .lede { font-size: 16px; }
+  .ch-hero-img { aspect-ratio: 2.3 / 1; border-radius: 16px; }
   .ch-h2 { margin-top: 44px; }
   .ch-inc, .ch-form { grid-template-columns: 1fr; }
   .ch-form { padding: 18px; }

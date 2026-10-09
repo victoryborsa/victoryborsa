@@ -20,9 +20,9 @@ import { AudiencePanels } from "@/components/AudiencePanels.tsx";
 import { audienceBySlug, WHO_OPTIONS } from "@/lib/audiences.ts";
 import { audiencePhotos } from "@/lib/audience-photos.ts";
 
-// The skyline photo in AVIF and WebP at three widths; the original JPEG stays as the fallback.
-const SKYLINE = (ext: string) => [800, 1200, 1600].map(w => `/img/pittsburgh-skyline-${w}.${ext} ${w}w`).join(", ");
-const SKYLINE_SIZES = "(min-width: 901px) 55vw, 100vw";
+// The illustrated Pittsburgh panorama in AVIF and WebP at five widths; the JPEG is the fallback.
+const SKYLINE = (ext: string) => [800, 1200, 1600, 2400, 3200].map(w => `/img/pittsburgh-panorama-${w}.${ext} ${w}w`).join(", ");
+const SKYLINE_SIZES = "(min-width: 1440px) 1384px, calc(100vw - 32px)";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/corporate-housing" },
@@ -114,7 +114,7 @@ export default async function CorporateHousing({ searchParams }: { searchParams:
         <picture>
           <source type="image/avif" srcSet={SKYLINE("avif")} sizes={SKYLINE_SIZES} />
           <source type="image/webp" srcSet={SKYLINE("webp")} sizes={SKYLINE_SIZES} />
-          <img className="ch-hero-img" src="/img/pittsburgh-skyline.jpg" alt="The Pittsburgh skyline over the rivers" width={1600} height={1067} fetchPriority="high" />
+          <img className="ch-hero-img" src="/img/pittsburgh-panorama.jpg" alt="Illustrated Pittsburgh panorama: the Point fountain, downtown, the yellow bridges and an incline car" width={3740} height={912} fetchPriority="high" />
         </picture>
       </section>
 

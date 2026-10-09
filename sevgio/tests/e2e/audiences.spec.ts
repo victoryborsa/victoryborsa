@@ -154,7 +154,7 @@ test("admin can give a group its own photo, describe it, and remove it", async (
   await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
   await page.goto("/admin/settings#corporate-photos");
   const tile = page.locator("#corporate-photos .photo-tile", { hasText: "Travel nurses" });
-  await tile.locator("input[type=file]").setInputFiles(path.join(import.meta.dirname, "../../public/img/pittsburgh-skyline.jpg"));
+  await tile.locator("input[type=file]").setInputFiles(path.join(import.meta.dirname, "../../public/img/pittsburgh-panorama-sm.jpg"));
   await tile.getByRole("button", { name: /Upload|Add photo/ }).click();
   await expect(tile.locator("img")).toBeVisible();
   await tile.getByLabel("Photo description for Travel nurses").fill("Nurse relaxing on a sofa after a shift");
