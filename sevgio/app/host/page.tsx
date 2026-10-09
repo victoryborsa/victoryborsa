@@ -53,9 +53,9 @@ export default async function HostHome({ searchParams }: { searchParams: Promise
       )}
       {noPhotos && noPhotos.n > 0 && <div className="notice warn" style={{ marginBottom: 16 }}>{noPhotos.n} listing{noPhotos.n > 1 ? "s have" : " has"} no photos yet. <Link href="/host/listings">Add photos</Link> so guests can book.</div>}
       <h2 style={{ marginBottom: 12 }}>Requests waiting for you</h2>
-      {requests.length ? <BookingTable rows={requests} today={today} back="/host" detailBase={detailBase} /> : <p className="muted" style={{ marginBottom: 8 }}>No requests right now. Requests expire after 48 hours without a reply.</p>}
+      {requests.length ? <BookingTable rows={requests} today={today} back="/host" detailBase={detailBase} /> : <p className="empty-line"><ColorIcon file="inbox" size={22} /><span>No requests right now. Requests expire after 48 hours without a reply.</span></p>}
       <h2 style={{ margin: "28px 0 12px" }}>Arrivals in the next 14 days</h2>
-      {arrivals.length ? <BookingTable rows={arrivals} today={today} back="/host" detailBase={detailBase} /> : <p className="muted">No arrivals in the next two weeks.</p>}
+      {arrivals.length ? <BookingTable rows={arrivals} today={today} back="/host" detailBase={detailBase} /> : <p className="empty-line"><ColorIcon file="arrive" size={22} /><span>No arrivals in the next two weeks.</span></p>}
     </>
   );
 }

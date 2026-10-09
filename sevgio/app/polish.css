@@ -1,0 +1,113 @@
+/* Site-wide polish: a calmer, friendlier finish on every page in the same black, gold and white.
+   Loaded after globals.css. Layout, colours and behaviour stay the same; this file only refines
+   spacing, edges, type and states. The homepage's own sections (.ab-*) are left to their own styles. */
+
+body:has(.theme-light) {
+  --line: #E3E3E3;
+  --line-strong: #CFCFCF;
+  --soft: #FAFAF7;
+  --r: 12px;
+  --r-lg: 18px;
+  --shadow-sm: 0 1px 2px rgba(16,24,32,.05);
+  --shadow-md: 0 2px 6px rgba(16,24,32,.05), 0 10px 24px rgba(16,24,32,.07);
+  /* Numbers and prices use the body font with even-width digits: easier to read than a code font. */
+  --f-mono: var(--f-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+body:has(.theme-light) .mono { font-variant-numeric: tabular-nums; letter-spacing: 0; }
+
+/* ---------- Header: a hairline separates it from the page, so it reads as one bar ---------- */
+body:has(.theme-light) header.site { border-bottom: 1px solid #EFEFEF; box-shadow: 0 1px 0 rgba(16,24,32,.02); }
+body:has(.theme-light) .navlink { border-radius: 999px; transition: background .15s ease, color .15s ease; }
+body:has(.theme-light) .navlink:hover { background: #F4F4F2; }
+
+/* ---------- Buttons ---------- */
+body:has(.theme-light) .btn { border-radius: var(--r); transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .1s ease; }
+body:has(.theme-light) .btn-primary { box-shadow: 0 1px 2px rgba(16,24,32,.12), inset 0 -1px 0 rgba(16,24,32,.08); }
+body:has(.theme-light) .btn-primary:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(242,169,0,.32); }
+body:has(.theme-light) .btn-ghost { border-color: var(--line-strong); background: #FFFFFF; }
+body:has(.theme-light) .btn-ghost:hover { border-color: #101820; background: #FAFAFA; }
+body:has(.theme-light) .btn-sm { border-radius: 10px; }
+body:has(.theme-light) .btn-danger { border-color: #F1B7B1; color: #B42318; background: #FFFFFF; }
+body:has(.theme-light) .btn-danger:hover { background: #FEF3F2; border-color: #B42318; }
+
+/* ---------- Form fields ---------- */
+body:has(.theme-light) .input { border-color: var(--line-strong); transition: border-color .15s ease, box-shadow .15s ease; }
+body:has(.theme-light) .input:hover:not(:focus) { border-color: #9A9A9A; }
+body:has(.theme-light) .input:focus { border-color: #101820; box-shadow: 0 0 0 3px #FFE7A8; }
+body:has(.theme-light) .field > span { color: #2B333B; }
+body:has(.theme-light) .input::placeholder { color: #8A8A8A; }
+
+/* ---------- Notices ----------
+   A notice with plain text and bold words reads as one sentence (it used to spread the words apart).
+   Notices that hold their own wrapper or controls keep the side-by-side layout. */
+body:has(.theme-light) .notice { border-radius: var(--r); line-height: 1.5; }
+body:has(.theme-light) .notice:not(:has(> div, > span, > svg, > img, > form, > button, > .btn, > ul)) { display: block; }
+body:has(.theme-light) .notice.info { background: #FFF8E5; border-color: #F6DE9A; }
+body:has(.theme-light) .notice.ok { background: #EEF8F1; border-color: #BFE3CB; }
+body:has(.theme-light) .notice.warn { background: #FFF6E0; border-color: #F3D58A; }
+body:has(.theme-light) .notice.error { background: #FEF1F0; border-color: #F5C2BD; }
+body:has(.theme-light) .notice a { color: #101820; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- Boxes and cards share one soft edge ---------- */
+body:has(.theme-light) .box { border-color: var(--line); box-shadow: var(--shadow-sm); }
+body:has(.theme-light) .empty { border-color: var(--line-strong); background: var(--soft); }
+
+/* ---------- Dashboards (host and admin) ---------- */
+body:has(.theme-light) .dash-main h2 { font-size: clamp(19px, 2.2vw, 22px); letter-spacing: -0.01em; }
+body:has(.theme-light) .stats { gap: 14px; }
+body:has(.theme-light) .stat { border-color: var(--line); border-radius: 16px; padding: 18px 18px 16px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 6px; }
+body:has(.theme-light) .stat b { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+body:has(.theme-light) .stat span { color: #5C6670; font-size: 14px; line-height: 1.35; }
+body:has(.theme-light) a.stat-link { transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+body:has(.theme-light) a.stat-link::after { content: "View \2192"; margin-top: auto; padding-top: 6px; font-size: 13px; font-weight: 600; color: #8A6500; }
+body:has(.theme-light) a.stat-link:hover, body:has(.theme-light) a.stat-link:focus-visible { border-color: #F2C14E; box-shadow: var(--shadow-md); transform: translateY(-2px); }
+/* Five tiles fit on one row on wide screens instead of leaving one alone on a second row. */
+@media (min-width: 1200px) { body:has(.theme-light) .dash .stats:has(> :nth-child(5):last-child) { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (max-width: 699px) {
+  body:has(.theme-light) .stats { gap: 10px; }
+  body:has(.theme-light) .stat { padding: 14px; border-radius: 14px; }
+  body:has(.theme-light) .stat b { font-size: 24px; }
+  body:has(.theme-light) .stat span { font-size: 13px; }
+  body:has(.theme-light) .dash .stats > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) { body:has(.theme-light) a.stat-link:hover { transform: none; } }
+
+/* A friendly "nothing here yet" line instead of bare grey text. */
+.empty-line { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; padding: 14px 16px; border: 1px dashed var(--line-strong, #CFCFCF); border-radius: 14px; background: var(--soft, #FAFAF7); color: #5C6670; font-size: 15px; }
+.empty-line > :first-child { flex: none; }
+
+
+/* ---------- Tables ---------- */
+body:has(.theme-light) table th { color: #5C6670; }
+body:has(.theme-light) td .mono, body:has(.theme-light) td.mono, body:has(.theme-light) td.num { white-space: nowrap; }
+
+/* ---------- Stays search box on phones: check-in and check-out side by side, so homes appear sooner ---------- */
+@media (max-width: 899px) {
+  body:has(.theme-light) .searchbar { grid-template-columns: 1fr 1fr; gap: 6px 8px; padding: 12px; border-radius: 20px; }
+  body:has(.theme-light) .searchbar > * { grid-column: 1 / -1; }
+  body:has(.theme-light) .searchbar .dr > :not(.dr-field) { grid-column: 1 / -1; }
+  body:has(.theme-light) .searchbar .field { padding: 2px 2px; gap: 4px; }
+  body:has(.theme-light) .searchbar .field > span { font-size: 11px; }
+  body:has(.theme-light) .searchbar .btn { min-height: 48px; margin-top: 4px; }
+}
+body:has(.theme-light) .searchbar { border-color: var(--line); box-shadow: 0 1px 2px rgba(16,24,32,.04), 0 8px 24px rgba(16,24,32,.07); }
+
+/* ---------- Footer: calmer links, clearer columns ---------- */
+body:has(.theme-light) footer.site { background: #F7F7F5; padding-block: 40px 28px; }
+body:has(.theme-light) footer.site .wrap:not(.foot-legal) { display: grid; gap: 28px 32px; grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr)); }
+body:has(.theme-light) footer.site .stack { gap: 10px !important; }
+body:has(.theme-light) footer.site a { color: #3A434C; text-decoration: none; width: fit-content; }
+body:has(.theme-light) footer.site a:hover { color: #101820; text-decoration: underline; text-underline-offset: 3px; }
+body:has(.theme-light) footer.site .eyebrow { color: #8A6500; margin-bottom: 2px; }
+body:has(.theme-light) .foot-legal { margin-top: 32px; padding-top: 18px; color: #6A6A6A; line-height: 1.5; }
+@media (max-width: 899px) {
+  body:has(.theme-light) footer.site .wrap:not(.foot-legal) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body:has(.theme-light) footer.site .wrap:not(.foot-legal) > :first-child { grid-column: 1 / -1; }
+}
+
+/* Space between the number tiles and the next heading */
+body:has(.theme-light) .dash .stats { margin-bottom: 32px; }
+/* Booking summaries break lines between phrases ("…, 2026 / after 3:00 pm"), not inside a time */
+body:has(.theme-light) .kv dd { text-wrap: balance; }

@@ -6,6 +6,7 @@ import { BrandLogo } from "@/components/BrandLogo.tsx";
 import { mailUrl, telUrl } from "@/lib/links.ts";
 import { Bricolage_Grotesque, Figtree, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import "./polish.css";
 import { currentUser } from "@/lib/auth.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { signOutAction } from "./actions/auth.ts";
