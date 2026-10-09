@@ -1,8 +1,6 @@
 "use client";
 import { useState } from "react";
 import { FIXED_SERVICE_NOTES, FREE_OR_CHARGE_SERVICES, PRESET_PRICED_SERVICES, SERVICE_DEFAULTS, SERVICE_PER, SERVICE_PRESETS, SERVICE_PRICE_PRESETS, type Service } from "@/lib/constants.ts";
-import { serviceThumb } from "@/lib/thumbs.ts";
-import { Thumb } from "./Thumb.tsx";
 
 const dollars = (c: number) => (c ? (c / 100).toFixed(2).replace(/\.00$/, "") : "");
 const cents = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^0-9.]/g, "")) * 100) || 0);
@@ -71,7 +69,7 @@ export function ServicesEditor({ initial }: { initial: Service[] }) {
       <input type="hidden" name="services_json" value={JSON.stringify(list)} />
       {Object.entries(SERVICE_PRESETS).map(([key, name]) => (
         <div key={key} className="svc-preset">
-          <label className="chk svc-chk"><input type="checkbox" checked={has(key)} onChange={() => toggle(key, name)} /><Thumb name={serviceThumb(key)} size={32} />{name}</label>
+          <label className="chk"><input type="checkbox" checked={has(key)} onChange={() => toggle(key, name)} />{name}</label>
           {has(key) && row(list.find(x => x.key === key)!)}
         </div>
       ))}

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Thumb } from "@/components/Thumb.tsx";
-import type { ThumbName } from "@/lib/thumbs.ts";
+import { Icon, type IconName } from "@/components/Icon.tsx";
 import { CATEGORIES, TEAMS, eventsBetween, timeLabel, type Ev } from "@/lib/events.ts";
 import { addDays, fmtDate, fmtShort, isIsoDate, nightsBetween, todayLocal } from "@/lib/dates.ts";
 import { getT } from "@/lib/i18n.ts";
@@ -15,17 +14,17 @@ export const metadata: Metadata = {
 
 const VIEWS = [["day", "Day"], ["week", "Week"], ["month", "Month"]] as const;
 type View = (typeof VIEWS)[number][0];
-// A photo for each team and category: on the filter pills, and on event cards that have no picture of their own.
-const PHOTO: Record<string, ThumbName> = { steelers: "steelers", pirates: "pirates", penguins: "penguins", Sports: "sports", Music: "music", "Arts & Theatre": "theatre", Family: "family", Festivals: "festivals", "Food & Drink": "food-drink", Other: "events" };
+const TEAM_ICON: Record<string, IconName> = { steelers: "football", pirates: "baseball", penguins: "hockey" };
+const ICON: Record<string, string> = { steelers: "🏈", pirates: "⚾", penguins: "🏒", Sports: "🏟️", Music: "🎵", "Arts & Theatre": "🎭", Family: "🎈", Festivals: "🎪", "Food & Drink": "🍻", Other: "📅" };
 const TONE: Record<string, string> = { steelers: "#101820", pirates: "#27251F", penguins: "#FCB514", Sports: "#0B2A5B", Music: "#7A3E9D", "Arts & Theatre": "#B3262B", Family: "#0A6B66", Festivals: "#C47A00", "Food & Drink": "#8A4B12", Other: "#29353F" };
 const OFFICIAL = [
-  { icon: "steelers", name: "Steelers schedule", text: "Home games at Acrisure Stadium, North Shore.", url: "https://www.steelers.com/schedule/" },
-  { icon: "pirates", name: "Pirates schedule", text: "Home games at PNC Park, North Shore.", url: "https://www.mlb.com/pirates/schedule" },
-  { icon: "penguins", name: "Penguins schedule", text: "Home games at PPG Paints Arena, Uptown.", url: "https://www.nhl.com/penguins/schedule" },
-  { icon: "skyline-night", name: "Downtown Pittsburgh events", text: "Festivals, markets and happenings downtown.", url: "https://downtownpittsburgh.com/events/" },
-  { icon: "concert-crowd", name: "Concerts & shows on Ticketmaster", text: "Music, comedy and theatre around Pittsburgh.", url: "https://www.ticketmaster.com/discover/pittsburgh" },
-  { icon: "skyline-incline", name: "VisitPittsburgh events", text: "The city's official visitor calendar.", url: "https://www.visitpittsburgh.com/events-festivals/" },
-] satisfies { icon: ThumbName; name: string; text: string; url: string }[];
+  { icon: "🏈", name: "Steelers schedule", text: "Home games at Acrisure Stadium, North Shore.", url: "https://www.steelers.com/schedule/" },
+  { icon: "⚾", name: "Pirates schedule", text: "Home games at PNC Park, North Shore.", url: "https://www.mlb.com/pirates/schedule" },
+  { icon: "🏒", name: "Penguins schedule", text: "Home games at PPG Paints Arena, Uptown.", url: "https://www.nhl.com/penguins/schedule" },
+  { icon: "🎪", name: "Downtown Pittsburgh events", text: "Festivals, markets and happenings downtown.", url: "https://downtownpittsburgh.com/events/" },
+  { icon: "🎟️", name: "Concerts & shows on Ticketmaster", text: "Music, comedy and theatre around Pittsburgh.", url: "https://www.ticketmaster.com/discover/pittsburgh" },
+  { icon: "🌆", name: "VisitPittsburgh events", text: "The city's official visitor calendar.", url: "https://www.visitpittsburgh.com/events-festivals/" },
+];
 const monthStart = (d: string) => d.slice(0, 8) + "01";
 const nextMonth = (d: string) => addDays(monthStart(d), 32).slice(0, 8) + "01";
 const prevMonth = (d: string) => addDays(monthStart(d), -1).slice(0, 8) + "01";
@@ -72,9 +71,9 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
         <Link className="btn btn-ghost btn-sm" href={link({ start: next })} aria-label={`Next ${unit}`}><span className="nav-txt">Next {unit} </span>›</Link>
       </div>
       <nav className="guide-toc" aria-label="Filter events" style={{ marginTop: 12 }}>
-        <Link href={link({ show: "" }).replace(/&show=[^&]*/, "")} className={!show ? "on" : undefined}><Thumb name="events" size={30} />All events</Link>
-        {TEAMS.map(x => <Link key={x.key} href={link({ show: x.key })} className={show === x.key ? "on" : undefined}><Thumb name={PHOTO[x.key] ?? "events"} size={30} />{x.name}</Link>)}
-        {CATEGORIES.filter(c => c !== "Other").map(c => <Link key={c} href={link({ show: c })} className={show === c ? "on" : undefined}><Thumb name={PHOTO[c] ?? "events"} size={30} />{c}</Link>)}
+        <Link href={link({ show: "" }).replace(/&show=[^&]*/, "")} className={!show ? "on" : undefined}>All events</Link>
+        {TEAMS.map(x => <Link key={x.key} href={link({ show: x.key })} className={show === x.key ? "on" : undefined}><Icon name={TEAM_ICON[x.key] ?? "ticket"} />{x.name}</Link>)}
+        {CATEGORIES.filter(c => c !== "Other").map(c => <Link key={c} href={link({ show: c })} className={show === c ? "on" : undefined}>{c}</Link>)}
       </nav>
       <h2 className="mc-period" style={{ marginTop: 18 }}>{period}</h2>
 
@@ -91,7 +90,7 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
         <div className="guide-grid">
           {OFFICIAL.map(o => (
             <a key={o.url} className="guide-card official" href={o.url} target="_blank" rel="noopener noreferrer">
-              <div className="guide-body"><Thumb name={o.icon} size={56} className="official-icon" /><h3>{o.name}</h3><p className="muted">{o.text}</p><span className="guide-map">Open ↗</span></div>
+              <div className="guide-body"><span className="official-icon" aria-hidden>{o.icon}</span><h3>{o.name}</h3><p className="muted">{o.text}</p><span className="guide-map">Open ↗</span></div>
             </a>
           ))}
         </div>
@@ -109,7 +108,7 @@ function EventCard({ e }: { e: Ev }) {
   const body = (
     <>
       <div className="event-pic" style={{ "--tone": TONE[key] ?? TONE.Other } as React.CSSProperties}>
-        {img ? <img src={img} alt={e.title} loading="lazy" referrerPolicy="no-referrer" /> : <Thumb name={PHOTO[key] ?? PHOTO.Other} size={96} className="event-thumb" />}
+        {img ? <img src={img} alt={e.title} loading="lazy" referrerPolicy="no-referrer" /> : <span className="guide-icon" aria-hidden>{ICON[key] ?? ICON.Other}</span>}
         <span className="event-date" aria-label={fmtDate(e.local_date)}>
           <small>{d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }).toUpperCase()}</small>
           <b>{d.getUTCDate()}<sup>{ord(d.getUTCDate())}</sup></b>

@@ -9,8 +9,6 @@ import { UTILITIES, parseServices, servicePrice } from "@/lib/constants.ts";
 import { money, moneyShort } from "@/lib/money.ts";
 import { nightPrice } from "@/lib/smart-pricing.ts";
 import { NightlyRates } from "./NightlyRates.tsx";
-import { Thumb } from "./Thumb.tsx";
-import { serviceThumb } from "@/lib/thumbs.ts";
 
 type P = PricingInput & { security_deposit_cents?: number; utilities?: string; slug: string; min_nights: number; max_nights: number; booking_mode: "instant" | "request"; children_free_age: number };
 type Ctx = { p: P; today: string; taken: Set<string>; rules: RangeRules; taxPercent: number; ci: string; co: string; party: Party; msg: string; pick: (d: string) => void; setRange: (ci: string, co: string) => void; datesDone: () => void; clear: () => void; setParty: (p: Party) => void; bookable: boolean };
@@ -143,7 +141,6 @@ function ExtrasPicker() {
       {list.map(x => (
         <label key={x.key} className="chk extra-item">
           <input type="checkbox" checked={on.has(x.key)} onChange={() => flip(x.key)} />
-          <Thumb name={serviceThumb(x.key)} size={36} />
           <span><b>{x.name}</b> <span className="muted">{servicePrice(x, money)}</span>{x.note && <span className="hint" style={{ display: "block" }}>{x.note}</span>}</span>
         </label>
       ))}

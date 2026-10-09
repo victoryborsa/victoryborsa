@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Thumb } from "@/components/Thumb.tsx";
-import type { ThumbName } from "@/lib/thumbs.ts";
+import { Icon, type IconName } from "@/components/Icon.tsx";
 import { q } from "@/lib/db.ts";
 import { PictureTrio } from "@/components/PictureTrio.tsx";
 import { CardRow } from "@/components/HomeRows.tsx";
@@ -83,14 +82,14 @@ export default async function PittsburghGuide({ searchParams }: { searchParams: 
   const rows = await q<{ id: string; slot: string | null; caption: string }>("SELECT id, slot, caption FROM site_photos WHERE slot IS NULL OR slot = 'guide-banner' ORDER BY position, created_at");
   const uploaded = [...rows.filter(r => r.slot === "guide-banner"), ...rows.filter(r => r.slot === null)];
   const areas = [...new Set(Object.values(places).flat().map(p => p.area.split(/ & | and |, /)[0]).filter(a => a && !/all over|away/i.test(a)))].sort();
-  const tabs: [string, string, ThumbName][] = [["#guide-rows", "All", "city-skyline"], ["#see", "Must-see", "must-see"], ["#museums", "Museums", "museums"], ["#eat", "Eat", "eat"], ["#drink", "Drinks", "drinks"], ["#do", "Things to do", "things-to-do"], ["#near", "Near our homes", "near-our-homes"], ["#yinzer", "Yinzer talk", "yinzer-talk"], ["#tips", "Getting around", "getting-around"]];
+  const tabs: [string, string, IconName][] = [["#guide-rows", "All", "all"], ["#see", "Must-see", "museum"], ["#museums", "Museums", "art"], ["#eat", "Eat", "food"], ["#drink", "Drinks", "drink"], ["#do", "Things to do", "ticket"], ["#near", "Near our homes", "pin"], ["#yinzer", "Yinzer talk", "talk"], ["#tips", "Getting around", "bus"]];
 
   return (
     <div className="ab-home ab-guide">
       {preview && <div className="gp-preview-bar" role="status"><b>Preview.</b> Drafts, hidden places and unpublished changes are shown with a label. Visitors don't see them. <Link href="/admin/guide">Back to Admin</Link></div>}
       <div className="ab-band">
         <nav className="ab-tabs" aria-label="Guide sections">
-          {tabs.map(([href, label, icon], i) => <a key={href} href={href} aria-current={i === 0 ? "page" : undefined}><Thumb name={icon} size={44} className="ab-tab-img" />{label}</a>)}
+          {tabs.map(([href, label, icon], i) => <a key={href} href={href} aria-current={i === 0 ? "page" : undefined}><Icon name={icon} size={24} className="ab-tab-ico" />{label}</a>)}
         </nav>
         <GuideFilter areas={areas} target="guide-rows" />
       </div>
@@ -135,9 +134,9 @@ export default async function PittsburghGuide({ searchParams }: { searchParams: 
         <section id="tips" className="gp-anchor gp-tips" aria-labelledby="tips-h">
           <h2 id="tips-h" className="gp-big">{t("guide.tips")}</h2>
           <div className="ab-promos">
-            <a className="ab-promo" href={mapLink({ name: "Pittsburgh International Airport", q: "Pittsburgh International Airport (PIT)" })} target="_blank" rel="noopener noreferrer"><span className="ab-promo-ico"><Thumb name="airport" size={64} /></span><span>{t("guide.tip1")}</span><span className="ab-pill">Directions</span></a>
-            <a className="ab-promo" href="https://www.rideprt.org/" target="_blank" rel="noopener noreferrer"><span className="ab-promo-ico"><Thumb name="light-rail" size={64} /></span><span>{t("guide.tip2")}</span><span className="ab-pill">Schedules</span></a>
-            <a className="ab-promo" href="https://www.google.com/maps/dir/?api=1&travelmode=transit" target="_blank" rel="noopener noreferrer"><span className="ab-promo-ico"><Thumb name="getting-around" size={64} /></span><span>{t("guide.tip3")}</span><span className="ab-pill">Plan a trip</span></a>
+            <a className="ab-promo" href={mapLink({ name: "Pittsburgh International Airport", q: "Pittsburgh International Airport (PIT)" })} target="_blank" rel="noopener noreferrer"><span className="ab-promo-ico"><Icon name="plane" size={30} /></span><span>{t("guide.tip1")}</span><span className="ab-pill">Directions</span></a>
+            <a className="ab-promo" href="https://www.rideprt.org/" target="_blank" rel="noopener noreferrer"><span className="ab-promo-ico"><Icon name="train" size={30} /></span><span>{t("guide.tip2")}</span><span className="ab-pill">Schedules</span></a>
+            <a className="ab-promo" href="https://www.google.com/maps/dir/?api=1&travelmode=transit" target="_blank" rel="noopener noreferrer"><span className="ab-promo-ico"><Icon name="bus" size={30} /></span><span>{t("guide.tip3")}</span><span className="ab-pill">Plan a trip</span></a>
           </div>
           <ul className="gp-tiplist"><li>{t("guide.tip4")}</li><li>{t("guide.tip5")}</li></ul>
         </section>

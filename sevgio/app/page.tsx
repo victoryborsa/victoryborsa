@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { Thumb } from "@/components/Thumb.tsx";
-import type { ThumbName } from "@/lib/thumbs.ts";
+import { Icon } from "@/components/Icon.tsx";
 import { cookies } from "next/headers";
 import { allPublished, photoUrl, type CardProperty } from "@/lib/queries.ts";
 import { searchPlaces } from "@/components/SearchBar.tsx";
@@ -50,8 +49,8 @@ function MiniCard({ p, saved, eager, first }: { p: CardProperty; saved: boolean;
   );
 }
 
-// Category photos live in public/img/thumbs (credits in lib/thumbs.ts).
-const TABS: [string, string, ThumbName][] = [["/", "All", "city-skyline"], ["/stays?kind=home", "Homes", "homes"], ["/stays?kind=room", "Rooms", "rooms"], ["/stays?monthly=1", "Monthly", "monthly"], ["/corporate-housing", "Corporate", "corporate"], ["/pittsburgh", "Things to do", "things-to-do"], ["/events", "Events", "events"]];
+// Colour category icons live in public/icons/categories.
+const TABS: [string, string, string][] = [["/", "All", "all"], ["/stays?kind=home", "Homes", "homes"], ["/stays?kind=room", "Rooms", "rooms"], ["/stays?monthly=1", "Monthly", "monthly"], ["/corporate-housing", "Corporate", "corporate"], ["/pittsburgh", "Things to do", "things-to-do"], ["/events", "Events", "events"]];
 
 export default async function Home() {
   const visitor = (await cookies()).get(VISITOR_COOKIE)?.value || "";
@@ -79,7 +78,7 @@ export default async function Home() {
       <div className="ab-band">
         <nav className="ab-tabs" aria-label="Browse">
           {TABS.map(([href, label, icon], i) => (
-            <Link key={href} href={href} aria-current={i === 0 ? "page" : undefined}><Thumb name={icon} size={44} className="ab-tab-img" />{label}</Link>
+            <Link key={href} href={href} aria-current={i === 0 ? "page" : undefined}><img src={`/icons/categories/${icon}.svg`} width={32} height={32} alt="" className="ab-tab-img" />{label}</Link>
           ))}
         </nav>
         <PillSearch places={places} today={todayLocal()} labels={{ where: t("search.where"), when: "When", who: "Who", search: t("search.submit"), anywhere: t("search.anywhere") }} />
@@ -94,9 +93,9 @@ export default async function Home() {
         )) : <div className="empty"><h3>New homes are on the way</h3><p className="muted">Check back soon, or contact us and we'll help you find a stay.</p></div>}
 
         <div className="ab-promos">
-          <Link className="ab-promo" href="/stays"><span className="ab-promo-ico"><Thumb name="airport" size={64} /></span><span>Add airport pickup when you book</span><span className="ab-pill">Find a stay</span></Link>
-          <Link className="ab-promo" href="/stays?amen=hottub"><span className="ab-promo-ico"><Thumb name="hot-tub" size={64} /></span><span>Explore homes with hot tubs</span><span className="ab-pill">Browse homes</span></Link>
-          <Link className="ab-promo" href="/pittsburgh"><span className="ab-promo-ico"><Thumb name="things-to-do" size={64} /></span><span>Find things to do in Pittsburgh</span><span className="ab-pill">See the guide</span></Link>
+          <Link className="ab-promo" href="/stays"><span className="ab-promo-ico"><Icon name="car" size={30} /></span><span>Add airport pickup when you book</span><span className="ab-pill">Find a stay</span></Link>
+          <Link className="ab-promo" href="/stays?amen=hottub"><span className="ab-promo-ico"><Icon name="bath" size={30} /></span><span>Explore homes with hot tubs</span><span className="ab-pill">Browse homes</span></Link>
+          <Link className="ab-promo" href="/pittsburgh"><span className="ab-promo-ico"><img src="/icons/categories/things-to-do.svg" width={30} height={30} alt="" /></span><span>Find things to do in Pittsburgh</span><span className="ab-pill">See the guide</span></Link>
         </div>
 
         <section className="ab-welcome">
