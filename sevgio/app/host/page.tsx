@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ColorIcon } from "@/components/Icon.tsx";
 import { requireUser } from "@/lib/auth.ts";
 import { q, one } from "@/lib/db.ts";
 import { scopeSql } from "@/lib/access.ts";
@@ -37,11 +38,11 @@ export default async function HostHome({ searchParams }: { searchParams: Promise
     <>
       <Flash msg={(await searchParams).msg} />
       <div className="stats">
-        <Link className="stat stat-link" href="/host/listings"><b>{stats.live}/{stats.listings}</b><span>Listings live</span></Link>
-        <Link className="stat stat-link" href="/host/bookings?view=requests"><b style={{ color: stats.pending ? "var(--warn)" : undefined }}>{stats.pending}</b><span>Requests waiting for you</span></Link>
-        <Link className="stat stat-link" href="/host/bookings?view=upcoming"><b>{stats.upcoming}</b><span>Upcoming stays</span></Link>
-        <Link className="stat stat-link" href="/host/bookings?view=upcoming"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(stats.revenue)}</b><span>Upcoming booking value</span></Link>
-        <Link className="stat stat-link" href="/host/messages"><b>{stats.unread}</b><span>Unanswered questions</span></Link>
+        <Link className="stat stat-link" href="/host/listings"><b>{stats.live}/{stats.listings}</b><span><ColorIcon file="listings" size={20} />Listings live</span></Link>
+        <Link className="stat stat-link" href="/host/bookings?view=requests"><b style={{ color: stats.pending ? "var(--warn)" : undefined }}>{stats.pending}</b><span><ColorIcon file="inbox" size={20} />Requests waiting for you</span></Link>
+        <Link className="stat stat-link" href="/host/bookings?view=upcoming"><b>{stats.upcoming}</b><span><ColorIcon file="calendar" size={20} />Upcoming stays</span></Link>
+        <Link className="stat stat-link" href="/host/bookings?view=upcoming"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(stats.revenue)}</b><span><ColorIcon file="finance" size={20} />Upcoming booking value</span></Link>
+        <Link className="stat stat-link" href="/host/messages"><b>{stats.unread}</b><span><ColorIcon file="chats" size={20} />Unanswered questions</span></Link>
       </div>
       {stats.listings === 0 && (
         <div className="empty" style={{ marginBottom: 24 }}>

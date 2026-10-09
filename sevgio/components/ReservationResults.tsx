@@ -3,6 +3,7 @@ import { fmtShort } from "@/lib/dates.ts";
 import { nightsBetween } from "@/lib/dates.ts";
 import { BlockStatus, DetailsCell, noName } from "./GuestNameForm.tsx";
 import { PHASE_LABEL, PHASE_TONE, type SearchRow } from "@/lib/booking-ref.ts";
+import { ColorIcon } from "./Icon.tsx";
 
 /**
  * Reservation search results: one row per stay with the details that tell guests with the same name apart.
@@ -46,6 +47,7 @@ export function ReservationResults({ rows, back }: { rows: SearchRow[]; back: st
 }
 
 const PHASES = [["all", "All"], ["upcoming", "Upcoming"], ["current", "Staying now"], ["past", "Past"], ["cancelled", "Cancelled"]] as const;
+const PHASE_ICON: Record<string, string> = { all: "all", upcoming: "calendar", current: "home", past: "clock", cancelled: "cross" };
 
 /** The big search box at the top of Bookings, with quick filters for when the stay is. */
 export function ReservationSearchForm({ term, phase }: { term: string; phase: string }) {
@@ -67,7 +69,7 @@ export function ReservationSearchForm({ term, phase }: { term: string; phase: st
       </form>
       <p className="hint">Type a reference like SV-7KQ2MD, or any part of the guest's name. Capital letters don't matter.</p>
       <nav className="rs-chips" aria-label="When">
-        {PHASES.map(([k, label]) => <Link key={k} href={link(k)} className="rs-chip" aria-current={phase === k ? "true" : undefined}>{label}</Link>)}
+        {PHASES.map(([k, label]) => <Link key={k} href={link(k)} className="rs-chip" aria-current={phase === k ? "true" : undefined}><ColorIcon file={PHASE_ICON[k]} size={18} />{label}</Link>)}
       </nav>
     </section>
   );

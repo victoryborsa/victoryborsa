@@ -17,6 +17,7 @@ import { DatePicker } from "./DatePicker.tsx";
 import { ReservationList } from "./ReservationList.tsx";
 import { loadReservations } from "@/lib/reservation-list.ts";
 import { editRule, SCOPES, type Scope, type Sort } from "@/lib/reservation-rules.ts";
+import { ColorIcon } from "./Icon.tsx";
 
 type Prop = { id: string; title: string; city: string; parent_id: string | null; status: string; cover_id: string | null; nightly_price_cents: number; smart_pricing: boolean; min_price_cents: number | null; max_price_cents: number | null };
 type Res = { id: string; code: string; property_id: string; check_in: string; check_out: string; status: string; guest_name: string; guests: number; nights: number;
@@ -36,6 +37,7 @@ const COLS = `id, title, city, parent_id, status, nightly_price_cents, smart_pri
   (SELECT ph.id FROM photos ph WHERE ph.property_id = p.id ORDER BY ph.position, ph.created_at LIMIT 1) AS cover_id`;
 const MAX_RANGE = 92;
 const VIEWS = [["list", "Reservations"], ["day", "Day"], ["week", "Week"], ["month", "Month"], ["arrivals", "Arrivals"]] as const;
+const VIEW_ICON: Record<string, string> = { list: "bookings", day: "calday", week: "calweek", month: "calendar", arrivals: "arrive", today: "calday", upcoming: "calendar", history: "clock" };
 type View = "list" | "day" | "week" | "month" | "arrivals" | "range";
 const STATUSES = [["", "All active"], ["confirmed", "Confirmed"], ["pending", "Awaiting approval"], ["awaiting_payment", "Awaiting payment"],
   ["other", "Booked on other sites"], ["blocked", "Blocked by you"], ["cancelled", "Cancelled"]] as const;
@@ -157,7 +159,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
     <div className="stack" style={{ gap: 16 }}>
       <div className="cal-top">
         <Link className={`btn btn-sm cal-today ${view === "list" && scope === "today" && day === today ? "btn-primary" : "btn-ghost"}`} href={todayHref}
-          aria-current={view === "list" && scope === "today" && day === today ? "page" : undefined}>Today&apos;s reservations</Link>
+          aria-current={view === "list" && scope === "today" && day === today ? "page" : undefined}><ColorIcon file="calday" size={18} />Today&apos;s reservations</Link>
         {view === "list" ? (
           <h2 className="mc-period">{scope === "today" ? (day === today ? "Today" : "Reservations on") : scope === "history" ? "History before" : "Upcoming from"} · {fmtDate(day, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}</h2>
         ) : (
@@ -170,7 +172,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
         )}
         <nav className="cal-tabs" aria-label="Calendar view">
           {VIEWS.map(([v, label]) => (
-            <Link key={v} aria-current={view === v ? "page" : undefined} href={link(v === "day" || v === "week" ? (start <= today && today < end ? today : start) : start, v)}>{label}</Link>
+            <Link key={v} aria-current={view === v ? "page" : undefined} href={link(v === "day" || v === "week" ? (start <= today && today < end ? today : start) : start, v)}><ColorIcon file={VIEW_ICON[v]} size={18} />{label}</Link>
           ))}
         </nav>
       </div>
@@ -241,11 +243,11 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
       {view === "list" && (
         <div className="rv-bar">
           <nav className="seg-tabs" aria-label="Which reservations">
-            {SCOPES.map(([v, label]) => <Link key={v} href={listLink({ scope: v, date: day !== today ? day : undefined })} aria-current={scope === v ? "page" : undefined}>{label}</Link>)}
+            {SCOPES.map(([v, label]) => <Link key={v} href={listLink({ scope: v, date: day !== today ? day : undefined })} aria-current={scope === v ? "page" : undefined}><ColorIcon file={VIEW_ICON[v]} size={18} />{label}</Link>)}
           </nav>
           <nav className="seg-tabs" aria-label="Sort by">
-            <Link href={listLink({ sort: "arrival", date: day !== today ? day : undefined })} aria-current={sort === "arrival" ? "page" : undefined}>Arrival Date</Link>
-            <Link href={listLink({ sort: "booked", date: day !== today ? day : undefined })} aria-current={sort === "booked" ? "page" : undefined}>Reservation Date</Link>
+            <Link href={listLink({ sort: "arrival", date: day !== today ? day : undefined })} aria-current={sort === "arrival" ? "page" : undefined}><ColorIcon file="arrive" size={18} />Arrival Date</Link>
+            <Link href={listLink({ sort: "booked", date: day !== today ? day : undefined })} aria-current={sort === "booked" ? "page" : undefined}><ColorIcon file="bookings" size={18} />Reservation Date</Link>
           </nav>
         </div>
       )}

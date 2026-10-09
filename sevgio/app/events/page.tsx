@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Icon, type IconName } from "@/components/Icon.tsx";
+import { Icon, ColorIcon, type IconName } from "@/components/Icon.tsx";
 import { CATEGORIES, TEAMS, eventsBetween, timeLabel, type Ev } from "@/lib/events.ts";
 import { addDays, fmtDate, fmtShort, isIsoDate, nightsBetween, todayLocal } from "@/lib/dates.ts";
 import { getT } from "@/lib/i18n.ts";
@@ -13,6 +13,8 @@ export const metadata: Metadata = {
 };
 
 const VIEWS = [["day", "Day"], ["week", "Week"], ["month", "Month"]] as const;
+const VIEW_ICON: Record<string, string> = { day: "calday", week: "calweek", month: "calendar" };
+const CATEGORY_ICON: Record<string, string> = { Sports: "trophy", Music: "music", "Arts & Theatre": "masks", Family: "balloon", Festivals: "tent", "Food & Drink": "drink" };
 type View = (typeof VIEWS)[number][0];
 const TEAM_ICON: Record<string, IconName> = { steelers: "football", pirates: "baseball", penguins: "hockey" };
 const ICON: Record<string, string> = { steelers: "🏈", pirates: "⚾", penguins: "🏒", Sports: "🏟️", Music: "🎵", "Arts & Theatre": "🎭", Family: "🎈", Festivals: "🎪", "Food & Drink": "🍻", Other: "📅" };
@@ -64,16 +66,16 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
 
       <div className="row mc-controls" style={{ marginTop: 8 }}>
         <div className="seg" role="group" aria-label="Show events by">
-          {VIEWS.map(([v, label]) => <Link key={v} className={`btn btn-sm ${view === v ? "btn-primary" : "btn-ghost"}`} aria-current={view === v ? "page" : undefined} href={link({ view: v, start: v === "month" ? monthStart(from) : from })}>{label}</Link>)}
+          {VIEWS.map(([v, label]) => <Link key={v} className={`btn btn-sm ${view === v ? "btn-primary" : "btn-ghost"}`} aria-current={view === v ? "page" : undefined} href={link({ view: v, start: v === "month" ? monthStart(from) : from })}><ColorIcon file={VIEW_ICON[v]} size={18} />{label}</Link>)}
         </div>
         <Link className="btn btn-ghost btn-sm" href={link({ start: prev })} aria-label={`Previous ${unit}`}>‹<span className="nav-txt"> Previous {unit}</span></Link>
-        <Link className="btn btn-ghost btn-sm" href={link({ start: view === "month" ? monthStart(today) : today })}>Today</Link>
+        <Link className="btn btn-ghost btn-sm" href={link({ start: view === "month" ? monthStart(today) : today })}><ColorIcon file="calday" size={18} />Today</Link>
         <Link className="btn btn-ghost btn-sm" href={link({ start: next })} aria-label={`Next ${unit}`}><span className="nav-txt">Next {unit} </span>›</Link>
       </div>
       <nav className="guide-toc" aria-label="Filter events" style={{ marginTop: 12 }}>
-        <Link href={link({ show: "" }).replace(/&show=[^&]*/, "")} className={!show ? "on" : undefined}>All events</Link>
-        {TEAMS.map(x => <Link key={x.key} href={link({ show: x.key })} className={show === x.key ? "on" : undefined}><Icon name={TEAM_ICON[x.key] ?? "ticket"} />{x.name}</Link>)}
-        {CATEGORIES.filter(c => c !== "Other").map(c => <Link key={c} href={link({ show: c })} className={show === c ? "on" : undefined}>{c}</Link>)}
+        <Link href={link({ show: "" }).replace(/&show=[^&]*/, "")} className={!show ? "on" : undefined}><ColorIcon file="ticket" size={20} />All events</Link>
+        {TEAMS.map(x => <Link key={x.key} href={link({ show: x.key })} className={show === x.key ? "on" : undefined}><Icon name={TEAM_ICON[x.key] ?? "ticket"} size={20} />{x.name}</Link>)}
+        {CATEGORIES.filter(c => c !== "Other").map(c => <Link key={c} href={link({ show: c })} className={show === c ? "on" : undefined}><ColorIcon file={CATEGORY_ICON[c] ?? "ticket"} size={20} />{c}</Link>)}
       </nav>
       <h2 className="mc-period" style={{ marginTop: 18 }}>{period}</h2>
 

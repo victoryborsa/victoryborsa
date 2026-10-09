@@ -2,6 +2,13 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-09 — Colour icons on every button, tab and label
+
+- Events: Day, Week, Month and Today buttons, All events, and the Sports, Music, Arts & Theatre, Family, Festivals and Food & Drink categories have colour icons; team icons are bigger.
+- Host bookings tabs, calendar views (Reservations, Day, Week, Month, Arrivals, Today, Upcoming, History, sort buttons), double-booking tabs, finance periods, admin booking filters, dashboard number tiles and the policy menu have colour icons.
+- Every status label (Confirmed, Pending, Paid, Unpaid, Live, Draft, Error and so on) shows a colour icon picked by its colour instead of a plain dot.
+- The Stays filter panel shows an icon beside each type, amenity and booking option.
+
 ## 2026-10-09 — Colour icons on every page
 
 - Every icon that names a thing (amenities, places, people, statuses, menus) is now a full-colour icon in the same style as the homepage tabs and the Stays filter bar. Files are in `public/icons/color/`; the `Icon` component picks them up automatically.

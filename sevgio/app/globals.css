@@ -1967,3 +1967,15 @@ a.rv-msg:hover, a.rv-msg:focus-visible { background: var(--surface-2); color: va
 .cv-form { display: flex; gap: 10px; align-items: flex-end; }
 .cv-form textarea { flex: 1; min-height: 64px; }
 @media (max-width: 640px) { .cv-msg { max-width: 92%; } .cv-form { flex-direction: column; align-items: stretch; } }
+
+/* Colour icons on every chip, tab and tile: icon sits left of the label, vertically centred. */
+.guide-toc a, .cal-tabs a, .seg-tabs a, .cf-tabs a, .rs-chip, .legal-nav a { display: inline-flex; align-items: center; gap: 7px; }
+.legal-nav a { display: flex; }
+.stat span { display: inline-flex; align-items: center; gap: 7px; }
+.seg-opt span { display: flex; align-items: center; justify-content: center; gap: 7px; }
+/* Status pills: a colour icon in place of the plain dot, picked by the pill's tone. Channel dots keep their brand colours. */
+.pill:not(.pill-ic):not(.ch-dot)::before { width: 14px; height: 14px; border-radius: 0; background: center / contain no-repeat url("/icons/color/info.svg"); }
+.pill.ok:not(.pill-ic):not(.ch-dot)::before { background-image: url("/icons/color/check.svg"); }
+.pill.warn:not(.pill-ic):not(.ch-dot)::before { background-image: url("/icons/color/clock.svg"); }
+.pill.danger:not(.pill-ic):not(.ch-dot)::before { background-image: url("/icons/color/cross.svg"); }
+.pill.gold:not(.pill-ic):not(.ch-dot)::before { background-image: url("/icons/color/star.svg"); }

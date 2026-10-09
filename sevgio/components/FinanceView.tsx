@@ -6,6 +6,7 @@ import { money } from "@/lib/money.ts";
 import { addDays, fmtDate, fmtShort, todayLocal } from "@/lib/dates.ts";
 import { DateRangePicker } from "./DatePicker.tsx";
 import { AutoSubmit } from "./AutoSubmit.tsx";
+import { ColorIcon } from "./Icon.tsx";
 
 const monthName = (m: string) => fmtDate(m + "-15", { month: "long", year: "numeric" });
 
@@ -53,6 +54,7 @@ export async function FinanceView({ u, basePath, sp }: { u: User; basePath: stri
   const t = totals(rows);
   const csv = `/api/finance/statement?${query(f)}`;
   const thisMonth = monthRange(today.slice(0, 7)), lastMonth = monthRange(addDays(thisMonth.start, -1).slice(0, 7));
+  const QUICK_ICON: Record<string, string> = { "This month": "calendar", "Last month": "calendar", "Year to date": "activity", "Last 12 months": "dashboard", "Next 90 days": "calweek" };
   const quick: [string, string, string][] = [
     ["This month", thisMonth.start, addDays(thisMonth.next, -1)],
     ["Last month", lastMonth.start, addDays(lastMonth.next, -1)],
@@ -97,10 +99,10 @@ export async function FinanceView({ u, basePath, sp }: { u: User; basePath: stri
         </div>
       </form>
       <nav className="fin-quick" aria-label="Quick periods">
-        {quick.map(([label, a, z]) => <Link key={label} className="btn btn-ghost btn-sm" aria-current={a === f.from && z === f.to ? "true" : undefined} href={`${basePath}?${query(f, { from: a, to: z })}`}>{label}</Link>)}
+        {quick.map(([label, a, z]) => <Link key={label} className="btn btn-ghost btn-sm" aria-current={a === f.from && z === f.to ? "true" : undefined} href={`${basePath}?${query(f, { from: a, to: z })}`}><ColorIcon file={QUICK_ICON[label] ?? "calendar"} size={18} />{label}</Link>)}
         <span className="spacer" />
-        <Link className="btn btn-ghost btn-sm" href="/host/bookings/other-sites">Reservations from other sites</Link>
-        <Link className="btn btn-ghost btn-sm" href="/host/finance/import">Import payout file</Link>
+        <Link className="btn btn-ghost btn-sm" href="/host/bookings/other-sites"><ColorIcon file="sync" size={18} />Reservations from other sites</Link>
+        <Link className="btn btn-ghost btn-sm" href="/host/finance/import"><ColorIcon file="receipt" size={18} />Import payout file</Link>
       </nav>
 
       {(gaps.needsEntry > 0 || gaps.unclear > 0 || gaps.feedErrors.length > 0) && (

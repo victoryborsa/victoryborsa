@@ -54,6 +54,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
     if (u.getAll(key).includes(value)) { const rest = u.getAll(key).filter(x => x !== value); u.delete(key); rest.forEach(x => u.append(key, x)); } else if (key === "amen") u.append(key, value); else u.set(key, value);
     return "/stays?" + u.toString();
   };
+  const AMEN_FILTER_ICON: Record<string, string> = { hottub: "bath", pool: "bath", fireplace: "fire", wifi: "wifi", kitchen: "kitchen", parking: "car", washer: "washer", workspace: "laptop", ac: "ac", pets: "pets", family: "family", selfcheckin: "key", water: "tree" };
   // Colour icons live in public/icons/filters.
   const chips: [string, string, string, string][] = [
     ["kind", "home", "Entire home", "homes"], ["kind", "room", "Private room", "rooms"], ["amen", "pets", "Allows pets", "pets"], ["amen", "selfcheckin", "Self check-in", "key"],
@@ -82,7 +83,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
           <fieldset>
             <legend>Type of place</legend>
             <div className="seg">
-              {([["", "Any type"], ["home", "Entire home"], ["room", "Private room"]] as const).map(([v, l]) => <label key={v} className="seg-opt"><input type="radio" name="kind" value={v} defaultChecked={kind === v} /><span>{l}</span></label>)}
+              {([["", "Any type", "all"], ["home", "Entire home", "homes"], ["room", "Private room", "rooms"]] as const).map(([v, l, ic]) => <label key={v} className="seg-opt"><input type="radio" name="kind" value={v} defaultChecked={kind === v} /><span><img src={`/icons/color/${ic === "homes" ? "home" : ic === "rooms" ? "room" : ic}.svg`} width={18} height={18} alt="" className="chip-img" />{l}</span></label>)}
             </div>
           </fieldset>
           <label className="field">
@@ -106,18 +107,18 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
               </select>
             </label>
           </div>
-          <label className="chk"><input type="checkbox" name="pbath" value="1" defaultChecked={f.privateBath} />Private bathroom only</label>
+          <label className="chk"><input type="checkbox" name="pbath" value="1" defaultChecked={f.privateBath} /><img src="/icons/filters/shower.svg" width={20} height={20} alt="" className="chip-img" />Private bathroom only</label>
           <fieldset className="two-col">
             <legend>Amenities</legend>
             {Object.entries(AMENITY_FILTERS).map(([a, f]) => (
-              <label className="chk" key={a}><input type="checkbox" name="amen" value={a} defaultChecked={amen.includes(a)} />{f.label}</label>
+              <label className="chk" key={a}><input type="checkbox" name="amen" value={a} defaultChecked={amen.includes(a)} /><img src={`/icons/color/${AMEN_FILTER_ICON[a] ?? "check"}.svg`} width={20} height={20} alt="" className="chip-img" />{f.label}</label>
             ))}
           </fieldset>
           <fieldset>
             <legend>Booking</legend>
-            <label className="chk"><input type="checkbox" name="instant" value="1" defaultChecked={f.instant} />Instant booking only</label>
-            <label className="chk"><input type="checkbox" name="cancel" value="1" defaultChecked={f.freeCancel} />Free cancellation</label>
-            <label className="chk"><input type="checkbox" name="monthly" value="1" defaultChecked={f.monthly} />Monthly stays (1 month or more)</label>
+            <label className="chk"><input type="checkbox" name="instant" value="1" defaultChecked={f.instant} /><img src="/icons/filters/bolt.svg" width={20} height={20} alt="" className="chip-img" />Instant booking only</label>
+            <label className="chk"><input type="checkbox" name="cancel" value="1" defaultChecked={f.freeCancel} /><img src="/icons/filters/shield.svg" width={20} height={20} alt="" className="chip-img" />Free cancellation</label>
+            <label className="chk"><input type="checkbox" name="monthly" value="1" defaultChecked={f.monthly} /><img src="/icons/filters/monthly.svg" width={20} height={20} alt="" className="chip-img" />Monthly stays (1 month or more)</label>
           </fieldset>
           <div className="drawer-foot">
             {filtersOn ? <Link className="btn btn-ghost" href={clearHref}>Clear all</Link> : <span />}

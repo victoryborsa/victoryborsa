@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth.ts";
 import Link from "next/link";
+import { ColorIcon } from "@/components/Icon.tsx";
 import { q } from "@/lib/db.ts";
 import { expireStaleRequests } from "@/lib/bookings.ts";
 import { todayLocal } from "@/lib/dates.ts";
@@ -53,14 +54,14 @@ export default async function AdminHome() {
       {hostReqs > 0 && <div className="notice warn" role="status" style={{ marginBottom: 16 }}><div><b>{hostReqs} host request{hostReqs === 1 ? "" : "s"}.</b> <Link href="/admin/users?role=requests">Review in Users &amp; roles</Link> to approve them as hosts.</div></div>}
       {fresh > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}><div><b>{fresh} new booking{fresh === 1 ? "" : "s"}.</b> <Link href="/admin/bookings">Open Bookings</Link> to see {fresh === 1 ? "it" : "them"}.</div></div>}
       <div className="stats">
-        <Link className="stat stat-link" href="/admin/users?role=customer"><b>{s.customers}</b><span>Guests</span></Link>
-        <Link className="stat stat-link" href="/admin/users?role=host"><b>{s.hosts}</b><span>Hosts</span></Link>
-        <Link className="stat stat-link" href="/admin/listings"><b>{s.live}/{s.listings}</b><span>Listings live</span></Link>
-        <Link className="stat stat-link" href="/admin/bookings?when=upcoming"><b>{s.upcoming}</b><span>Upcoming confirmed stays</span></Link>
-        <Link className="stat stat-link" href="/admin/bookings?status=pending"><b style={{ color: s.pending ? "var(--warn)" : undefined }}>{s.pending}</b><span>Requests awaiting hosts</span></Link>
-        <Link className="stat stat-link" href="/admin/bookings"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(s.booked30)}</b><span>Booked in the last 30 days</span></Link>
-        <Link className="stat stat-link" href="/admin/log?level=error"><b style={{ color: s.open_errors ? "var(--danger)" : undefined }}>{s.open_errors}</b><span>Unresolved errors</span></Link>
-        <Link className="stat stat-link" href="/admin/messages"><b>{s.new_messages}</b><span>New contact messages</span></Link>
+        <Link className="stat stat-link" href="/admin/users?role=customer"><b>{s.customers}</b><span><ColorIcon file="person" size={20} />Guests</span></Link>
+        <Link className="stat stat-link" href="/admin/users?role=host"><b>{s.hosts}</b><span><ColorIcon file="users" size={20} />Hosts</span></Link>
+        <Link className="stat stat-link" href="/admin/listings"><b>{s.live}/{s.listings}</b><span><ColorIcon file="listings" size={20} />Listings live</span></Link>
+        <Link className="stat stat-link" href="/admin/bookings?when=upcoming"><b>{s.upcoming}</b><span><ColorIcon file="calendar" size={20} />Upcoming confirmed stays</span></Link>
+        <Link className="stat stat-link" href="/admin/bookings?status=pending"><b style={{ color: s.pending ? "var(--warn)" : undefined }}>{s.pending}</b><span><ColorIcon file="inbox" size={20} />Requests awaiting hosts</span></Link>
+        <Link className="stat stat-link" href="/admin/bookings"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(s.booked30)}</b><span><ColorIcon file="finance" size={20} />Booked in the last 30 days</span></Link>
+        <Link className="stat stat-link" href="/admin/log?level=error"><b style={{ color: s.open_errors ? "var(--danger)" : undefined }}>{s.open_errors}</b><span><ColorIcon file="warn" size={20} />Unresolved errors</span></Link>
+        <Link className="stat stat-link" href="/admin/messages"><b>{s.new_messages}</b><span><ColorIcon file="chats" size={20} />New contact messages</span></Link>
       </div>
       <h2 style={{ marginBottom: 12 }}>Needs attention</h2>
       {recent.length ? <EventTable rows={recent} /> : <div className="notice ok">No unresolved errors or warnings.</div>}

@@ -33,8 +33,8 @@ export async function ConflictsList({ u, base, tab }: { u: User; base: Base; tab
         </ActionForm>
       </div>
       <div className="cf-tabs" role="tablist" aria-label="Conflicts">
-        <Link role="tab" aria-selected={which === "open"} href={`${base}/conflicts`}>Needs review{open ? <span className="cf-count">{open}</span> : null}</Link>
-        <Link role="tab" aria-selected={which === "resolved"} href={`${base}/conflicts?tab=resolved`}>Resolved</Link>
+        <Link role="tab" aria-selected={which === "open"} href={`${base}/conflicts`}><ColorIcon file="warn" size={18} />Needs review{open ? <span className="cf-count">{open}</span> : null}</Link>
+        <Link role="tab" aria-selected={which === "resolved"} href={`${base}/conflicts?tab=resolved`}><ColorIcon file="check" size={18} />Resolved</Link>
       </div>
       <div className="cf-grid">
         <div className="cf-list">
