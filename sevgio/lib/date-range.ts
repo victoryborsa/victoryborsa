@@ -37,6 +37,40 @@ export function canCheckOut(ci: string, d: string, r: RangeRules) {
   return true;
 }
 
+/**
+ * The latest check-out a stay starting on `ci` can have, and why: the next booked night, the home's
+ * longest stay, or the last date the picker allows. Empty when nothing limits it.
+ */
+export function checkoutLimit(ci: string, r: RangeRules): { last: string; why: "booked" | "max-nights" | "max"; bookedTo?: string } | null {
+  if (!isDate(ci)) return null;
+  const caps: { last: string; why: "booked" | "max-nights" | "max"; bookedTo?: string }[] = [];
+  if (r.maxNights) caps.push({ last: addDays(ci, r.maxNights), why: "max-nights" });
+  if (r.max) caps.push({ last: r.max, why: "max" });
+  if (r.taken?.size) {
+    const until = caps.reduce((a, c) => (c.last < a ? c.last : a), addDays(ci, 731));
+    for (let x = addDays(ci, 1); x < until; x = addDays(x, 1)) if (r.taken.has(x)) {
+      let end = x;
+      while (r.taken.has(end)) end = addDays(end, 1);
+      caps.push({ last: x, why: "booked", bookedTo: end });
+      break;
+    }
+  }
+  return caps.reduce<typeof caps[number] | null>((a, c) => (!a || c.last < a.last ? c : a), null);
+}
+
+/** One plain sentence telling a guest why later check-out dates are greyed out (shown while choosing check-out on a home's calendar). */
+export function checkoutLimitNote(ci: string, r: RangeRules) {
+  const l = checkoutLimit(ci, r);
+  if (!l || l.why === "max" || !r.taken) return "";
+  const day = (d: string, wd = false) => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { ...(wd ? { weekday: "short" as const } : {}), month: "short", day: "numeric", timeZone: "UTC" });
+  if (l.why === "booked") {
+    const lastNight = addDays(l.bookedTo!, -1);
+    const span = lastNight === l.last ? `the night of ${day(l.last)}` : `from ${day(l.last)} until ${day(l.bookedTo!)}`;
+    return `This home is booked ${span}, so the latest check-out for this stay is ${day(l.last, true)}. For a longer stay, pick a check-in from ${day(l.bookedTo!)} or later.`;
+  }
+  return `Stays at this home can be up to ${r.maxNights} nights, so the latest check-out is ${day(l.last, true)}. Contact us about longer stays.`;
+}
+
 /** Is a range already picked still allowed (e.g. dates from a search link)? */
 export function validRange({ ci, co }: Range, r: RangeRules) {
   return isDate(ci) && isDate(co) && canCheckIn(ci, r) && canCheckOut(ci, co, r);

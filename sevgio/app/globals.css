@@ -973,6 +973,8 @@ a.cs-card:hover { border-color: var(--accent); }
 .dr-field.on b { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
 .dr-pop { position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 40; padding: 18px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); box-shadow: 0 18px 48px rgba(0,0,0,.5); }
 .dr-head { margin: 0 0 12px; font-weight: 700; }
+/* Why later check-out days are greyed out (a booking or the longest stay comes first). */
+.dr-limit { margin: -4px 0 12px; padding: 8px 12px; border-left: 3px solid #F4B4AE; border-radius: var(--r); background: #FDECEC; color: #7A271A; font-size: 14px; line-height: 1.4; }
 .dr-foot { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 @media (min-width: 900px) { .dr-pop { left: auto; width: min(720px, 100%); } }
 /* One optional date (listing editor "Available from"): the field opens the site calendar. */

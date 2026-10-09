@@ -2,7 +2,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Calendar } from "./Calendar.tsx";
 import { Icon } from "./Icon.tsx";
-import { dayLook, isDate, pickDay, validRange, type Phase, type Range, type RangeRules } from "@/lib/date-range.ts";
+import { checkoutLimitNote, dayLook, isDate, pickDay, validRange, type Phase, type Range, type RangeRules } from "@/lib/date-range.ts";
 
 /*
  * The one date picker used everywhere on the site: search, listings, booking, host and admin forms.
@@ -70,9 +70,11 @@ export function RangePanel({ phase, value, rules, today, labels, onChange, onClo
   const head = single ? `${labels[0]}${ci ? `: ${showDate(ci, true)}` : ""}`
     : phase === "ci" ? `${labels[0]}: choose a date` : `${labels[1]}: choose a date after ${showDate(ci)}`;
   const first = phase === "co" && ci ? ci : ci || co || "";
+  const limit = !single && phase === "co" && ci ? checkoutLimitNote(ci, rules) : "";
   return (
     <>
       <p className="dr-head" aria-live="polite">{head}{!single && rules.minNights && rules.minNights > 1 && phase === "co" ? <span className="muted"> · minimum {rules.minNights} nights</span> : null}</p>
+      {limit && <p className="dr-limit" role="note">{limit}</p>}
       <Calendar key={single ? "s" : phase === "co" ? `co${ci}` : "ci"} today={today} min={rules.min ?? ""} startMonth={startMonth || (first && (!rules.min || first >= rules.min) ? first : today)}
         maxMonthsAhead={maxMonths} dayState={look} onPick={pick} onHover={!single && phase === "co" ? setHover : undefined} />
       {!single && rules.taken && rules.taken.size > 0 && <div className="legend cal-legend dr-legend"><span><i className="lg-sel" />Your dates</span><span><i className="lg-taken" />Booked</span></div>}

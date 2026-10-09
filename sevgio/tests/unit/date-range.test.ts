@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dayLook, pickDay, validRange, type RangeRules } from "../../lib/date-range.ts";
+import { checkoutLimit, checkoutLimitNote, dayLook, pickDay, validRange, type RangeRules } from "../../lib/date-range.ts";
 
 const today = "2026-10-07";
 const rules: RangeRules = { min: today, taken: new Set(["2026-10-20", "2026-10-21"]), minNights: 2, maxNights: 30 };
@@ -48,4 +48,17 @@ test("same-day ranges for events and reports; past dates when no minimum is set"
   assert.equal(validRange({ ci: "2024-03-01", co: "2024-03-31" }, r), true);
   assert.equal(validRange({ ci: "2026-10-15", co: "2026-10-22" }, rules), false);
   assert.equal(validRange({ ci: "2026-10-15", co: "2026-10-20" }, rules), true);
+});
+
+test("the picker says why later check-out days are greyed out", () => {
+  // Booked the nights of Nov 25 and 26 (a stay Nov 25 to 27): from Nov 1, Nov 25 is the last check-out.
+  const r: RangeRules = { min: "2026-10-09", taken: new Set(["2026-11-25", "2026-11-26"]), minNights: 1, maxNights: 60 };
+  assert.deepEqual(checkoutLimit("2026-11-01", r), { last: "2026-11-25", why: "booked", bookedTo: "2026-11-27" });
+  assert.equal(dayLook("2026-11-25", "co", { ci: "2026-11-01", co: "" }, r).disabled, false);
+  assert.equal(dayLook("2026-12-01", "co", { ci: "2026-11-01", co: "" }, r).disabled, true);
+  assert.match(checkoutLimitNote("2026-11-01", r), /booked from Nov 25 until Nov 27, so the latest check-out for this stay is Wed, Nov 25\. For a longer stay, pick a check-in from Nov 27 or later\./);
+  // After the booking, the home's longest stay is what stops it.
+  assert.match(checkoutLimitNote("2026-11-27", r), /up to 60 nights, so the latest check-out is Tue, Jan 26/);
+  // Pickers that aren't for a home (reports, Go to date) say nothing.
+  assert.equal(checkoutLimitNote("2026-11-01", { maxNights: 60 }), "");
 });

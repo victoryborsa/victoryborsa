@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createContext, useContext, useMemo, useState } from "react";
 import { Calendar, addDaysC } from "./Calendar.tsx";
 import { DateRangePicker } from "./DatePicker.tsx";
-import { dayLook, pickDay, validRange, type RangeRules } from "@/lib/date-range.ts";
+import { checkoutLimitNote, dayLook, pickDay, validRange, type RangeRules } from "@/lib/date-range.ts";
 import { PET_FEE_PER, baseLabel, priceTag, quote, type Party, type PricingInput } from "@/lib/pricing.ts";
 import { UTILITIES, parseServices, servicePrice } from "@/lib/constants.ts";
 import { money, moneyShort } from "@/lib/money.ts";
@@ -71,6 +71,7 @@ export function AvailabilitySection() {
         {!ci ? "Select your check-in date." : !co ? `Now select your check-out date. Minimum stay: ${p.min_nights} night${p.min_nights > 1 ? "s" : ""}.` : `${nights(ci, co)} nights: ${fmt(ci)} to ${fmt(co)}.`}
       </p>
       {msg && <div className="notice error" role="alert">{msg}</div>}
+      {phase === "co" && checkoutLimitNote(ci, rules) && <p className="dr-limit" role="note">{checkoutLimitNote(ci, rules)}</p>}
       <Calendar today={today} startMonth={ci || today} dayState={dayState} onPick={pick} onHover={phase === "co" ? setHover : undefined} boxed />
       <div className="legend cal-legend"><span><i className="lg-sel" />Your dates</span><span><i className="lg-free" />Available</span><span><i className="lg-taken" />Booked / unavailable</span>{!p.monthly_price_cents && <span>Prices are per night</span>}</div>
     </section>
