@@ -63,8 +63,15 @@ test("host edits price, blocks dates, uploads a photo, and imports nothing unsaf
 
   await page.goto("/host/listings");
   await page.locator("tr", { hasText: "Jim Thorpe" }).getByRole("link", { name: "Calendar" }).click();
-  await pickInPicker(page, /First night/, [iso(80), iso(83)]);
+  // Pressing Block before picking dates says what to do and opens the date picker
   await page.getByLabel("Note (only you see this)").fill("Chimney sweep");
+  await page.getByRole("button", { name: "Block these dates" }).click();
+  await expect(page.getByText(/Pick the first night and the day after the last night above/)).toBeVisible();
+  await expect(page.locator(".dr-pop")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await pickInPicker(page, /First night/, [iso(80), iso(83)]);
+  await expect(page.getByText(/Pick the first night and the day after the last night above/)).toHaveCount(0);
+  await expect(page.getByText("3 nights picked").last()).toBeVisible();
   await page.getByRole("button", { name: "Block these dates" }).click();
   await expect(page.getByText(/Guests can't book those nights/)).toBeVisible();
   await page.reload();

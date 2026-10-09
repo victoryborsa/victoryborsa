@@ -18,7 +18,18 @@ export function HostCalendar({ propertyId, today, booked, blocked, pricing, mont
   const b = new Set(booked), k = new Set(blocked);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  // Which tool was pressed before any dates were picked: it says so and opens the date picker, instead of a grey button that does nothing.
+  const [nudge, setNudge] = useState<"" | "price" | "block">("");
+  const needDates = (tool: "price" | "block") => (e: React.MouseEvent) => {
+    if (start) return;
+    e.preventDefault();
+    setNudge(tool);
+    const field = document.querySelector<HTMLButtonElement>('[aria-labelledby="pc-dates-ci-l pc-dates-ci-v"]');
+    field?.scrollIntoView({ block: "center", behavior: "smooth" });
+    field?.click();
+  };
   const pick = (d: string) => {
+    setNudge("");
     if (!start || end || d <= start) { setStart(d); setEnd(""); return; }
     setEnd(d);
   };
@@ -31,6 +42,8 @@ export function HostCalendar({ propertyId, today, booked, blocked, pricing, mont
   };
   const nights = start ? (end ? Math.round((Date.parse(end) - Date.parse(start)) / 86400000) : 1) : 0;
   const until = end || (start ? addDaysC(start, 1) : "");
+  const picked = start ? `${nights} night${nights === 1 ? "" : "s"} picked: ${fmt(start)} to ${fmt(until)} (check-out day). ` : "";
+  const pickFirst = <p className="err-text" role="alert">Pick the first night and the day after the last night above, then press the button again.</p>;
   return (
     <div className="box">
       <Calendar today={today} dayState={dayState} onPick={pick} boxed />
@@ -51,7 +64,7 @@ export function HostCalendar({ propertyId, today, booked, blocked, pricing, mont
       )}
       <p className="muted" style={{ marginTop: 12 }}>Click the first night and then the day after the last night (like check-in and check-out), or pick them below. One click picks a single night.</p>
       <DateRangePicker id="pc-dates" today={today} min={today} names={["", ""]} labels={["First night", "Day after the last night"]} endOptional
-        value={{ ci: start, co: end }} onChange={v => { setStart(v.ci); setEnd(v.co); }} />
+        value={{ ci: start, co: end }} onChange={v => { setStart(v.ci); setEnd(v.co); setNudge(""); }} />
       <div className="pc-tools" style={{ marginTop: 12 }}>
         {!monthly && (
           <ActionForm action={priceAction} className="pc-tool stack" resetOnOk>
@@ -59,12 +72,13 @@ export function HostCalendar({ propertyId, today, booked, blocked, pricing, mont
             <input type="hidden" name="start" value={start} />
             <input type="hidden" name="end" value={until} />
             <h4>Set the nightly price</h4>
-            <p className="hint">{nights ? `${nights} night${nights === 1 ? "" : "s"} picked. ` : "Pick nights on the calendar first. "}Your price replaces the normal price{pricing.smart_pricing ? " and Smart Pricing" : ""} on these nights. Booked stays keep their price.</p>
+            <p className="hint">{picked || "Pick nights on the calendar first. "}Your price replaces the normal price{pricing.smart_pricing ? " and Smart Pricing" : ""} on these nights. Booked stays keep their price.</p>
             <label className="field"><span>Price per night (USD)</span><input className="input mono" name="price" inputMode="decimal" placeholder={String(Math.round(pricing.nightly_price_cents / 100))} /></label>
             <div className="row">
-              <SubmitButton pendingText="Saving…" disabled={!start}>Save price</SubmitButton>
-              <SubmitButton className="btn btn-ghost" name="mode" value="clear" pendingText="Saving…" disabled={!start}>Use {pricing.smart_pricing ? "Smart Pricing" : "normal price"} again</SubmitButton>
+              <SubmitButton pendingText="Saving…" onClick={needDates("price")}>Save price</SubmitButton>
+              <SubmitButton className="btn btn-ghost" name="mode" value="clear" pendingText="Saving…" onClick={needDates("price")}>Use {pricing.smart_pricing ? "Smart Pricing" : "normal price"} again</SubmitButton>
             </div>
+            {nudge === "price" && !start && pickFirst}
           </ActionForm>
         )}
         <ActionForm action={action} className="pc-tool stack" resetOnOk>
@@ -72,9 +86,10 @@ export function HostCalendar({ propertyId, today, booked, blocked, pricing, mont
           <input type="hidden" name="start" value={start} />
           <input type="hidden" name="end" value={until} />
           <h4>Block nights</h4>
-          <p className="hint">Guests can't book blocked nights.</p>
+          <p className="hint">{picked}Guests can't book blocked nights, and the block is sent to the other sites through your Sevgio calendar link. If the guest already moved in, pick today as the first night.</p>
           <label className="field"><span>Note (only you see this)</span><input className="input" name="note" placeholder="e.g. Owner stay, maintenance" /></label>
-          <div><SubmitButton pendingText="Blocking…" disabled={!start}>Block these dates</SubmitButton></div>
+          <div><SubmitButton pendingText="Blocking…" onClick={needDates("block")}>Block these dates</SubmitButton></div>
+          {nudge === "block" && !start && pickFirst}
         </ActionForm>
       </div>
     </div>

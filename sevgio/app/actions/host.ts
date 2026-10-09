@@ -441,8 +441,11 @@ export async function captionAction(fd: FormData) {
 
 export async function addBlockAction(_: ActionState, fd: FormData): Promise<ActionState> {
   const { u, p } = await requireManageable(str(fd, "id", 40));
-  const start = str(fd, "start", 10), end = str(fd, "end", 10);
-  if (start < todayLocal()) return { error: "Choose dates from today onwards." };
+  const today = todayLocal(), end = str(fd, "end", 10);
+  let start = str(fd, "start", 10);
+  if (!start) return { error: "Pick the first night and the day after the last night above, then press Block these dates." };
+  // A stay that already started: block from today on (past nights can't be booked anyway).
+  if (start < today) { if (end <= today) return { error: "Those nights are already in the past." }; start = today; }
   const r = await addBlock(p.id, start, end, str(fd, "note", 120) || "Blocked by host");
   if (!r.ok) return { error: r.error };
   await logEvent("info", "Calendar", `Blocked ${start} to ${end} on ${p.title}`, {}, u.id);
