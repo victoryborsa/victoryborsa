@@ -1,0 +1,40 @@
+[
+  {
+    "listing_kind": "home",
+    "property_type": "house",
+    "title": "McDonald PA Storefronts and Warehouse for Lease, from $700",
+    "city": "McDonald",
+    "area": "",
+    "address": "109 S McDonald St, McDonald, PA 15057",
+    "bedrooms": 0,
+    "bathrooms": 1,
+    "half_bathrooms": 0,
+    "bathroom_type": "private",
+    "kitchen_access": "none",
+    "laundry_access": "none",
+    "max_guests": 1,
+    "beds": [],
+    "min_nights": 30,
+    "max_nights": 365,
+    "booking_mode": "request",
+    "cancellation_policy": "firm",
+    "children_free_age": 0,
+    "amenities": [
+      "free_street",
+      "private_entrance"
+    ],
+    "house_rules": [
+      "Commercial lease, 1 year minimum",
+      "No smoking indoors"
+    ],
+    "description": "Two storefronts and a warehouse are available on a main road in McDonald, PA, with steady foot and car traffic. You can lease one space, two, or all three. The space still needs work, and the owner will build it out around your business. If you have a shop, studio, office or service business in mind, this is a chance to get a space shaped to fit it.\n\nAvailable spaces and pricing\n- Storefront A: 500 sq ft, $700/month\n- Storefront B: 500 sq ft, $700/month\n- Warehouse with 14-foot ceilings: 620 sq ft, $700/month\n- Any 2 spaces: up to 1,120 sq ft, $1,150/month\n- All 3 spaces: 1,620 sq ft, $1,400/month\n\nBuild-out incentive: up to 12 months free rent\nThe owner will help pay for improvements with rent credit:\n- 75% of material costs\n- 25% of labor costs\n- Up to 12 months of free rent in total\n\nHighlights\n- Two large, open storefronts with floor-to-ceiling windows\n- Warehouse space with 14-foot ceilings\n- Main-road location with good foot and car traffic\n- Flexible layout that can be built out for your business\n- Storage space\n- On-street parking, with a public lot nearby for customers\n- 1 bathroom\n- Flexible terms\n\nLease terms\n- Rent: $700/month for one space, $1,150 for two, $1,400 for all three\n- Security deposit: equal to one month's rent ($700 minimum)\n- Due at move-in: first month's rent plus the security deposit\n- Lease term: 1 year minimum\n- Application fee: $30\n\nHow to apply\n1. Download the rental application (the \"Download application (PDF)\" button on this page).\n2. Fill it out by hand and scan it or take a clear phone photo, or fill it out on your device in Adobe Acrobat.\n3. Email the completed application to info@brandscapital.com.\n4. Pay the $30 application fee. See the payment options at brandscapital.com/paymentoptions.php.\n5. Let us know once you have sent the application and paid the fee, so we can match your payment to your application.\nNo printer? We can mail you an application. You can also mail a completed application to Brands Capital Corp, P.O. Box 8221, Pittsburgh, PA 15217 (this adds a few days).\n\nContact\nTell us about your plans and goals. We're flexible and happy to talk through the details.\nCall: (412) 226-8989\nText: (412) 223-6653\nEmail: listings@brandscapital.com\nSe habla español.",
+    "corp_listed": true,
+    "corp_lease_only": true,
+    "corp_furnished": false,
+    "corp_monthly": 700,
+    "corp_deposit": 700,
+    "corp_app_fee": 30,
+    "corp_apply_url": "/docs/brands-capital-rental-application.pdf",
+    "corp_price_note": "Commercial space, 1 to 3 units, from $700/month"
+  }
+]
