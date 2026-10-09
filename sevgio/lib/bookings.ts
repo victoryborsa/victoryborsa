@@ -29,6 +29,8 @@ export type Booking = {
   adults: number; children: number; free_children: number; lodging_cents: number; discount_cents: number; management_fee_percent: number; pets: number; pet_fee_cents: number; services: unknown; services_cents: number; security_deposit_cents: number;
   payment_method: PayMethod | null; card_fee_cents: number; due_now_cents: number; paid_cents: number;
   payment_status: "none" | "pending" | "processing" | "paid" | "deposit_paid" | "failed" | "refunded"; payment_deadline: string | null;
+  /** Corporate housing entered by an admin: a negotiated total, a deposit, when the balance is due, and a flat card fee. */
+  fixed_price: boolean; deposit_due_cents: number; payment_due_date: string | null; card_fee_flat_cents: number | null;
 };
 
 const ACTIVE = "('pending','awaiting_payment','confirmed')";
@@ -199,7 +201,9 @@ export async function replaceFeedBlocks(propertyId: string, source: string, rang
   });
 }
 
-export type ManualBooking = { propertyId: string; guestId: string; ci: string; co: string; name: string; phone: string; taxPercent: number };
+/** `fixed`: a corporate-housing price agreed with the guest. The total replaces the nightly rates, fees and tax. */
+export type FixedPrice = { totalCents: number; depositCents: number; dueDate: string | null; cardFeeCents: number };
+export type ManualBooking = { propertyId: string; guestId: string; ci: string; co: string; name: string; phone: string; taxPercent: number; fixed?: FixedPrice | null };
 
 /**
  * A reservation the host enters for a guest who called or wrote directly. It is confirmed straight away with nothing paid:
@@ -218,13 +222,22 @@ export async function createManualBooking(b: ManualBooking): Promise<CreateResul
       if (!(await isRangeFree(p.id, b.ci, b.co, c))) return { ok: false, error: "These dates are already booked or blocked for this property. Pick other dates, or check the calendar.", reason: "unavailable" } as const;
       await withNightPricing(p, b.ci, b.co, c);
       const pr = quote(p, b.ci, b.co, b.taxPercent); // the listing's normal price for its standard number of guests
+      const f = b.fixed;
+      if (f) {
+        // The negotiated total is the whole price: no nightly rates, cleaning fee or tax on top. Nobody has paid yet.
+        Object.assign(pr, { nightly: Math.round(f.totalCents / pr.nights), cleaning: 0, tax: 0, total: f.totalCents, base: f.totalCents, discount: 0 });
+      }
       for (let attempt = 0; ; attempt++) {
         try {
           const booking = await one<Booking>(
             `INSERT INTO bookings (code, property_id, guest_id, check_in, check_out, guests, status, nights, nightly_price_cents, cleaning_fee_cents, tax_cents, total_cents, guest_name, guest_phone, arrival_time, message,
-               adults, children, free_children, lodging_cents, discount_cents, management_fee_percent, payment_method, card_fee_cents, due_now_cents, payment_status, security_deposit_cents)
-             VALUES ($1,$2,$3,$4,$5,1,'confirmed',$6,$7,$8,$9,$10,$11,$12,'','',1,0,0,$13,$14,$15,'cash',0,0,'none',$16) RETURNING *`,
-            [newCode(), p.id, b.guestId, b.ci, b.co, pr.nights, pr.nightly, pr.cleaning, pr.tax, pr.total, b.name, b.phone, pr.base, pr.discount, p.management_fee_percent, p.security_deposit_cents || 0],
+               adults, children, free_children, lodging_cents, discount_cents, management_fee_percent, payment_method, card_fee_cents, due_now_cents, payment_status, security_deposit_cents,
+               fixed_price, deposit_due_cents, payment_due_date, card_fee_flat_cents)
+             VALUES ($1,$2,$3,$4,$5,1,'confirmed',$6,$7,$8,$9,$10,$11,$12,'','',1,0,0,$13,$14,$15,$17,0,$18,'none',$16,$19,$20,$21,$22) RETURNING *`,
+            [newCode(), p.id, b.guestId, b.ci, b.co, pr.nights, pr.nightly, pr.cleaning, pr.tax, pr.total, b.name, b.phone, pr.base, pr.discount, p.management_fee_percent,
+              f ? 0 : p.security_deposit_cents || 0,
+              // A fixed-price stay has no payment method until the guest pays; "cash, nothing due now" means pay at the property.
+              f ? null : "cash", f ? f.depositCents : 0, !!f, f ? f.depositCents : 0, f?.dueDate || null, f ? f.cardFeeCents : null],
             c,
           );
           return { ok: true, booking: booking!, property: p } as const;
@@ -278,7 +291,7 @@ export async function changeReservation(bookingId: string, ch: ReservationChange
       const b = (await one<Booking>("SELECT * FROM bookings WHERE id = $1 FOR UPDATE", [bookingId], c))!;
       if (!["pending", "awaiting_payment", "confirmed"].includes(b.status)) return { ok: false, error: "Only active reservations can be changed." } as const;
       if (ch.unpaidOnly) {
-        const rule = editRule({ source: "direct", status: b.status, payment_status: b.payment_status, paid_cents: b.paid_cents });
+        const rule = editRule({ source: "direct", status: b.status, payment_status: b.payment_status, paid_cents: b.paid_cents, fixed_price: b.fixed_price });
         if (!rule.editable) return { ok: false, error: `This reservation is read-only. ${rule.reason}` } as const;
       }
       const p = await one<{ max_guests: number }>("SELECT max_guests FROM properties WHERE id = $1", [b.property_id], c);
@@ -298,6 +311,8 @@ export async function changeReservation(bookingId: string, ch: ReservationChange
         `UPDATE bookings SET check_in = $2, check_out = $3, nights = $4, lodging_cents = $5, discount_cents = $6, tax_cents = $7, total_cents = $8,
            guest_name = $9, guest_phone = $10, guests = $11, adults = $12,
            payment_status = CASE WHEN payment_status IN ('paid', 'deposit_paid') THEN (CASE WHEN paid_cents >= $8 THEN 'paid' ELSE 'deposit_paid' END) ELSE payment_status END,
+           -- A fixed corporate price keeps a whole-stay nightly figure in step with the total.
+           nightly_price_cents = CASE WHEN fixed_price THEN round($8::numeric / greatest($4, 1))::int ELSE nightly_price_cents END,
            checkin_email_at = CASE WHEN $2 <> check_in THEN NULL ELSE checkin_email_at END, updated_at = now()
          WHERE id = $1 RETURNING *`,
         [b.id, ch.checkIn, ch.checkOut, price.nights, price.lodging_cents, price.discount_cents, price.tax_cents, price.total_cents,

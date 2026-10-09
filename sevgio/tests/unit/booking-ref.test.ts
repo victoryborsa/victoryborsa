@@ -30,7 +30,7 @@ test("stay phase: upcoming, staying now, past, cancelled", () => {
 test("payment status in words: Unpaid, Partially Paid, Paid, Refunded", () => {
   const b = { status: "confirmed", payment_method: "zelle", payment_status: "pending", total_cents: 50000, paid_cents: 0 };
   assert.equal(paymentText(b), "Unpaid · Waiting for payment");
-  assert.equal(paymentText({ ...b, payment_status: "paid", paid_cents: 50000 }), "Paid");
+  assert.equal(paymentText({ ...b, payment_status: "paid", paid_cents: 50000 }), "Paid in Full");
   assert.equal(paymentText({ ...b, payment_status: "deposit_paid", paid_cents: 10000 }), "Partially Paid · $400 due");
   assert.equal(paymentText({ ...b, payment_status: "failed" }), "Unpaid · The last payment attempt failed");
   assert.equal(paymentText({ ...b, status: "pending" }), "Unpaid · Nothing is due until the host accepts");

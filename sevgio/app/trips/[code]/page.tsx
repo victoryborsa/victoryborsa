@@ -12,7 +12,7 @@ import { CANCELLATION, placeFull } from "@/lib/constants.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { forListing, onlineMethods } from "@/lib/payments.ts";
-import { cardFee } from "@/lib/payment-rules.ts";
+import { bookingCardFee, corporateDue } from "@/lib/payment-rules.ts";
 import { canPayBalance } from "@/lib/payment-flow.ts";
 import { paymentLater } from "@/lib/statuses.ts";
 import { directionsUrl, mailUrl, telUrl } from "@/lib/links.ts";
@@ -52,13 +52,24 @@ export default async function TripPage({ params, searchParams }: { params: Promi
   const today = todayLocal();
   const online = onlineMethods(settings);
   const balance = b.total_cents - b.paid_cents;
+  // A corporate reservation asks for its deposit first; the guest can also pay everything at once.
+  const { depositLeft } = corporateDue(b);
+  const parts: { part: "deposit" | "all"; amount: number; label: string }[] = depositLeft > 0 && depositLeft < balance
+    ? [{ part: "deposit", amount: depositLeft, label: "deposit" }, { part: "all", amount: balance, label: "full balance" }]
+    : [{ part: "all", amount: balance, label: "" }];
+  const fee = (amount: number) => bookingCardFee(b, amount, settings);
   // Every unpaid confirmed booking gets a Pay now box: Stripe buttons when card / bank transfer is on, Zelle / Venmo details when set.
   const payNow = b.guest_id === u.id && canPayBalance(b);
-  const manualPay = [settings.pay_zelle && settings.zelle_to && { label: "Zelle", to: settings.zelle_to }, settings.pay_venmo && settings.venmo_handle && { label: "Venmo", to: settings.venmo_handle }].filter((x): x is { label: string; to: string } => !!x);
+  const manualPay = [settings.pay_zelle && settings.zelle_to && { label: "Zelle", to: settings.zelle_to }, settings.pay_venmo && settings.venmo_handle && { label: "Venmo", to: settings.venmo_handle },
+    // Corporate reservations list every account the admin has set up: they're paid by invoice, not at booking.
+    b.fixed_price && !settings.pay_venmo && settings.venmo_handle && { label: "Venmo", to: settings.venmo_handle },
+    b.fixed_price && !settings.pay_zelle && settings.zelle_to && { label: "Zelle", to: settings.zelle_to },
+    settings.cashapp_handle && { label: "Cash App", to: settings.cashapp_handle }].filter((x): x is { label: string; to: string } => !!x);
   const later = paymentLater(b, payNow && (online.length > 0 || manualPay.length > 0));
-  const canChange = b.guest_id === u.id && b.status === "confirmed" && b.check_out > today;
+  const canChange = b.guest_id === u.id && b.status === "confirmed" && b.check_out > today && !b.fixed_price;
   const taken = canChange ? await unavailableNights(b.property_id, b.check_in < today ? b.check_in : today, addDays(today, 540), undefined, b.id) : [];
-  const canCancel = b.guest_id === u.id && ["pending", "awaiting_payment", "confirmed"].includes(b.status) && b.check_in >= today;
+  // Corporate housing reservations are cancelled by the admin under the agreement, not from the guest's page.
+  const canCancel = b.guest_id === u.id && ["pending", "awaiting_payment", "confirmed"].includes(b.status) && b.check_in >= today && !b.fixed_price;
   const steps: Record<string, string[]> = {
     pending: ["The host reviews your request, usually within a few hours (48 hours at most).", "If they accept, you'll get a confirmation email with the address.", "If they decline or don't reply in time, the dates are released and nothing is owed."],
     confirmed: [later, `Check-in instructions are shown below and emailed to you. Arrive after ${b.check_in_time} on ${fmtDate(b.check_in)}.`, `Check out before ${b.check_out_time} on ${fmtDate(b.check_out)}.`],
@@ -95,24 +106,26 @@ export default async function TripPage({ params, searchParams }: { params: Promi
             <section className="box" style={{ borderColor: "var(--accent, var(--warn))" }} aria-labelledby="paynow-h" data-testid="pay-now">
               <h3 id="paynow-h">Pay now</h3>
               <p><b>Amount due: {money(balance)}</b>{b.paid_cents > 0 ? ` (${money(b.paid_cents)} already paid)` : ""}</p>
+              {depositLeft > 0 && depositLeft < balance && <p data-testid="deposit-due"><b>Deposit due now: {money(depositLeft)}</b>. The remaining {money(balance - depositLeft)} is due{b.payment_due_date ? ` by ${fmtDate(b.payment_due_date)}` : " later"}.</p>}
+              {b.fixed_price && depositLeft === 0 && b.payment_due_date && <p className="hint">Due by {fmtDate(b.payment_due_date)}.</p>}
               {online.length > 0 && <>
-                <p className="hint">Pay securely online through Stripe now, or pay at the property when you arrive. Card details never reach Sevgio.</p>
+                <p className="hint">Pay securely online through Stripe now{b.fixed_price ? "" : ", or pay at the property when you arrive"}. Card details never reach Sevgio.</p>
                 <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                  {online.map(m => (
-                    <ActionForm key={m} action={payBalanceAction}>
-                      <input type="hidden" name="id" value={b.id} /><input type="hidden" name="method" value={m} />
-                      <SubmitButton className={m === online[0] ? "btn btn-primary" : "btn btn-ghost"} pendingText="Opening secure payment…">
-                        {m === "card" ? `Pay ${money(balance + cardFee(balance, settings.card_fee_percent, settings.card_fee_fixed_cents))} by card` : `Pay ${money(balance)} by bank transfer`}
+                  {parts.flatMap(pt => online.map(m => (
+                    <ActionForm key={pt.part + m} action={payBalanceAction}>
+                      <input type="hidden" name="id" value={b.id} /><input type="hidden" name="method" value={m} /><input type="hidden" name="part" value={pt.part} />
+                      <SubmitButton className={m === online[0] && pt === parts[0] ? "btn btn-primary" : "btn btn-ghost"} pendingText="Opening secure payment…">
+                        {m === "card" ? `Pay ${pt.label ? pt.label + " " : ""}${money(pt.amount + fee(pt.amount))} by card` : `Pay ${pt.label ? pt.label + " " : ""}${money(pt.amount)} by bank transfer`}
                       </SubmitButton>
                     </ActionForm>
-                  ))}
+                  )))}
                 </div>
-                {online.includes("card") && cardFee(balance, settings.card_fee_percent, settings.card_fee_fixed_cents) > 0 && <p className="hint">Card payments include a {money(cardFee(balance, settings.card_fee_percent, settings.card_fee_fixed_cents))} processing fee.{online.includes("ach") ? " Bank transfer has no fee." : ""}</p>}
+                {online.includes("card") && fee(parts[0].amount) > 0 && <p className="hint">{b.card_fee_flat_cents != null ? `Each card payment includes a ${money(fee(parts[0].amount))} processing fee.` : `Card payments include a ${money(fee(parts[0].amount))} processing fee.`}{online.includes("ach") ? " Bank transfer has no fee." : ""}</p>}
               </>}
               {manualPay.length > 0 && (
                 <div className="stack" style={{ gap: 6 }}>
                   {online.length > 0 && <p className="hint">Or send it with no fee:</p>}
-                  {manualPay.map(m => <p key={m.label}><b>{m.label}:</b> send {money(balance)} to <span className="mono">{m.to}</span></p>)}
+                  {manualPay.map(m => <p key={m.label}><b>{m.label}:</b> send {money(depositLeft > 0 ? depositLeft : balance)}{depositLeft > 0 && depositLeft < balance ? " (deposit)" : ""} to <span className="mono">{m.to}</span></p>)}
                   <p className="hint">Put <b className="mono">{b.code}</b> in the payment note. Your host marks it paid when it arrives.</p>
                 </div>
               )}

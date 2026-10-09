@@ -17,7 +17,7 @@ import { CopyButton } from "@/components/CopyButton.tsx";
 import { PaymentPill, PriceBreakdown } from "@/components/booking-summary.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { decideBookingAction, editReservationAction, markPaidAction, markRefundedAction } from "@/app/actions/host.ts";
-import { sendPaymentLinkAction } from "@/app/actions/bookings.ts";
+import { sendPaymentLinkAction, sendPaymentRequestAction } from "@/app/actions/bookings.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { onlineMethods } from "@/lib/payments.ts";
 import { canPayBalance } from "@/lib/payment-flow.ts";
@@ -58,9 +58,10 @@ export default async function AdminReservation({ params, searchParams }: { param
     && !(b.status === "awaiting_payment" && (b.payment_method === "card" || b.payment_method === "ach"));
   const canCancel = ["awaiting_payment", "confirmed"].includes(b.status) && b.check_out >= today;
   // Only unpaid Sevgio.com bookings can be edited (past ones too); paid ones are read-only. The server checks the same rule.
-  const rule = editRule({ source: "direct", status: b.status, payment_status: b.payment_status, paid_cents: b.paid_cents });
+  const rule = editRule({ source: "direct", status: b.status, payment_status: b.payment_status, paid_cents: b.paid_cents, fixed_price: b.fixed_price });
   const canEdit = rule.editable;
-  const canSendPayLink = canPayBalance(b) && onlineMethods(await getSettings()).length > 0;
+  const canSendPayLink = !b.fixed_price && canPayBalance(b) && onlineMethods(await getSettings()).length > 0;
+  const canSendRequest = b.fixed_price && canPayBalance(b);
   const canRefund = ["cancelled", "declined", "expired"].includes(b.status) && b.paid_cents > 0 && b.payment_status !== "refunded";
   const taken = canEdit ? await unavailableNights(b.property_id, b.check_in < today ? b.check_in : today, addDays(today, 3 * 366), undefined, b.id) : [];
   return (
@@ -77,7 +78,7 @@ export default async function AdminReservation({ params, searchParams }: { param
           <StatusPill b={b} />
           <PaymentPill b={b} />
         </div>
-        {(canPay || canSendPayLink) && (
+        {(canPay || canSendPayLink || canSendRequest) && (
           <div className="row rd-pay" style={{ gap: 8, flexWrap: "wrap", alignItems: "flex-start" }} data-testid="quick-pay">
             {canPay && (
               <details className="rd-act">
@@ -85,15 +86,21 @@ export default async function AdminReservation({ params, searchParams }: { param
                 <ActionForm action={markPaidAction} className="stack" confirmText="Record this payment?">
                   <input type="hidden" name="id" value={b.id} />
                   <input type="hidden" name="back" value={self} />
-                  <label className="field"><span>Amount received</span><input className="input mono" name="amount" inputMode="decimal" defaultValue={((b.status === "awaiting_payment" ? b.due_now_cents - b.paid_cents : b.total_cents - b.paid_cents) / 100).toFixed(2)} /></label>
+                  <label className="field"><span>Amount received</span><input className="input mono" name="amount" inputMode="decimal" defaultValue={((b.status === "awaiting_payment" ? b.due_now_cents - b.paid_cents : b.fixed_price && b.paid_cents < b.deposit_due_cents ? b.deposit_due_cents - b.paid_cents : b.total_cents - b.paid_cents) / 100).toFixed(2)} /></label>
                   <label className="field"><span>Paid by</span>
-                    <select className="input" name="method" defaultValue={!b.payment_method || paysAtProperty(b) ? "cash" : b.payment_method}>
-                      <option value="cash">Cash</option><option value="zelle">Zelle</option><option value="venmo">Venmo</option><option value="card">Card</option><option value="ach">Bank transfer</option>
+                    <select className="input" name="method" defaultValue={b.fixed_price && !b.payment_method ? "venmo" : !b.payment_method || paysAtProperty(b) ? "cash" : b.payment_method}>
+                      <option value="cash">Cash</option><option value="zelle">Zelle</option><option value="venmo">Venmo</option><option value="cashapp">Cash App</option><option value="card">Card</option><option value="ach">Bank transfer</option>
                     </select>
                   </label>
                   <div><SubmitButton className="btn btn-primary">Save payment</SubmitButton></div>
                 </ActionForm>
               </details>
+            )}
+            {canSendRequest && (
+              <ActionForm action={sendPaymentRequestAction} confirmText={`Email ${b.guest_name} the invoice and payment request?`}>
+                <input type="hidden" name="id" value={b.id} />
+                <SubmitButton className="btn btn-ghost btn-sm" pendingText="Sending…">Email invoice and payment request</SubmitButton>
+              </ActionForm>
             )}
             {canSendPayLink && (
               <ActionForm action={sendPaymentLinkAction} confirmText={`Email ${b.guest_name} a link to pay ${money(b.total_cents - b.paid_cents)} online?`}>
@@ -143,7 +150,10 @@ export default async function AdminReservation({ params, searchParams }: { param
           <PriceBreakdown b={b} />
           <dl className="kv" style={{ marginTop: 12 }}>
             <dt>Payment</dt><dd><PaymentPill b={b} /></dd>
-            <dt>Method</dt><dd>{b.payment_method ? methodLabel(b) : "Not collected online"}</dd>
+            <dt>Method</dt><dd>{b.payment_method ? methodLabel(b) : b.fixed_price ? "Invoice (card, Venmo, Cash App or Zelle)" : "Not collected online"}</dd>
+            {b.fixed_price && <><dt>Price</dt><dd>Fixed corporate housing price</dd></>}
+            {b.fixed_price && b.deposit_due_cents > 0 && <><dt>Deposit</dt><dd>{money(b.deposit_due_cents)}{b.paid_cents >= b.deposit_due_cents ? " · received" : ""}</dd></>}
+            {b.fixed_price && b.payment_due_date && <><dt>Balance due by</dt><dd>{fmtDate(b.payment_due_date)}</dd></>}
             {b.paid_cents < b.total_cents && b.paid_cents > 0 && <><dt>Still to collect</dt><dd>{money(b.total_cents - b.paid_cents)}</dd></>}
             {b.paid_cents === 0 && paysAtProperty(b) && b.status === "confirmed" && <><dt>Amount due</dt><dd>{money(b.total_cents)}</dd></>}
             {b.payment_deadline && b.status === "awaiting_payment" && <><dt>Pay by</dt><dd>{when(b.payment_deadline)} ET</dd></>}
@@ -162,7 +172,7 @@ export default async function AdminReservation({ params, searchParams }: { param
         </section>
 
         {!canEdit && <p className="notice info rd-readonly" data-testid="readonly-note"><span><Icon name="lock" /> <b>Read-only.</b> {rule.reason} You can still view everything here and message the guest.</span></p>}
-        {(b.status === "pending" || canPay || canSendPayLink || canCancel || canEdit || canRefund) && (
+        {(b.status === "pending" || canPay || canSendPayLink || canSendRequest || canCancel || canEdit || canRefund) && (
           <section className="box" aria-labelledby="rd-act">
             <h3 id="rd-act">Actions</h3>
             {b.status === "pending" && (
@@ -182,10 +192,10 @@ export default async function AdminReservation({ params, searchParams }: { param
                 <ActionForm action={markPaidAction} className="stack" confirmText="Record this payment and confirm the booking?">
                   <input type="hidden" name="id" value={b.id} />
                   <input type="hidden" name="back" value={self} />
-                  <label className="field"><span>Amount received</span><input className="input mono" name="amount" defaultValue={((b.status === "awaiting_payment" ? b.due_now_cents - b.paid_cents : b.total_cents - b.paid_cents) / 100).toFixed(2)} /></label>
+                  <label className="field"><span>Amount received</span><input className="input mono" name="amount" defaultValue={((b.status === "awaiting_payment" ? b.due_now_cents - b.paid_cents : b.fixed_price && b.paid_cents < b.deposit_due_cents ? b.deposit_due_cents - b.paid_cents : b.total_cents - b.paid_cents) / 100).toFixed(2)} /></label>
                   <label className="field"><span>Paid by</span>
                     <select className="input" name="method" defaultValue={b.payment_method === "cash" && b.status === "awaiting_payment" ? "zelle" : b.payment_method || "zelle"}>
-                      <option value="zelle">Zelle</option><option value="venmo">Venmo</option><option value="cash">Cash</option><option value="card">Card</option><option value="ach">Bank transfer</option>
+                      <option value="zelle">Zelle</option><option value="venmo">Venmo</option><option value="cashapp">Cash App</option><option value="cash">Cash</option><option value="card">Card</option><option value="ach">Bank transfer</option>
                     </select>
                   </label>
                   <div><SubmitButton className="btn btn-primary">Record payment</SubmitButton></div>
@@ -200,7 +210,7 @@ export default async function AdminReservation({ params, searchParams }: { param
             )}
             {canEdit && (
               <details className="rd-act">
-                <summary className="btn btn-ghost">Edit reservation</summary>
+                <summary className="btn btn-ghost">{b.fixed_price ? "Edit or extend reservation" : "Edit reservation"}</summary>
                 <ActionForm action={editReservationAction} className="stack">
                   <input type="hidden" name="id" value={b.id} />
                   <EditResDates today={today} taken={taken} ci={b.check_in} co={b.check_out} />
@@ -210,7 +220,7 @@ export default async function AdminReservation({ params, searchParams }: { param
                     <label className="field"><span>Number of guests</span><input className="input" name="guests" type="number" min={1} max={50} defaultValue={b.guests} required /></label>
                   </div>
                   <label className="field"><span>Total price <span className="muted" style={{ fontWeight: 400 }}>(optional)</span></span><input className="input mono" name="total" inputMode="decimal" placeholder={(b.total_cents / 100).toFixed(2)} />
-                    <span className="hint">Leave empty to keep the agreed nightly rate: the total follows the number of nights. Fill it in to set the total yourself.</span></label>
+                    <span className="hint">{b.fixed_price ? "For a fixed corporate price, enter the new agreed total when you extend or shorten the stay. Left empty, the total follows the number of nights." : "Leave empty to keep the agreed nightly rate: the total follows the number of nights. Fill it in to set the total yourself."}</span></label>
                   <label className="row" style={{ gap: 8 }}><input type="checkbox" name="notify" value="1" defaultChecked /><span>Email the guest what changed</span></label>
                   <input type="hidden" name="notify" value="0" />
                   <div><SubmitButton className="btn btn-primary" pendingText="Checking dates and saving…">Save changes</SubmitButton></div>

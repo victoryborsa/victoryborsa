@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/auth.ts";
 import { changeReservation, createBooking, repriceForNights, setBookingStatus, stayProblem, type Booking, type PaymentChoice } from "@/lib/bookings.ts";
 import { enabledMethods, forListing, isOnline, onlineMethods } from "@/lib/payments.ts";
 import type { PayMethod } from "@/lib/payment-rules.ts";
-import { bookingInfo, canPayBalance, emailReservationUpdate, notifyBooking, startBalanceCheckout, startCheckout } from "@/lib/payment-flow.ts";
+import { bookingInfo, canPayBalance, emailPaymentRequest, emailReservationUpdate, notifyBooking, startBalanceCheckout, startCheckout } from "@/lib/payment-flow.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { str, type ActionState } from "@/lib/validate.ts";
 import { partyFromForm, partyLabel } from "@/lib/party.ts";
@@ -115,7 +115,7 @@ export async function payBalanceAction(_: ActionState, fd: FormData): Promise<Ac
   if (!onlineMethods(settings).includes(method)) return { error: "Online payment isn't available right now. You can pay at the property, or contact us." };
   let url: string;
   try {
-    url = await startBalanceCheckout(b, method, settings);
+    url = await startBalanceCheckout(b, method, settings, str(fd, "part") === "deposit" ? "deposit" : "all");
   } catch (e) {
     await logEvent("error", "Payment", `Could not start Stripe checkout for ${b.code}`, { error: String(e) }, u.id);
     return { error: "We couldn't open the payment page. Please try again in a minute, or contact us." };
@@ -148,6 +148,7 @@ export async function guestChangeDatesAction(_: ActionState, fd: FormData): Prom
   const u = await requireUser();
   const b = await bookingInfo(str(fd, "id", 40));
   if (!b || b.guest_id !== u.id) return { error: "We couldn't find that booking on your account." };
+  if (b.fixed_price) return { error: "This corporate housing reservation has an agreed price. To change or extend your dates, message your host or contact us." };
   if (b.status !== "confirmed") return { error: b.status === "pending" || b.status === "awaiting_payment" ? "Your dates can be changed once the booking is confirmed. Until then, contact us." : "This booking can't be changed anymore." };
   const today = todayLocal();
   if (b.check_out <= today) return { error: "This stay has ended, so it can't be changed." };
@@ -193,10 +194,22 @@ export async function guestCancelAction(_: ActionState, fd: FormData): Promise<A
     [id, u.id],
   );
   if (!b) return { error: "We couldn't find that booking on your account." };
+  if (b.fixed_price) return { error: "This corporate housing reservation is cancelled under your agreement. Please message your host or contact us." };
   const updated = await setBookingStatus(b.id, ["pending", "awaiting_payment", "confirmed"], "cancelled", { cancelledBy: "guest" });
   if (!updated) return { error: "This booking can't be cancelled anymore." };
   after(checkConflicts);
   await sendEmail(b.host_email, `Cancelled: ${b.title}, ${fmtDate(b.check_in)}`, `${b.guest_name} cancelled booking ${b.code} (${fmtDate(b.check_in)} - ${fmtDate(b.check_out)}). The dates are open again.`);
   await sendEmail(u.email, `You cancelled booking ${b.code}`, `Your booking at ${b.title} for ${fmtDate(b.check_in)} - ${fmtDate(b.check_out)} is cancelled.`);
   redirect(`/trips/${b.code}?msg=guestcancelled`);
+}
+
+/** Admin → reservation page → Email invoice and payment request (fixed-price corporate reservations). */
+export async function sendPaymentRequestAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireUser(["admin"]);
+  const b = await bookingInfo(str(fd, "id", 40));
+  if (!b) return { error: "Booking not found." };
+  if (!canPayBalance(b)) return { error: "This booking has nothing left to pay." };
+  const r = await emailPaymentRequest(b);
+  await logEvent(r.ok ? "info" : "error", "Payment", `Payment request ${r.ok ? "emailed" : "could not be emailed"} for ${b.code}`, { booking: b.id }, admin.id);
+  return r.ok ? { ok: `Invoice and payment request sent to ${b.guest_email}.` } : { error: "The email couldn't be sent right now. It will be retried automatically; check Admin → Operations log." };
 }

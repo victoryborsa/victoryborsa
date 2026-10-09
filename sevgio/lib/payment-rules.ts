@@ -1,11 +1,12 @@
 // Pure payment math, shared by the browser and the server.
-export type PayMethod = "card" | "ach" | "zelle" | "venmo" | "cash";
+export type PayMethod = "card" | "ach" | "zelle" | "venmo" | "cashapp" | "cash";
 
 export const METHOD_LABEL: Record<PayMethod, string> = {
   card: "Credit or debit card",
   ach: "Bank transfer (ACH)",
   zelle: "Zelle",
   venmo: "Venmo",
+  cashapp: "Cash App",
   cash: "Cash at arrival (deposit by Zelle or Venmo)",
 };
 
@@ -29,4 +30,17 @@ export function dueNow(method: PayMethod, totalCents: number, s: { card_fee_perc
   const fee = method === "card" ? cardFee(totalCents, s.card_fee_percent, s.card_fee_fixed_cents) : 0;
   const now = method === "cash" ? Math.round((totalCents * s.deposit_percent) / 100) : totalCents + fee;
   return { fee, now, later: method === "cash" ? totalCents - now : 0 };
+}
+
+/** The card fee for paying `amountCents` of a booking: a corporate reservation's flat fee (e.g. $3), or the site's percentage. */
+export function bookingCardFee(b: { card_fee_flat_cents?: number | null }, amountCents: number, s: { card_fee_percent: number; card_fee_fixed_cents: number }): number {
+  if (amountCents <= 0) return 0;
+  return b.card_fee_flat_cents != null ? b.card_fee_flat_cents : cardFee(amountCents, s.card_fee_percent, s.card_fee_fixed_cents);
+}
+
+/** What's owed now on a fixed-price corporate reservation: the rest of the deposit until it's paid, then the balance. */
+export function corporateDue(b: { total_cents: number; paid_cents: number; deposit_due_cents?: number }) {
+  const balance = Math.max(0, b.total_cents - b.paid_cents);
+  const depositLeft = Math.min(balance, Math.max(0, (b.deposit_due_cents ?? 0) - b.paid_cents));
+  return { balance, depositLeft };
 }

@@ -6,6 +6,7 @@ import { siteUrl } from "@/lib/email.ts";
 import { HostCalendar } from "@/components/HostCalendar.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { CopyField } from "@/components/CopyField.tsx";
+import { KNOWN_SITES } from "@/lib/ical-fetches.ts";
 import { SmartPricingCard } from "@/components/SmartPricingCard.tsx";
 import { demandBetween, manualPrices } from "@/lib/demand.ts";
 import { money } from "@/lib/money.ts";
@@ -16,12 +17,14 @@ export default async function CalendarPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const { p } = await requireManageable(id);
   const today = todayLocal(), until = addDays(today, 560);
-  const [bookings, linkedBlocks, blocks, feeds] = await Promise.all([
+  const [bookings, linkedBlocks, blocks, feeds, fetches] = await Promise.all([
     q<{ check_in: string; check_out: string }>(`SELECT check_in, check_out FROM bookings WHERE property_id IN ${RELATED("$1")} AND status IN ('pending','awaiting_payment','confirmed') AND check_out > $2`, [p.id, today]),
     q<{ start_date: string; end_date: string }>(`SELECT start_date, end_date FROM blocks WHERE property_id IN ${RELATED("$1")} AND property_id <> $1 AND end_date > $2`, [p.id, today]),
     q<{ id: string; start_date: string; end_date: string; note: string; source: string }>("SELECT id, start_date, end_date, note, source FROM blocks WHERE property_id = $1 AND end_date > $2 ORDER BY start_date", [p.id, today]),
     q<{ id: string; name: string; url: string; last_synced_at: string | null; last_error: string | null }>("SELECT id, name, url, last_synced_at, last_error FROM ical_feeds WHERE property_id = $1 ORDER BY created_at", [p.id]),
+    q<{ site: string; last_at: string }>("SELECT site, last_at FROM ical_fetches WHERE property_id = $1 ORDER BY last_at DESC", [p.id]),
   ]);
+  const notSeen = KNOWN_SITES.filter(s => !fetches.some(f => f.site === s));
   // Nights taken by the linked whole home or room count as booked here too.
   const booked = [...bookings.map(b => [b.check_in, b.check_out]), ...linkedBlocks.map(b => [b.start_date, b.end_date])].flatMap(([a, z]) => eachNight(a, z < until ? z : until));
   const blocked = blocks.flatMap(b => eachNight(b.start_date, b.end_date < until ? b.end_date : until));
@@ -58,6 +61,11 @@ export default async function CalendarPage({ params }: { params: Promise<{ id: s
           <strong>1. Send Sevgio bookings to other sites</strong>
           <p className="hint">Paste this link into the other site's "import calendar" setting. It stays private: anyone with the link can see which dates are booked, but not who booked them.</p>
           <CopyField value={exportUrl} label="Sevgio calendar link" />
+          <div className="stack" style={{ gap: 4 }} data-testid="ical-fetches">
+            <span className="hint"><b>Who is reading this link.</b> Each site checks it on its own schedule, often every few hours, so new bookings and blocked dates reach them after their next check, not instantly.</span>
+            {fetches.map(f => <span key={f.site} className="hint">{f.site === "Web browser" ? "Opened in a web browser" : `${f.site} last checked it`}: <b>{fmtWhen(f.last_at)}</b></span>)}
+            {notSeen.length > 0 && <span className="hint">Not seen yet: {notSeen.join(", ")}. If you added the link there, it shows here after that site's first check.</span>}
+          </div>
         </div>
         <div className="stack">
           <strong>2. Block dates booked on other sites</strong>

@@ -7,7 +7,7 @@ import { hashPassword, requireUser, safeNext, type User } from "@/lib/auth.ts";
 import nodeCrypto from "node:crypto";
 import { withMsg } from "@/components/Flash.tsx";
 import { requireManageable } from "@/lib/access.ts";
-import { addBlock, changeReservation, createManualBooking, setBookingStatus, type Booking } from "@/lib/bookings.ts";
+import { addBlock, changeReservation, createManualBooking, setBookingStatus, type Booking, type FixedPrice } from "@/lib/bookings.ts";
 import { ACCESS, AMENITIES, CANCELLATION, PROPERTY_TYPES, parseBeds, parseRooms, parseServices } from "@/lib/constants.ts";
 import { int, isEmail, lines, slugify, str, type ActionState } from "@/lib/validate.ts";
 import { money, toCents } from "@/lib/money.ts";
@@ -558,7 +558,7 @@ export async function markPaidAction(_: ActionState, fd: FormData): Promise<Acti
   if (!amount || amount <= 0) return { error: "Enter the amount you received." };
   if (!["awaiting_payment", "confirmed"].includes(b.status)) return { error: "This booking isn't active." };
   const method = str(fd, "method") || b.payment_method || "zelle";
-  if (!["zelle", "venmo", "cash", "card", "ach"].includes(method)) return { error: "Choose how the money was paid." };
+  if (!["zelle", "venmo", "cashapp", "cash", "card", "ach"].includes(method)) return { error: "Choose how the money was paid." };
   const r = await recordPayment(b.id, amount, { method, recordedBy: u.id, note: str(fd, "note", 200) });
   if (!r.ok) return { error: r.reason === "taken" ? "The payment was recorded, but these dates were already taken by someone else. Please refund the guest." : "Booking not found." };
   const back = safeNext(str(fd, "back", 300), "/host/bookings");
@@ -609,14 +609,24 @@ export async function addManualReservationAction(_: ActionState, fd: FormData): 
   if (!name) return { error: "Enter the guest's name." };
   if (!isEmail(email)) return { error: "Enter the guest's email, so they get their confirmation." };
   if (!isIsoDate(ci) || !isIsoDate(co)) return { error: "Choose check-in and check-out dates." };
+  // Corporate housing: a negotiated total, a deposit and when the rest is due, instead of the nightly rates.
+  let fixed: FixedPrice | null = null;
+  if (fd.get("fixed_price") === "on") {
+    const total = toCents(str(fd, "fixed_total", 20)), deposit = toCents(str(fd, "fixed_deposit", 20) || "0"), due = str(fd, "payment_due", 10);
+    if (!total || total < 100) return { error: "Enter the total price for the stay, for example 3000." };
+    if (total > 100_000_00) return { error: "The total price looks too high. Enter it in dollars, for example 3000." };
+    if (deposit == null || deposit > total) return { error: "The deposit can't be more than the total price." };
+    if (due && (!isIsoDate(due) || due < todayLocal())) return { error: "Choose a payment due date from today onwards." };
+    fixed = { totalCents: total, depositCents: deposit, dueDate: due || null, cardFeeCents: (await getSettings()).corporate_card_fee_cents };
+  }
   // The guest's account: an existing one with this email, or a new one they can open later with "Forgot password".
   let guest = await one<{ id: string }>("SELECT id FROM users WHERE lower(email) = $1", [email]);
   guest ??= await one<{ id: string }>("INSERT INTO users (email, name, phone, password_hash, role) VALUES ($1, $2, $3, $4, 'customer') RETURNING id",
     [email, name, phone, await hashPassword(nodeCrypto.randomBytes(24).toString("hex"))]);
   const s = await getSettings();
-  const r = await createManualBooking({ propertyId, guestId: guest!.id, ci, co, name, phone, taxPercent: s.tax_percent });
+  const r = await createManualBooking({ propertyId, guestId: guest!.id, ci, co, name, phone, taxPercent: s.tax_percent, fixed });
   if (!r.ok) return { error: r.error };
-  await logEvent("info", "Bookings", `Manual reservation ${r.booking.code} added for ${name}, ${r.property.title}, ${ci} to ${co}`, { booking: r.booking.id }, admin.id);
+  await logEvent("info", "Bookings", `Manual reservation ${r.booking.code} added for ${name}, ${r.property.title}, ${ci} to ${co}${fixed ? `, fixed price ${money(fixed.totalCents)}, deposit ${money(fixed.depositCents)}` : ""}`, { booking: r.booking.id }, admin.id);
   after(() => checkConflicts());
   const info = await bookingInfo(r.booking.id);
   const sent = info ? await emailManualConfirmation(info) : { ok: false };

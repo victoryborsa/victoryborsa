@@ -159,6 +159,11 @@ export async function saveSettingsAction(_: ActionState, fd: FormData): Promise<
   await saveSetting("manual_payment_hours", hours);
   await saveSetting("zelle_to", zelle);
   await saveSetting("venmo_handle", venmo);
+  const cashapp = str(fd, "cashapp_handle", 60).trim(), corpFee = toCents(str(fd, "corporate_card_fee") || "0");
+  if (cashapp && !/^\$?[A-Za-z][A-Za-z0-9_-]{0,20}$/.test(cashapp)) return { error: "Enter your Cash App $Cashtag, like $SevgioStays." };
+  if (corpFee === null || corpFee > 5000) return { error: "The corporate card fee must be between $0 and $50." };
+  await saveSetting("cashapp_handle", cashapp && !cashapp.startsWith("$") ? "$" + cashapp : cashapp);
+  await saveSetting("corporate_card_fee_cents", corpFee);
   const listingFee = toCents(str(fd, "listing_fee") || "0");
   if (listingFee === null || listingFee < 0 || listingFee > 1_000_000) return { error: "Enter the yearly listing fee in dollars, e.g. 100." };
   await saveSetting("listing_fee_enabled", on("listing_fee_enabled"));

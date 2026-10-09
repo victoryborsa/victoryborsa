@@ -3,7 +3,7 @@ import type pg from "pg";
 import { one, q, tx } from "./db.ts";
 import type { Booking } from "./bookings.ts";
 import { getSettings, type Settings } from "./settings.ts";
-import { METHOD_LABEL, cardFee } from "./payment-rules.ts";
+import { METHOD_LABEL, bookingCardFee, corporateDue } from "./payment-rules.ts";
 import { forListing, onlineMethods, stripe } from "./payments.ts";
 import { sendEmail, siteUrl } from "./email.ts";
 import { logEvent } from "./log.ts";
@@ -104,9 +104,10 @@ export async function startCheckout(b: Info): Promise<string> {
 }
 
 /** Starts a Stripe Checkout for what's still owed on a confirmed booking (booked to pay at the property, or partly paid). */
-export async function startBalanceCheckout(b: Info, method: "card" | "ach", s: Settings): Promise<string> {
-  const amountCents = b.total_cents - b.paid_cents;
-  const feeCents = method === "card" ? cardFee(amountCents, s.card_fee_percent, s.card_fee_fixed_cents) : 0;
+export async function startBalanceCheckout(b: Info, method: "card" | "ach", s: Settings, part: "all" | "deposit" = "all"): Promise<string> {
+  const { balance, depositLeft } = corporateDue(b);
+  const amountCents = part === "deposit" && depositLeft > 0 ? depositLeft : balance;
+  const feeCents = method === "card" ? bookingCardFee(b, amountCents, s) : 0;
   return checkout(b, { method, amountCents, feeCents, recordCents: amountCents, deadline: Date.now() + 3600_000, balance: true });
 }
 
@@ -205,6 +206,12 @@ export async function paymentFailed(stripeSession: string, reason: string) {
 /** Confirmation for a reservation the host entered by hand: nothing paid yet, the guest pays at the property. */
 export async function emailManualConfirmation(b: Info) {
   const first = b.guest_name.split(" ")[0] || "there";
+  if (b.fixed_price) {
+    const s = forListing(await getSettings(), b);
+    return sendEmail(b.guest_email, `Reservation confirmed ${b.code}: ${b.title}`,
+      `Hi ${first},\n\nYour corporate housing reservation at ${b.title} is confirmed and the dates are reserved for you.\n\n${paymentRequestText(b, s)}\n\n${KEEP_REFERENCE}\n\n`
+      + `See your reservation and arrival details online: ${siteUrl()}/trips/${b.code}\n(Sign in with this email address. The first time, choose "Forgot password" to set one.)`);
+  }
   const online = payOnlineNow(b, await getSettings());
   const lines = [
     `Booking reference: ${b.code}`,
@@ -227,7 +234,7 @@ export async function emailPaymentReceived(b: Info, amountCents: number) {
   const balance = Math.max(0, b.total_cents - b.paid_cents);
   return sendEmail(b.guest_email, `Payment received ${b.code}: ${b.title}`,
     `Hi ${first},\n\nWe received your payment of ${money(amountCents)} for ${b.title} (${dates(b)}).\n\n`
-    + `Booking reference: ${b.code}\nTotal: ${money(b.total_cents)}\nPaid so far: ${money(b.paid_cents)}\n${balance > 0 ? `Balance due: ${money(balance)}` : "Paid in full. Thank you!"}\n\n`
+    + `Booking reference: ${b.code}\nTotal: ${money(b.total_cents)}\nPaid so far: ${money(b.paid_cents)}\n${balance > 0 ? `Balance due: ${money(balance)}${b.payment_due_date ? ` by ${fmtDate(b.payment_due_date)}` : ""}` : "Paid in full. Thank you!"}\n\n`
     + `See your booking: ${siteUrl()}/trips/${b.code}`);
 }
 
@@ -279,4 +286,48 @@ export function checkInText(b: ArrivalInfo, online = false): string {
     ...(later ? ["", later] : []),
     "", `Your booking online: ${siteUrl()}/trips/${b.code}`,
   ].join("\n");
+}
+
+/** Ways to pay listed in a payment request: card online from the booking page, and Venmo, Cash App or Zelle sent by the guest. */
+export function payWays(b: Info, s: Settings, amountCents: number) {
+  const link = `${siteUrl()}/trips/${b.code}`;
+  const fee = bookingCardFee(b, amountCents, s);
+  return [
+    onlineMethods(s).includes("card") && `Credit or debit card, online: ${link}${fee > 0 ? ` (a ${money(fee)} card processing fee is added, so ${money(amountCents + fee)} in all)` : ""}`,
+    s.venmo_handle && `Venmo: send to ${s.venmo_handle}`,
+    s.cashapp_handle && `Cash App: send to ${s.cashapp_handle}`,
+    s.zelle_to && `Zelle: send to ${s.zelle_to}`,
+  ].filter((x): x is string => !!x);
+}
+
+/** The invoice and payment request for a fixed-price corporate reservation, as plain text for email. */
+export function paymentRequestText(b: Info, s: Settings): string {
+  const { balance, depositLeft } = corporateDue(b);
+  const now = depositLeft > 0 ? depositLeft : balance;
+  const ways = payWays(b, s, now);
+  return [
+    `Booking reference: ${b.code}`,
+    `Property: ${b.title}`,
+    `Check-in: ${fmtDate(b.check_in)}`,
+    `Check-out: ${fmtDate(b.check_out)} (${b.nights} night${b.nights === 1 ? "" : "s"})`,
+    "",
+    `Total price: ${money(b.total_cents)}`,
+    b.deposit_due_cents > 0 ? `Deposit: ${money(b.deposit_due_cents)}` : "",
+    b.paid_cents > 0 ? `Paid so far: ${money(b.paid_cents)}` : "",
+    depositLeft > 0 ? `Due now (deposit): ${money(depositLeft)}` : "",
+    `Remaining balance: ${money(balance - depositLeft)}${b.payment_due_date && balance - depositLeft > 0 ? `, due by ${fmtDate(b.payment_due_date)}` : ""}`,
+    `Payment status: ${paymentText(b)}`,
+    "",
+    ways.length ? `How to pay ${money(now)}:\n${ways.map(w => `- ${w}`).join("\n")}\nPlease put your booking reference ${b.code} in the payment note. You'll get a receipt by email when each payment is recorded.` : `We'll contact you about how to pay. Your booking reference is ${b.code}.`,
+    "",
+    `Invoice: ${siteUrl()}/trips/${b.code}/invoice`,
+  ].filter((l, i, a) => l !== "" || a[i - 1] !== "").join("\n");
+}
+
+/** Emails the guest the invoice and payment request for a fixed-price corporate reservation. */
+export async function emailPaymentRequest(b: Info) {
+  const s = forListing(await getSettings(), b);
+  const first = b.guest_name.split(" ")[0] || "there";
+  return sendEmail(b.guest_email, `Invoice and payment request ${b.code}: ${b.title}`,
+    `Hi ${first},\n\nHere is the invoice for your stay at ${b.title}.\n\n${paymentRequestText(b, s)}\n\n${KEEP_REFERENCE}`);
 }

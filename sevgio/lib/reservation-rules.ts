@@ -12,7 +12,7 @@ export type ResSource = "direct" | "external" | "block";
  */
 export const EXTERNAL_NOTES_EDITABLE = false;
 
-export type EditFields = { source: ResSource; status: string; payment_status?: string | null; paid_cents?: number | null };
+export type EditFields = { source: ResSource; status: string; payment_status?: string | null; paid_cents?: number | null; fixed_price?: boolean };
 export type EditRule = { editable: boolean; reason: string };
 
 const ACTIVE = ["pending", "awaiting_payment", "confirmed"];
@@ -26,6 +26,8 @@ export function editRule(r: EditFields): EditRule {
   if (r.source === "external") return { editable: false, reason: "Synced from another site, so it is read-only here. Changes must be made on that site." };
   if (r.source === "block") return { editable: false, reason: "External calendar block: read-only. It follows the other site's calendar." };
   if (!ACTIVE.includes(r.status)) return { editable: false, reason: "Cancelled, declined or expired reservations are read-only." };
+  // A corporate-housing reservation stays editable after the deposit is in, so the admin can extend or shorten it.
+  if (r.fixed_price && r.payment_status !== "processing" && r.payment_status !== "refunded") return { editable: true, reason: "Corporate housing reservation: can be edited or extended." };
   if ((r.paid_cents ?? 0) > 0 || ["paid", "deposit_paid", "processing", "refunded"].includes(r.payment_status || ""))
     return { editable: false, reason: "A payment has been made or is processing, so this reservation is read-only." };
   return { editable: true, reason: "Unpaid Sevgio.com booking: can be edited." };
