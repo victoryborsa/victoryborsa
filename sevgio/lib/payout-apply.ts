@@ -1,11 +1,20 @@
 import { one, q } from "./db.ts";
 import { matchListing, type PayoutRecord } from "./payout-import.ts";
 import { syncManualBlock } from "./channel-res.ts";
-import { channelLabel } from "./channels.ts";
+import { channelLabel, channelOf } from "./channels.ts";
 
 export type ImportOptions = { channel: string; defaultProperty: string | null; markReceived: boolean; dryRun: boolean; today: string; userId?: string | null; fileName?: string };
 export type ImportOutcome = { key: string; ref: string; check_in: string | null; check_out: string | null; action: "update" | "create" | "skip"; place: string; reason?: string; payout: number | null };
-export type ImportSummary = { updated: number; created: number; skipped: number; outcomes: ImportOutcome[] };
+export type ImportSummary = { updated: number; created: number; skipped: number; outcomes: ImportOutcome[]; importId?: string };
+
+/** Every reservation field an import can change; undo puts these back. */
+export const IMPORT_FIELDS = ["rent_cents", "cleaning_cents", "other_cents", "tax_cents", "commission_cents", "refund_cents", "expected_payout_cents",
+  "received_payout_cents", "payout_date", "finance_source", "kind", "kind_locked", "external_ref", "ref_source", "guest_name", "guest_name_source",
+  "guests", "status", "cancelled_at"] as const;
+
+const snapshot = async (id: string) =>
+  (await one<{ s: Record<string, unknown> }>("SELECT (SELECT jsonb_object_agg(k, v) FROM jsonb_each(to_jsonb(c)) e(k, v) WHERE k = ANY($2)) AS s FROM channel_reservations c WHERE id = $1",
+    [id, IMPORT_FIELDS]))?.s ?? null;
 
 type Target = { id: string; property_id: string; external_ref: string; guest_name: string; guests: number | null; received_payout_cents: number | null };
 
@@ -14,12 +23,23 @@ type Target = { id: string; property_id: string; external_ref: string; guest_nam
  * Records that match nothing become new reservations when their listing is known. Running the same file again
  * gives the same result (amounts are replaced, not added), so a re-import never double counts.
  * With dryRun, nothing is saved; the outcome shows what would happen.
+ * Otherwise every change is recorded against one channel_imports row (what was added, and what changed with its
+ * values before and after), so lib/import-undo.ts can reverse exactly this import later.
+ * A line that matches nothing is added only on a listing connected to that site (it has the site's calendar link),
+ * and only when it doesn't overlap a stay already there, so a file whose lines fail to match can't pile duplicates
+ * onto the calendar or put stays on listings that aren't on that site.
  */
 export async function applyPayoutRecords(listings: { id: string; title: string; parent_id: string | null }[], records: PayoutRecord[], o: ImportOptions): Promise<ImportSummary> {
   const ids = listings.map(l => l.id);
   const title = (id: string) => { const l = listings.find(x => x.id === id); const h = l?.parent_id ? listings.find(x => x.id === l.parent_id) : null; return l ? (h ? `${h.title} › ${l.title}` : l.title) : ""; };
   const sum: ImportSummary = { updated: 0, created: 0, skipped: 0, outcomes: [] };
   const used = new Set<string>();
+  const importId = o.dryRun ? null : (await one<{ id: string }>(
+    "INSERT INTO channel_imports (user_id, file_name, channel, rows, status) VALUES ($1, $2, $3, $4, 'running') RETURNING id",
+    [o.userId ?? null, (o.fileName || "").slice(0, 200), o.channel, records.length]))!.id;
+  const record = async (resId: string, action: "create" | "update", before: Record<string, unknown> | null) =>
+    q("INSERT INTO channel_import_changes (import_id, reservation_id, action, before, after) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (import_id, reservation_id) DO NOTHING",
+      [importId, resId, action, before && JSON.stringify(before), JSON.stringify(await snapshot(resId))]);
   for (const r of records) {
     const base = { key: r.key, ref: r.ref, check_in: r.check_in, check_out: r.check_out, payout: r.payout };
     const skip = (reason: string) => { sum.skipped++; sum.outcomes.push({ ...base, action: "skip", place: "", reason }); };
@@ -43,27 +63,51 @@ export async function applyPayoutRecords(listings: { id: string; title: string; 
       used.add(t.id);
       sum.updated++;
       sum.outcomes.push({ ...base, action: "update", place: title(t.property_id) });
-      if (!o.dryRun) await saveFinance(t.id, r, o, t);
+      if (!o.dryRun) {
+        const before = await snapshot(t.id);
+        await saveFinance(t.id, r, o, t);
+        await record(t.id, "update", before);
+      }
       continue;
     }
     const pid = named?.id || o.defaultProperty;
     if (!pid) { skip(r.listing ? `No listing called "${r.listing}"; choose one for unmatched lines` : "No matching reservation; choose a listing for unmatched lines"); continue; }
     if (!r.check_in || !r.check_out || r.check_out <= r.check_in) { skip("No matching reservation, and the line has no check-in and check-out dates"); continue; }
+    // Only on a listing (or its home or rooms) that has this site's calendar link: a stay is never put on a listing not listed on that site.
+    const links = await q<{ name: string; url: string }>(
+      `SELECT f.name, f.url FROM ical_feeds f, properties me WHERE me.id = $1
+         AND f.property_id IN (SELECT x.id FROM properties x WHERE x.id = me.id OR x.parent_id = me.id OR x.id = me.parent_id)`, [pid]);
+    if (!links.some(f => channelOf(f.name, f.url).key === o.channel)) {
+      skip(`Not added: ${title(pid)} isn't connected to ${channelLabel(o.channel)} (no ${channelLabel(o.channel)} calendar link)`); continue;
+    }
+    const overlap = await one<{ check_in: string; check_out: string; label: string }>(
+      `SELECT check_in, check_out, label FROM (
+         SELECT c.check_in, c.check_out, c.channel AS label FROM channel_reservations c
+          WHERE c.status = 'confirmed' AND c.kind <> 'blocked' AND c.property_id IN (SELECT x.id FROM properties x, properties me WHERE me.id = $1 AND (x.id = me.id OR x.parent_id = me.id OR x.id = me.parent_id))
+            AND c.check_in < $3 AND c.check_out > $2
+         UNION ALL
+         SELECT b.check_in, b.check_out, 'sevgio' FROM bookings b
+          WHERE b.status IN ('pending', 'awaiting_payment', 'confirmed') AND b.property_id IN (SELECT x.id FROM properties x, properties me WHERE me.id = $1 AND (x.id = me.id OR x.parent_id = me.id OR x.id = me.parent_id))
+            AND b.check_in < $3 AND b.check_out > $2) s ORDER BY check_in LIMIT 1`, [pid, r.check_in, r.check_out]);
+    if (overlap && !r.cancelled) { skip(`Not added: ${title(pid)} already has a ${channelLabel(overlap.label)} stay ${overlap.check_in} → ${overlap.check_out}. Add the listing name or confirmation code column so the line matches it`); continue; }
     sum.created++;
     sum.outcomes.push({ ...base, action: "create", place: title(pid) });
     if (o.dryRun) continue;
     const refFree = r.ref && !(await one("SELECT 1 FROM channel_reservations WHERE channel = $1 AND lower(external_ref) = lower($2)", [o.channel, r.ref]));
     const row = await one<Target & { check_in: string; check_out: string; status: string }>(
-      `INSERT INTO channel_reservations (property_id, channel, kind, kind_locked, source, external_ref, check_in, check_out, summary, guest_name, guests, status, cancelled_at)
-       VALUES ($1, $2, 'reservation', true, 'import', $3, $4, $5, $6, $7, $8, $9, CASE WHEN $9 = 'cancelled' THEN now() END)
+      `INSERT INTO channel_reservations (property_id, channel, kind, kind_locked, source, external_ref, check_in, check_out, summary, guest_name, guest_name_source, guests, status, cancelled_at, ref_source)
+       VALUES ($1, $2, 'reservation', true, 'import', $3, $4, $5, $6, $7, CASE WHEN $7 = '' THEN '' ELSE 'import' END, $8, $9, CASE WHEN $9 = 'cancelled' THEN now() END, CASE WHEN $3 = '' THEN '' ELSE 'import' END)
        RETURNING id, property_id, external_ref, guest_name, guests, received_payout_cents, check_in, check_out, status`,
       [pid, o.channel, refFree ? r.ref : "", r.check_in, r.check_out, `${channelLabel(o.channel)} reservation${r.ref ? " " + r.ref : ""}`, r.guest, r.guests, r.cancelled ? "cancelled" : "confirmed"]);
     used.add(row!.id);
     await saveFinance(row!.id, r, o, row!);
+    await record(row!.id, "create", null);
     await syncManualBlock({ ...row!, summary: `${channelLabel(o.channel)}: Reserved` }, o.today);
   }
-  if (!o.dryRun) await q("INSERT INTO channel_imports (user_id, file_name, channel, rows, updated, created, skipped) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-    [o.userId ?? null, (o.fileName || "").slice(0, 200), o.channel, records.length, sum.updated, sum.created, sum.skipped]);
+  if (importId) {
+    await q("UPDATE channel_imports SET updated = $2, created = $3, skipped = $4, status = 'done' WHERE id = $1", [importId, sum.updated, sum.created, sum.skipped]);
+    sum.importId = importId;
+  }
   return sum;
 }
 
@@ -75,7 +119,8 @@ async function saveFinance(id: string, r: PayoutRecord, o: ImportOptions, t: Tar
        rent_cents = coalesce($2, rent_cents), cleaning_cents = coalesce($3, cleaning_cents), other_cents = coalesce($4, other_cents), tax_cents = coalesce($5, tax_cents),
        commission_cents = coalesce($6, commission_cents), refund_cents = coalesce($7, refund_cents), expected_payout_cents = coalesce($8, expected_payout_cents),
        received_payout_cents = $9, payout_date = coalesce($10, payout_date), finance_source = 'import', kind = 'reservation', kind_locked = true,
-       external_ref = CASE WHEN $11 THEN $12 ELSE external_ref END, guest_name = CASE WHEN guest_name = '' THEN $13 ELSE guest_name END, guests = coalesce(guests, $14),
+       external_ref = CASE WHEN $11 THEN $12 ELSE external_ref END, ref_source = CASE WHEN $11 THEN 'import' ELSE ref_source END, guest_name = CASE WHEN guest_name = '' THEN $13 ELSE guest_name END,
+       guest_name_source = CASE WHEN guest_name = '' AND $13 <> '' THEN 'import' ELSE guest_name_source END, guests = coalesce(guests, $14),
        status = CASE WHEN $15 THEN 'cancelled' ELSE status END, cancelled_at = CASE WHEN $15 AND cancelled_at IS NULL THEN now() ELSE cancelled_at END, updated_at = now()
      WHERE id = $1`,
     [id, r.rent, r.cleaning, r.other, r.tax, r.commission, r.refund, r.payout, received, r.payout_date, !!refFree, r.ref, r.guest, r.guests, r.cancelled]);

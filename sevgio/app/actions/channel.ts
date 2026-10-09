@@ -1,6 +1,8 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { checkConflicts } from "@/lib/conflicts.ts";
 import { one, q } from "@/lib/db.ts";
 import { requireUser, type User } from "@/lib/auth.ts";
 import { str, type ActionState } from "@/lib/validate.ts";
@@ -12,6 +14,11 @@ import { syncManualBlock } from "@/lib/channel-res.ts";
 import { FIELDS, guessMapping, parseCsv, toRecords, type Field, type Mapping } from "@/lib/payout-import.ts";
 import { applyPayoutRecords, type ImportSummary } from "@/lib/payout-apply.ts";
 import { logEvent } from "@/lib/log.ts";
+import { canUndo, getImport, putBackImport, undoImport } from "@/lib/import-undo.ts";
+import { EXTERNAL_NOTES_EDITABLE } from "@/lib/reservation-rules.ts";
+
+/** Reservations from other sites are read-only (see EXTERNAL_NOTES_EDITABLE): the server refuses changes even if a form is sent by hand. */
+const READ_ONLY = "Reservations from other sites are read-only on Sevgio. Make changes on the site it was booked on; imported payout files still update Finance.";
 
 type Row = { id: string; property_id: string; source: string; check_in: string; check_out: string; status: string; summary: string; channel: string };
 
@@ -56,15 +63,16 @@ export async function saveChannelResAction(_: ActionState, fd: FormData): Promis
   if (id) {
     const r = await manageable(u, id);
     if (!r) return { error: "You can't manage this reservation." };
+    if (!EXTERNAL_NOTES_EDITABLE) return { error: READ_ONLY };
     if (ref && await one("SELECT 1 FROM channel_reservations WHERE channel = $1 AND lower(external_ref) = lower($2) AND id <> $3", [r.channel, ref, id]))
       return { error: `Another ${channelLabel(r.channel)} reservation already has the code ${ref}.` };
     await q(
       `UPDATE channel_reservations SET rent_cents = $2, cleaning_cents = $3, other_cents = $4, tax_cents = $5, commission_cents = $6, refund_cents = $7,
          expected_payout_cents = $8, received_payout_cents = $9, payout_date = $10, finance_source = CASE WHEN $11 THEN 'manual' ELSE 'none' END,
-         external_ref = $12, guest_name = $13, guests = $14, note = $15, kind = $16, kind_locked = true, updated_at = now()
+         ref_source = CASE WHEN $12 = external_ref THEN ref_source WHEN $12 = '' THEN '' ELSE 'manual' END, external_ref = $12, ${fd.has("guest_name") ? NAME_SET("$13", "$17") : "guest_name = guest_name, guest_name_by = coalesce(guest_name_by, $17::uuid)"}, guests = $14, note = $15, kind = $16, kind_locked = true, updated_at = now()
        WHERE id = $1`,
       [id, m.values.rent_cents, m.values.cleaning_cents, m.values.other_cents, m.values.tax_cents, m.values.commission_cents, m.values.refund_cents,
-        m.values.expected_payout_cents, m.values.received_payout_cents, payoutDate || null, anyMoney, ref, guest, guests, note, kind]);
+        m.values.expected_payout_cents, m.values.received_payout_cents, payoutDate || null, anyMoney, ref, guest, guests, note, kind, u.id]);
     await logEvent("info", "Finance", `Updated payout details for ${channelLabel(r.channel)} reservation ${ref || r.check_in}`, { reservation: id }, u.id);
     revalidatePath("/host/bookings/other-sites");
     return { ok: "Saved. Finance and statements now use these amounts." };
@@ -79,49 +87,73 @@ export async function saveChannelResAction(_: ActionState, fd: FormData): Promis
     return { error: `A ${channelLabel(channel)} reservation with the code ${ref} is already here. Open it from Other sites to edit it.` };
   const row = await one<Row>(
     `INSERT INTO channel_reservations (property_id, channel, kind, kind_locked, source, external_ref, check_in, check_out, summary, guest_name, guests, note,
-       rent_cents, cleaning_cents, other_cents, tax_cents, commission_cents, refund_cents, expected_payout_cents, received_payout_cents, payout_date, finance_source)
-     VALUES ($1, $2, $3, true, 'manual', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+       rent_cents, cleaning_cents, other_cents, tax_cents, commission_cents, refund_cents, expected_payout_cents, received_payout_cents, payout_date, finance_source,
+       guest_name_source, guest_name_by, guest_name_at, ref_source)
+     VALUES ($1, $2, $3, true, 'manual', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+       CASE WHEN $8 = '' THEN '' ELSE 'manual' END, CASE WHEN $8 = '' THEN NULL ELSE $21::uuid END, CASE WHEN $8 = '' THEN NULL ELSE now() END, CASE WHEN $4 = '' THEN '' ELSE 'manual' END)
      RETURNING id, property_id, source, check_in, check_out, status, summary, channel`,
     [pid, channel, kind, ref, ci, co, `${channelLabel(channel)}: ${kind === "blocked" ? "Not available" : "Reserved"}`, guest, guests, note,
       m.values.rent_cents, m.values.cleaning_cents, m.values.other_cents, m.values.tax_cents, m.values.commission_cents, m.values.refund_cents,
-      m.values.expected_payout_cents, m.values.received_payout_cents, payoutDate || null, anyMoney ? "manual" : "none"]);
+      m.values.expected_payout_cents, m.values.received_payout_cents, payoutDate || null, anyMoney ? "manual" : "none", u.id]);
   await syncManualBlock(row!, today);
+  after(checkConflicts);
   await logEvent("info", "Finance", `Added a ${channelLabel(channel)} reservation by hand, ${ci} to ${co}`, { reservation: row!.id }, u.id);
   revalidatePath("/host/bookings/other-sites");
   redirect(`/host/bookings/other-sites/${row!.id}?msg=resadded`);
 }
 
-/** Marks a calendar period from another site as a reservation or as blocked dates (for sites like Booking.com that don't say). */
-export async function setKindAction(fd: FormData) {
+/**
+ * SQL that sets a reservation's guest name to what a host or admin typed (`val`), marking it as typed in so calendar refreshes keep it.
+ * Saving the same name again changes nothing; clearing it lets the site's calendar fill it in again.
+ */
+const NAME_SET = (val: string, by: string) => `guest_name_source = CASE WHEN ${val} = guest_name THEN guest_name_source WHEN ${val} = '' THEN '' ELSE 'manual' END,
+  guest_name_by = CASE WHEN ${val} = guest_name THEN guest_name_by WHEN ${val} = '' THEN NULL ELSE ${by}::uuid END,
+  guest_name_at = CASE WHEN ${val} = guest_name THEN guest_name_at WHEN ${val} = '' THEN NULL ELSE now() END, guest_name = ${val}`;
+
+/**
+ * Lets an authorized host or admin fill in what the other site's calendar didn't send: the guest's name and the site's booking reference.
+ * Both are marked as typed in, so calendar refreshes and payout imports keep them.
+ */
+export async function saveStayDetailsAction(_: ActionState, fd: FormData): Promise<ActionState> {
   const u = await requireUser(["host", "admin"]);
   const r = await manageable(u, str(fd, "id", 40));
-  const kind = str(fd, "kind");
-  if (r && ["reservation", "blocked"].includes(kind)) await q("UPDATE channel_reservations SET kind = $2, kind_locked = true, updated_at = now() WHERE id = $1", [r.id, kind]);
+  if (!r) return { error: "You can't manage this reservation." };
+  if (!EXTERNAL_NOTES_EDITABLE) return { error: READ_ONLY };
+  const name = str(fd, "guest_name", 80).replace(/\s+/g, " ");
+  if (name && !/\p{L}/u.test(name)) return { error: "Type the guest's name using letters." };
+  const ref = str(fd, "ref", 40).toUpperCase().replace(/\s+/g, "");
+  if (ref && !/^[A-Z0-9-]{4,40}$/.test(ref)) return { error: "A booking reference uses only letters, numbers and dashes, like HMABC12345 or 4512345678." };
+  if (ref && await one("SELECT 1 FROM channel_reservations WHERE channel = $1 AND lower(external_ref) = lower($2) AND id <> $3", [r.channel, ref, r.id]))
+    return { error: `Another ${channelLabel(r.channel)} reservation already has the reference ${ref}.` };
+  await q(`UPDATE channel_reservations SET ${NAME_SET("$2", "$3")},
+             ref_source = CASE WHEN $4 = external_ref THEN ref_source WHEN $4 = '' THEN '' ELSE 'manual' END, external_ref = $4, updated_at = now(),
+             -- A calendar block with a guest name or reference is a real reservation: it becomes Confirmed.
+             kind_locked = CASE WHEN kind = 'unknown' AND ($2 <> '' OR $4 <> '') THEN true ELSE kind_locked END,
+             kind = CASE WHEN kind = 'unknown' AND ($2 <> '' OR $4 <> '') THEN 'reservation' ELSE kind END
+           WHERE id = $1`, [r.id, name, u.id, ref]);
+  after(checkConflicts);
+  await logEvent("info", "Bookings", `Updated the guest name and reference for a ${channelLabel(r.channel)} reservation (${r.check_in} to ${r.check_out})`, { reservation: r.id }, u.id);
+  revalidatePath("/host/bookings");
   revalidatePath("/host/bookings/other-sites");
-  const back = str(fd, "back", 300);
-  if (back.startsWith("/host/")) redirect(back);
-}
-
-/** Cancels or reinstates a reservation entered by hand. Ones from calendar links follow the other site. */
-export async function setManualStatusAction(fd: FormData) {
-  const u = await requireUser(["host", "admin"]);
-  const r = await manageable(u, str(fd, "id", 40));
-  const status = str(fd, "status");
-  if (!r || r.source === "ical" || !["confirmed", "cancelled"].includes(status)) return;
-  await q("UPDATE channel_reservations SET status = $2, cancelled_at = CASE WHEN $2 = 'cancelled' THEN now() END, updated_at = now() WHERE id = $1", [r.id, status]);
-  await syncManualBlock({ ...r, status }, todayLocal());
   revalidatePath(`/host/bookings/other-sites/${r.id}`);
+  revalidatePath("/admin/bookings");
+  return { ok: "Saved. These details are kept when the calendars refresh." };
 }
 
-export async function deleteChannelResAction(fd: FormData) {
+/**
+ * Reservations and calendar blocks from other sites are read-only: they are never reclassified, cancelled, reinstated or deleted on Sevgio.
+ * These used to be buttons; the server now refuses them and records the attempt, so an old page or a hand-made request changes nothing.
+ */
+async function refuse(fd: FormData, change: string) {
   const u = await requireUser(["host", "admin"]);
   const r = await manageable(u, str(fd, "id", 40));
-  if (!r || r.source === "ical") return;
-  await q("DELETE FROM blocks WHERE source = $1", ["res:" + r.id]);
-  await q("DELETE FROM channel_reservations WHERE id = $1", [r.id]);
-  await logEvent("info", "Finance", `Deleted a ${channelLabel(r.channel)} reservation entered by hand (${r.check_in} to ${r.check_out})`, {}, u.id);
-  redirect("/host/bookings/other-sites?msg=resdeleted");
+  if (r) await logEvent("warn", "Bookings", `Refused to ${change} a ${channelLabel(r.channel)} reservation: reservations from other sites are read-only`, { reservation: r.id }, u.id);
+  const back = str(fd, "back", 300);
+  if (r && (back.startsWith("/host/") || back.startsWith("/admin/"))) redirect(back);
 }
+export async function setKindAction(fd: FormData) { await refuse(fd, "reclassify"); }
+export async function setManualStatusAction(fd: FormData) { await refuse(fd, "cancel or reinstate"); }
+export async function deleteChannelResAction(fd: FormData) { await refuse(fd, "delete"); }
 
 export type ImportState = {
   error?: string; ok?: string; step?: "preview" | "done"; text?: string; fileName?: string; headers?: string[]; mapping?: Mapping; sample?: string[][];
@@ -168,4 +200,33 @@ export async function importPayoutAction(prev: ImportState, fd: FormData): Promi
     return { step: "done", opts, ok: `Imported ${fileName}: ${summary.updated} reservation${summary.updated === 1 ? "" : "s"} updated, ${summary.created} added, ${summary.skipped} skipped.`, summary, skippedLines: skipped };
   }
   return { step: "preview", text, fileName, headers, mapping, sample: rows.slice(1, 6), summary, skippedLines: skipped, opts };
+}
+
+/** Undo one reservations/payout file import (admin, or the person who imported it). The review page shows exactly what changes. */
+export async function undoImportAction(fd: FormData) {
+  const u = await requireUser(["host", "admin"]);
+  const id = str(fd, "id", 40), imp = await getImport(id);
+  if (!imp || !canUndo(u, imp)) redirect("/host/finance/import");
+  let msg = "undone";
+  if (imp.status !== "undone") {
+    const r = await undoImport(id, u.id, todayLocal());
+    after(checkConflicts);
+    await logEvent("warn", "Finance", `Undid ${channelLabel(imp.channel)} import ${imp.file_name}: ${r.removed} added reservations removed, ${r.restored} put back`, { import: id }, u.id);
+  } else msg = "already";
+  revalidatePath("/", "layout");
+  redirect(`/host/finance/import/${id}?done=${msg}`);
+}
+
+/** Reverse an undo from the copies it saved. */
+export async function putBackImportAction(fd: FormData) {
+  const u = await requireUser(["host", "admin"]);
+  const id = str(fd, "id", 40), imp = await getImport(id);
+  if (!imp || !canUndo(u, imp)) redirect("/host/finance/import");
+  if (imp.status === "undone") {
+    const n = await putBackImport(id, todayLocal());
+    after(checkConflicts);
+    await logEvent("warn", "Finance", `Put back ${channelLabel(imp.channel)} import ${imp.file_name} after an undo (${n} reservations)`, { import: id }, u.id);
+  }
+  revalidatePath("/", "layout");
+  redirect(`/host/finance/import/${id}?done=putback`);
 }

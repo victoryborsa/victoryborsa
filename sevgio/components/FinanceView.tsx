@@ -4,7 +4,9 @@ import { dataGaps, financeListings, monthRange, monthsBetween, occupancyFor, rea
 import { CHANNELS, unitsOf } from "@/lib/channels.ts";
 import { money } from "@/lib/money.ts";
 import { addDays, fmtDate, fmtShort, todayLocal } from "@/lib/dates.ts";
+import { DateRangePicker } from "./DatePicker.tsx";
 import { AutoSubmit } from "./AutoSubmit.tsx";
+import { ColorIcon } from "./Icon.tsx";
 
 const monthName = (m: string) => fmtDate(m + "-15", { month: "long", year: "numeric" });
 
@@ -52,6 +54,7 @@ export async function FinanceView({ u, basePath, sp }: { u: User; basePath: stri
   const t = totals(rows);
   const csv = `/api/finance/statement?${query(f)}`;
   const thisMonth = monthRange(today.slice(0, 7)), lastMonth = monthRange(addDays(thisMonth.start, -1).slice(0, 7));
+  const QUICK_ICON: Record<string, string> = { "This month": "calendar", "Last month": "calendar", "Year to date": "activity", "Last 12 months": "dashboard", "Next 90 days": "calweek" };
   const quick: [string, string, string][] = [
     ["This month", thisMonth.start, addDays(thisMonth.next, -1)],
     ["Last month", lastMonth.start, addDays(lastMonth.next, -1)],
@@ -69,8 +72,7 @@ export async function FinanceView({ u, basePath, sp }: { u: User; basePath: stri
     <div className="stack fin" style={{ gap: 24 }}>
       <form className="fin-filters" method="get" action={basePath} aria-label="Report filters">
         <AutoSubmit />
-        <label className="field"><span>From</span><input className="input" type="date" name="from" defaultValue={f.from} /></label>
-        <label className="field"><span>To</span><input className="input" type="date" name="to" defaultValue={f.to} /></label>
+        <DateRangePicker key={f.from + f.to} id="fin-dates" today={today} minNights={0} maxMonths={24} names={["from", "to"]} labels={["From", "To"]} initial={{ ci: f.from, co: f.to }} />
         <label className="field"><span>Property</span>
           <select className="input" name="property" defaultValue={f.property || ""}>
             <option value="">All properties</option>
@@ -97,10 +99,10 @@ export async function FinanceView({ u, basePath, sp }: { u: User; basePath: stri
         </div>
       </form>
       <nav className="fin-quick" aria-label="Quick periods">
-        {quick.map(([label, a, z]) => <Link key={label} className="btn btn-ghost btn-sm" aria-current={a === f.from && z === f.to ? "true" : undefined} href={`${basePath}?${query(f, { from: a, to: z })}`}>{label}</Link>)}
+        {quick.map(([label, a, z]) => <Link key={label} className="btn btn-ghost btn-sm" aria-current={a === f.from && z === f.to ? "true" : undefined} href={`${basePath}?${query(f, { from: a, to: z })}`}><ColorIcon file={QUICK_ICON[label] ?? "calendar"} size={18} />{label}</Link>)}
         <span className="spacer" />
-        <Link className="btn btn-ghost btn-sm" href="/host/bookings/other-sites">Reservations from other sites</Link>
-        <Link className="btn btn-ghost btn-sm" href="/host/finance/import">Import payout file</Link>
+        <Link className="btn btn-ghost btn-sm" href="/host/bookings/other-sites"><ColorIcon file="sync" size={18} />Reservations from other sites</Link>
+        <Link className="btn btn-ghost btn-sm" href="/host/finance/import"><ColorIcon file="receipt" size={18} />Import payout file</Link>
       </nav>
 
       {(gaps.needsEntry > 0 || gaps.unclear > 0 || gaps.feedErrors.length > 0) && (
@@ -108,7 +110,7 @@ export async function FinanceView({ u, basePath, sp }: { u: User; basePath: stri
           <div className="stack" style={{ gap: 6 }}>
             <b>Some numbers are incomplete</b>
             {gaps.needsEntry > 0 && <span>{gaps.needsEntry} reservation{gaps.needsEntry === 1 ? "" : "s"} from other sites {gaps.needsEntry === 1 ? "has" : "have"} no prices or payout yet. Calendar links only share dates. <Link href="/host/finance/import">Import a payout file</Link> or <Link href="/host/bookings/other-sites?needs=1">enter them by hand</Link>.</span>}
-            {gaps.unclear > 0 && <span>{gaps.unclear} Booking.com period{gaps.unclear === 1 ? " doesn't" : "s don't"} say whether {gaps.unclear === 1 ? "it's" : "they're"} a reservation or closed dates, so {gaps.unclear === 1 ? "it isn't" : "they aren't"} counted. <Link href="/host/bookings/other-sites?kind=unknown">Review them</Link>.</span>}
+            {gaps.unclear > 0 && <span>{gaps.unclear} external calendar block{gaps.unclear === 1 ? " isn't" : "s aren't"} counted as bookings until a reservations file or details you add confirm {gaps.unclear === 1 ? "it" : "them"}. <Link href="/host/bookings/other-sites?kind=unknown">See them</Link>.</span>}
             {gaps.feedErrors.map(e => <span key={e.name + e.place}>{e.name} calendar for {e.place}: {e.error}</span>)}
           </div>
         </div>
@@ -241,7 +243,7 @@ function Statement({ rows }: { rows: ReportRow[] }) {
             <tr key={r.id} data-res={r.ref || r.id}>
               <td><span className={`pill neutral ch-dot ch-${r.channel}`}>{r.channelLabel}</span>{r.status === "cancelled" && <div className="hint">Cancelled</div>}</td>
               <td className="mono"><Link href={r.href}>{r.ref || (r.needsEntry ? "Add details" : "Open")}</Link></td>
-              <td>{r.place}</td><td>{r.guest_name || <span className="muted">Not shared</span>}</td>
+              <td>{r.place}</td><td>{r.guest_name || <span className="muted">Not provided by the site</span>}</td>
               <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} – {fmtShort(r.check_out)}</td>
               <td className="num">{r.nights}</td>
               <td className="num"><Amt v={r.rent} /></td><td className="num"><Amt v={r.cleaning} /></td><td className="num"><Amt v={r.other} /></td>

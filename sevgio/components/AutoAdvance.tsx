@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 
-/** Search form: once the dates are picked (see DateRangeField), go to Guests; after Guests, the Search button. */
+/** Search form: once the dates are picked (see DateRangePicker), go to Guests; after Guests, the Search button. */
 export function AutoAdvance() {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {

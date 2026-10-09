@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { corporateHomes, availableLabel, isFurnishedFinderUrl, isWebUrl, isPdf, priceNote, type CorpHome } from "@/lib/corporate.ts";
+import { corporateHomes, withRealAvailability, availableLabel, isFurnishedFinderUrl, isWebUrl, isPdf, priceNote, type CorpHome } from "@/lib/corporate.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { money } from "@/lib/money.ts";
 import { getSettings } from "@/lib/settings.ts";
@@ -13,15 +13,24 @@ import { UTILITIES } from "@/lib/constants.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { CopyField } from "@/components/CopyField.tsx";
 import { PickHome } from "@/components/PickHome.tsx";
+import { DatePicker } from "@/components/DatePicker.tsx";
 import { corporateRequestAction } from "@/app/actions/messages.ts";
+import { JsonLd, businessLd } from "@/lib/seo.tsx";
+import { AudiencePanels } from "@/components/AudiencePanels.tsx";
+import { audienceBySlug, WHO_OPTIONS } from "@/lib/audiences.ts";
+import { audiencePhotos } from "@/lib/audience-photos.ts";
+
+// The illustrated Pittsburgh panorama in AVIF and WebP at five widths; the JPEG is the fallback.
+const SKYLINE = (ext: string) => [800, 1200, 1600, 2400, 3200].map(w => `/img/pittsburgh-panorama-${w}.${ext} ${w}w`).join(", ");
+const SKYLINE_SIZES = "(min-width: 1440px) 1384px, calc(100vw - 32px)";
 
 export const metadata: Metadata = {
-  title: "Furnished & Corporate Housing",
+  alternates: { canonical: "/corporate-housing" },
+  openGraph: { title: "Furnished & Corporate Housing in Pittsburgh · Sevgio", url: "/corporate-housing", description: "Fully furnished monthly homes in Pittsburgh for travel nurses, traveling physicians, corporate teams, relocating employees and extended stays." },
+  title: "Furnished & Corporate Housing in Pittsburgh",
   description: "Fully furnished monthly homes in Pittsburgh and Indiana, PA for travel nurses, doctors, corporate teams and extended stays. One fixed price, all inclusive.",
 };
 export const dynamic = "force-dynamic";
-
-const WHO: [IconName, string][] = [["stethoscope", "Travel nurses"], ["check", "Doctors and residents"], ["briefcase", "Corporate teams"], ["wrench", "Contractors"], ["family", "Relocating families"]];
 
 const INCLUDED: [IconName, string, string][] = [
   ["sofa", "Fully furnished", "Beds, sofas, desk and dining set. Bring your suitcase."],
@@ -41,13 +50,13 @@ function bathText(p: CorpHome) {
   return `${full} bath${full === 1 ? "" : "s"}${half ? ` + ${half} half` : ""}`;
 }
 
-function HomeCard({ p, today }: { p: CorpHome; today: string }) {
+function HomeCard({ p, today }: { p: CorpHome & { free_from: string | null }; today: string }) {
   const ff = isFurnishedFinderUrl(p.furnished_finder_url) ? p.furnished_finder_url : "";
-  const avail = availableLabel(p.corp_available_from, today);
+  const avail = availableLabel(p.free_from, today);
   return (
     <article className="ch-home">
       <Link href={`/stays/${p.slug}`} className="ch-ph" tabIndex={-1} aria-hidden="true">
-        {p.cover_id ? <img src={photoUrl(p.cover_id, "large")} alt="" loading="lazy" decoding="async" width={640} height={480} /> : <span className="noph">Photos coming soon</span>}
+        {p.cover_id ? <img src={photoUrl(p.cover_id, "large")} alt={p.title} loading="lazy" decoding="async" width={640} height={480} /> : <span className="noph">Photos coming soon</span>}
       </Link>
       <div className="ch-body">
         <p className={`ch-avail${avail === "Available now" ? " now" : ""}`}>{avail}</p>
@@ -80,14 +89,16 @@ function HomeCard({ p, today }: { p: CorpHome; today: string }) {
   );
 }
 
-export default async function CorporateHousing({ searchParams }: { searchParams: Promise<{ home?: string }> }) {
-  const [homes, s, u, sp] = await Promise.all([corporateHomes(), getSettings(), currentUser(), searchParams]);
+export default async function CorporateHousing({ searchParams }: { searchParams: Promise<{ home?: string; for?: string }> }) {
+  const [homes, s, u, sp, photos] = await Promise.all([corporateHomes().then(withRealAvailability), getSettings(), currentUser(), searchParams, audiencePhotos()]);
   const picked = homes.some(h => h.id === sp.home) ? sp.home : "";
+  const forWho = audienceBySlug(sp.for);
   const anyUnfurnished = homes.some(h => !h.corp_furnished);
   const today = todayLocal();
   const pageUrl = siteUrl() + "/corporate-housing";
   return (
     <div className="ch theme-light">
+      <JsonLd data={businessLd(siteUrl(), { email: s.contact_email, phone: s.contact_phone })} />
       <section className="wrap ch-hero">
         <div className="ch-hero-text">
           <p className="eyebrow">Furnished and corporate housing</p>
@@ -100,11 +111,16 @@ export default async function CorporateHousing({ searchParams }: { searchParams:
             <a className="btn btn-ghost" href="#homes">See homes and rooms</a>
           </div>
         </div>
-        <img className="ch-hero-img" src="/img/pittsburgh-skyline.jpg" alt="The Pittsburgh skyline over the rivers" width={1600} height={1067} fetchPriority="high" />
+        <picture>
+          <source type="image/avif" srcSet={SKYLINE("avif")} sizes={SKYLINE_SIZES} />
+          <source type="image/webp" srcSet={SKYLINE("webp")} sizes={SKYLINE_SIZES} />
+          <img className="ch-hero-img" src="/img/pittsburgh-panorama.jpg" alt="Illustrated Pittsburgh panorama: the Point fountain, downtown, the yellow bridges and an incline car" width={3740} height={912} fetchPriority="high" />
+        </picture>
       </section>
 
-      <section className="wrap ch-who" aria-label="Who we host">
-        <ul>{WHO.map(([ic, label]) => <li key={label}><Icon name={ic} size={20} />{label}</li>)}</ul>
+      <section className="wrap ch-who" aria-labelledby="who-we-host">
+        <h2 id="who-we-host" className="sr-only">Who we host</h2>
+        <AudiencePanels photos={photos} initial={forWho?.slug} />
       </section>
 
       <section className="wrap" id="homes">
@@ -155,12 +171,12 @@ export default async function CorporateHousing({ searchParams }: { searchParams:
           <label className="field"><span>Email</span><input className="input" name="email" type="email" autoComplete="email" defaultValue={u?.email} required /></label>
           <label className="field"><span>Phone (optional)</span><input className="input" name="phone" type="tel" autoComplete="tel" /></label>
           <label className="field"><span>I am a</span>
-            <select className="input" name="who"><option>Travel nurse or medical staff</option><option>Doctor or resident</option><option>Corporate housing company</option><option>Company HR or relocation</option><option>Contractor or crew</option><option>Other</option></select>
+            <select className="input" name="who" defaultValue={forWho?.who}>{WHO_OPTIONS.map(w => <option key={w}>{w}</option>)}</select>
           </label>
           <label className="field"><span>Home or room</span>
             <select className="input" name="home" id="ch-home" defaultValue={picked}><option value="">Any home or room that fits</option>{homes.map(p => <option key={p.id} value={p.id}>{p.title} ({money(p.corp_monthly_cents)}/mo)</option>)}</select>
           </label>
-          <label className="field"><span>Move-in date</span><input className="input" name="movein" type="date" min={today} required /></label>
+          <DatePicker name="movein" label="Move-in date" today={today} min={today} required />
           <label className="field"><span>Length of stay</span><select className="input" name="length">{LENGTHS.map(l => <option key={l}>{l}</option>)}</select></label>
           <label className="field"><span>Number of guests</span><input className="input" name="guests" type="number" min={1} max={20} defaultValue={1} /></label>
           <label className="field"><span>Pets</span><select className="input" name="pets"><option>No pets</option><option>Dog</option><option>Cat</option><option>Other</option></select></label>

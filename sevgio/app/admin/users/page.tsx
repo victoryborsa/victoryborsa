@@ -3,6 +3,7 @@ import { q } from "@/lib/db.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { approveHostAction, confirmEmailAction, inviteUserAction, setDisabledAction, setPasswordAction, setRoleAction } from "@/app/actions/admin.ts";
 import { PasswordInput } from "@/components/PasswordInput.tsx";
+import { fmtDay } from "@/lib/dates.ts";
 
 type Row = { id: string; name: string; email: string; phone: string; role: string; disabled: boolean; created_at: string; listings: number; bookings: number; verified: boolean; host_requested: boolean };
 
@@ -51,7 +52,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
                     </details>
                   )}
                 </td>
-                <td>{new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
+                <td>{fmtDay(u.created_at)}</td>
                 <td className="num">{u.listings || "-"}</td>
                 <td className="num">{u.bookings || "-"}</td>
                 <td style={{ minWidth: 200 }}>

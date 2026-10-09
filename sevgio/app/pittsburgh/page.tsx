@@ -14,6 +14,7 @@ import { getT } from "@/lib/i18n.ts";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/pittsburgh" },
   title: "Pittsburgh guide: what to eat, see and do",
   description: "A local's guide to Pittsburgh: famous food, bars and breweries, historic neighborhoods, museums, game days and Yinzer words.",
 };

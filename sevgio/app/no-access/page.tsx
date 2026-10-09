@@ -1,5 +1,8 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { currentUser } from "@/lib/auth.ts";
+
+export const metadata: Metadata = { title: "No access", robots: { index: false } };
 
 export default async function NoAccess() {
   const u = await currentUser();

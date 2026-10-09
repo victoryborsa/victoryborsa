@@ -1,4 +1,6 @@
 import { ActionForm, SubmitButton } from "./forms.tsx";
+import { DatePicker } from "./DatePicker.tsx";
+import { todayLocal } from "@/lib/dates.ts";
 import { savePlaceAction } from "@/app/actions/guide.ts";
 import { SECTION_IDS, SECTION_TITLE, type GuidePlace, type PlaceFields } from "@/lib/guide-places.ts";
 
@@ -26,8 +28,8 @@ export function GuidePlaceForm({ place, values }: { place?: GuidePlace; values: 
       <fieldset className="smart-box gp-sponsor">
         <label className="chk"><input type="checkbox" name="sponsored" defaultChecked={values.sponsored} /><span><b>Sponsored listing</b><span className="hint" style={{ display: "block" }}>Shows a “Sponsored” label on the guide between these dates. It ends by itself after the end date.</span></span></label>
         <div className="grid-2">
-          <label className="field"><span>Sponsorship starts</span><input className="input" type="date" name="sponsor_start" defaultValue={values.sponsor_start ?? ""} /><span className="hint">Empty: starts right away.</span></label>
-          <label className="field"><span>Sponsorship ends</span><input className="input" type="date" name="sponsor_end" defaultValue={values.sponsor_end ?? ""} /><span className="hint">Empty: no end date.</span></label>
+          <DatePicker name="sponsor_start" label="Sponsorship starts" initial={values.sponsor_start ?? ""} today={todayLocal()} maxMonths={36} emptyText="Right away" hint="Empty: starts right away." />
+          <DatePicker name="sponsor_end" label="Sponsorship ends" initial={values.sponsor_end ?? ""} today={todayLocal()} maxMonths={36} emptyText="No end date" hint="Empty: no end date." />
         </div>
       </fieldset>
       <div className="row" style={{ gap: 10 }}>

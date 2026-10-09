@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Sevgio",
     description: "Cozy private rooms and whole houses in Pittsburgh, booked direct with your hosts.",
     start_url: "/",
-    display: "browser",
+    display: "standalone",
     background_color: "#FFFFFF",
     theme_color: "#14393F",
     icons: [

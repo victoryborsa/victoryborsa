@@ -18,10 +18,15 @@ export function channelOf(feedName: string | null, url = ""): { key: ChannelKey;
 
 /**
  * What a calendar event from another site is. Each site words it differently:
- * - Airbnb: "Reserved" (with the confirmation code in the description) vs "Airbnb (Not available)" for blocked dates.
- * - Vrbo: "Reserved - Guest Name" vs "Blocked".
- * - Booking.com: "CLOSED - Not available" for both reservations and closed dates, so it is "unknown" until someone says.
+ * - Airbnb: "Reserved" (with the confirmation code in the description) vs "Airbnb (Not available)" for dates the host blocked.
+ * - Vrbo: "Reserved - Guest Name" for some reservations, but "Blocked" both for owner holds and for reservations and dates copied in from other calendars.
+ * - Booking.com: "CLOSED - Not available" for both reservations and closed dates.
+ * Only Airbnb's "Not available" and periods that say owner / maintenance are known to have no guest. Anything else that isn't clearly
+ * a reservation is "unknown": it still shows in the reservation lists, marked for the host to check, unless it only copies another booking.
  */
+/** The last 4 digits of the guest's phone, which Airbnb puts in the event description. */
+export const phoneLast4 = (description: string) => description.match(/last\s*4\s*digits\)?\s*:?\s*(\d{4})/i)?.[1] || "";
+
 export function classifyEvent(channel: string, summary: string, description = ""): { kind: "reservation" | "blocked" | "unknown"; ref: string; guest: string } {
   const s = summary.trim(), all = `${s}\n${description}`;
   const ref = (description.match(/reservations\/details\/([A-Z0-9]{6,14})/i)?.[1]
@@ -31,8 +36,8 @@ export function classifyEvent(channel: string, summary: string, description = ""
   if (named && !/not available|blocked/i.test(named[1])) guest = named[1].trim().slice(0, 80);
   if (/\breserv|\bbooked\b|\bbooking\b|\bguest\b/i.test(s) && !/not available|unavailable|blocked/i.test(s)) return { kind: "reservation", ref, guest };
   if (ref) return { kind: "reservation", ref, guest };
-  if (channel === "bookingcom" || /\bclosed\b/i.test(s)) return { kind: "unknown", ref, guest };
-  if (/not available|unavailable|blocked|block\b|owner|maintenance/i.test(s)) return { kind: "blocked", ref, guest };
+  if (/\b(owner|maintenance|repairs?|cleaning)\b/i.test(s)) return { kind: "blocked", ref, guest };
+  if (channel === "airbnb" && /not available|unavailable|blocked/i.test(s)) return { kind: "blocked", ref, guest };
   return { kind: "unknown", ref, guest };
 }
 

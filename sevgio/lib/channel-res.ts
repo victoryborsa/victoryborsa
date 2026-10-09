@@ -1,9 +1,9 @@
 import { one, q, tx, type Db } from "./db.ts";
 import { lockProperty, replaceFeedBlocks } from "./bookings.ts";
-import { classifyEvent } from "./channels.ts";
+import { classifyEvent, phoneLast4 } from "./channels.ts";
 import type { IcsEvent } from "./ical.ts";
 
-type Existing = { id: string; ical_uid: string | null; check_in: string; check_out: string; status: string; kind: string; kind_locked: boolean; external_ref: string; guest_name: string };
+type Existing = { id: string; ical_uid: string | null; check_in: string; check_out: string; status: string; kind: string; kind_locked: boolean; external_ref: string; guest_name: string; guest_name_source: string };
 
 export type FeedResult = { added: number; updated: number; changed: number; cancelled: number; unchanged: number; clashes: string[]; kept?: string };
 
@@ -19,7 +19,7 @@ export async function applyFeedEvents(feed: { id: string; property_id: string },
   await tx(async c => {
     await lockProperty(c, feed.property_id);
     const existing = await q<Existing>(
-      "SELECT id, ical_uid, check_in, check_out, status, kind, kind_locked, external_ref, guest_name FROM channel_reservations WHERE feed_id = $1", [feed.id], c);
+      "SELECT id, ical_uid, check_in, check_out, status, kind, kind_locked, external_ref, guest_name, guest_name_source FROM channel_reservations WHERE feed_id = $1", [feed.id], c);
     const seen = new Set<string>();
     const activeFuture = existing.filter(r => r.status === "confirmed" && r.check_out > today).length;
     // A site that suddenly returns an empty calendar is far more likely broken than every guest cancelling at once.
@@ -27,6 +27,7 @@ export async function applyFeedEvents(feed: { id: string; property_id: string },
 
     for (const e of events) {
       const cls = classifyEvent(channel, e.summary, e.description);
+      const detail = (e.description || "").slice(0, 2000), phone = phoneLast4(e.description || "");
       const match = (e.uid && existing.find(r => r.ical_uid === e.uid && !seen.has(r.id)))
         || existing.find(r => !r.ical_uid && r.check_in === e.start && r.check_out === e.end && !seen.has(r.id))
         || (cls.ref && existing.find(r => r.external_ref && r.external_ref.toUpperCase() === cls.ref && !seen.has(r.id)));
@@ -36,11 +37,29 @@ export async function applyFeedEvents(feed: { id: string; property_id: string },
         continue;
       }
       if (!match) {
+        // The same stay typed in by hand (or from a file) before the calendar link had it: link that record instead of adding a second one.
+        const typed = await one<{ id: string }>(
+          `SELECT id FROM channel_reservations
+           WHERE property_id = $1 AND channel = $2 AND feed_id IS NULL AND ical_uid IS NULL AND status = 'confirmed'
+             AND ((check_in = $3 AND check_out = $4) OR ($5 <> '' AND lower(external_ref) = lower($5)))
+           ORDER BY (check_in = $3 AND check_out = $4) DESC LIMIT 1`,
+          [feed.property_id, channel, e.start, e.end, cls.ref || ""], c);
+        if (typed) {
+          await q(`UPDATE channel_reservations SET feed_id = $2, ical_uid = $3, check_in = $4, check_out = $5, summary = $6, feed_detail = $7,
+                     phone_last4 = CASE WHEN $8 = '' THEN phone_last4 ELSE $8 END, last_seen_at = now(), updated_at = now() WHERE id = $1`,
+            [typed.id, feed.id, e.uid || null, e.start, e.end, e.summary, detail, phone], c);
+          // Its nights are now blocked by the calendar link itself.
+          await q("DELETE FROM blocks WHERE source = $1", ["res:" + typed.id], c);
+          seen.add(typed.id);
+          out.updated++;
+          continue;
+        }
         const ref = cls.ref && !(await refTaken(c, channel, cls.ref, null)) ? cls.ref : "";
         const row = await one<{ id: string }>(
-          `INSERT INTO channel_reservations (property_id, feed_id, channel, kind, source, ical_uid, external_ref, check_in, check_out, summary, guest_name)
-           VALUES ($1, $2, $3, $4, 'ical', $5, $6, $7, $8, $9, $10) RETURNING id`,
-          [feed.property_id, feed.id, channel, cls.kind, e.uid || null, ref, e.start, e.end, e.summary, cls.guest], c);
+          `INSERT INTO channel_reservations (property_id, feed_id, channel, kind, source, ical_uid, external_ref, check_in, check_out, summary, guest_name, guest_name_source,
+             feed_detail, phone_last4, ref_source)
+           VALUES ($1, $2, $3, $4, 'ical', $5, $6, $7, $8, $9, $10, CASE WHEN $10 = '' THEN '' ELSE 'feed' END, $11, $12, CASE WHEN $6 = '' THEN '' ELSE 'feed' END) RETURNING id`,
+          [feed.property_id, feed.id, channel, cls.kind, e.uid || null, ref, e.start, e.end, e.summary, cls.guest, detail, phone], c);
         seen.add(row!.id);
         out.added++;
         continue;
@@ -49,13 +68,16 @@ export async function applyFeedEvents(feed: { id: string; property_id: string },
       const revived = match.status === "cancelled";
       const ref = !match.external_ref && cls.ref && !(await refTaken(c, channel, cls.ref, match.id)) ? cls.ref : match.external_ref;
       const kind = match.kind_locked ? match.kind : cls.kind;
-      const touched = moved || revived || ref !== match.external_ref || kind !== match.kind || (!match.ical_uid && !!e.uid) || (!match.guest_name && !!cls.guest);
+      // A name typed in by a host or admin, or read from a payout file, is never replaced; only a name the calendar itself gave is kept up to date.
+      const nameFromFeed = !!cls.guest && feedOwnsName(match) && cls.guest !== match.guest_name;
+      const touched = moved || revived || ref !== match.external_ref || kind !== match.kind || (!match.ical_uid && !!e.uid) || nameFromFeed;
       await q(
         `UPDATE channel_reservations SET check_in = $2, check_out = $3, ical_uid = coalesce(ical_uid, $4), external_ref = $5, kind = $6, summary = $7,
-           guest_name = CASE WHEN guest_name = '' THEN $8 ELSE guest_name END, status = 'confirmed', cancelled_at = NULL, last_seen_at = now(),
-           modified_at = CASE WHEN $9 THEN now() ELSE modified_at END, updated_at = CASE WHEN $10 THEN now() ELSE updated_at END
+           guest_name = CASE WHEN $11 THEN $8 ELSE guest_name END, guest_name_source = CASE WHEN $11 THEN 'feed' ELSE guest_name_source END, status = 'confirmed', cancelled_at = NULL, last_seen_at = now(),
+           modified_at = CASE WHEN $9 THEN now() ELSE modified_at END, updated_at = CASE WHEN $10 THEN now() ELSE updated_at END,
+           ref_source = CASE WHEN external_ref = '' AND $5 <> '' THEN 'feed' ELSE ref_source END, feed_detail = $12, phone_last4 = CASE WHEN $13 = '' THEN phone_last4 ELSE $13 END
          WHERE id = $1`,
-        [match.id, e.start, e.end, e.uid || null, ref, kind, e.summary, cls.guest, moved, touched], c);
+        [match.id, e.start, e.end, e.uid || null, ref, kind, e.summary, cls.guest, moved, touched, nameFromFeed, detail, phone], c);
       if (moved) out.changed++; else if (touched) out.updated++; else out.unchanged++;
     }
     for (const r of existing) {
@@ -64,12 +86,21 @@ export async function applyFeedEvents(feed: { id: string; property_id: string },
     }
   });
   if (out.kept) return out;
-  const active = await q<{ check_in: string; check_out: string; summary: string; kind: string }>(
-    "SELECT check_in, check_out, summary, kind FROM channel_reservations WHERE feed_id = $1 AND status = 'confirmed' AND check_out > $2 ORDER BY check_in", [feed.id, today]);
-  out.clashes = await replaceFeedBlocks(feed.property_id, "ical:" + feed.id,
-    active.map(r => ({ start: r.check_in < today ? today : r.check_in, end: r.check_out, note: r.summary })));
+  out.clashes = await rebuildFeedBlocks(feed, today);
   return out;
 }
+
+/** Rebuilds a calendar link's blocked nights from its active upcoming stays. */
+export async function rebuildFeedBlocks(feed: { id: string; property_id: string }, today: string): Promise<string[]> {
+  const active = await q<{ check_in: string; check_out: string; summary: string; kind: string }>(
+    "SELECT check_in, check_out, summary, kind FROM channel_reservations WHERE feed_id = $1 AND status = 'confirmed' AND check_out > $2 ORDER BY check_in", [feed.id, today]);
+  return replaceFeedBlocks(feed.property_id, "ical:" + feed.id,
+    active.map(r => ({ start: r.check_in < today ? today : r.check_in, end: r.check_out, note: r.summary })));
+}
+
+/** Whether a calendar refresh may set this reservation's guest name: only when there is none yet, or the calendar gave the current one. */
+export const feedOwnsName = (r: { guest_name: string; guest_name_source: string }) =>
+  r.guest_name === "" || r.guest_name_source === "feed" || r.guest_name_source === "";
 
 async function cancel(c: Db, id: string) {
   await q("UPDATE channel_reservations SET status = 'cancelled', cancelled_at = now(), updated_at = now() WHERE id = $1", [id], c);

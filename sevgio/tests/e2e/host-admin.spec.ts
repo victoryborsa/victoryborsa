@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
 import fs from "node:fs";
-import { iso, signIn, signOut, sql } from "./helpers.ts";
+import { iso, pickInPicker, signIn, signOut, sql } from "./helpers.ts";
 
 test.describe.configure({ mode: "serial" });
 
@@ -63,9 +63,15 @@ test("host edits price, blocks dates, uploads a photo, and imports nothing unsaf
 
   await page.goto("/host/listings");
   await page.locator("tr", { hasText: "Jim Thorpe" }).getByRole("link", { name: "Calendar" }).click();
-  await page.getByLabel("First night").fill(iso(80));
-  await page.getByLabel("Day after the last night").fill(iso(83));
+  // Pressing Block before picking dates says what to do and opens the date picker
   await page.getByLabel("Note (only you see this)").fill("Chimney sweep");
+  await page.getByRole("button", { name: "Block these dates" }).click();
+  await expect(page.getByText(/Pick the first night and the day after the last night above/)).toBeVisible();
+  await expect(page.locator(".dr-pop")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await pickInPicker(page, /First night/, [iso(80), iso(83)]);
+  await expect(page.getByText(/Pick the first night and the day after the last night above/)).toHaveCount(0);
+  await expect(page.getByText("3 nights picked").last()).toBeVisible();
   await page.getByRole("button", { name: "Block these dates" }).click();
   await expect(page.getByText(/Guests can't book those nights/)).toBeVisible();
   await page.reload();
@@ -508,7 +514,7 @@ test("admin manages guide places: draft, preview, publish, reorder, sponsor with
   // Sponsored: a saved draft doesn't change the public page until it's published.
   await page.goto(editUrl);
   await page.getByLabel(/Sponsored listing/).check();
-  await page.getByLabel("Sponsorship ends").fill(iso(30));
+  await pickInPicker(page, /^Sponsorship ends/, [iso(30)]);
   await page.getByRole("button", { name: "Save draft (not public yet)" }).click();
   await expect(page.getByText(/Changes saved as a draft/)).toBeVisible();
   await page.goto("/pittsburgh");
@@ -536,8 +542,8 @@ test("admin manages guide places: draft, preview, publish, reorder, sponsor with
   // Bad website or dates are refused.
   await page.goto("/admin/guide/new");
   await page.getByLabel("Name", { exact: true }).fill("Test Place");
-  await page.getByLabel("Sponsorship starts").fill(iso(10));
-  await page.getByLabel("Sponsorship ends").fill(iso(5));
+  await pickInPicker(page, /^Sponsorship starts/, [iso(10)]);
+  await pickInPicker(page, /^Sponsorship ends/, [iso(5)]);
   await page.getByRole("button", { name: "Save as draft" }).click();
   await expect(page.getByText("The sponsorship can't end before it starts.")).toBeVisible();
   // Visitors can't use preview.
@@ -554,7 +560,7 @@ test("calendar: week starts today and month is a whole wall calendar", async ({ 
   await page.goto("/admin/calendar?view=week");
   await expect(page.locator(".mc-day")).toHaveCount(7);
   await expect(page.locator(".mc-day").first()).toHaveClass(/today/);
-  await page.goto("/admin/calendar");
+  await page.goto("/admin/calendar?view=month");
   const grid = page.locator(".mg-all");
   await expect(grid.locator(".mg-day")).toHaveCount(daysInMonth);
   await expect(grid.locator(".mg-num.today")).toHaveCount(1);
@@ -562,10 +568,10 @@ test("calendar: week starts today and month is a whole wall calendar", async ({ 
   // Tapping a day opens that day's details.
   await grid.locator(".mg-num.today").click();
   await expect(page).toHaveURL(/view=day/);
-  await page.goto("/admin/calendar");
+  await page.goto("/admin/calendar?view=month");
   await page.getByRole("link", { name: "Previous month" }).click();
   await expect(page.locator(".mg-all .mg-num.today")).toHaveCount(0);
-  await page.getByRole("link", { name: "Today" }).click();
+  await page.getByRole("link", { name: "This month" }).click();
   await expect(page.locator(".mg-all .mg-num.today")).toHaveCount(1);
   await signOut(page);
 });
@@ -688,7 +694,8 @@ test("extra services and security deposit: host offers them, guest adds pickup a
   await page.goto(`/book/downtown-state-college-condo?ci=${iso(345)}&co=${iso(347)}&adults=2&svc=airport_pickup,city_tour,early_checkin,late_checkout,bogus`);
   await expect(page.locator("table.breakdown")).toContainText("Airport pickup");
   await page.getByLabel("Mobile phone").fill("(570) 555-0100");
-  await expect(page.getByLabel("Date")).toHaveValue(iso(345));
+  await expect(page.locator("input[name=fl_airport_pickup_date]")).toHaveValue(iso(345));
+  await expect(page.getByRole("button", { name: /^Date / })).toContainText(new Date(iso(345) + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" }));
   await page.getByLabel("Your flight lands at").fill("14:30");
   await page.getByLabel("Airline and flight number").fill("Delta DL 1234");
   if (await page.getByLabel(/^Zelle/).count()) await page.getByLabel(/^Zelle/).check();
@@ -938,7 +945,7 @@ test("corporate housing: host shows a home with its monthly rate and fees; compa
   await expect(page.locator("#request select[name=home]")).toHaveValue(p.id);
   await page.getByLabel("Company or agency (optional)").fill("Three Rivers Staffing");
   await page.getByLabel("Phone (optional)").fill("(412) 555-0142");
-  await page.getByLabel("Move-in date").fill(iso(20));
+  await pickInPicker(page, /^Move-in date/, [iso(20)]);
   await page.getByLabel("Length of stay").selectOption("3 months (13 weeks)");
   await page.getByLabel("Hospital, workplace or area (optional)").fill("UPMC Mercy");
   await page.getByRole("button", { name: "Send request" }).click();
@@ -984,7 +991,7 @@ test("listing settings on phone and computer: Utilities line under the price and
     await expect(page.getByText("Leave empty = Available now.")).toBeVisible();
 
     // Tapping the field (or its calendar icon) opens the calendar; move ahead a few months and pick a day.
-    await (device === "phone" ? field.locator("svg") : field).click({ force: device === "phone" });
+    await (device === "phone" ? field.locator(".ic") : field).click({ force: device === "phone" });
     const cal = page.getByRole("dialog", { name: "Choose available from" });
     await expect(cal).toBeVisible();
     for (let i = 0; i < 4 && !(await cal.locator(`[data-day="${target}"]`).count()); i++) await cal.getByRole("button", { name: "Next month" }).click();

@@ -5,17 +5,19 @@ import { requireUser } from "@/lib/auth.ts";
 import { propertyBySlug, photosFor, photoUrl } from "@/lib/queries.ts";
 import { isRangeFree, stayProblem } from "@/lib/bookings.ts";
 import { getSettings } from "@/lib/settings.ts";
-import { fmtDate } from "@/lib/dates.ts";
+import { fmtDate, todayLocal } from "@/lib/dates.ts";
+import { DatePicker } from "@/components/DatePicker.tsx";
 import { baseLabel, quote } from "@/lib/pricing.ts";
 import { withNightPricing } from "@/lib/demand.ts";
 import { money } from "@/lib/money.ts";
 import { CANCELLATION, FLIGHT_SERVICES } from "@/lib/constants.ts";
 import { partyFromParams, partyLabel } from "@/lib/party.ts";
 import { arrivalOptions } from "@/lib/arrival.ts";
-import { enabledMethods, forListing } from "@/lib/payments.ts";
+import { enabledMethods, forListing, onlineMethods } from "@/lib/payments.ts";
 import { PaymentChoice } from "@/components/PaymentChoice.tsx";
 import { NightlyRates } from "@/components/NightlyRates.tsx";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
+import { guestRules, policies, type PolicyInput } from "@/lib/policies.ts";
 import { createBookingAction } from "@/app/actions/bookings.ts";
 import { resendCodeAction, verifyCodeAction } from "@/app/actions/auth.ts";
 import { verificationRequired } from "@/lib/email.ts";
@@ -27,6 +29,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   const { slug } = await params;
   const sp = await searchParams;
   const ci = sp.ci || "", co = sp.co || "", party = partyFromParams(sp);
+  const today = todayLocal();
   const qs = new URLSearchParams({ ci, co, adults: String(party.adults), children: String(party.children), infants: String(party.free_children), ...(party.pets ? { pets: String(party.pets) } : {}), ...(party.services?.length ? { svc: party.services.join(",") } : {}) });
   const back = `/stays/${slug}?${qs}`;
   const u = await requireUser(undefined, `/book/${slug}?${qs}`);
@@ -34,6 +37,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   if (!p || p.status !== "published") notFound();
   // Long-term leases are requested or applied for on the property page, not booked by date.
   if (p.corp_lease_only) redirect(`/stays/${p.slug}`);
+  const pol = policies(p as unknown as PolicyInput), rules = guestRules(p as unknown as PolicyInput);
   const problem = stayProblem(p, ci, co, party) || (!(await isRangeFree(p.id, ci, co)) ? "Some of these nights were just booked. Please choose different dates." : null);
   if (problem) {
     return (
@@ -48,6 +52,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   await withNightPricing(p, ci, co);
   const pr = quote(p, ci, co, settings.tax_percent, party);
   const methods = enabledMethods(settings);
+  const later = settings.pay_later, payLaterOnline = onlineMethods(settings).length > 0;
   const instant = p.booking_mode === "instant";
 
   return (
@@ -102,7 +107,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
             <fieldset key={x.key} className="flight-box">
               <legend>{x.name}: your flight</legend>
               <div className="grid-3">
-                <label className="field"><span>Date</span><input className="input" type="date" name={`fl_${x.key}_date`} defaultValue={FLIGHT_SERVICES[x.key].when === "ci" ? ci : co} required /></label>
+                <DatePicker name={`fl_${x.key}_date`} label="Date" initial={FLIGHT_SERVICES[x.key].when === "ci" ? ci : co} today={today} min={today} required />
                 <label className="field"><span>{FLIGHT_SERVICES[x.key].timeLabel}</span><input className="input" type="time" name={`fl_${x.key}_time`} required /></label>
                 <label className="field"><span>Airline and flight number</span><input className="input" name={`fl_${x.key}_flight`} placeholder="Delta DL 1234" maxLength={60} required /></label>
               </div>
@@ -112,10 +117,23 @@ export default async function BookPage({ params, searchParams }: { params: Promi
             <span>{instant ? <>Note for the host <span className="muted" style={{ fontWeight: 400 }}>(optional)</span></> : "Message to the host"}</span>
             <textarea className="input" name="message" placeholder={instant ? "Anything the host should know?" : "Say hello and tell the host a little about your trip."} />
           </label>
-          {methods.length ? <PaymentChoice methods={methods} total={pr.total} s={settings} request={!instant} /> : <div className="notice info">{settings.payment_note}</div>}
+          {methods.length ? <PaymentChoice methods={methods} total={pr.total} s={settings} request={!instant} later={later} payLaterOnline={payLaterOnline} />
+            : later ? <div className="notice info">Nothing to pay now. Pay {money(pr.total)} at the property{payLaterOnline ? ", or online any time from your booking page" : ""}.</div>
+            : <div className="notice info">{settings.payment_note}</div>}
+          <div className="rules-summary" style={{ fontSize: 14 }}>
+            <b>House rules</b>
+            <ul>
+              <li>Check-in {pol.checkIn.toLowerCase()}, check-out {pol.checkOut.toLowerCase()}</li>
+              <li>Up to {pol.maxGuests}</li>
+              <li>Pets: {pol.pets}</li>
+              <li>{pol.smoking}</li>
+              <li>{pol.cameras}</li>
+              {rules.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          </div>
           <p style={{ fontSize: 14 }}><b>Cancellation:</b> {CANCELLATION[p.cancellation_policy]?.text}</p>
           <label className="chk"><input type="checkbox" name="agree" /> I agree to the house rules and cancellation policy.</label>
-          <div><SubmitButton pendingText={instant ? "Booking…" : "Sending…"}>{!instant ? "Send request" : methods.length ? "Book and pay" : `Confirm booking · ${money(pr.total)}`}</SubmitButton></div>
+          <div><SubmitButton pendingText={instant ? "Booking…" : "Sending…"}>{!instant ? "Send request" : methods.length && !later ? "Book and pay" : methods.length ? "Book now" : `Confirm booking · ${money(pr.total)}`}</SubmitButton></div>
         </ActionForm>
         )}
 

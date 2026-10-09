@@ -4,6 +4,6 @@ export async function onRequestError(err: unknown, request: { path: string; meth
   if (process.env.NEXT_RUNTIME === "nodejs") {
     const { logEvent } = await import("./lib/log.ts");
     const e = err as Error & { digest?: string };
-    await logEvent("error", "Server", e.message || "Unhandled error", { path: request.path, method: request.method, digest: e.digest, stack: e.stack?.split("\n").slice(0, 6).join("\n") });
+    await logEvent("error", "Server", e.message || "Unhandled error", { route: `${request.method} ${request.path}`, digest: e.digest, stack: e.stack?.split("\n").slice(0, 15).join("\n") });
   }
 }

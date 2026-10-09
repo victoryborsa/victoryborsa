@@ -14,8 +14,13 @@ import { priceTag } from "@/lib/pricing.ts";
 import { PROPERTY_TYPES } from "@/lib/constants.ts";
 import { VISITOR_COOKIE } from "@/lib/listing-stats.ts";
 import { getT, LANGS_AZ } from "@/lib/i18n.ts";
+import { pageMeta, businessLd, websiteLd, JsonLd } from "@/lib/seo.tsx";
+import { siteUrl } from "@/lib/email.ts";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = pageMeta("/", "Furnished Rentals & Corporate Housing in Pittsburgh",
+  "Furnished short-term and monthly rentals in Pittsburgh for travel nurses, traveling physicians, corporate teams, relocating employees and young professionals. Book direct with Sevgio.", { title: { absolute: "Sevgio · Furnished Rentals & Corporate Housing in Pittsburgh" } });
 
 /** "Apartment in Wilkinsburg", "Room in Indiana": the kind of stay and its neighborhood (or town). */
 function kindIn(p: CardProperty) {
@@ -24,14 +29,14 @@ function kindIn(p: CardProperty) {
   return `${kind} in ${place}`;
 }
 
-function MiniCard({ p, saved, eager }: { p: CardProperty; saved: boolean; eager?: boolean }) {
+function MiniCard({ p, saved, eager, first }: { p: CardProperty; saved: boolean; eager?: boolean; first?: boolean }) {
   const tag = priceTag(p);
   const fav = p.rating && p.rating >= 4.8 && p.review_count >= 5;
   return (
     <div className="ab-card" data-pid={p.id}>
       <Link href={`/stays/${p.slug}`} className="ab-card-link">
         <span className="ab-ph">
-          {p.cover_id ? <img src={photoUrl(p.cover_id, "thumb")} alt={p.title} loading={eager ? "eager" : "lazy"} decoding="async" width={360} height={342} /> : <span className="noph">Photos coming soon</span>}
+          {p.cover_id ? <img src={photoUrl(p.cover_id, "thumb")} alt={p.title} loading={eager ? "eager" : "lazy"} decoding={eager ? undefined : "async"} fetchPriority={first ? "high" : undefined} width={360} height={342} /> : <span className="noph">Photos coming soon</span>}
           {fav && <span className="ab-badge">Guest favorite</span>}
         </span>
         <span className="ab-c1">{kindIn(p)}</span>
@@ -50,7 +55,8 @@ const WHO: [string, IconName, "nurse" | "corp" | "pro" | "trip"][] = [
   ["/stays?kind=room&monthly=1", "room", "pro"], ["/stays?kind=home", "home", "trip"],
 ];
 
-const TABS: [string, string, IconName][] = [["/", "All", "all"], ["/stays?kind=home", "Homes", "home"], ["/stays?kind=room", "Rooms", "room"], ["/stays?monthly=1", "Monthly", "calendar"], ["/corporate-housing", "Corporate", "briefcase"], ["/pittsburgh", "Things to do", "compass"], ["/events", "Events", "ticket"]];
+// Colour category icons live in public/icons/categories.
+const TABS: [string, string, string][] = [["/", "All", "all"], ["/stays?kind=home", "Homes", "homes"], ["/stays?kind=room", "Rooms", "rooms"], ["/stays?monthly=1", "Monthly", "monthly"], ["/corporate-housing", "Corporate", "corporate"], ["/pittsburgh", "Things to do", "things-to-do"], ["/events", "Events", "events"]];
 
 export default async function Home() {
   const visitor = (await cookies()).get(VISITOR_COOKIE)?.value || "";
@@ -73,10 +79,12 @@ export default async function Home() {
 
   return (
     <div className="ab-home">
+      <JsonLd data={websiteLd(siteUrl())} />
+      <JsonLd data={businessLd(siteUrl(), {})} />
       <div className="ab-band">
         <nav className="ab-tabs" aria-label="Browse">
           {TABS.map(([href, label, icon], i) => (
-            <Link key={href} href={href} aria-current={i === 0 ? "page" : undefined}><Icon name={icon} size={24} className="ab-tab-ico" />{label}</Link>
+            <Link key={href} href={href} aria-current={i === 0 ? "page" : undefined}><img src={`/icons/categories/${icon}.svg`} width={32} height={32} alt="" className="ab-tab-img" />{label}</Link>
           ))}
         </nav>
       </div>
@@ -87,6 +95,9 @@ export default async function Home() {
           <h1 id="hm-h1">{t("home.h1")}</h1>
           <p className="hm-sub">{t("home.sub")}</p>
           <PillSearch places={places} today={todayLocal()} labels={{ where: t("search.where"), when: "When", who: "Who", search: t("search.submit"), anywhere: t("search.anywhere") }} />
+          <ul className="hm-trust">
+            {(["home.trust.price", "home.trust.length", "home.trust.reply"] as const).map(k => <li key={k}><Icon name="check" size={20} />{t(k)}</li>)}
+          </ul>
         </div>
         <div className="hm-hero-pics"><PictureTrio photos={slides} /></div>
       </section>
@@ -109,14 +120,14 @@ export default async function Home() {
       <div className="ab-body">
         {rows.length ? rows.map((r, ri) => (
           <CardRow key={r.title} title={r.title} href={r.href}>
-            {r.list.map((p, i) => <MiniCard key={p.id} p={p} saved={saved.has(p.id)} eager={ri === 0 && i < 4} />)}
+            {r.list.map((p, i) => <MiniCard key={p.id} p={p} saved={saved.has(p.id)} eager={ri === 0 && i < 4} first={ri === 0 && i === 0} />)}
           </CardRow>
         )) : <div className="empty"><h3>New homes are on the way</h3><p className="muted">Check back soon, or contact us and we'll help you find a stay.</p></div>}
 
         <div className="ab-promos">
           <Link className="ab-promo" href="/stays"><span className="ab-promo-ico"><Icon name="car" size={30} /></span><span>Add airport pickup when you book</span><span className="ab-pill">Find a stay</span></Link>
           <Link className="ab-promo" href="/stays?amen=hottub"><span className="ab-promo-ico"><Icon name="bath" size={30} /></span><span>Explore homes with hot tubs</span><span className="ab-pill">Browse homes</span></Link>
-          <Link className="ab-promo" href="/pittsburgh"><span className="ab-promo-ico"><Icon name="compass" size={30} /></span><span>Find things to do in Pittsburgh</span><span className="ab-pill">See the guide</span></Link>
+          <Link className="ab-promo" href="/pittsburgh"><span className="ab-promo-ico"><img src="/icons/categories/things-to-do.svg" width={30} height={30} alt="" /></span><span>Find things to do in Pittsburgh</span><span className="ab-pill">See the guide</span></Link>
         </div>
 
         <section className="ab-welcome hm-welcome" aria-labelledby="hm-welcome-h">
@@ -125,7 +136,7 @@ export default async function Home() {
             <p className="lede">{t("home.lede")}</p>
             <nav className="hello" aria-label={t("home.pickLang")}>
               {LANGS_AZ.map(l => (
-                <a key={l.code} href={`/lang/${l.code}?next=/`} lang={l.code} hrefLang={l.code} className={l.code === lang ? "on" : undefined} aria-current={l.code === lang ? "true" : undefined} title={l.name}>{l.hello}</a>
+                <a key={l.code} href={`/lang/${l.code}?next=/`} rel="nofollow" lang={l.code} hrefLang={l.code} className={l.code === lang ? "on" : undefined} aria-current={l.code === lang ? "true" : undefined} title={l.name}>{l.hello}</a>
               ))}
             </nav>
             <p className="hint" style={{ marginTop: 6 }}>{t("home.pickLang")}</p>

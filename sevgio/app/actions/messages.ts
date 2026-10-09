@@ -26,14 +26,23 @@ export async function askHostAction(_: ActionState, fd: FormData): Promise<Actio
 
 export async function contactAction(_: ActionState, fd: FormData): Promise<ActionState> {
   if (str(fd, "website")) return { ok: "Message sent." };
-  const name = str(fd, "name", 120), email = str(fd, "email", 254), topic = str(fd, "topic", 80), body = str(fd, "body", 4000);
+  const name = str(fd, "name", 120), email = str(fd, "email", 254), topic = str(fd, "topic", 80), msg = str(fd, "body", 4000);
+  // Optional details for an existing reservation; none of them are required.
+  const ref = str(fd, "reservation", 40).toUpperCase(), phone = str(fd, "phone", 40), checkIn = str(fd, "check_in", 10), home = str(fd, "property", 40);
   if (!name || !isEmail(email)) return { error: "Add your name and a valid email address." };
-  if (body.length < 5) return { error: "Write a message before sending." };
+  if (msg.length < 5) return { error: "Write a message before sending." };
+  if (checkIn && !/^\d{4}-\d{2}-\d{2}$/.test(checkIn)) return { error: "Choose the check-in date from the calendar, or leave it empty." };
   if (await tooMany(email)) return { error: "You've sent several messages recently. Please wait a little before sending more." };
+  const p = /^[0-9a-f-]{36}$/i.test(home) ? await one<{ id: string; title: string }>("SELECT id, title FROM properties WHERE id = $1 AND status = 'published'", [home]) : null;
+  const booking = ref ? await one<{ code: string }>("SELECT code FROM bookings WHERE upper(code) = $1", [ref]) : null;
+  const details = [["Reservation number", ref ? (booking ? ref : `${ref} (not found on Sevgio; it may be from another site)`) : ""], ["Phone", phone], ["Property", p?.title || ""], ["Check-in date", checkIn]]
+    .filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join("\n");
+  const body = details ? `${details}\n\n${msg}` : msg;
   const u = await currentUser();
-  await q("INSERT INTO messages (user_id, name, email, topic, body) VALUES ($1, $2, $3, $4, $5)", [u?.id ?? null, name, email, topic, body]);
+  await q("INSERT INTO messages (property_id, user_id, name, email, topic, body) VALUES ($1, $2, $3, $4, $5, $6)", [p?.id ?? null, u?.id ?? null, name, email, topic, body]);
   const s = await getSettings();
-  if (s.contact_email) await sendEmail(s.contact_email, `[Sevgio contact] ${topic} from ${name}`, `${name} (${email}) wrote:\n\n${body}\n\nSee all messages: ${siteUrl()}/admin/messages`);
+  const link = booking ? `\nReservation: ${siteUrl()}/admin/bookings/${booking.code}` : "";
+  if (s.contact_email) await sendEmail(s.contact_email, `[Sevgio contact] ${topic} from ${name}`, `${name} (${email}) wrote:\n\n${body}\n${link}\nSee all messages: ${siteUrl()}/admin/messages`);
   return { ok: `Message sent. We'll reply to ${email}.` };
 }
 

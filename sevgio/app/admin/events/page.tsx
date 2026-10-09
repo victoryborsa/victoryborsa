@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth.ts";
 import { one, q } from "@/lib/db.ts";
 import { addDays, fmtDate, todayLocal } from "@/lib/dates.ts";
+import { DateRangePicker } from "@/components/DatePicker.tsx";
 import { CATEGORIES, eventsBetween, timeLabel } from "@/lib/events.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { addEventAction, addEventFeedAction, eventCommandAction, removeEventFeedAction, syncEventsAction } from "@/app/actions/events.ts";
@@ -32,9 +33,9 @@ export default async function AdminEvents() {
         <h2>Add an event</h2>
         <p className="muted">For festivals, markets and local events, e.g. from downtownpittsburgh.com. Upload the event's flyer or picture.</p>
         <label className="field"><span>Event name</span><input className="input" name="title" placeholder="Prostburgh! Oktoberfest 2026" /></label>
+        <DateRangePicker id="ev-dates" today={today} min={today} minNights={0} maxMonths={24} endOptional names={["date", "end_date"]} labels={["Date (first day)", "Last day"]}
+          hint="Pick the last day too for events over several days, or press Done for a one-day event." />
         <div className="grid-2">
-          <label className="field"><span>Date (first day)</span><input className="input" type="date" name="date" min={today} /></label>
-          <label className="field"><span>Last day (optional, for events over several days)</span><input className="input" type="date" name="end_date" min={today} /></label>
           <label className="field"><span>Start time (optional)</span><input className="input" type="time" name="time" /></label>
           <label className="field"><span>Place</span><input className="input" name="venue" placeholder="Market Square" /></label>
           <label className="field"><span>Type of event</span><select className="input" name="category" defaultValue="Festivals">{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></label>

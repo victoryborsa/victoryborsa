@@ -1,6 +1,8 @@
 import { ActionForm, SubmitButton } from "./forms.tsx";
 import { saveChannelResAction } from "@/app/actions/channel.ts";
 import { CHANNELS } from "@/lib/channels.ts";
+import { todayLocal } from "@/lib/dates.ts";
+import { DatePicker, DateRangePicker } from "./DatePicker.tsx";
 
 export type ChannelResValues = {
   id?: string; kind?: string; external_ref?: string; guest_name?: string; guests?: number | null; note?: string;
@@ -15,6 +17,7 @@ export function ChannelResForm({ v, listings }: { v: ChannelResValues; listings?
   const money = (name: string, label: string, val: number | null | undefined, hint?: string) => (
     <label className="field"><span>{label}</span><input className="input mono" name={name} inputMode="decimal" defaultValue={dollars(val)} placeholder="Needs entry" aria-describedby={hint ? name + "-h" : undefined} />{hint && <small id={name + "-h"} className="hint">{hint}</small>}</label>
   );
+  const today = todayLocal();
   return (
     <ActionForm action={saveChannelResAction} className="stack">
       {v.id && <input type="hidden" name="id" value={v.id} />}
@@ -22,14 +25,16 @@ export function ChannelResForm({ v, listings }: { v: ChannelResValues; listings?
         <div className="grid-2">
           <label className="field"><span>Listing (home or room)</span><select className="input" name="property" required defaultValue=""><option value="" disabled>Choose…</option>{listings.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
           <label className="field"><span>Booked on</span><select className="input" name="channel" defaultValue="airbnb">{CHANNELS.filter(c => c[0] !== "sevgio").map(([k, label]) => <option key={k} value={k}>{label}</option>)}</select></label>
-          <label className="field"><span>Check-in</span><input className="input" type="date" name="check_in" required /></label>
-          <label className="field"><span>Check-out</span><input className="input" type="date" name="check_out" required /></label>
         </div>
+      )}
+      {listings && (
+        // Stays from other sites can be in the past (entered later for the money records).
+        <DateRangePicker id="cr-dates" today={today} maxMonths={36} required names={["check_in", "check_out"]} />
       )}
       <div className="grid-2">
         <label className="field"><span>What is it?</span><select className="input" name="kind" defaultValue={v.kind === "blocked" ? "blocked" : "reservation"}><option value="reservation">A guest reservation</option><option value="blocked">Blocked or closed dates (no guest)</option></select></label>
         <label className="field"><span>Confirmation code</span><input className="input mono" name="ref" defaultValue={v.external_ref || ""} placeholder="e.g. HMABC12345" /></label>
-        <label className="field"><span>Guest name</span><input className="input" name="guest_name" defaultValue={v.guest_name || ""} /></label>
+        {!v.id && <label className="field"><span>Guest full name</span><input className="input" name="guest_name" defaultValue={v.guest_name || ""} /></label>}
         <label className="field"><span>Guests</span><input className="input" name="guests" inputMode="numeric" defaultValue={v.guests ?? ""} /></label>
       </div>
       <fieldset className="stack fin-fields">
@@ -43,7 +48,7 @@ export function ChannelResForm({ v, listings }: { v: ChannelResValues; listings?
           {money("refund", "Refunds to the guest", v.refund_cents)}
           {money("expected", "Expected payout", v.expected_payout_cents, "What the site will pay you for this reservation.")}
           {money("received", "Received so far", v.received_payout_cents)}
-          <label className="field"><span>Payout date</span><input className="input" type="date" name="payout_date" defaultValue={v.payout_date || ""} /></label>
+          <DatePicker name="payout_date" label="Payout date" initial={v.payout_date || ""} today={today} maxMonths={24} emptyText="Not paid out yet" />
         </div>
       </fieldset>
       <label className="field"><span>Note</span><textarea className="input" name="note" rows={2} defaultValue={v.note || ""} /></label>

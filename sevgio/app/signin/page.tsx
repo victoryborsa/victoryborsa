@@ -5,8 +5,9 @@ import { currentUser, safeNext } from "@/lib/auth.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { signInAction } from "@/app/actions/auth.ts";
 import { PasswordInput } from "@/components/PasswordInput.tsx";
+import { pageMeta } from "@/lib/seo.tsx";
 
-export const metadata: Metadata = { title: "Sign in" };
+export const metadata: Metadata = pageMeta("/signin", "Sign in", "Sign in to Sevgio to see your trips and reservations.", { robots: { index: false } });
 
 export default async function SignIn({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const next = safeNext((await searchParams).next, "");

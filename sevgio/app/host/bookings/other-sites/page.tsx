@@ -1,20 +1,22 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth.ts";
 import { q } from "@/lib/db.ts";
-import { fmtShort, nightsBetween, todayLocal } from "@/lib/dates.ts";
+import { fmtShort, localDateOf, nightsBetween, todayLocal, type Instant } from "@/lib/dates.ts";
 import { financeListings, placeName } from "@/lib/finance.ts";
 import { CHANNELS, channelLabel, isChannel } from "@/lib/channels.ts";
 import { money } from "@/lib/money.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { AutoSubmit } from "@/components/AutoSubmit.tsx";
 import { BookingTabs } from "@/components/BookingTabs.tsx";
-import { setKindAction } from "@/app/actions/channel.ts";
+import { GuestCell } from "@/components/GuestNameForm.tsx";
+import { ResPill } from "@/components/ui.tsx";
+import { reviewKeys } from "@/lib/review.ts";
 
-type Row = { id: string; property_id: string; channel: string; external_ref: string; guest_name: string; check_in: string; check_out: string; status: string; kind: string; eff_kind: string;
-  source: string; expected_payout_cents: number | null; received_payout_cents: number | null; rent_cents: number | null; modified_at: string | null };
+type Row = { id: string; property_id: string; channel: string; external_ref: string; guest_name: string; guest_name_source: string; check_in: string; check_out: string; status: string; kind: string; eff_kind: string;
+  source: string; expected_payout_cents: number | null; received_payout_cents: number | null; rent_cents: number | null; modified_at: Instant };
 
 const WHEN: Record<string, string> = { upcoming: "Upcoming and current", past: "Past", all: "All dates" };
-const KINDS: Record<string, string> = { "": "Reservations", unknown: "Unclear (reservation or closed?)", blocked: "Blocked on the other site", mirror: "Copies of other bookings", cancelled: "Cancelled" };
+const KINDS: Record<string, string> = { "": "Reservations and calendar blocks", reservation: "Confirmed reservations only", unknown: "External calendar blocks", blocked: "Blocked on the other site", mirror: "Copies of other bookings", cancelled: "Cancelled" };
 
 /** Every reservation that came from Airbnb, Vrbo, Booking.com or another site, with what's still missing for Finance. */
 export default async function OtherSites({ searchParams }: { searchParams: Promise<{ when?: string; kind?: string; channel?: string; property?: string; needs?: string; msg?: string }> }) {
@@ -28,11 +30,12 @@ export default async function OtherSites({ searchParams }: { searchParams: Promi
   const needs = sp.needs === "1";
   const ids = listings.filter(l => !property || l.id === property || l.parent_id === property).map(l => l.id);
   const today = todayLocal();
+  const review = await reviewKeys();
   const rows = ids.length ? await q<Row>(
-    `SELECT id, property_id, channel, external_ref, guest_name, check_in, check_out, status, kind, eff_kind, source, expected_payout_cents, received_payout_cents, rent_cents, modified_at
+    `SELECT id, property_id, channel, external_ref, guest_name, guest_name_source, check_in, check_out, status, kind, eff_kind, source, expected_payout_cents, received_payout_cents, rent_cents, modified_at
      FROM channel_stays WHERE property_id = ANY($1)
        AND ($2 = 'all' OR ($2 = 'upcoming' AND check_out >= $3) OR ($2 = 'past' AND check_out < $3))
-       AND (CASE $4 WHEN 'cancelled' THEN status = 'cancelled' WHEN '' THEN status = 'confirmed' AND eff_kind = 'reservation' ELSE status = 'confirmed' AND eff_kind = $4 END)
+       AND (CASE $4 WHEN 'cancelled' THEN status = 'cancelled' WHEN '' THEN status = 'confirmed' AND eff_kind IN ('reservation', 'unknown') ELSE status = 'confirmed' AND eff_kind = $4 END)
        AND ($5 = '' OR channel = $5)
        AND (NOT $6 OR rent_cents IS NULL OR expected_payout_cents IS NULL)
      ORDER BY check_in ${when === "upcoming" ? "" : "DESC"} LIMIT 500`,
@@ -66,28 +69,13 @@ export default async function OtherSites({ searchParams }: { searchParams: Promi
                   <td><span className={`pill neutral ch-dot ch-${r.channel}`}>{channelLabel(r.channel)}</span></td>
                   <td className="mono">{r.external_ref || <span className="muted">–</span>}</td>
                   <td>{placeName(listings, r.property_id)}</td>
-                  <td>{r.guest_name || <span className="muted">Not shared</span>}</td>
-                  <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} – {fmtShort(r.check_out)}{r.modified_at && <div className="hint">Dates changed {fmtShort(r.modified_at.slice(0, 10))}</div>}</td>
+                  <td style={{ minWidth: 170 }}>{r.eff_kind === "reservation" ? <GuestCell name={r.guest_name} source={r.guest_name_source} site={channelLabel(r.channel)} /> : r.guest_name || <span className="muted">No guest details</span>}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{fmtShort(r.check_in)} – {fmtShort(r.check_out)}{localDateOf(r.modified_at) && <div className="hint">Dates changed {fmtShort(localDateOf(r.modified_at)!)}</div>}</td>
                   <td className="num">{nightsBetween(r.check_in, r.check_out)}</td>
-                  <td>{r.status === "cancelled" ? <span className="pill danger">Cancelled</span>
-                    : r.eff_kind === "unknown" ? <span className="pill warn">Unclear</span>
-                    : r.eff_kind === "blocked" ? <span className="pill neutral">Blocked</span>
-                    : r.eff_kind === "mirror" ? <span className="pill neutral">Copy of another booking</span>
-                    : r.check_in <= today && today < r.check_out ? <span className="pill ok">Staying now</span>
-                    : <span className="pill ok">Confirmed</span>}</td>
-                  <td className="num">{r.expected_payout_cents == null ? <span className="needs">Needs entry</span> : money(r.expected_payout_cents)}</td>
+                  <td><ResPill s={{ status: r.status, check_in: r.check_in, check_out: r.check_out, today, kind: r.eff_kind, needsReview: review.has("c:" + r.id) }} /></td>
+                  <td className="num">{r.expected_payout_cents != null ? money(r.expected_payout_cents) : r.eff_kind === "reservation" ? <span className="needs">Needs entry</span> : <span className="muted">–</span>}</td>
                   <td className="num">{r.received_payout_cents == null ? <span className="muted">–</span> : money(r.received_payout_cents)}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
-                    {r.eff_kind === "unknown" && r.status === "confirmed" && (
-                      <span className="row" style={{ gap: 6, display: "inline-flex", marginRight: 6 }}>
-                        {([["reservation", "It's a reservation"], ["blocked", "It's closed dates"]] as const).map(([k, label]) => (
-                          <form key={k} action={setKindAction}>
-                            <input type="hidden" name="id" value={r.id} /><input type="hidden" name="back" value={back} /><input type="hidden" name="kind" value={k} />
-                            <button className="btn btn-ghost btn-sm">{label}</button>
-                          </form>
-                        ))}
-                      </span>
-                    )}
                     <Link className="btn btn-ghost btn-sm" href={`/host/bookings/other-sites/${r.id}`}>{r.rent_cents == null && r.eff_kind === "reservation" ? "Add payout details" : "Open"}</Link>
                   </td>
                 </tr>
@@ -97,7 +85,8 @@ export default async function OtherSites({ searchParams }: { searchParams: Promi
         </div>
       )}
       <p className="hint" style={{ marginTop: 10 }}>
-        Calendar links from other sites share only dates (and on Airbnb, the confirmation code), never prices or payouts. Add those by importing the site&apos;s payout file or by hand.
+        Calendar links from other sites share only dates (and on Airbnb, the confirmation code), never prices or payouts, and usually not the guest&apos;s name.
+        Add a missing name or reference with <b>Add details</b> in Bookings or on the reservation; details entered by hand, or read from a payout file, are kept when the calendars refresh. Add those by importing the site&apos;s payout file or by hand.
         Refreshing a calendar link updates these reservations in place: changed dates are updated and reservations removed on the other site are marked cancelled, so nothing is duplicated.
         Past reservations stay here even after the other site drops them from its calendar link.
       </p>

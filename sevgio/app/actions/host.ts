@@ -1,19 +1,22 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { checkConflicts } from "@/lib/conflicts.ts";
 import { one, q, tx } from "@/lib/db.ts";
-import { requireUser, safeNext, type User } from "@/lib/auth.ts";
+import { hashPassword, requireUser, safeNext, type User } from "@/lib/auth.ts";
+import nodeCrypto from "node:crypto";
 import { withMsg } from "@/components/Flash.tsx";
 import { requireManageable } from "@/lib/access.ts";
-import { addBlock, setBookingStatus, type Booking } from "@/lib/bookings.ts";
+import { addBlock, changeReservation, createManualBooking, setBookingStatus, type Booking, type FixedPrice } from "@/lib/bookings.ts";
 import { ACCESS, AMENITIES, CANCELLATION, PROPERTY_TYPES, parseBeds, parseRooms, parseServices } from "@/lib/constants.ts";
-import { int, lines, slugify, str, type ActionState } from "@/lib/validate.ts";
-import { toCents } from "@/lib/money.ts";
+import { int, isEmail, lines, slugify, str, type ActionState } from "@/lib/validate.ts";
+import { money, toCents } from "@/lib/money.ts";
 import { processPhoto } from "@/lib/photos.ts";
 import { syncFeed } from "@/lib/calendar-sync.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { isOnline } from "@/lib/payments.ts";
-import { bookingInfo, notifyBooking, recordPayment } from "@/lib/payment-flow.ts";
+import { paysAtProperty } from "@/lib/payment-rules.ts";
+import { bookingInfo, emailManualConfirmation, emailReservationUpdate, notifyBooking, recordPayment } from "@/lib/payment-flow.ts";
 import { fetchPublic } from "@/lib/safe-fetch.ts";
 import { moveListingFamily } from "@/lib/homes.ts";
 import { feePayText, feeState, type FeeRow } from "@/lib/listing-fee.ts";
@@ -21,7 +24,7 @@ import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { logEvent } from "@/lib/log.ts";
 import { after } from "next/server";
 import { geocodeListing } from "@/lib/geocode.ts";
-import { fmtDate, todayLocal } from "@/lib/dates.ts";
+import { fmtDate, isIsoDate, todayLocal } from "@/lib/dates.ts";
 
 // ---------- Listings ----------
 
@@ -44,6 +47,7 @@ function readListing(fd: FormData) {
     beds: beds.filter(b => b.kind !== "crib").reduce((n, b) => n + b.count, 0),
     kitchen_access: str(fd, "kitchen_access"), laundry_access: str(fd, "laundry_access"), stairs_info: str(fd, "stairs_info", 300), shared_spaces: str(fd, "shared_spaces", 400),
     has_exterior_cameras: fd.get("has_exterior_cameras") === "on", camera_locations: str(fd, "camera_locations", 300),
+    smoking: ["no", "outside", "yes"].includes(str(fd, "smoking")) ? str(fd, "smoking") : "no",
     base_occupancy: baseOcc === "" ? null : Number(baseOcc), extra_guest_fee: toCents(str(fd, "extra_guest_fee") || "0"),
     fewer_guest_discount_percent: pct(fd, "fewer_guest_discount_percent"), weekly_discount_percent: pct(fd, "weekly_discount_percent"), monthly_discount_percent: pct(fd, "monthly_discount_percent"),
     children_free_age: int(fd, "children_free_age"),
@@ -134,7 +138,7 @@ function listingColumns(v: ListingValues, isAdmin: boolean): Record<string, unkn
     check_in_time: v.check_in_time || "3:00 pm", check_out_time: v.check_out_time || "11:00 am", amenities: v.amenities, house_rules: v.house_rules,
     arrival_instructions: v.arrival_instructions, parent_id: v.parent_id, bathroom_type: v.bathroom_type, beds_detail: JSON.stringify(v.beds_detail),
     kitchen_access: v.kitchen_access, laundry_access: v.laundry_access, stairs_info: v.stairs_info, shared_spaces: v.shared_spaces, has_exterior_cameras: v.has_exterior_cameras,
-    camera_locations: v.has_exterior_cameras ? v.camera_locations : "", base_occupancy: v.base_occupancy, extra_guest_fee_cents: v.extra_guest_fee,
+    camera_locations: v.has_exterior_cameras ? v.camera_locations : "", smoking: v.smoking, base_occupancy: v.base_occupancy, extra_guest_fee_cents: v.extra_guest_fee,
     fewer_guest_discount_percent: v.fewer_guest_discount_percent, weekly_discount_percent: v.weekly_discount_percent, monthly_discount_percent: v.monthly_discount_percent,
     children_free_age: v.children_free_age, owner_zelle: v.owner_zelle, owner_venmo: v.owner_venmo,
     pet_fee_cents: v.pet_fee || 0, pet_fee_per: v.pet_fee_per,
@@ -217,7 +221,7 @@ function importToForm(item: ImportItem, parentId: string | null, hostId: string)
   const fd = new FormData();
   const set = (k: string, v: unknown) => { if (v !== undefined && v !== null) fd.set(k, String(v)); };
   const plain = ["title", "property_type", "city", "area", "address", "description", "max_guests", "bedrooms", "bathrooms", "half_bathrooms", "bathroom_type",
-    "kitchen_access", "laundry_access", "stairs_info", "shared_spaces", "camera_locations", "min_nights", "max_nights", "booking_mode", "cancellation_policy", "check_in_time",
+    "kitchen_access", "laundry_access", "stairs_info", "shared_spaces", "camera_locations", "smoking", "min_nights", "max_nights", "booking_mode", "cancellation_policy", "check_in_time",
     "check_out_time", "arrival_instructions", "base_occupancy", "fewer_guest_discount_percent", "weekly_discount_percent", "monthly_discount_percent",
     "children_free_age", "management_fee_percent", "owner_zelle", "owner_venmo", "pet_fee_per", "monthly_price",
     "corp_monthly", "corp_deposit", "corp_cleaning", "corp_pet_fee", "furnished_finder_url",
@@ -437,8 +441,11 @@ export async function captionAction(fd: FormData) {
 
 export async function addBlockAction(_: ActionState, fd: FormData): Promise<ActionState> {
   const { u, p } = await requireManageable(str(fd, "id", 40));
-  const start = str(fd, "start", 10), end = str(fd, "end", 10);
-  if (start < todayLocal()) return { error: "Choose dates from today onwards." };
+  const today = todayLocal(), end = str(fd, "end", 10);
+  let start = str(fd, "start", 10);
+  if (!start) return { error: "Pick the first night and the day after the last night above, then press Block these dates." };
+  // A stay that already started: block from today on (past nights can't be booked anyway).
+  if (start < today) { if (end <= today) return { error: "Those nights are already in the past." }; start = today; }
   const r = await addBlock(p.id, start, end, str(fd, "note", 120) || "Blocked by host");
   if (!r.ok) return { error: r.error };
   await logEvent("info", "Calendar", `Blocked ${start} to ${end} on ${p.title}`, {}, u.id);
@@ -497,7 +504,7 @@ export async function decideBookingAction(_: ActionState, fd: FormData): Promise
   const dates = `${fmtDate(b.check_in)} - ${fmtDate(b.check_out)}`;
   if (decision === "accept") {
     // With payments on, an accepted request waits for the guest's payment; otherwise it's confirmed now.
-    const needsPay = !!b.payment_method;
+    const needsPay = !!b.payment_method && !paysAtProperty(b);
     const settings = await getSettings();
     const hours = isOnline(b.payment_method) ? 24 : settings.manual_payment_hours;
     const r = await one<Booking>(
@@ -507,7 +514,7 @@ export async function decideBookingAction(_: ActionState, fd: FormData): Promise
     if (!r) return { error: "This request was already answered or has expired." };
     const info = await bookingInfo(b.id);
     if (info) {
-      if (note) await sendEmail(b.guest_email, `Your request was accepted: ${b.title}`, `Good news! Your request to stay at ${b.title} for ${dates} was accepted.\n\nNote from the host: ${note}`);
+      if (note) await sendEmail(b.guest_email, `Your request was accepted ${b.code}: ${b.title}`, `Good news! Your request to stay at ${b.title} for ${dates} was accepted. Your booking reference is ${b.code}.\n\nNote from the host: ${note}`);
       await notifyBooking(info);
     }
     await logEvent("info", "Bookings", `Request ${b.code} accepted`, {}, u.id);
@@ -516,7 +523,7 @@ export async function decideBookingAction(_: ActionState, fd: FormData): Promise
   if (decision === "decline") {
     const r = await setBookingStatus(b.id, ["pending"], "declined", { hostNote: note || undefined });
     if (!r) return { error: "This request was already answered or has expired." };
-    await sendEmail(b.guest_email, `Update on your request: ${b.title}`, `Unfortunately the host can't accept your request for ${b.title} (${dates}).${note ? "\n\nNote from the host: " + note : ""}\n\nNothing is owed. Find another stay: ${siteUrl()}/stays`);
+    await sendEmail(b.guest_email, `Update on your request ${b.code}: ${b.title}`, `Unfortunately the host can't accept your request for ${b.title} (${dates}, booking reference ${b.code}).${note ? "\n\nNote from the host: " + note : ""}\n\nNothing is owed. Find another stay: ${siteUrl()}/stays`);
     await logEvent("info", "Bookings", `Request ${b.code} declined`, {}, u.id);
     redirect(withMsg(back, "declined"));
   }
@@ -524,6 +531,7 @@ export async function decideBookingAction(_: ActionState, fd: FormData): Promise
     if (note.length < 5) return { error: "Add a short reason for the guest. It's included in the cancellation email." };
     const r = await setBookingStatus(b.id, ["pending", "awaiting_payment", "confirmed"], "cancelled", { cancelledBy: u.role === "admin" ? "admin" : "host", hostNote: note });
     if (!r) return { error: "This booking is already cancelled or finished." };
+    after(checkConflicts);
     await sendEmail(b.guest_email, `Your booking was cancelled: ${b.title}`, `We're sorry. Your booking ${b.code} at ${b.title} for ${dates} has been cancelled.\n\nReason: ${note}\n\nPlease contact us if you have questions: ${siteUrl()}/contact`);
     await logEvent("warn", "Bookings", `Booking ${b.code} cancelled by ${u.role}`, { reason: note }, u.id);
     redirect(withMsg(back, "cancelled"));
@@ -550,9 +558,77 @@ export async function markPaidAction(_: ActionState, fd: FormData): Promise<Acti
   if (!amount || amount <= 0) return { error: "Enter the amount you received." };
   if (!["awaiting_payment", "confirmed"].includes(b.status)) return { error: "This booking isn't active." };
   const method = str(fd, "method") || b.payment_method || "zelle";
-  if (!["zelle", "venmo", "cash", "card", "ach"].includes(method)) return { error: "Choose how the money was paid." };
+  if (!["zelle", "venmo", "cashapp", "cash", "card", "ach"].includes(method)) return { error: "Choose how the money was paid." };
   const r = await recordPayment(b.id, amount, { method, recordedBy: u.id, note: str(fd, "note", 200) });
   if (!r.ok) return { error: r.reason === "taken" ? "The payment was recorded, but these dates were already taken by someone else. Please refund the guest." : "Booking not found." };
   const back = safeNext(str(fd, "back", 300), "/host/bookings");
   redirect(withMsg(back, "paid"));
+}
+
+/** Admin → reservation page → Edit reservation. New dates are re-checked against every source; the guest is emailed what changed. */
+export async function editReservationAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireUser(["admin"]);
+  const id = str(fd, "id", 40), totalText = str(fd, "total", 20);
+  const totalCents = totalText ? toCents(totalText) : null;
+  if (totalText && (totalCents == null || totalCents < 0)) return { error: "Enter the total as an amount, for example 850 or 850.00, or leave it empty." };
+  // Only unpaid Sevgio.com bookings can be edited; changeReservation re-checks this while the booking is locked.
+  const r = await changeReservation(id, { checkIn: str(fd, "check_in", 10), checkOut: str(fd, "check_out", 10), guestName: str(fd, "name", 120), guestPhone: str(fd, "phone", 40), guests: int(fd, "guests"), totalCents, unpaidOnly: true });
+  if (!r.ok) return { error: r.error };
+  const { before: a, after: b } = r;
+  const changes = [
+    (a.check_in !== b.check_in || a.check_out !== b.check_out) && `Dates: ${fmtDate(a.check_in)} - ${fmtDate(a.check_out)} → ${fmtDate(b.check_in)} - ${fmtDate(b.check_out)}`,
+    a.guest_name !== b.guest_name && `Guest name: ${a.guest_name} → ${b.guest_name}`,
+    a.guest_phone !== b.guest_phone && `Phone: ${a.guest_phone || "none"} → ${b.guest_phone || "none"}`,
+    a.guests !== b.guests && `Guests: ${a.guests} → ${b.guests}`,
+    a.total_cents !== b.total_cents && `Total: ${money(a.total_cents)} → ${money(b.total_cents)}`,
+  ].filter((x): x is string => !!x);
+  const self = `/admin/bookings/${b.code}`;
+  if (!changes.length) redirect(withMsg(self, "nochange"));
+  await logEvent("info", "Bookings", `Reservation ${b.code} edited: ${changes.join("; ")}`, { booking: b.code, property: b.property_id, platform: "sevgio" }, admin.id);
+  after(() => checkConflicts());
+  const info = await bookingInfo(b.id);
+  const sent = info && str(fd, "notify") !== "0" ? await emailReservationUpdate(info, changes) : null;
+  redirect(withMsg(self, sent && !sent.ok && !sent.queued ? "editednomail" : "edited"));
+}
+
+/** Admin: the money for a cancelled booking was returned to the guest. */
+export async function markRefundedAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireUser(["admin"]);
+  const b = await one<Booking>("UPDATE bookings SET payment_status = 'refunded', updated_at = now() WHERE id = $1 AND status IN ('cancelled', 'declined', 'expired') AND paid_cents > 0 RETURNING *", [str(fd, "id", 40)]);
+  if (!b) return { error: "Only a cancelled booking with a recorded payment can be marked refunded." };
+  await logEvent("info", "Payment", `Booking ${b.code} marked refunded (${money(b.paid_cents)})`, { booking: b.code }, admin.id);
+  redirect(withMsg(`/admin/bookings/${b.code}`, "refunded"));
+}
+
+/** Admin → Add Manual Reservation: a guest who called or wrote directly. Confirmed with nothing paid; the guest is emailed. */
+export async function addManualReservationAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireUser(["admin"]);
+  const propertyId = str(fd, "property", 40), name = str(fd, "name", 120), email = str(fd, "email", 254).toLowerCase(), phone = str(fd, "phone", 40);
+  const ci = str(fd, "check_in", 10), co = str(fd, "check_out", 10);
+  if (!propertyId) return { error: "Choose a property." };
+  if (!name) return { error: "Enter the guest's name." };
+  if (!isEmail(email)) return { error: "Enter the guest's email, so they get their confirmation." };
+  if (!isIsoDate(ci) || !isIsoDate(co)) return { error: "Choose check-in and check-out dates." };
+  // Corporate housing: a negotiated total, a deposit and when the rest is due, instead of the nightly rates.
+  let fixed: FixedPrice | null = null;
+  if (fd.get("fixed_price") === "on") {
+    const total = toCents(str(fd, "fixed_total", 20)), deposit = toCents(str(fd, "fixed_deposit", 20) || "0"), due = str(fd, "payment_due", 10);
+    if (!total || total < 100) return { error: "Enter the total price for the stay, for example 3000." };
+    if (total > 100_000_00) return { error: "The total price looks too high. Enter it in dollars, for example 3000." };
+    if (deposit == null || deposit > total) return { error: "The deposit can't be more than the total price." };
+    if (due && (!isIsoDate(due) || due < todayLocal())) return { error: "Choose a payment due date from today onwards." };
+    fixed = { totalCents: total, depositCents: deposit, dueDate: due || null, cardFeeCents: (await getSettings()).corporate_card_fee_cents };
+  }
+  // The guest's account: an existing one with this email, or a new one they can open later with "Forgot password".
+  let guest = await one<{ id: string }>("SELECT id FROM users WHERE lower(email) = $1", [email]);
+  guest ??= await one<{ id: string }>("INSERT INTO users (email, name, phone, password_hash, role) VALUES ($1, $2, $3, $4, 'customer') RETURNING id",
+    [email, name, phone, await hashPassword(nodeCrypto.randomBytes(24).toString("hex"))]);
+  const s = await getSettings();
+  const r = await createManualBooking({ propertyId, guestId: guest!.id, ci, co, name, phone, taxPercent: s.tax_percent, fixed });
+  if (!r.ok) return { error: r.error };
+  await logEvent("info", "Bookings", `Manual reservation ${r.booking.code} added for ${name}, ${r.property.title}, ${ci} to ${co}${fixed ? `, fixed price ${money(fixed.totalCents)}, deposit ${money(fixed.depositCents)}` : ""}`, { booking: r.booking.id }, admin.id);
+  after(() => checkConflicts());
+  const info = await bookingInfo(r.booking.id);
+  const sent = info ? await emailManualConfirmation(info) : { ok: false };
+  redirect(withMsg(`/admin/bookings/${r.booking.code}`, sent.ok ? "manualadded" : "manualnomail"));
 }

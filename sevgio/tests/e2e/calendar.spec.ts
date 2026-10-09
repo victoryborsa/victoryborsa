@@ -1,5 +1,5 @@
 import { test, expect, type Locator } from "@playwright/test";
-import { iso, signIn, signOut, sql } from "./helpers.ts";
+import { iso, pickInPicker, signIn, signOut, sql } from "./helpers.ts";
 
 const add = (d: string, n: number) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
 // A quiet stretch well in the future: the 5th of a month, so a whole stay fits in one month's arrivals.
@@ -89,13 +89,13 @@ test.describe.serial("reservations calendar", () => {
     // Earliest first: the three same-day arrivals, then Dee (and the Airbnb guest), then Eli.
     const order = await page.locator(".ar:not(.mc-phone-list) a.ar-card").evaluateAll(as => as.map(a => a.getAttribute("href")).filter(h => h?.startsWith("/trips/CALT")));
     expect(order.slice(3)).toEqual(["/trips/CALTB1", "/trips/CALTC1"]);
-    await expect(page.locator(".ar-card", { hasText: "Booked on Airbnb" })).toBeVisible();
+    await expect(page.locator(".ar-card", { hasText: "Confirmed · Airbnb" })).toBeVisible();
 
     // Status filter: only bookings from other sites.
     await page.getByLabel("Status").selectOption({ label: "Booked on other sites" });
     await expect(page).toHaveURL(/status=other/);
     await expect(page.locator(".ar:not(.mc-phone-list) a.ar-card")).toHaveCount(0);
-    await expect(page.locator(".ar-card", { hasText: "Booked on Airbnb" })).toBeVisible();
+    await expect(page.locator(".ar-card", { hasText: "Confirmed · Airbnb" })).toBeVisible();
     // Property filter keeps the status and view.
     await page.getByLabel("Property").selectOption({ label: props[1].title });
     await expect(page).toHaveURL(/view=arrivals/);
@@ -122,10 +122,19 @@ test.describe.serial("reservations calendar", () => {
     await expect(page.getByRole("dialog", { name: "Reservation: Dee Backtoback" })).toBeVisible();
     await page.keyboard.press("Escape");
     // Picking a month jumps there, keeping the view.
-    await page.getByLabel("Go to month").fill(D.slice(0, 7).replace(/-\d\d$/, "-01"));
-    await expect(page).toHaveURL(/month=\d{4}-01/);
+    const jan1 = D.slice(0, 4) + "-01-01";
+    await pickInPicker(page, /Go to date/, [jan1]);
+    await page.locator(".dr-pop").getByRole("button", { name: "Done" }).click();
+    await expect(page).toHaveURL(new RegExp(`start=${jan1}`));
     await expect(page).toHaveURL(/view=day/);
     await expect(page.locator(".mc-period")).toContainText("January 1");
+    // A first and last day shows just that stretch, highlighted in the picker.
+    await pickInPicker(page, /Go to date/, [D, add(D, 8)]);
+    await expect(page).toHaveURL(new RegExp(`start=${D}&end=${add(D, 8)}`));
+    await expect(page.locator(".mc-day")).toHaveCount(9);
+    await page.getByRole("button", { name: /Go to date/ }).click();
+    await expect(page.locator(`.dr-pop [data-day="${add(D, 4)}"]`)).toHaveClass(/\bin\b/);
+    await page.keyboard.press("Escape");
     await signOut(page);
   });
 
@@ -142,7 +151,7 @@ test.describe.serial("reservations calendar", () => {
     await page.keyboard.press("Escape");
     // The Airbnb booking opens too, and says the guest count lives on Airbnb.
     await page.locator(".mg-tag.ch-airbnb").first().click();
-    await expect(page.getByRole("dialog", { name: "Reservation: Booked on Airbnb" })).toContainText("Not shared by Airbnb");
+    await expect(page.getByRole("dialog", { name: "Reservation: Confirmed · Airbnb" })).toContainText("Name not provided by Airbnb");
     await page.keyboard.press("Escape");
     // The month's reservations are listed under the calendar.
     await expect(page.getByRole("heading", { name: /Reservations in/ })).toBeVisible();

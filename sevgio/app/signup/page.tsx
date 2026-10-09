@@ -5,8 +5,9 @@ import { currentUser, safeNext } from "@/lib/auth.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { signUpAction } from "@/app/actions/auth.ts";
 import { PasswordInput } from "@/components/PasswordInput.tsx";
+import { pageMeta } from "@/lib/seo.tsx";
 
-export const metadata: Metadata = { title: "Create an account" };
+export const metadata: Metadata = pageMeta("/signup", "Create an account", "Create a Sevgio account to book furnished stays in Pittsburgh and see all your trips in one place.", { robots: { index: false } });
 
 export default async function SignUp({ searchParams }: { searchParams: Promise<{ next?: string; host?: string }> }) {
   const sp = await searchParams;

@@ -26,6 +26,7 @@ const en = {
   "home.guideTitle": "New to Pittsburgh?", "home.guideText": "Where to eat, what to see, bars, game days and how to talk like a Yinzer.", "home.guideBtn": "Read our Pittsburgh guide",
   "home.sub": "Furnished homes and private rooms in Pittsburgh, by the night or by the month. Book directly with us and see the full price before you book.",
   "home.whoTitle": "Who stays with us",
+  "home.trust.price": "Full price shown before you book", "home.trust.length": "Stay a few nights or a few months", "home.trust.reply": "We reply within a few hours, every day",
   "home.who.nurse": "Travel nurses and doctors", "home.who.nurseLen": "1 to 12 months", "home.who.nurseText": "Furnished homes with utilities and Wi-Fi included. 13-week contracts welcome.",
   "home.who.corp": "Corporate and relocation", "home.who.corpLen": "1 to 12 months", "home.who.corpText": "One fixed monthly price for teams, new hires and families on the move.",
   "home.who.pro": "Young professionals", "home.who.proLen": "Monthly", "home.who.proText": "Private rooms in shared homes, rented by the month with everything set up.",

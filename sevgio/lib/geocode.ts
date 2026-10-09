@@ -38,7 +38,7 @@ export async function geocode(query: string): Promise<{ lat: number; lng: number
   if (!enabled() || !query.trim()) return null;
   try {
     const url = `${BASE()}/search?format=json&limit=1&countrycodes=us&q=${encodeURIComponent(query)}`;
-    const res = await fetch(url, { headers: { "User-Agent": `SevgioStays/1.0 (${process.env.SITE_URL || "sevgio.onrender.com"})`, Accept: "application/json" }, signal: AbortSignal.timeout(8000) });
+    const res = await fetch(url, { headers: { "User-Agent": `Sevgio/1.0 (${process.env.SITE_URL || "sevgio.onrender.com"})`, Accept: "application/json" }, signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
     const rows = (await res.json()) as { lat?: string; lon?: string }[];
     return rows?.[0] ? valid(Number(rows[0].lat), Number(rows[0].lon)) : null;

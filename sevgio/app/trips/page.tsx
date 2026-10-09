@@ -9,7 +9,7 @@ import { money } from "@/lib/money.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { StatusPill } from "@/components/ui.tsx";
 
-export const metadata: Metadata = { title: "My trips" };
+export const metadata: Metadata = { title: "My trips", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
 type Row = Booking & { title: string; slug: string; city: string; cover_id: string | null };
@@ -30,13 +30,13 @@ export default async function Trips() {
     <Link key={r.id} href={`/trips/${r.code}`} className="trip-card">
       <span className="trip-ph">
         {r.cover_id ? <img src={photoUrl(r.cover_id, "thumb")} alt="" loading="lazy" /> : <span className="noph">Photos coming soon</span>}
-        <span className="trip-status"><StatusPill status={r.status} /></span>
+        <span className="trip-status"><StatusPill b={r} detail={false} /></span>
       </span>
       <span className="trip-body">
         <b className="trip-title">{r.title}</b>
         <span className="trip-meta"><Icon name="calendar" size={16} />{fmtDate(r.check_in)} - {fmtDate(r.check_out)}</span>
         <span className="trip-meta"><Icon name="pin" size={16} />{r.city} · {r.guests} guest{r.guests > 1 ? "s" : ""}</span>
-        <span className="trip-foot"><span className="mono hint">{r.code}</span><b>{money(r.total_cents)}</b></span>
+        <span className="trip-foot"><span className="trip-ref">Ref <b className="mono">{r.code}</b></span><b>{money(r.total_cents)}</b></span>
       </span>
     </Link>
   );

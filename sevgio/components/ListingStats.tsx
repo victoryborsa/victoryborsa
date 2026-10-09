@@ -38,12 +38,15 @@ export function ListingStats({ id, initial, live }: { id: string; initial: Stats
   };
   return (
     <div className="lstats">
-      <ul className="lstats-list" aria-label="Listing activity">
-        <li><Eye />{plural(s.views, "view", "views")}</li>
-        <li><Heart />{plural(s.favorites, "time saved as favourite", "times saved as favourite")}</li>
-        <li><Person />{n(s.interested)} interested</li>
-        <li><Share />{plural(s.shares, "time shared", "times shared")}</li>
-      </ul>
+      {/* Counts of zero are left out, so guests never see "0 views". */}
+      {(s.views > 0 || s.favorites > 0 || s.interested > 0 || s.shares > 0) && (
+        <ul className="lstats-list" aria-label="Listing activity">
+          {s.views > 0 && <li><Eye />{plural(s.views, "view", "views")}</li>}
+          {s.favorites > 0 && <li><Heart />{plural(s.favorites, "time saved as favourite", "times saved as favourite")}</li>}
+          {s.interested > 0 && <li><Person />{n(s.interested)} interested</li>}
+          {s.shares > 0 && <li><Share />{plural(s.shares, "time shared", "times shared")}</li>}
+        </ul>
+      )}
       {live && (
         <div className="lstats-actions">
           <button type="button" className={`btn btn-ghost btn-sm lstats-btn${s.mine.favorite ? " on" : ""}`} aria-pressed={s.mine.favorite} onClick={() => toggle("favorite")}>

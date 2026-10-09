@@ -1,10 +1,12 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { one, q } from "@/lib/db.ts";
+import { nextStages, type Stage } from "@/lib/stages.ts";
 import nodeCrypto from "node:crypto";
 import { clearFailedSignIns, hashPassword, linkToken, requireUser, sha256 } from "@/lib/auth.ts";
 import { ROLES } from "@/lib/constants.ts";
 import { saveSetting } from "@/lib/settings.ts";
+import { FLAGS, saveFlag } from "@/lib/flags.ts";
 import { isEmail, str, type ActionState } from "@/lib/validate.ts";
 import { toCents } from "@/lib/money.ts";
 import { logEvent } from "@/lib/log.ts";
@@ -14,6 +16,7 @@ import { withMsg } from "@/components/Flash.tsx";
 import { sendEmail, siteUrl } from "@/lib/email.ts";
 import { processPhoto } from "@/lib/photos.ts";
 import { moveListingFamily } from "@/lib/homes.ts";
+import { audienceBySlug, audienceSlot } from "@/lib/audiences.ts";
 
 // The guide page banner photo (place photos are managed in app/actions/guide.ts).
 const GUIDE_SLUGS = new Set(["guide-banner"]);
@@ -102,12 +105,28 @@ export async function setRatingAction(_: ActionState, fd: FormData): Promise<Act
   return { ok: "Rating saved." };
 }
 
-export async function resolveEventAction(fd: FormData) {
-  await requireUser(["admin"]);
-  const id = Number(str(fd, "id")), resolved = str(fd, "resolved") === "1";
-  await q("UPDATE event_log SET resolved_at = CASE WHEN $2 THEN now() ELSE NULL END WHERE id = $1", [id, resolved]);
+/** Errors move through New → Investigating → Fix Deployed → Verified → Resolved. Resolved is only possible after Verified,
+ *  so an error can't disappear just because someone clicked a button. Any stage can be sent back to Investigating. */
+export async function setStageAction(fd: FormData) {
+  const admin = await requireUser(["admin"]);
+  const id = Number(str(fd, "id")), to = str(fd, "stage"), note = str(fd, "note", 500);
+  const cur = await one<{ stage: string; level: string }>("SELECT stage, level FROM event_log WHERE id = $1", [id]);
+  if (!cur || cur.level === "info") return;
+  // One step forward at a time, or back to Investigating (for example when a "fixed" error comes back).
+  if (!nextStages(cur.stage).includes(to as Stage)) return;
+  await q(`UPDATE event_log SET stage = $2, stage_at = now(), stage_by = $3, stage_note = CASE WHEN $4 = '' THEN stage_note ELSE $4 END,
+             resolved_at = CASE WHEN $2 = 'resolved' THEN now() ELSE NULL END WHERE id = $1`, [id, to, admin.id, note]);
   revalidatePath("/admin/log");
   revalidatePath("/admin");
+}
+
+/** Operations → email outbox: send a waiting or failed email again now. */
+export async function retryEmailAction(fd: FormData) {
+  await requireUser(["admin"]);
+  const { retryOutbox } = await import("@/lib/email.ts");
+  const id = Number(str(fd, "id"));
+  if (id) await retryOutbox(id); else await retryOutbox();
+  revalidatePath("/admin/log");
 }
 
 export async function saveSettingsAction(_: ActionState, fd: FormData): Promise<ActionState> {
@@ -133,13 +152,18 @@ export async function saveSettingsAction(_: ActionState, fd: FormData): Promise<
   if (on("pay_zelle") && !zelle) return { error: "Add the email or phone number guests should send Zelle payments to." };
   if (on("pay_venmo") && !venmo) return { error: "Add your Venmo username (like @Sevgio-Stays)." };
   if (on("pay_cash") && !zelle && !venmo) return { error: "Cash at arrival needs Zelle or Venmo for the deposit. Add at least one." };
-  for (const k of ["pay_card", "pay_ach", "pay_zelle", "pay_venmo", "pay_cash"] as const) await saveSetting(k, on(k));
+  for (const k of ["pay_card", "pay_ach", "pay_zelle", "pay_venmo", "pay_cash", "pay_later"] as const) await saveSetting(k, on(k));
   await saveSetting("card_fee_percent", feePct);
   await saveSetting("card_fee_fixed_cents", feeFixed);
   await saveSetting("deposit_percent", deposit);
   await saveSetting("manual_payment_hours", hours);
   await saveSetting("zelle_to", zelle);
   await saveSetting("venmo_handle", venmo);
+  const cashapp = str(fd, "cashapp_handle", 60).trim(), corpFee = toCents(str(fd, "corporate_card_fee") || "0");
+  if (cashapp && !/^\$?[A-Za-z][A-Za-z0-9_-]{0,20}$/.test(cashapp)) return { error: "Enter your Cash App $Cashtag, like $SevgioStays." };
+  if (corpFee === null || corpFee > 5000) return { error: "The corporate card fee must be between $0 and $50." };
+  await saveSetting("cashapp_handle", cashapp && !cashapp.startsWith("$") ? "$" + cashapp : cashapp);
+  await saveSetting("corporate_card_fee_cents", corpFee);
   const listingFee = toCents(str(fd, "listing_fee") || "0");
   if (listingFee === null || listingFee < 0 || listingFee > 1_000_000) return { error: "Enter the yearly listing fee in dollars, e.g. 100." };
   await saveSetting("listing_fee_enabled", on("listing_fee_enabled"));
@@ -256,6 +280,36 @@ export async function removeGuidePhotoAction(fd: FormData) {
   revalidatePath("/pittsburgh");
 }
 
+// ---------- Corporate Housing: one photo per "Who we host" group ----------
+
+/** Sets (or replaces) the photo shown in one group's panel. The uploader sends the group's slug as "id". */
+export async function uploadAudiencePhotoAction(_: ActionState, fd: FormData): Promise<ActionState> {
+  await requireUser(["admin"]);
+  const a = audienceBySlug(str(fd, "id", 80));
+  if (!a) return { error: "Unknown group." };
+  const file = fd.getAll("photos").find((f): f is File => f instanceof File && f.size > 0);
+  if (!file) return { error: "Choose a photo to upload." };
+  const r = await processPhoto(file);
+  if ("error" in r) return { error: r.error };
+  const old = await one<{ caption: string }>("SELECT caption FROM site_photos WHERE slot = $1", [audienceSlot(a.slug)]);
+  await q("DELETE FROM site_photos WHERE slot = $1", [audienceSlot(a.slug)]);
+  await q("INSERT INTO site_photos (slot, caption, large, thumb, width, height) VALUES ($1, $2, $3, $4, $5, $6)", [audienceSlot(a.slug), old?.caption ?? "", r.large, r.thumb, r.width, r.height]);
+  revalidatePath("/admin/settings");
+  revalidatePath("/corporate-housing");
+  return { ok: "Photo added." };
+}
+
+/** Saves the photo description (read by screen readers and search engines), or removes the photo so a Sevgio home photo shows again. */
+export async function audiencePhotoCommandAction(fd: FormData) {
+  await requireUser(["admin"]);
+  const a = audienceBySlug(str(fd, "slug", 80));
+  if (!a) return;
+  if (str(fd, "cmd", 10) === "remove") await q("DELETE FROM site_photos WHERE slot = $1", [audienceSlot(a.slug)]);
+  else await q("UPDATE site_photos SET caption = $2 WHERE slot = $1", [audienceSlot(a.slug), str(fd, "caption", 200)]);
+  revalidatePath("/admin/settings");
+  revalidatePath("/corporate-housing");
+}
+
 /** Approves someone who chose "List my home" at sign-up: they become a host and get an email. */
 export async function approveHostAction(fd: FormData) {
   const admin = await requireUser(["admin"]);
@@ -289,4 +343,15 @@ export async function listingFeeAction(fd: FormData) {
   if (p) await logEvent("info", "Listing fees", `${p.title}: ${cmd === "paid" ? `fee paid until ${p.until}` : cmd === "waive" ? "fee waived" : "fee charged again"}`, { property: id }, admin.id);
   revalidatePath("/admin/listings");
   revalidatePath("/host/listings");
+}
+
+/** Turns one upgrade feature on or off (Admin → Feature switches). Only built features can be switched. */
+export async function setFlagAction(fd: FormData) {
+  const admin = await requireUser(["admin"]);
+  const key = str(fd, "key", 80), on = str(fd, "on", 5) === "1";
+  const f = FLAGS.find(x => x.key === key);
+  if (!f || !f.ready) return;
+  await saveFlag(key, on);
+  await logEvent("info", "Feature switches", `${f.name} turned ${on ? "on" : "off"}`, { key }, admin.id);
+  revalidatePath("/admin/features");
 }

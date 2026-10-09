@@ -1,10 +1,12 @@
 import { requireUser } from "@/lib/auth.ts";
 import Link from "next/link";
+import { ColorIcon } from "@/components/Icon.tsx";
 import { q } from "@/lib/db.ts";
 import { expireStaleRequests } from "@/lib/bookings.ts";
 import { todayLocal } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
-import { EventTable, type Ev } from "@/components/EventTable.tsx";
+import { EventTable } from "@/components/EventTable.tsx";
+import { opsEvents } from "@/lib/ops.ts";
 import { emailReady, missingEmailSettings } from "@/lib/email.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
 import { testEmailAction } from "@/app/actions/admin.ts";
@@ -30,7 +32,7 @@ export default async function AdminHome() {
             (SELECT count(*) FROM messages WHERE NOT handled AND property_id IS NULL) AS new_messages`,
     [today],
   );
-  const recent = await q<Ev>("SELECT e.*, u.email FROM event_log e LEFT JOIN users u ON u.id = e.user_id WHERE e.level <> 'info' AND e.resolved_at IS NULL ORDER BY e.at DESC LIMIT 8");
+  const recent = await opsEvents("e.level <> 'info' AND e.stage <> 'resolved'", [], 8);
   return (
     <>
       {!emailReady() && (
@@ -44,6 +46,7 @@ export default async function AdminHome() {
           <div><b>Emails are failing.</b> {emailFailures} email{emailFailures === 1 ? "" : "s"} couldn't be sent in the last day, so guests may not get their codes. Click “Send me a test email” below to see why.</div>
         </div>
       )}
+      <p style={{ margin: "0 0 16px" }}><Link className="btn btn-primary" href="/admin/bookings/new">+ Add Manual Reservation</Link></p>
       <ActionForm action={testEmailAction} className="row email-test" id="email-test">
         <SubmitButton className="btn btn-ghost btn-sm" pendingText="Sending…">Send me a test email</SubmitButton>
         <span className="hint">Checks that verification codes and booking emails can reach people.</span>
@@ -51,14 +54,14 @@ export default async function AdminHome() {
       {hostReqs > 0 && <div className="notice warn" role="status" style={{ marginBottom: 16 }}><div><b>{hostReqs} host request{hostReqs === 1 ? "" : "s"}.</b> <Link href="/admin/users?role=requests">Review in Users &amp; roles</Link> to approve them as hosts.</div></div>}
       {fresh > 0 && <div className="notice ok" role="status" style={{ marginBottom: 16 }}><div><b>{fresh} new booking{fresh === 1 ? "" : "s"}.</b> <Link href="/admin/bookings">Open Bookings</Link> to see {fresh === 1 ? "it" : "them"}.</div></div>}
       <div className="stats">
-        <div className="stat"><b>{s.customers}</b><span>Guests</span></div>
-        <div className="stat"><b>{s.hosts}</b><span>Hosts</span></div>
-        <div className="stat"><b>{s.live}/{s.listings}</b><span>Listings live</span></div>
-        <div className="stat"><b>{s.upcoming}</b><span>Upcoming confirmed stays</span></div>
-        <div className="stat"><b style={{ color: s.pending ? "var(--warn)" : undefined }}>{s.pending}</b><span>Requests awaiting hosts</span></div>
-        <div className="stat"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(s.booked30)}</b><span>Booked in the last 30 days</span></div>
-        <div className="stat"><b style={{ color: s.open_errors ? "var(--danger)" : undefined }}>{s.open_errors}</b><span><Link href="/admin/log?level=error">Unresolved errors</Link></span></div>
-        <div className="stat"><b>{s.new_messages}</b><span><Link href="/admin/messages">New contact messages</Link></span></div>
+        <Link className="stat stat-link" href="/admin/users?role=customer"><b>{s.customers}</b><span><ColorIcon file="person" size={20} />Guests</span></Link>
+        <Link className="stat stat-link" href="/admin/users?role=host"><b>{s.hosts}</b><span><ColorIcon file="users" size={20} />Hosts</span></Link>
+        <Link className="stat stat-link" href="/admin/listings"><b>{s.live}/{s.listings}</b><span><ColorIcon file="listings" size={20} />Listings live</span></Link>
+        <Link className="stat stat-link" href="/admin/bookings?when=upcoming"><b>{s.upcoming}</b><span><ColorIcon file="calendar" size={20} />Upcoming confirmed stays</span></Link>
+        <Link className="stat stat-link" href="/admin/bookings?status=pending"><b style={{ color: s.pending ? "var(--warn)" : undefined }}>{s.pending}</b><span><ColorIcon file="inbox" size={20} />Requests awaiting hosts</span></Link>
+        <Link className="stat stat-link" href="/admin/bookings"><b className="mono" style={{ fontFamily: "var(--f-mono)", fontWeight: 500 }}>{money(s.booked30)}</b><span><ColorIcon file="finance" size={20} />Booked in the last 30 days</span></Link>
+        <Link className="stat stat-link" href="/admin/log?level=error"><b style={{ color: s.open_errors ? "var(--danger)" : undefined }}>{s.open_errors}</b><span><ColorIcon file="warn" size={20} />Unresolved errors</span></Link>
+        <Link className="stat stat-link" href="/admin/messages"><b>{s.new_messages}</b><span><ColorIcon file="chats" size={20} />New contact messages</span></Link>
       </div>
       <h2 style={{ marginBottom: 12 }}>Needs attention</h2>
       {recent.length ? <EventTable rows={recent} /> : <div className="notice ok">No unresolved errors or warnings.</div>}

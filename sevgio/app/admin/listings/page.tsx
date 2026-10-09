@@ -9,23 +9,27 @@ import { listingFeeAction, mapListingsAction, reassignListingAction, setListingS
 import { feeState } from "@/lib/listing-fee.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { fmtDate } from "@/lib/dates.ts";
+import { AutoSubmit } from "@/components/AutoSubmit.tsx";
+import { groupByHost } from "@/lib/host-groups.ts";
 
-type Row = { id: string; slug: string; title: string; city: string; status: string; host_id: string; nightly_price_cents: number; monthly_price_cents: number | null; rating: number | null; review_count: number; photos: number; bookings: number; listing_paid_until: string | null; listing_fee_waived: boolean; host_role: string; lat: number | null; geocoded_at: string | null; address: string };
+type Row = { id: string; slug: string; title: string; city: string; status: string; host_id: string; nightly_price_cents: number; monthly_price_cents: number | null; rating: number | null; review_count: number; photos: number; bookings: number; listing_paid_until: string | null; listing_fee_waived: boolean; host_role: string; host_name: string | null; lat: number | null; geocoded_at: string | null; address: string };
 
-export default async function AdminListings({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
+export default async function AdminListings({ searchParams }: { searchParams: Promise<{ msg?: string; host?: string }> }) {
+  const sp = await searchParams;
   await requireUser(["admin"], "/admin");
   const [rows, hosts, settings] = await Promise.all([
     q<Row>(`SELECT p.id, p.slug, p.title, p.city, p.status, p.host_id, p.nightly_price_cents, p.monthly_price_cents, p.rating, p.review_count,
-              p.listing_paid_until::text, p.listing_fee_waived, p.lat, p.geocoded_at, p.address, (SELECT role FROM users h WHERE h.id = p.host_id) AS host_role,
+              p.listing_paid_until::text, p.listing_fee_waived, p.lat, p.geocoded_at, p.address, (SELECT role FROM users h WHERE h.id = p.host_id) AS host_role, (SELECT name FROM users h WHERE h.id = p.host_id) AS host_name,
               (SELECT count(*) FROM photos ph WHERE ph.property_id = p.id) AS photos,
               (SELECT count(*) FROM bookings b WHERE b.property_id = p.id AND b.status = 'confirmed') AS bookings
             FROM properties p ORDER BY p.title`),
     q<{ id: string; name: string }>("SELECT id, name FROM users WHERE role IN ('host','admin') AND NOT disabled ORDER BY name"),
     getSettings(),
   ]);
+  const { groups, hosts: owners, selected } = groupByHost(rows, sp.host ?? "");
   return (
     <>
-      <Flash msg={(await searchParams).msg} />
+      <Flash msg={sp.msg} />
       <div className="row" style={{ marginBottom: 16 }}>
         <p className="muted" style={{ flex: 1 }}>Every listing on the site. Edit details, photos and calendars with the host tools.</p>
         <form action={mapListingsAction}><button className="btn btn-ghost" type="submit">📍 Find listings on the map</button></form>
@@ -33,12 +37,22 @@ export default async function AdminListings({ searchParams }: { searchParams: Pr
         <Link className="btn btn-ghost" href="/host/listings/import">Import from file</Link>
         <Link className="btn btn-primary" href="/host/listings/new">Add a listing</Link>
       </div>
+      {owners.length > 0 && (
+        <form className="fin-filters al-host-filter" method="get" aria-label="Filter by host" style={{ marginBottom: 16 }}>
+          <AutoSubmit />
+          <label className="field"><span>Host</span><select className="input" name="host" aria-label="Host" defaultValue={selected}><option value="">All hosts ({rows.length} listings)</option>{owners.map(h => <option key={h.id} value={h.id}>{h.name} ({h.count})</option>)}</select></label>
+          <noscript><button className="btn btn-ghost" type="submit">Show</button></noscript>
+        </form>
+      )}
+      {/* One flat list with a heading per host: a listing moved to another host keeps its card (and its "Saved" message) as it moves. */}
       <div className="al-list">
-        {rows.map(r => {
+        {groups.flatMap(g => [
+          <h2 key={`host-${g.hostId}`} className="al-host" data-host={g.hostId}>{g.hostName} <span className="muted">· {g.rows.length} {g.rows.length === 1 ? "listing" : "listings"}</span></h2>,
+          ...g.rows.map(r => {
           const st = feeState(r, settings.listing_fee_enabled);
           const btn = (cmd: string, label: string) => <form action={listingFeeAction}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="cmd" value={cmd} /><button className="btn btn-ghost btn-sm" type="submit">{label}</button></form>;
           return (
-            <article key={r.id} className="al-card" data-listing={r.title}>
+            <article key={r.id} className="al-card" data-listing={r.title} data-host={g.hostId}>
               <div className="al-cell al-title">
                 <strong>{r.title}</strong>
                 <span className="hint">{r.city} · {money(priceTag(r).cents)}/{priceTag(r).unit} · {r.photos} photos · {r.bookings} bookings</span>
@@ -90,7 +104,8 @@ export default async function AdminListings({ searchParams }: { searchParams: Pr
               </div>
             </article>
           );
-        })}
+        }),
+        ])}
       </div>
     </>
   );

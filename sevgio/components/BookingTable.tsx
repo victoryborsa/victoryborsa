@@ -1,41 +1,129 @@
 import { mailUrl, telUrl } from "@/lib/links.ts";
 import { extrasOf } from "@/lib/party.ts";
 import Link from "next/link";
-import { fmtShort } from "@/lib/dates.ts";
+import { ClickRow } from "./ClickRow.tsx";
+import { fmtDate, fmtShort } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
-import { StatusPill } from "./ui.tsx";
 import { ActionForm, SubmitButton } from "./forms.tsx";
 import { decideBookingAction, markPaidAction } from "@/app/actions/host.ts";
+import type { Booking } from "@/lib/bookings.ts";
+import { channelLabel } from "@/lib/channels.ts";
+import { nightsBetween } from "@/lib/dates.ts";
+import { stayPhase, type Phase } from "@/lib/booking-ref.ts";
+import { paysAtProperty } from "@/lib/payment-rules.ts";
+import { Badge } from "./Badge.tsx";
+import type { IconName } from "./Icon.tsx";
+import { BlockStatus, DetailsCell, GuestCell } from "./GuestNameForm.tsx";
 
 const METHOD_SHORT: Record<string, string> = { card: "Card", ach: "Bank transfer", zelle: "Zelle", venmo: "Venmo", cash: "Cash + deposit" };
-const PAY_LABEL: Record<string, string> = { none: "-", pending: "Waiting", processing: "Processing", paid: "Paid", deposit_paid: "Deposit paid", failed: "Failed" };
-const PAY_TONE: Record<string, string> = { none: "neutral", pending: "warn", processing: "warn", paid: "ok", deposit_paid: "ok", failed: "danger" };
-import type { Booking } from "@/lib/bookings.ts";
+import { paymentStatus, reservationStatus, type ResStatusKey } from "@/lib/statuses.ts";
 
-export type BookingRow = Booking & { title: string; guest_email: string };
+/** The listing's check-in and check-out times travel with each row, so "Staying now" starts and ends at the right hour. */
+type Times = { check_in_time?: string; check_out_time?: string };
+export type BookingRow = Booking & { title: string; guest_email: string; updated_at: string } & Times;
 
-/** Bookings table for hosts and admins. Guest contact details appear only for active bookings. */
-export function BookingTable({ rows, today, back, showActions = true, fresh }: { rows: BookingRow[]; today: string; back: string; showActions?: boolean; fresh?: Set<string> }) {
-  if (!rows.length) return <div className="empty"><p className="muted">Nothing here yet.</p></div>;
+/** A reservation made on Airbnb, Booking.com, Vrbo or another site, shown in the same list as Sevgio bookings. */
+export type PlatformRow = { id: string; channel: string; external_ref: string; guest_name: string; guest_name_source: string; place: string; check_in: string; check_out: string;
+  guests: number | null; status: string; eff_kind: string; summary: string; phone_last4: string; expected_payout_cents: number | null; received_payout_cents: number | null;
+  payout_date: string | null; updated_at: string } & Times;
+
+export type LocalNow = { date: string; minutes: number };
+
+/** When the stay is, in the listing's local time: kept apart from whether it's confirmed or paid. */
+function Timing({ phase, checkIn, checkOut, today }: { phase: Phase; checkIn: string; checkOut: string; today: string }) {
+  // Checked In and Checked Out are the reservation status; this only adds the day-of reminders and "Upcoming".
+  if (phase === "current") return checkOut === today ? <Badge tone="info" icon="leave">Checks out today</Badge> : null;
+  if (phase === "upcoming") return <Badge tone="info" icon={checkIn === today ? "arrive" : "calendar"}>{checkIn === today ? "Arrives today" : "Upcoming"}</Badge>;
+  return null;
+}
+
+const STATUS_LOOK: Record<ResStatusKey, [Parameters<typeof Badge>[0]["tone"], IconName]> = {
+  confirmed: ["ok", "check"], pending: ["warn", "wait"], block: ["neutral", "info"], review: ["danger", "warn"],
+  cancelled: ["danger", "cross"], checked_in: ["ok", "key"], checked_out: ["neutral", "leave"],
+};
+type StatusIn = Parameters<typeof reservationStatus>[0];
+/** The reservation status badge, with the reason (and the site it came from) underneath. */
+function StatusBadge({ s, site }: { s: StatusIn; site?: string }) {
+  const st = reservationStatus(s), [tone, icon] = STATUS_LOOK[st.key];
+  const note = [site && `on ${site}`, st.detail].filter(Boolean).join(" · ");
+  return <><Badge tone={tone} icon={icon}>{st.label}</Badge>{note && <div className="hint">{note}</div>}</>;
+}
+
+/**
+ * Bookings table for hosts and admins. Guest contact details appear only for active bookings.
+ * With `platform`, reservations from other sites are listed alongside, in the same order (`order`). Each row keeps four things apart:
+ * when the stay is, whether the booking is confirmed, whether it's paid, and whether its details (reference, guest name) are complete.
+ */
+export function BookingTable({ rows, today, now, back, showActions = true, fresh, detailBase = "/trips/", platform, order = "in-asc", review }: { rows: BookingRow[]; today: string; now?: LocalNow; back: string;
+  showActions?: boolean; fresh?: Set<string>; detailBase?: string; platform?: PlatformRow[]; order?: "in-asc" | "in-desc" | "updated-desc"; review?: Set<string> }) {
+  if (!rows.length && !platform?.length) return <div className="empty"><p className="muted">Nothing here yet.</p></div>;
+  const site = !!platform;
+  const phaseOf = (status: string, x: { check_in: string; check_out: string } & Times) =>
+    stayPhase(status, x.check_in, x.check_out, today, clockOf(x));
+  function clockOf(x: Times) { return now && { minutes: now.minutes, checkInTime: x.check_in_time, checkOutTime: x.check_out_time }; }
+  const key = (x: { check_in: string; updated_at: string }) => (order === "updated-desc" ? String(x.updated_at) : x.check_in);
+  const items = [...rows.map(b => ({ b, r: null as PlatformRow | null, k: key(b) })), ...(platform || []).map(r => ({ b: null as BookingRow | null, r, k: key(r) }))]
+    .sort((x, y) => (order === "in-asc" ? (x.k < y.k ? -1 : x.k > y.k ? 1 : 0) : (x.k > y.k ? -1 : x.k < y.k ? 1 : 0)));
   return (
     <div className="tbl-wrap">
-      <table className="tbl">
-        <thead><tr><th>Reference</th><th>Listing</th><th>Guest</th><th>Dates</th><th className="num">Guests</th><th className="num">Total</th><th>Payment</th><th>Status</th>{showActions && <th>Actions</th>}</tr></thead>
+      <table className="tbl bk-tbl">
+        <thead><tr><th>Reservation</th><th>Guest</th><th>Stay</th><th>Booking</th><th>Payment</th>{site && <th>Details</th>}{showActions && <th><span className="sr-only">Actions</span></th>}</tr></thead>
         <tbody>
-          {rows.map(b => {
+          {items.map(({ b, r }) => {
+            if (r) {
+              const label = channelLabel(r.channel), n = nightsBetween(r.check_in, r.check_out), phase = phaseOf(r.status, r);
+              return (
+                <ClickRow key={"c" + r.id} href={`/host/bookings/other-sites/${r.id}`} data-platform={r.channel} data-phase={phase}>
+                  <td data-label="Reservation">
+                    <Link className="mono" href={`/host/bookings/other-sites/${r.id}`}>{r.external_ref || <span className="bk-noref">{r.eff_kind === "unknown" ? "External Calendar Block" : `Reference not sent by ${label}`}</span>}</Link>
+                    <div className="bk-site"><span className={`pill neutral ch-dot ch-${r.channel}`}>{label}</span></div>
+                    <div className="bk-place">{r.place}</div>
+                  </td>
+                  <td data-label="Guest"><GuestCell name={r.guest_name} source={r.guest_name_source} site={label} phone={r.phone_last4} block={r.eff_kind === "unknown"} /></td>
+                  <td data-label="Stay">
+                    <div className="bk-dates">{fmtShort(r.check_in)} – {fmtShort(r.check_out)}</div>
+                    <div className="hint">{n} night{n === 1 ? "" : "s"}{r.guests ? ` · ${r.guests} guest${r.guests === 1 ? "" : "s"}` : ""}</div>
+                    {r.status !== "cancelled" && <Timing phase={phase} checkIn={r.check_in} checkOut={r.check_out} today={today} />}
+                  </td>
+                  <td data-label="Booking">
+                    {r.status !== "cancelled" && r.eff_kind === "unknown" ? <BlockStatus id={r.id} site={label} summary={r.summary} back={back} />
+                      : <StatusBadge s={{ status: r.status, check_in: r.check_in, check_out: r.check_out, today, kind: r.eff_kind, needsReview: review?.has("c:" + r.id), clock: clockOf(r) }} site={label} />}
+                  </td>
+                  <td data-label="Payment">
+                    {r.eff_kind === "unknown" && r.received_payout_cents == null && r.expected_payout_cents == null ? <span className="muted">–</span>
+                      : r.received_payout_cents != null ? <><Badge tone="ok" icon="check">Paid</Badge><div className="hint">Payout received</div><div className="hint">{money(r.received_payout_cents)}{r.payout_date ? ` on ${fmtDate(r.payout_date, { month: "short", day: "numeric" })}` : ""}</div></>
+                      : r.expected_payout_cents != null ? <><Badge tone="neutral" icon="info">Payment unavailable</Badge><div className="hint">Payout of {money(r.expected_payout_cents)} expected from {label}</div></>
+                      : <><Badge tone="neutral" icon="info">Payment unavailable</Badge><div className="hint">Calendar links don&apos;t include payments. <Link href={`/host/bookings/other-sites/${r.id}`}>Add payout</Link></div></>}
+                  </td>
+                  <td data-label="Details"><DetailsCell id={r.id} channel={r.channel} site={label} name={r.guest_name} refCode={r.external_ref} block={r.eff_kind === "unknown"} /></td>
+                  {showActions && <td data-label="" />}
+                </ClickRow>
+              );
+            }
+            b = b!;
             const active = ["pending", "awaiting_payment", "confirmed"].includes(b.status) && b.check_out >= today;
+            const phase = phaseOf(b.status, b), pay = paymentStatus(b);
             return (
-              <tr key={b.id} className={fresh?.has(b.id) ? "row-new" : undefined}>
-                <td className="mono"><Link href={`/trips/${b.code}`}>{b.code}</Link>{fresh?.has(b.id) && <span className="badge-new">New</span>}</td>
-                <td>{b.title}</td>
-                <td>{b.guest_name}{active && <div className="muted" style={{ fontSize: 13 }}><a href={telUrl(b.guest_phone)}>{b.guest_phone}</a> · <a href={mailUrl(b.guest_email)}>{b.guest_email}</a></div>}{b.message && <div className="hint" style={{ maxWidth: 280 }}>“{b.message}”</div>}</td>
-                <td style={{ whiteSpace: "nowrap" }}>{fmtShort(b.check_in)} - {fmtShort(b.check_out)}<div className="hint">{b.nights} night{b.nights === 1 ? "" : "s"}{b.arrival_time ? ` · arrives ${b.arrival_time}` : ""}</div></td>
-                <td className="num">{b.guests}</td>
-                <td className="num">{money(b.total_cents)}{extrasOf(b).length > 0 && <div className="hint" style={{ textAlign: "left" }}>Extras: {extrasOf(b).map(x => x.name).join(", ")}{extrasOf(b).filter(x => x.details).map(x => <div key={x.key}>{x.name}: {x.details}</div>)}</div>}{b.security_deposit_cents > 0 && <div className="hint">+ {money(b.security_deposit_cents)} deposit to collect</div>}</td>
-                <td style={{ minWidth: 190 }}>
+              <ClickRow key={b.id} href={`${detailBase}${b.code}`} className={fresh?.has(b.id) ? "row-new" : undefined} data-phase={phase}>
+                <td data-label="Reservation">
+                  <Link className="mono" href={`${detailBase}${b.code}`}>{b.code}</Link>{fresh?.has(b.id) && <span className="badge-new">New</span>}
+                  {site && <div className="bk-site"><span className="pill neutral ch-dot ch-sevgio">Sevgio.com</span></div>}
+                  <div className="bk-place">{b.title}</div>
+                </td>
+                <td data-label="Guest"><b className="gn-name">{b.guest_name}</b>{active && <div className="muted" style={{ fontSize: 13 }}><a href={telUrl(b.guest_phone)}>{b.guest_phone}</a> · <a href={mailUrl(b.guest_email)}>{b.guest_email}</a></div>}{b.message && <div className="hint" style={{ maxWidth: 280 }}>“{b.message}”</div>}</td>
+                <td data-label="Stay">
+                  <div className="bk-dates">{fmtShort(b.check_in)} – {fmtShort(b.check_out)}</div>
+                  <div className="hint">{b.nights} night{b.nights === 1 ? "" : "s"} · {b.guests} guest{b.guests === 1 ? "" : "s"}{b.arrival_time ? ` · arrives ${b.arrival_time}` : ""}</div>
+                  {phase !== "cancelled" && <Timing phase={phase} checkIn={b.check_in} checkOut={b.check_out} today={today} />}
+                </td>
+                <td data-label="Booking"><StatusBadge s={{ status: b.status, check_in: b.check_in, check_out: b.check_out, today, needsReview: review?.has("b:" + b.id), clock: clockOf(b) }} /></td>
+                <td data-label="Payment" style={{ minWidth: 190 }}>
+                  <div className="bk-total">{money(b.total_cents)} total</div>
+                  {extrasOf(b).length > 0 && <div className="hint">Extras: {extrasOf(b).map(x => x.name).join(", ")}{extrasOf(b).filter(x => x.details).map(x => <div key={x.key}>{x.name}: {x.details}</div>)}</div>}
+                  {b.security_deposit_cents > 0 && <div className="hint">+ {money(b.security_deposit_cents)} deposit to collect</div>}
                   {b.payment_method ? (
                     <>
-                      <div style={{ fontSize: 13 }}>{METHOD_SHORT[b.payment_method]} · <span className={`pill ${PAY_TONE[b.payment_status]}`}>{PAY_LABEL[b.payment_status]}</span></div>
+                      <div style={{ fontSize: 13 }}>{paysAtProperty(b) ? "Pay at Property" : METHOD_SHORT[b.payment_method]} · <span className={`pill ${pay.tone}`}>{pay.label}</span></div>
                       {b.paid_cents > 0 && <div className="hint">Received {money(b.paid_cents)}{b.paid_cents < b.total_cents ? ` · ${money(b.total_cents - b.paid_cents)} to collect` : ""}</div>}
                       {showActions && ["awaiting_payment", "confirmed"].includes(b.status) && b.paid_cents < b.total_cents && b.payment_status !== "processing" && !(b.status === "awaiting_payment" && (b.payment_method === "card" || b.payment_method === "ach")) && (
                         <details>
@@ -52,11 +140,11 @@ export function BookingTable({ rows, today, back, showActions = true, fresh }: {
                         </details>
                       )}
                     </>
-                  ) : <span className="muted" style={{ fontSize: 13 }}>Not collected online</span>}
+                  ) : <><span className={`pill ${pay.tone}`}>{pay.label}</span><div className="hint">Not collected online</div></>}
                 </td>
-                <td><StatusPill status={b.status} /></td>
+                {site && <td data-label="Details"><Badge tone="ok" icon="check">Complete</Badge></td>}
                 {showActions && (
-                  <td style={{ minWidth: 240 }}>
+                  <td data-label="" style={{ minWidth: 200 }}>
                     {b.status === "pending" && (
                       <ActionForm action={decideBookingAction} className="stack">
                         <input type="hidden" name="id" value={b.id} />
@@ -82,7 +170,7 @@ export function BookingTable({ rows, today, back, showActions = true, fresh }: {
                     )}
                   </td>
                 )}
-              </tr>
+              </ClickRow>
             );
           })}
         </tbody>

@@ -14,6 +14,10 @@ export const AMENITY_GROUPS: { name: string; items: Record<string, string> }[] =
   { name: "Special features", items: { pool: "Pool", hottub: "Hot tub", fireplace: "Fireplace", gym: "Gym", waterfront: "Waterfront access", lakeaccess: "Lake access", waterview: "Water view" } },
 ];
 
+/** Colour icon (public/icons/color) for each amenity group, with overrides for amenities that have their own. */
+export const AMENITY_GROUP_ICON: Record<string, string> = { "Bedroom & laundry": "room", Bathroom: "shower", "Heating & cooling": "ac", "Internet & workspace": "laptop", Entertainment: "tv", "Kitchen & dining": "kitchen", "Home safety": "shield", "Parking & access": "car", Outdoor: "tree", Family: "family", "Check-in & services": "key", "Special features": "star" };
+export const AMENITY_ICON: Record<string, string> = { washer: "washer", dryer: "washer", heating: "fire", wifi: "wifi", kitchen: "kitchen", coffee_maker: "drink", bathtub: "bath", ev: "bolt", smart_lock: "lock", keypad: "lock", lockbox: "lock", long_term: "calendar", pets: "pets", hottub: "bath", fireplace: "fire", firepit: "fire", grill: "food", outdoor_dining: "food", private_entrance: "arrive", extinguisher: "fire", first_aid: "shield", smoke_alarm: "warn", co_alarm: "warn" };
+
 export const AMENITIES: Record<string, string> = Object.assign({}, ...AMENITY_GROUPS.map(g => g.items));
 
 /** Search filters. A listing matches if it has any of the keys. */

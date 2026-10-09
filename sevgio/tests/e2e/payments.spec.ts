@@ -4,7 +4,7 @@ import { iso, signIn, signOut, sql } from "./helpers.ts";
 
 test.describe.configure({ mode: "serial" });
 
-async function setPayments(page: Page, opts: { zelle?: boolean; venmo?: boolean; cash?: boolean }) {
+async function setPayments(page: Page, opts: { zelle?: boolean; venmo?: boolean; cash?: boolean; card?: boolean }) {
   await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
   await page.goto("/admin/settings");
   const box = (label: RegExp, on?: boolean) => (on ? page.getByLabel(label).check() : page.getByLabel(label).uncheck());
@@ -13,6 +13,7 @@ async function setPayments(page: Page, opts: { zelle?: boolean; venmo?: boolean;
   await box(/^Zelle \(free\)/, opts.zelle);
   await box(/^Venmo\. You confirm/, opts.venmo);
   await box(/^Cash at arrival/, opts.cash);
+  await box(/^Credit or debit card \(Stripe\)/, opts.card);
   await page.getByLabel("Deposit for cash at arrival (%)").fill("30");
   await page.getByRole("button", { name: "Save settings" }).click();
   await expect(page.getByText(/Settings saved/)).toBeVisible();
@@ -24,7 +25,7 @@ async function book(page: Page, slug: string, ci: number, co: number, method: Re
   await page.getByLabel("Mobile phone").fill("(570) 555-0100");
   await page.getByLabel(method).check();
   await page.getByLabel(/I agree/).check();
-  await page.getByRole("button", { name: "Book and pay" }).click();
+  await page.getByRole("button", { name: /^(Book and pay|Book now)$/ }).click();
 }
 
 test("Zelle: dates are held until the host marks the payment received", async ({ page }) => {
@@ -33,7 +34,7 @@ test("Zelle: dates are held until the host marks the payment received", async ({
   await book(page, "rittenhouse-square-loft", 200, 202, /^Zelle/);
   await expect(page.getByRole("heading", { name: "Payment needed to confirm" })).toBeVisible();
   await expect(page.getByText("pay@sevgio.test")).toBeVisible();
-  await expect(page.getByText("Awaiting payment").first()).toBeVisible();
+  await expect(page.getByText("Waiting for payment").first()).toBeVisible();
   const code = (await page.locator(".code").textContent())!.trim();
   await page.goto(`/stays?ci=${iso(200)}&co=${iso(202)}&loc=Philadelphia`);
   await expect(page.getByRole("heading", { name: "No stays match your search" })).toBeVisible();
@@ -67,7 +68,7 @@ test("cash at arrival: deposit now, the rest at check-in", async ({ page }) => {
   await row.getByText("Mark payment received").click();
   await row.getByRole("button", { name: "Record payment" }).click();
   await expect(page.getByText("Payment recorded.")).toBeVisible();
-  await expect(page.locator("tr", { hasText: code })).toContainText("Deposit paid");
+  await expect(page.locator("tr", { hasText: code })).toContainText("Partially Paid");
   await expect(page.locator("tr", { hasText: code })).toContainText("to collect");
   await signOut(page);
 });
@@ -137,4 +138,71 @@ test("a listing with the owner's own Zelle shows the owner's account to guests",
   } finally {
     await sql("UPDATE properties SET owner_zelle = '' WHERE slug = 'rittenhouse-square-loft'");
   }
+});
+
+test("pay at the property is offered beside the payment options and confirms straight away", async ({ page }) => {
+  await setPayments(page, { zelle: true });
+  await signIn(page, "guest@demo.sevgio.com", "demo-password-2026");
+  await book(page, "rittenhouse-square-loft", 250, 252, /^Pay at the property/);
+  await expect(page.getByText("You're booked!")).toBeVisible();
+  await expect(page.getByText(/Unpaid/).first()).toBeVisible();
+  await expect(page.getByText(/due at the property/).first()).toBeVisible();
+  const code = (await page.locator(".code").textContent())!.trim();
+  const [b] = await sql<{ status: string; payment_method: string; due_now_cents: number; payment_status: string }>("SELECT status, payment_method, due_now_cents, payment_status FROM bookings WHERE code = $1", [code]);
+  expect(b).toEqual({ status: "confirmed", payment_method: "cash", due_now_cents: 0, payment_status: "none" });
+  await signOut(page);
+  await setPayments(page, {});
+});
+
+test("a confirmed booking with nothing paid can be paid online from the booking page", async ({ page, request }) => {
+  const [p] = await sql<{ id: string }>("SELECT id FROM properties WHERE slug = 'mount-washington-view-house'");
+  const [g] = await sql<{ id: string }>("SELECT id FROM users WHERE email = 'guest@demo.sevgio.com'");
+  // Booked while no payment option was on: no method, nothing paid (like SV- bookings made before Pay now existed).
+  const [{ id }] = await sql<{ id: string }>(
+    `INSERT INTO bookings (code, property_id, guest_id, check_in, check_out, guests, adults, status, nights, nightly_price_cents, cleaning_fee_cents, tax_cents, total_cents, lodging_cents,
+       guest_name, guest_phone, payment_method, card_fee_cents, due_now_cents, payment_status)
+     VALUES ('SV-BAL001', $1, $2, $3, $4, 1, 1, 'confirmed', 1, 11000, 0, 0, 11000, 11000, 'Josh Test', '555', NULL, 0, 0, 'none') RETURNING id`,
+    [p.id, g.id, iso(320), iso(321)]);
+
+  // Pay now shows on every unpaid booking. Before card is on, it offers to arrange payment instead.
+  await signIn(page, "guest@demo.sevgio.com", "demo-password-2026");
+  await page.goto("/trips/SV-BAL001");
+  await expect(page.getByText("Unpaid").first()).toBeVisible();
+  await expect(page.getByText("Payment unavailable")).toHaveCount(0);
+  await expect(page.getByTestId("pay-now")).toContainText("Amount due: $110");
+  await expect(page.getByRole("link", { name: "Contact us to pay now" })).toBeVisible();
+  await page.getByRole("link", { name: "Contact us to pay now" }).click();
+  await expect(page.locator('input[name="reservation"]')).toHaveValue("SV-BAL001");
+  await signOut(page);
+
+  await setPayments(page, { card: true });
+  await signIn(page, "guest@demo.sevgio.com", "demo-password-2026");
+  await page.goto("/trips/SV-BAL001");
+  const box = page.getByTestId("pay-now");
+  await expect(box).toContainText("Amount due: $110");
+  await expect(box.getByRole("button", { name: /^Pay \$\d+(\.\d\d)? by card$/ })).toBeVisible();
+  await expect(page.getByText(/online now from your booking page, or pay at the property/)).toBeVisible();
+  await signOut(page);
+
+  // The admin can email the guest the link.
+  await signIn(page, "admin@demo.sevgio.com", "admin-password-2026");
+  await page.goto("/admin/bookings/SV-BAL001");
+  await expect(page.getByTestId("quick-pay").getByRole("button", { name: "Email payment link" })).toBeVisible();
+  await signOut(page);
+
+  // Stripe reports the balance paid by card: the fee is kept apart from the $110 and the booking reads Paid, by card.
+  const stripe = new Stripe("sk_test_e2e_dummy");
+  const session = { id: "cs_test_bal01", object: "checkout.session", payment_status: "paid", amount_total: 11364, payment_method_types: ["card"], metadata: { booking_id: id, fee_cents: "364", balance: "1" }, payment_intent: "pi_bal" };
+  const payload = JSON.stringify({ id: "evt_bal01", object: "event", type: "checkout.session.completed", data: { object: session } });
+  const header = stripe.webhooks.generateTestHeaderString({ payload, secret: "whsec_e2e_test" });
+  expect((await request.post("/api/stripe/webhook", { data: payload, headers: { "stripe-signature": header, "content-type": "application/json" } })).status()).toBe(200);
+  const [b] = await sql<{ status: string; payment_status: string; paid_cents: number; card_fee_cents: number; payment_method: string }>("SELECT status, payment_status, paid_cents, card_fee_cents, payment_method FROM bookings WHERE id = $1", [id]);
+  expect(b).toEqual({ status: "confirmed", payment_status: "paid", paid_cents: 11000, card_fee_cents: 364, payment_method: "card" });
+
+  await signIn(page, "guest@demo.sevgio.com", "demo-password-2026");
+  await page.goto("/trips/SV-BAL001");
+  await expect(page.getByTestId("pay-now")).toHaveCount(0);
+  await expect(page.getByText("Paid", { exact: true }).first()).toBeVisible();
+  await signOut(page);
+  await setPayments(page, {});
 });

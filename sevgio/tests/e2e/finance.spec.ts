@@ -45,13 +45,28 @@ test.describe.serial("finance with reservations from other sites", () => {
     await expect(row).toContainText("Needs entry");
 
     // The Booking.com period is a reservation: once marked, it counts.
-    await page.getByRole("link", { name: "Review them" }).click();
-    await page.locator("tr", { hasText: "Finance Test House" }).getByRole("button", { name: "It's a reservation" }).click();
+    await page.getByRole("link", { name: "See them" }).click();
+    await expect(page.locator("tr", { hasText: "Finance Test House" })).toContainText("External Calendar Block");
+    await page.locator("tr", { hasText: "Finance Test House" }).getByRole("link", { name: "Open" }).click();
+    // Reservations from other sites are read-only: no way to reclassify the block by hand.
+    await expect(page.getByTestId("external-readonly")).toBeVisible();
+    await expect(page.getByText("Know what it is?")).toHaveCount(0);
+    // A matching Booking.com reservations file confirms it (same effect as an import).
+    await sql("UPDATE channel_reservations SET kind = 'reservation', kind_locked = true WHERE channel = 'bookingcom' AND property_id = $1", [house]);
+    await page.reload();
+    await expect(page.getByRole("heading", { name: /Booking.com reservation/ })).toBeVisible();
+    await page.goto("/host/bookings/other-sites?kind=unknown");
     await expect(page.locator("tr", { hasText: "Finance Test House" })).toHaveCount(0);
     await page.goto(`/host/finance?from=${FROM}&to=${TO}&property=${house}`);
     await expect(page.locator(".stat", { hasText: "Reservations checking in" }).locator("b")).toHaveText("2");
     // Whole-home Booking.com (3 nights) fills the room too; the room's Airbnb stay adds 4 room-nights: 7 of the month's room-nights.
     await expect(page.locator(".stat", { hasText: "Nights booked" }).locator("b")).toHaveText("7");
+
+    // A stay whose dates changed on the other site still lists (this page used to crash on it).
+    await sql("UPDATE channel_reservations SET modified_at = '2026-10-06T04:30:00Z' WHERE external_ref = 'HMFINTEST1'");
+    await page.goto(`/host/bookings/other-sites?when=all&property=${house}`);
+    await expect(page.locator("tr", { hasText: "HMFINTEST1" })).toContainText("Dates changed Oct 6");
+    await sql("UPDATE channel_reservations SET modified_at = NULL WHERE external_ref = 'HMFINTEST1'");
     await signOut(page);
   });
 

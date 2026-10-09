@@ -6,6 +6,9 @@ import { syncAllEvents } from "./events.ts";
 import { logEvent } from "./log.ts";
 import { runListingFeeJobs } from "./listing-fee.ts";
 import { geocodeMissing } from "./geocode.ts";
+import { checkConflicts } from "./conflicts.ts";
+import { retryOutbox } from "./email.ts";
+import { sendCheckInInstructions } from "./payment-flow.ts";
 
 /** Hourly housekeeping: expire unpaid/unanswered requests, remove unconfirmed sign-ups, refresh Airbnb/Booking.com calendars and events. */
 export async function runScheduledJobs() {
@@ -14,11 +17,15 @@ export async function runScheduledJobs() {
   const removed = await q("DELETE FROM users WHERE role = 'customer' AND email_verified_at IS NULL AND created_at < now() - interval '7 days' AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.guest_id = users.id) RETURNING id");
   const feeds = await q<{ id: string }>("SELECT id FROM ical_feeds ORDER BY last_synced_at NULLS FIRST LIMIT 200");
   let ok = 0, failed = 0;
-  for (const f of feeds) (await syncFeed(f.id)).error ? failed++ : ok++;
+  for (const f of feeds) (await syncFeed(f.id, { checkAfter: false })).error ? failed++ : ok++;
+  // One double-booking check after every calendar is fresh (also catches Sevgio bookings that changed in between).
+  const conflicts = await checkConflicts();
   const events = await syncAllEvents();
   const listingFees = await runListingFeeJobs();
   const mapped = await geocodeMissing();
-  return { listingFees, mapped, feeds: feeds.length, ok, failed, expiredRequests: expired.length, removedUnconfirmedAccounts: removed.length, events };
+  const emails = await retryOutbox();
+  const checkIn = await sendCheckInInstructions();
+  return { emails, checkIn, conflicts, listingFees, mapped, feeds: feeds.length, ok, failed, expiredRequests: expired.length, removedUnconfirmedAccounts: removed.length, events };
 }
 
 let lastCheck = 0;

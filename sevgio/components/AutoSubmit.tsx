@@ -7,7 +7,8 @@ export function AutoSubmit() {
   useEffect(() => {
     const form = ref.current?.closest("form");
     if (!form) return;
-    const onChange = () => form.requestSubmit();
+    // Only real form fields count: the month and year lists inside a date picker's calendar just move the calendar.
+    const onChange = (e: Event) => { if ((e.target as HTMLInputElement).name) form.requestSubmit(); };
     form.addEventListener("change", onChange);
     return () => form.removeEventListener("change", onChange);
   }, []);

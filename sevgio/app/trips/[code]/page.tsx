@@ -3,20 +3,27 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth.ts";
 import { one } from "@/lib/db.ts";
-import { expireStaleRequests, type Booking } from "@/lib/bookings.ts";
-import { addDays, fmtDate, todayLocal } from "@/lib/dates.ts";
+import { Icon } from "@/components/Icon.tsx";
+import { expireStaleRequests, unavailableNights, type Booking } from "@/lib/bookings.ts";
+import { EditResDates } from "@/components/EditResDates.tsx";
+import { addDays, fmtDate, todayLocal, fmtWhen } from "@/lib/dates.ts";
 import { money } from "@/lib/money.ts";
 import { CANCELLATION, placeFull } from "@/lib/constants.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { getSettings } from "@/lib/settings.ts";
-import { forListing } from "@/lib/payments.ts";
+import { forListing, onlineMethods } from "@/lib/payments.ts";
+import { bookingCardFee, corporateDue } from "@/lib/payment-rules.ts";
+import { canPayBalance } from "@/lib/payment-flow.ts";
+import { paymentLater } from "@/lib/statuses.ts";
 import { directionsUrl, mailUrl, telUrl } from "@/lib/links.ts";
-import { extrasOf } from "@/lib/party.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { StatusPill } from "@/components/ui.tsx";
 import { partyLabel } from "@/lib/party.ts";
 import { ActionForm, SubmitButton } from "@/components/forms.tsx";
-import { guestCancelAction, payNowAction } from "@/app/actions/bookings.ts";
+import { CopyButton } from "@/components/CopyButton.tsx";
+import { PaymentPill, PriceBreakdown } from "@/components/booking-summary.tsx";
+import { KEEP_REFERENCE } from "@/lib/booking-ref.ts";
+import { guestCancelAction, guestChangeDatesAction, payBalanceAction, payNowAction } from "@/app/actions/bookings.ts";
 
 export const metadata: Metadata = { title: "Your booking", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -39,12 +46,33 @@ export default async function TripPage({ params, searchParams }: { params: Promi
   // Only the guest, the listing's host, or an admin may see a booking.
   if (!b || !(b.guest_id === u.id || b.host_id === u.id || u.role === "admin")) notFound();
   const settings = forListing(await getSettings(), b);
+  // Messages the other side wrote that this person hasn't opened yet.
+  const unread = (await one<{ n: number }>("SELECT count(*)::int AS n FROM booking_messages WHERE booking_id = $1 AND from_guest = $2 AND read_at IS NULL", [b.id, b.guest_id !== u.id]))?.n ?? 0;
   const confirmed = b.status === "confirmed";
   const today = todayLocal();
-  const canCancel = b.guest_id === u.id && ["pending", "awaiting_payment", "confirmed"].includes(b.status) && b.check_in >= today;
+  const online = onlineMethods(settings);
+  const balance = b.total_cents - b.paid_cents;
+  // A corporate reservation asks for its deposit first; the guest can also pay everything at once.
+  const { depositLeft } = corporateDue(b);
+  const parts: { part: "deposit" | "all"; amount: number; label: string }[] = depositLeft > 0 && depositLeft < balance
+    ? [{ part: "deposit", amount: depositLeft, label: "deposit" }, { part: "all", amount: balance, label: "full balance" }]
+    : [{ part: "all", amount: balance, label: "" }];
+  const fee = (amount: number) => bookingCardFee(b, amount, settings);
+  // Every unpaid confirmed booking gets a Pay now box: Stripe buttons when card / bank transfer is on, Zelle / Venmo details when set.
+  const payNow = b.guest_id === u.id && canPayBalance(b);
+  const manualPay = [settings.pay_zelle && settings.zelle_to && { label: "Zelle", to: settings.zelle_to }, settings.pay_venmo && settings.venmo_handle && { label: "Venmo", to: settings.venmo_handle },
+    // Corporate reservations list every account the admin has set up: they're paid by invoice, not at booking.
+    b.fixed_price && !settings.pay_venmo && settings.venmo_handle && { label: "Venmo", to: settings.venmo_handle },
+    b.fixed_price && !settings.pay_zelle && settings.zelle_to && { label: "Zelle", to: settings.zelle_to },
+    settings.cashapp_handle && { label: "Cash App", to: settings.cashapp_handle }].filter((x): x is { label: string; to: string } => !!x);
+  const later = paymentLater(b, payNow && (online.length > 0 || manualPay.length > 0));
+  const canChange = b.guest_id === u.id && b.status === "confirmed" && b.check_out > today && !b.fixed_price;
+  const taken = canChange ? await unavailableNights(b.property_id, b.check_in < today ? b.check_in : today, addDays(today, 540), undefined, b.id) : [];
+  // Corporate housing reservations are cancelled by the admin under the agreement, not from the guest's page.
+  const canCancel = b.guest_id === u.id && ["pending", "awaiting_payment", "confirmed"].includes(b.status) && b.check_in >= today && !b.fixed_price;
   const steps: Record<string, string[]> = {
     pending: ["The host reviews your request, usually within a few hours (48 hours at most).", "If they accept, you'll get a confirmation email with the address.", "If they decline or don't reply in time, the dates are released and nothing is owed."],
-    confirmed: [settings.payment_note, `Check-in instructions are shown below and emailed to you. Arrive after ${b.check_in_time} on ${fmtDate(b.check_in)}.`, `Check out before ${b.check_out_time} on ${fmtDate(b.check_out)}.`],
+    confirmed: [later, `Check-in instructions are shown below and emailed to you. Arrive after ${b.check_in_time} on ${fmtDate(b.check_in)}.`, `Check out before ${b.check_out_time} on ${fmtDate(b.check_out)}.`],
     declined: ["The host couldn't host you for these dates. Nothing is owed.", "Try other dates or a similar home nearby."],
     cancelled: ["This booking is cancelled. The dates are open to other guests again."],
     expired: [b.payment_method ? "The booking wasn't paid in time, so it expired and the dates were released." : "The host didn't reply in time, so the request expired. Nothing is owed.", "Try again, or pick another home."],
@@ -56,13 +84,13 @@ export default async function TripPage({ params, searchParams }: { params: Promi
       <div className="checkout-grid" style={{ paddingTop: 8 }}>
         <div className="box">
           <Flash msg={sp.msg} />
-          {sp.paid === "1" && b.status === "awaiting_payment" && <div className="notice info" role="status">Thanks! We're confirming your payment with Stripe. Refresh this page in a moment.</div>}
+          {sp.paid === "1" && (b.status === "awaiting_payment" || (payNow && online.length > 0)) && <div className="notice info" role="status">Thanks! We're confirming your payment with Stripe. Refresh this page in a moment.</div>}
           {sp.payerror === "1" && <div className="notice error" role="alert">We couldn't open the payment page. Your dates are held. Try the Pay button below, or contact us.</div>}
           {b.status === "awaiting_payment" && b.guest_id === u.id && (
             <div className="box" style={{ borderColor: "var(--warn)" }}>
               <h3>Payment needed to confirm</h3>
               <p><b>Due now: {money(b.due_now_cents)}</b>{b.payment_method === "cash" ? ` deposit. The remaining ${money(b.total_cents - b.due_now_cents)} is paid in cash at check-in.` : ""}{b.card_fee_cents > 0 ? ` (includes a ${money(b.card_fee_cents)} card processing fee)` : ""}</p>
-              {b.payment_deadline && <p className="hint">Please pay by {new Date(b.payment_deadline).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" })} ET. After that the booking is cancelled and the dates are released.</p>}
+              {b.payment_deadline && <p className="hint">Please pay by {fmtWhen(b.payment_deadline)} ET. After that the booking is cancelled and the dates are released.</p>}
               {b.payment_method === "card" || b.payment_method === "ach" ? (
                 <ActionForm action={payNowAction}><input type="hidden" name="id" value={b.id} /><div><SubmitButton pendingText="Opening secure payment…">{b.payment_method === "ach" ? "Pay by bank transfer" : "Pay by card"}</SubmitButton></div></ActionForm>
               ) : (
@@ -74,18 +102,63 @@ export default async function TripPage({ params, searchParams }: { params: Promi
               )}
             </div>
           )}
+          {payNow && (
+            <section className="box" style={{ borderColor: "var(--accent, var(--warn))" }} aria-labelledby="paynow-h" data-testid="pay-now">
+              <h3 id="paynow-h">Pay now</h3>
+              <p><b>Amount due: {money(balance)}</b>{b.paid_cents > 0 ? ` (${money(b.paid_cents)} already paid)` : ""}</p>
+              {depositLeft > 0 && depositLeft < balance && <p data-testid="deposit-due"><b>Deposit due now: {money(depositLeft)}</b>. The remaining {money(balance - depositLeft)} is due{b.payment_due_date ? ` by ${fmtDate(b.payment_due_date)}` : " later"}.</p>}
+              {b.fixed_price && depositLeft === 0 && b.payment_due_date && <p className="hint">Due by {fmtDate(b.payment_due_date)}.</p>}
+              {online.length > 0 && <>
+                <p className="hint">Pay securely online through Stripe now{b.fixed_price ? "" : ", or pay at the property when you arrive"}. Card details never reach Sevgio.</p>
+                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  {parts.flatMap(pt => online.map(m => (
+                    <ActionForm key={pt.part + m} action={payBalanceAction}>
+                      <input type="hidden" name="id" value={b.id} /><input type="hidden" name="method" value={m} /><input type="hidden" name="part" value={pt.part} />
+                      <SubmitButton className={m === online[0] && pt === parts[0] ? "btn btn-primary" : "btn btn-ghost"} pendingText="Opening secure payment…">
+                        {m === "card" ? `Pay ${pt.label ? pt.label + " " : ""}${money(pt.amount + fee(pt.amount))} by card` : `Pay ${pt.label ? pt.label + " " : ""}${money(pt.amount)} by bank transfer`}
+                      </SubmitButton>
+                    </ActionForm>
+                  )))}
+                </div>
+                {online.includes("card") && fee(parts[0].amount) > 0 && <p className="hint">{b.card_fee_flat_cents != null ? `Each card payment includes a ${money(fee(parts[0].amount))} processing fee.` : `Card payments include a ${money(fee(parts[0].amount))} processing fee.`}{online.includes("ach") ? " Bank transfer has no fee." : ""}</p>}
+              </>}
+              {manualPay.length > 0 && (
+                <div className="stack" style={{ gap: 6 }}>
+                  {online.length > 0 && <p className="hint">Or send it with no fee:</p>}
+                  {manualPay.map(m => <p key={m.label}><b>{m.label}:</b> send {money(depositLeft > 0 ? depositLeft : balance)}{depositLeft > 0 && depositLeft < balance ? " (deposit)" : ""} to <span className="mono">{m.to}</span></p>)}
+                  <p className="hint">Put <b className="mono">{b.code}</b> in the payment note. Your host marks it paid when it arrives.</p>
+                </div>
+              )}
+              {online.length === 0 && manualPay.length === 0 && (
+                <>
+                  <p className="hint">Online payment is being set up. To pay now, contact us and we'll send you a payment link, or pay at the property when you arrive.</p>
+                  <div><Link className="btn btn-primary" href={`/contact?ref=${b.code}`}>Contact us to pay now</Link></div>
+                </>
+              )}
+            </section>
+          )}
           {isNew && (
             <div className={`notice ${confirmed ? "ok" : "warn"}`} role="status">
               <div><b>{confirmed ? "You're booked!" : b.status === "awaiting_payment" ? "Your dates are held." : "Request sent to the host."}</b> {confirmed ? `A confirmation has been sent to ${u.email}.` : b.status === "awaiting_payment" ? "Complete the payment below to confirm your booking. We've emailed you the details." : "Your dates are held while the host decides. We'll email you when they reply."}</div>
             </div>
           )}
-          <div><span className="eyebrow">Booking reference</span><div className="code">{b.code}</div></div>
+          <section className="ref-card" aria-label="Booking reference">
+            <div className="ref-card-top">
+              <div><span className="eyebrow">Booking reference</span><div className="code ref-code" data-testid="booking-ref">{b.code}</div></div>
+              <CopyButton value={b.code} />
+            </div>
+            <p className="ref-keep">{KEEP_REFERENCE}</p>
+          </section>
           <dl className="kv">
-            <dt>Status</dt><dd><StatusPill status={b.status} /></dd>
-            <dt>Home</dt><dd><Link href={`/stays/${b.slug}`}>{b.title}</Link>, {b.city}</dd>
-            <dt>Dates</dt><dd>{fmtDate(b.check_in)} - {fmtDate(b.check_out)} ({b.nights} night{b.nights === 1 ? "" : "s"})</dd>
+            <dt>Status</dt><dd><StatusPill b={b} /></dd>
+            <dt>Guest name</dt><dd>{b.guest_name}</dd>
+            <dt>Property</dt><dd><Link href={`/stays/${b.slug}`}>{b.title}</Link>, {b.city}</dd>
+            <dt>Check-in</dt><dd>{fmtDate(b.check_in)}<span className="muted" style={{ fontWeight: 400 }}> · after {b.check_in_time}</span></dd>
+            <dt>Check-out</dt><dd>{fmtDate(b.check_out)}<span className="muted" style={{ fontWeight: 400 }}> · by {b.check_out_time} · {b.nights} night{b.nights === 1 ? "" : "s"}</span></dd>
             <dt>Guests</dt><dd>{partyLabel(b)}</dd>
-            <dt>Lead guest</dt><dd>{b.guest_name}, <a href={telUrl(b.guest_phone)}>{b.guest_phone}</a></dd>
+            <dt>Total price</dt><dd>{money(b.total_cents + b.card_fee_cents)}</dd>
+            <dt>Payment</dt><dd><PaymentPill b={b} /></dd>
+            <dt>Phone</dt><dd><a href={telUrl(b.guest_phone)}>{b.guest_phone}</a></dd>
           </dl>
           <h3>What happens next</h3>
           <ol className="nextsteps">{(steps[b.status] || []).filter(Boolean).map((t, i) => <li key={i}><span>{t}</span></li>)}</ol>
@@ -98,6 +171,17 @@ export default async function TripPage({ params, searchParams }: { params: Promi
             </div>
           )}
           {b.host_note && <div className="notice info"><div><b>Note from the host:</b> {b.host_note}</div></div>}
+          {canChange && (
+            <details className="box" data-testid="change-dates">
+              <summary className="btn btn-ghost">Change dates</summary>
+              <div style={{ marginTop: 12 }}><ActionForm action={guestChangeDatesAction} className="stack">
+                <input type="hidden" name="id" value={b.id} />
+                <p className="hint">{b.check_in <= today ? "Your stay has started, so you can change your check-out date." : "Pick your new check-in and check-out dates."} Nights already booked by someone else can't be picked. Your total is worked out again at {money(b.nightly_price_cents)} a night, and you'll get an email with the new details.</p>
+                <EditResDates today={today} taken={taken} ci={b.check_in} co={b.check_out} />
+                <div><SubmitButton pendingText="Saving…">Save new dates</SubmitButton></div>
+              </ActionForm></div>
+            </details>
+          )}
           {canCancel && (
             <ActionForm action={guestCancelAction} confirmText="Cancel this booking? This can't be undone." className="stack">
               <input type="hidden" name="id" value={b.id} />
@@ -108,22 +192,11 @@ export default async function TripPage({ params, searchParams }: { params: Promi
         </div>
         <aside className="box" style={{ alignSelf: "start" }}>
           <div style={{ borderRadius: "var(--r)", overflow: "hidden", aspectRatio: "4/3" }}>{b.cover_id ? <img src={photoUrl(b.cover_id, "thumb")} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div className="noph" />}</div>
-          <table className="breakdown">
-            <tbody>
-              <tr><td>{money(b.nightly_price_cents)} × {b.nights} night{b.nights === 1 ? "" : "s"}</td><td>{money(b.lodging_cents)}</td></tr>
-              {b.discount_cents > 0 && <tr><td>Length-of-stay discount</td><td>−{money(b.discount_cents)}</td></tr>}
-              {b.cleaning_fee_cents > 0 && <tr><td>Cleaning fee</td><td>{money(b.cleaning_fee_cents)}</td></tr>}
-              {b.pet_fee_cents > 0 && <tr><td>Pet fee ({b.pets} pet{b.pets === 1 ? "" : "s"})</td><td>{money(b.pet_fee_cents)}</td></tr>}
-              {extrasOf(b).map(x => <tr key={x.key}><td>{x.name}{x.qty > 1 && x.total ? ` × ${x.qty}` : ""}{x.details && <div className="hint">{x.details}</div>}</td><td>{x.total ? money(x.total) : "Free"}</td></tr>)}
-              {b.tax_cents > 0 && <tr><td>Taxes</td><td>{money(b.tax_cents)}</td></tr>}
-              {b.card_fee_cents > 0 && <tr><td>Card processing fee</td><td>{money(b.card_fee_cents)}</td></tr>}
-              <tr className="total"><td>Total</td><td>{money(b.total_cents + b.card_fee_cents)}</td></tr>
-              {b.paid_cents > 0 && <tr><td>Paid{b.payment_status === "processing" ? " (bank transfer processing)" : ""}</td><td>{money(b.paid_cents + (b.payment_method === "card" ? b.card_fee_cents : 0))}</td></tr>}
-              {b.payment_method === "cash" && b.status === "confirmed" && b.paid_cents < b.total_cents && <tr><td>Due in cash at check-in</td><td>{money(b.total_cents - b.paid_cents)}</td></tr>}
-            </tbody>
-          </table>
+          <PriceBreakdown b={b} />
           {b.security_deposit_cents > 0 && <p className="hint">Refundable security deposit: <b>{money(b.security_deposit_cents)}</b>, collected by your host and returned after check-out. It isn't part of the total above.</p>}
+          <p><Link className="btn btn-primary btn-sm" href={`/trips/${b.code}/messages`} data-testid="trip-messages"><Icon name="chats" /> {b.guest_id === u.id ? "Message your host" : "Message the guest"}{unread ? ` (${unread} new)` : ""}</Link></p>
           <p className="hint">Questions? <Link href="/contact">Contact us</Link> and include your reference {b.code}.</p>
+          <p><Link className="btn btn-ghost btn-sm" href={`/trips/${b.code}/invoice`}>View or print invoice</Link></p>
         </aside>
       </div>
     </div>

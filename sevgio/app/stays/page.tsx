@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Icon, type IconName } from "@/components/Icon.tsx";
 import type { Metadata } from "next";
 import { searchProperties, publishedCities } from "@/lib/queries.ts";
 import { getSettings } from "@/lib/settings.ts";
@@ -16,8 +15,9 @@ import { priceTag } from "@/lib/pricing.ts";
 import { money } from "@/lib/money.ts";
 import { photoUrl } from "@/lib/queries.ts";
 import { AutoSubmit } from "@/components/AutoSubmit.tsx";
+import { pageMeta } from "@/lib/seo.tsx";
 
-export const metadata: Metadata = { title: "Find a stay" };
+export const metadata: Metadata = pageMeta("/stays", "Find a furnished stay in Pittsburgh", "Search furnished rooms, apartments and houses in Pittsburgh by dates, price, bedrooms, private bathroom and length of stay. Nightly and monthly rates, booked direct.");
 export const dynamic = "force-dynamic";
 
 type SP = Record<string, string | string[] | undefined>;
@@ -54,11 +54,13 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
     if (u.getAll(key).includes(value)) { const rest = u.getAll(key).filter(x => x !== value); u.delete(key); rest.forEach(x => u.append(key, x)); } else if (key === "amen") u.append(key, value); else u.set(key, value);
     return "/stays?" + u.toString();
   };
-  const chips: [string, string, string, IconName][] = [
-    ["kind", "home", "Entire home", "home"], ["kind", "room", "Private room", "room"], ["amen", "pets", "Allows pets", "pets"], ["amen", "selfcheckin", "Self check-in", "key"],
-    ["amen", "parking", "Free parking", "car"], ["cancel", "1", "Free cancellation", "check"], ["amen", "wifi", "Wifi", "wifi"], ["amen", "kitchen", "Kitchen", "kitchen"],
-    ["amen", "washer", "Washer", "washer"], ["amen", "ac", "Air conditioning", "ac"], ["amen", "workspace", "Workspace", "laptop"], ["amen", "hottub", "Hot tub", "bath"],
-    ["amen", "fireplace", "Fireplace", "fire"], ["instant", "1", "Instant book", "bolt"], ["pbath", "1", "Private bathroom", "shower"], ["monthly", "1", "Monthly stays", "calendar"],
+  const AMEN_FILTER_ICON: Record<string, string> = { hottub: "bath", pool: "bath", fireplace: "fire", wifi: "wifi", kitchen: "kitchen", parking: "car", washer: "washer", workspace: "laptop", ac: "ac", pets: "pets", family: "family", selfcheckin: "key", water: "tree" };
+  // Colour icons live in public/icons/filters.
+  const chips: [string, string, string, string][] = [
+    ["kind", "home", "Entire home", "homes"], ["kind", "room", "Private room", "rooms"], ["amen", "pets", "Allows pets", "pets"], ["amen", "selfcheckin", "Self check-in", "key"],
+    ["amen", "parking", "Free parking", "car"], ["cancel", "1", "Free cancellation", "shield"], ["amen", "wifi", "Wifi", "wifi"], ["amen", "kitchen", "Kitchen", "kitchen"],
+    ["amen", "washer", "Washer", "washer"], ["amen", "ac", "Air conditioning", "ac"], ["amen", "workspace", "Workspace", "laptop"], ["amen", "hottub", "Hot tub", "hottub"],
+    ["amen", "fireplace", "Fireplace", "fire"], ["instant", "1", "Instant book", "bolt"], ["pbath", "1", "Private bathroom", "shower"], ["monthly", "1", "Monthly stays", "monthly"],
   ];
   const pins: MapPin[] = list.flatMap(p => {
     const pos = approxPosition(p);
@@ -81,7 +83,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
           <fieldset>
             <legend>Type of place</legend>
             <div className="seg">
-              {([["", "Any type"], ["home", "Entire home"], ["room", "Private room"]] as const).map(([v, l]) => <label key={v} className="seg-opt"><input type="radio" name="kind" value={v} defaultChecked={kind === v} /><span>{l}</span></label>)}
+              {([["", "Any type", "all"], ["home", "Entire home", "homes"], ["room", "Private room", "rooms"]] as const).map(([v, l, ic]) => <label key={v} className="seg-opt"><input type="radio" name="kind" value={v} defaultChecked={kind === v} /><span><img src={`/icons/color/${ic === "homes" ? "home" : ic === "rooms" ? "room" : ic}.svg`} width={18} height={18} alt="" className="chip-img" />{l}</span></label>)}
             </div>
           </fieldset>
           <label className="field">
@@ -105,18 +107,18 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
               </select>
             </label>
           </div>
-          <label className="chk"><input type="checkbox" name="pbath" value="1" defaultChecked={f.privateBath} />Private bathroom only</label>
+          <label className="chk"><input type="checkbox" name="pbath" value="1" defaultChecked={f.privateBath} /><img src="/icons/filters/shower.svg" width={20} height={20} alt="" className="chip-img" />Private bathroom only</label>
           <fieldset className="two-col">
             <legend>Amenities</legend>
             {Object.entries(AMENITY_FILTERS).map(([a, f]) => (
-              <label className="chk" key={a}><input type="checkbox" name="amen" value={a} defaultChecked={amen.includes(a)} />{f.label}</label>
+              <label className="chk" key={a}><input type="checkbox" name="amen" value={a} defaultChecked={amen.includes(a)} /><img src={`/icons/color/${AMEN_FILTER_ICON[a] ?? "check"}.svg`} width={20} height={20} alt="" className="chip-img" />{f.label}</label>
             ))}
           </fieldset>
           <fieldset>
             <legend>Booking</legend>
-            <label className="chk"><input type="checkbox" name="instant" value="1" defaultChecked={f.instant} />Instant booking only</label>
-            <label className="chk"><input type="checkbox" name="cancel" value="1" defaultChecked={f.freeCancel} />Free cancellation</label>
-            <label className="chk"><input type="checkbox" name="monthly" value="1" defaultChecked={f.monthly} />Monthly stays (1 month or more)</label>
+            <label className="chk"><input type="checkbox" name="instant" value="1" defaultChecked={f.instant} /><img src="/icons/filters/bolt.svg" width={20} height={20} alt="" className="chip-img" />Instant booking only</label>
+            <label className="chk"><input type="checkbox" name="cancel" value="1" defaultChecked={f.freeCancel} /><img src="/icons/filters/shield.svg" width={20} height={20} alt="" className="chip-img" />Free cancellation</label>
+            <label className="chk"><input type="checkbox" name="monthly" value="1" defaultChecked={f.monthly} /><img src="/icons/filters/monthly.svg" width={20} height={20} alt="" className="chip-img" />Monthly stays (1 month or more)</label>
           </fieldset>
           <div className="drawer-foot">
             {filtersOn ? <Link className="btn btn-ghost" href={clearHref}>Clear all</Link> : <span />}
@@ -126,7 +128,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
         </FilterDrawer>
         {chips.map(([k, v, label, icon]) => {
           const on = params().getAll(k).includes(v);
-          return <Link key={k + v} href={toggle(k, v)} className={`chip${on ? " on" : ""}`} aria-pressed={on} scroll={false}><Icon name={icon} />{label}</Link>;
+          return <Link key={k + v} href={toggle(k, v)} className={`chip${on ? " on" : ""}`} aria-pressed={on} scroll={false}><img src={`/icons/filters/${icon}.svg`} width={20} height={20} alt="" className="chip-img" />{label}</Link>;
         })}
       </nav>
       <div className="results-split">
@@ -154,7 +156,7 @@ export default async function Stays({ searchParams }: { searchParams: Promise<SP
           {dateError && <div className="notice warn" style={{ marginBottom: 18 }} role="alert">{dateError}</div>}
           {!ci && !dateError && <div className="notice info" style={{ marginBottom: 18 }}>Add your dates to see only homes that are free, with the total price for your stay.</div>}
           {list.length ? (
-            <div className="cards results-cards">{list.map((p, i) => <PropertyCard key={p.id} p={p} demand={demand} prices={prices[p.id]} ci={ci} co={co} guests={guests} taxPercent={settings.tax_percent} eager={i < 3} />)}</div>
+            <div className="cards results-cards">{list.map((p, i) => <PropertyCard key={p.id} p={p} demand={demand} prices={prices[p.id]} ci={ci} co={co} guests={guests} taxPercent={settings.tax_percent} eager={i < 3} first={i === 0} />)}</div>
           ) : (
             <div className="empty">
               <h3>No stays match your search</h3>
