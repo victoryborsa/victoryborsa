@@ -13,10 +13,15 @@ import { CalSettings, type CalSettingsData } from "./CalSettings.tsx";
 import { reservationStatus } from "@/lib/statuses.ts";
 import { assignLanes, barLines, groupByArrival, inView, propertyColor } from "@/lib/cal-layout.ts";
 import { channelLabel } from "@/lib/channels.ts";
+import { DatePicker } from "./DatePicker.tsx";
+import { ReservationList } from "./ReservationList.tsx";
+import { loadReservations } from "@/lib/reservation-list.ts";
+import { editRule, SCOPES, type Scope, type Sort } from "@/lib/reservation-rules.ts";
 
 type Prop = { id: string; title: string; city: string; parent_id: string | null; status: string; cover_id: string | null; nightly_price_cents: number; smart_pricing: boolean; min_price_cents: number | null; max_price_cents: number | null };
 type Res = { id: string; code: string; property_id: string; check_in: string; check_out: string; status: string; guest_name: string; guests: number; nights: number;
-  adults: number; children: number; free_children: number; pets: number; guest_phone: string; arrival_time: string; total_cents: number; services: unknown };
+  adults: number; children: number; free_children: number; pets: number; guest_phone: string; arrival_time: string; total_cents: number; services: unknown;
+  payment_status: string; paid_cents: number };
 /** Dates you blocked (source "host"), or a stay from another site (source "ical:…", from channel_stays, with its site and money status). */
 type Blk = { id: string; property_id: string; start_date: string; end_date: string; note: string; source: string; feed_name: string | null;
   channel: string | null; kind: string | null; ref: string; guest: string; status: string; needs: boolean; payout: number | null };
@@ -30,8 +35,8 @@ function siteOf(b: Blk): { key: string; label: string } | null {
 const COLS = `id, title, city, parent_id, status, nightly_price_cents, smart_pricing, min_price_cents, max_price_cents,
   (SELECT ph.id FROM photos ph WHERE ph.property_id = p.id ORDER BY ph.position, ph.created_at LIMIT 1) AS cover_id`;
 const MAX_RANGE = 92;
-const VIEWS = [["day", "Day"], ["week", "Week"], ["month", "Month"], ["arrivals", "Arrivals"]] as const;
-type View = "day" | "week" | "month" | "arrivals" | "range";
+const VIEWS = [["list", "Reservations"], ["day", "Day"], ["week", "Week"], ["month", "Month"], ["arrivals", "Arrivals"]] as const;
+type View = "list" | "day" | "week" | "month" | "arrivals" | "range";
 const STATUSES = [["", "All active"], ["confirmed", "Confirmed"], ["pending", "Awaiting approval"], ["awaiting_payment", "Awaiting payment"],
   ["other", "Booked on other sites"], ["blocked", "Blocked by you"], ["cancelled", "Cancelled"]] as const;
 const dayLabel = (d: string) => new Date(d + "T12:00:00Z");
@@ -46,7 +51,10 @@ function addMonths(d: string, n: number) {
   return new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);
 }
 
-/** Reservations calendar: Day, Week and Month boards, plus an Arrivals list grouped by check-in day. */
+/**
+ * Reservations calendar: a Reservations list (Today / Upcoming / History cards, the default), Day, Week and Month boards,
+ * and an Arrivals list grouped by check-in day. "Today" is always Pittsburgh's date (America/New_York).
+ */
 export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: string; sp: CalParams }) {
   const today = todayLocal();
   // "Go to month" sends ?month=YYYY-MM; every view then opens on the 1st of that month.
@@ -56,11 +64,17 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
   // Older links used ?days=14/30/60; they still work as a plain date range.
   const rangeDays = pickedDays || (Number.isInteger(Number(sp.days)) && Number(sp.days) >= 1 && Number(sp.days) <= MAX_RANGE ? Number(sp.days) : 0);
   const view: View = pickedDays ? "range"
-    : sp.view === "day" || sp.view === "week" || sp.view === "month" || sp.view === "arrivals" ? sp.view
-    : rangeDays ? "range" : "month";
+    : sp.view === "day" || sp.view === "week" || sp.view === "month" || sp.view === "arrivals" || sp.view === "list" ? sp.view
+    : rangeDays ? "range" : "list";
+  // The Reservations list: which stays (Today, Upcoming or History), seen from which day (today, or one picked), in which order.
+  const scope: Scope = SCOPES.some(([v]) => v === sp.scope) ? sp.scope as Scope : "upcoming";
+  const sort: Sort = sp.sort === "booked" ? "booked" : "arrival";
+  const day = isIsoDate(sp.date) ? sp.date! : today;
   const status = STATUSES.some(([v]) => v === sp.status) ? sp.status! : "";
   let start: string, days: number, prev: string, next: string, todayStart: string;
-  if (view === "day") {
+  if (view === "list") {
+    start = day; days = 1; prev = addDays(start, -1); next = addDays(start, 1); todayStart = today;
+  } else if (view === "day") {
     start = anchor || today; days = 1; prev = addDays(start, -1); next = addDays(start, 1); todayStart = today;
   } else if (view === "week") {
     start = anchor || today; days = 7; prev = addDays(start, -7); next = addDays(start, 7); todayStart = today;
@@ -97,7 +111,7 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
 
   const [allRes, allBlocks] = ids.length
     ? await Promise.all([
-        q<Res>(`SELECT id, code, property_id, check_in, check_out, status, guest_name, guests, nights, adults, children, free_children, pets, guest_phone, arrival_time, total_cents, services FROM bookings
+        q<Res>(`SELECT id, code, property_id, check_in, check_out, status, guest_name, guests, nights, adults, children, free_children, pets, guest_phone, arrival_time, total_cents, services, payment_status, paid_cents FROM bookings
                 WHERE property_id = ANY($1) AND status = ANY($4) AND check_in < $3 AND check_out >= $2`,
           [ids, start, end, status === "cancelled" ? ["cancelled"] : ["pending", "awaiting_payment", "confirmed"]]),
         // Stays from other sites come from their reservation records (so past stays and Finance match the calendar);
@@ -118,10 +132,16 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
   const blocks = allBlocks.filter(b => status === "cancelled" ? b.status === "cancelled"
     : !status || (status === "other" && b.source.startsWith("ical")) || (status === "blocked" && !b.source.startsWith("ical")));
   const stays = toStays(res, blocks, byId, placeName, colorOf);
+  const cards = view === "list" ? await loadReservations({ ids, places: ordered, scope, day, staffBase: u.role === "admin" ? "/admin/bookings/" : "/trips/",
+    back: `${basePath}?` + new URLSearchParams({ view: "list", scope, ...(sort === "booked" ? { sort } : {}), ...(day !== today ? { date: day } : {}), ...(picked ? { property: picked.id } : {}), ...(room ? { room: room.id } : {}) }) }) : [];
 
-  const link = (s: string, v: View = view) =>
-    `${basePath}?` + new URLSearchParams({ view: v, start: s, ...(v === "range" ? { days: String(days) } : {}), ...(picked ? { property: picked.id } : {}),
-      ...(room ? { room: room.id } : {}), ...(status ? { status } : {}) });
+  const keep = { ...(picked ? { property: picked.id } : {}), ...(room ? { room: room.id } : {}) };
+  const link = (s: string, v: View = view) => v === "list" ? listLink({})
+    : `${basePath}?` + new URLSearchParams({ view: v, start: s, ...(v === "range" ? { days: String(days) } : {}), ...keep, ...(status ? { status } : {}) });
+  // Today's reservations: arriving, staying or leaving today, on every property unless one is picked in the filter.
+  const listLink = (o: { scope?: Scope; sort?: Sort; date?: string }) => `${basePath}?` + new URLSearchParams({ view: "list", scope: o.scope || scope,
+    ...((o.sort || sort) === "booked" ? { sort: "booked" } : {}), ...(o.date ? { date: o.date } : {}), ...keep });
+  const todayHref = listLink({ scope: "today" });
   const period = view === "day" ? fmtDate(start, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
     : (view === "month" || view === "arrivals") && start.endsWith("-01") && end === nextMonth(start) ? fmtDate(start, { month: "long", year: "numeric" })
     : `${fmtShort(start)} - ${fmtDate(addDays(end, -1), { month: "short", day: "numeric", year: "numeric" })}`;
@@ -136,12 +156,18 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
   return (
     <div className="stack" style={{ gap: 16 }}>
       <div className="cal-top">
-        <Link className="btn btn-ghost btn-sm cal-today" href={link(todayStart)}>Today</Link>
-        <div className="cal-step">
-          <Link className="cal-arrow" href={link(prev)} aria-label={unit ? `Previous ${unit}` : "Earlier"}>‹</Link>
-          <h2 className="mc-period">{view === "arrivals" ? `Arrivals · ${period}` : period}</h2>
-          <Link className="cal-arrow" href={link(next)} aria-label={unit ? `Next ${unit}` : "Later"}>›</Link>
-        </div>
+        <Link className={`btn btn-sm cal-today ${view === "list" && scope === "today" && day === today ? "btn-primary" : "btn-ghost"}`} href={todayHref}
+          aria-current={view === "list" && scope === "today" && day === today ? "page" : undefined}>Today&apos;s reservations</Link>
+        {view === "list" ? (
+          <h2 className="mc-period">{scope === "today" ? (day === today ? "Today" : "Reservations on") : scope === "history" ? "History before" : "Upcoming from"} · {fmtDate(day, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}</h2>
+        ) : (
+          <div className="cal-step">
+            <Link className="cal-arrow" href={link(prev)} aria-label={unit ? `Previous ${unit}` : "Earlier"}>‹</Link>
+            <h2 className="mc-period">{view === "arrivals" ? `Arrivals · ${period}` : period}</h2>
+            <Link className="cal-arrow" href={link(next)} aria-label={unit ? `Next ${unit}` : "Later"}>›</Link>
+            {unit && !(start <= today && today < end) && <Link className="btn btn-ghost btn-sm" href={link(todayStart)}>This {unit === "day" ? "day" : unit}</Link>}
+          </div>
+        )}
         <nav className="cal-tabs" aria-label="Calendar view">
           {VIEWS.map(([v, label]) => (
             <Link key={v} aria-current={view === v ? "page" : undefined} href={link(v === "day" || v === "week" ? (start <= today && today < end ? today : start) : start, v)}>{label}</Link>
@@ -152,7 +178,11 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
       <form className="cal-prop cal-filters" method="get" action={basePath}>
         <AutoSubmit />
         <input type="hidden" name="view" value={view} />
-        <input type="hidden" name="start" value={start} />
+        {view === "list" ? <>
+          <input type="hidden" name="scope" value={scope} />
+          {sort === "booked" && <input type="hidden" name="sort" value="booked" />}
+          {day !== today && <input type="hidden" name="date" value={day} />}
+        </> : <input type="hidden" name="start" value={start} />}
         {view === "range" && <input type="hidden" name="days" value={String(days)} />}
         {selected && <span className="cal-prop-ph" aria-hidden><Thumb p={selected} /></span>}
         <label className="cal-field">
@@ -171,14 +201,28 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
             </select>
           </label>
         )}
-        <label className="cal-field">
+        {view !== "list" && <label className="cal-field">
           <span className="cal-field-l">Status</span>
           <select className="input" name="status" defaultValue={status}>
             {STATUSES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
           </select>
-        </label>
+        </label>}
         <noscript><button className="btn btn-ghost">Show</button></noscript>
       </form>
+      {view === "list" ? (
+        <form className="cal-month" method="get" action={basePath}>
+          <AutoSubmit />
+          <input type="hidden" name="view" value="list" />
+          <input type="hidden" name="scope" value={scope} />
+          {sort === "booked" && <input type="hidden" name="sort" value="booked" />}
+          {picked && <input type="hidden" name="property" value={picked.id} />}
+          {room && <input type="hidden" name="room" value={room.id} />}
+          <div className="cal-field cal-goto">
+            <DatePicker key={day} name="date" label="Date" initial={day} today={today} clearable={false} maxMonths={24} />
+          </div>
+          <noscript><button className="btn btn-ghost btn-sm">Go</button></noscript>
+        </form>
+      ) : (
       <form className="cal-month" method="get" action={basePath}>
         <AutoSubmit />
         <input type="hidden" name="view" value={view === "range" ? "week" : view} />
@@ -192,10 +236,26 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
         </div>
         <noscript><button className="btn btn-ghost btn-sm">Go</button></noscript>
       </form>
+      )}
       </div>
+      {view === "list" && (
+        <div className="rv-bar">
+          <nav className="seg-tabs" aria-label="Which reservations">
+            {SCOPES.map(([v, label]) => <Link key={v} href={listLink({ scope: v, date: day !== today ? day : undefined })} aria-current={scope === v ? "page" : undefined}>{label}</Link>)}
+          </nav>
+          <nav className="seg-tabs" aria-label="Sort by">
+            <Link href={listLink({ sort: "arrival", date: day !== today ? day : undefined })} aria-current={sort === "arrival" ? "page" : undefined}>Arrival Date</Link>
+            <Link href={listLink({ sort: "booked", date: day !== today ? day : undefined })} aria-current={sort === "booked" ? "page" : undefined}>Reservation Date</Link>
+          </nav>
+        </div>
+      )}
       {view !== "arrivals" && Object.values(demand).some(x => x.notable) && <p className="hint mc-legend"><span className="ev-dot" aria-hidden /> Red circle: a game, big event or holiday in Pittsburgh. Hover or tap the date to see it.{selected?.smart_pricing ? " Smart Pricing is on: prices in gold are raised for demand, in green lowered. Dotted prices are ones you set." : ""}</p>}
 
-      {rows.length === 0 ? <div className="empty"><p className="muted">No listings yet.</p></div> : view === "arrivals" ? (
+      {rows.length === 0 ? <div className="empty"><p className="muted">No listings yet.</p></div> : view === "list" ? (
+        <ReservationList cards={cards} scope={scope} sort={sort} day={day} today={today} colorOf={colorOf}
+          empty={scope === "today" ? `No one is arriving, staying or leaving on ${fmtDate(day, { weekday: "long", month: "long", day: "numeric" })}${selected ? ` at ${selected.title}` : ""}.`
+            : scope === "history" ? "No past or cancelled reservations before this date." : "No current or upcoming reservations."} />
+      ) : view === "arrivals" ? (
         <ArrivalList stays={listed.filter(s => s.from >= start && s.from < end)} today={today} colorOf={colorOf} empty={`No arrivals in ${period}.`} />
       ) : selected && view === "month" ? (
         <div className="cal-split">
@@ -233,15 +293,16 @@ export async function MultiCalendar({ u, basePath, sp }: { u: User; basePath: st
           <span><i className="mc-key blk" />Blocked by you</span>
         </span>
       </div>
-      <CalDetails details={Object.fromEntries(stays.map(s => [s.key, s.detail]))} />
-      <p className="hint">{view === "day" ? "Each bar runs from check-in to check-out: a guest leaving this morning fills the left half, one arriving this afternoon the right half. Tap a reservation to see its details."
+      <CalDetails details={Object.fromEntries([...stays.map(s => [s.key, s.detail] as const), ...cards.map(c => [c.key, { ...c.detail, color: colorOf.get(c.pid) }] as const)])} />
+      <p className="hint">{view === "list" ? <>Tap a reservation to see its property, room and booking details; the message icon opens that guest&apos;s conversation. Only unpaid Sevgio.com bookings can be edited. Paid bookings, reservations synced from Airbnb, Booking.com, Vrbo and other sites, and external calendar blocks are read-only. Dates use Pittsburgh time.</>
+        : view === "day" ? "Each bar runs from check-in to check-out: a guest leaving this morning fills the left half, one arriving this afternoon the right half. Tap a reservation to see its details."
         : view === "arrivals" ? "Guests are grouped by the day they check in. Tap a reservation to see its details."
         : <>Each bar starts halfway through the check-in day and ends halfway through the check-out day, so a guest leaving and the next arriving share that day. Click a reservation to see its details. The colored edge beside each name is that listing&apos;s color. Rooms are listed under their house; booking the house blocks its rooms.</>}</p>
     </div>
   );
 }
 
-export type CalParams = { start?: string; end?: string; month?: string; days?: string; property?: string; room?: string; status?: string; view?: string };
+export type CalParams = { start?: string; end?: string; month?: string; days?: string; property?: string; room?: string; status?: string; view?: string; scope?: string; sort?: string; date?: string };
 
 /** A reservation or blocked dates, ready to draw. `from`/`to` are check-in and check-out days. */
 type Stay = {
@@ -254,10 +315,11 @@ function toStays(res: Res[], blocks: Blk[], byId: Map<string, Prop>, placeName: 
   return [
     ...res.map(b => {
       const st = reservationStatus({ status: b.status, check_in: b.check_in, check_out: b.check_out, today: todayLocal() });
-      return { key: b.id, pid: b.property_id, from: b.check_in, to: b.check_out, kind: "res" as const,
+      return { key: "b:" + b.id, pid: b.property_id, from: b.check_in, to: b.check_out, kind: "res" as const,
         cls: b.status === "confirmed" ? "ok" : b.status === "cancelled" ? "cx" : "warn", label: b.guest_name, status: st.label, tone: st.tone,
         place: place(b.property_id), href: `/trips/${b.code}`, guests: b.guests, code: b.code,
-        detail: { title: b.guest_name, badge: st.label, badgeCls: st.tone, color: colorOf.get(b.property_id), href: `/trips/${b.code}`, rows: [
+        detail: { title: b.guest_name, badge: st.label, badgeCls: st.tone, color: colorOf.get(b.property_id), href: `/trips/${b.code}`, msgHref: `/trips/${b.code}/messages`,
+          ...(r => ({ note: r.reason, locked: !r.editable }))(editRule({ source: "direct", status: b.status, payment_status: b.payment_status, paid_cents: b.paid_cents })), rows: [
           ["Property / room", place(b.property_id)],
           ["Check-in", fmtDate(b.check_in, { weekday: "short", month: "short", day: "numeric", year: "numeric" }) + (b.arrival_time ? ` · arriving ${b.arrival_time}` : "")],
           ["Check-out", fmtDate(b.check_out, { weekday: "short", month: "short", day: "numeric", year: "numeric" })],
@@ -275,19 +337,21 @@ function toStays(res: Res[], blocks: Blk[], byId: Map<string, Prop>, placeName: 
       const what = !ch ? "Blocked by you" : `${reservationStatus({ status: b.status, check_in: b.start_date, check_out: b.end_date, today: todayLocal(), kind: b.kind }).label} · ${ch.label}`;
       const href = ch ? `/host/bookings/other-sites/${b.id}` : `/host/listings/${b.property_id}/calendar`;
       // Dates blocked on another site have no guest arriving, so they count like your own blocked dates.
-      return { key: b.id, pid: b.property_id, from: b.start_date, to: b.end_date, kind: ch && b.kind !== "blocked" ? "ext" as const : "blk" as const,
+      return { key: (ch ? "c:" : "k:") + b.id, pid: b.property_id, from: b.start_date, to: b.end_date, kind: ch && b.kind !== "blocked" ? "ext" as const : "blk" as const,
         cls: ch ? `ch-${ch.key}${b.status === "cancelled" ? " cx" : ""}` : "blk", label: ch ? (b.guest ? `${ch.label} · ${b.guest}` : ch.label) : b.note || "Blocked", status: what, tone: "neutral",
         place: place(b.property_id), code: ch && b.ref ? b.ref : undefined,
         detail: { title: ch ? (b.guest || what) : "Blocked by you", badge: ch ? ch.label : "Blocked", badgeCls: `neutral ar-status ${ch ? `ch-${ch.key}` : ""}`, color: colorOf.get(b.property_id),
-          href, hrefLabel: ch ? (b.needs ? "Add payout details" : "Open reservation") : "Edit blocked dates", rows: [
+          href, hrefLabel: ch ? "View synced details" : "Edit blocked dates",
+          ...(ch ? { note: editRule({ source: b.kind === "reservation" ? "external" : "block", status: b.status }).reason, locked: true } : {}), rows: [
           ["Property / room", place(b.property_id)],
           ...(ch ? [["Status", what] as [string, string]] : []),
           [ch ? "Check-in" : "From", fmtDate(b.start_date, { weekday: "short", month: "short", day: "numeric", year: "numeric" })],
           [ch ? "Check-out" : "Until", fmtDate(b.end_date, { weekday: "short", month: "short", day: "numeric", year: "numeric" })],
           ["Nights", String(nightsBetween(b.start_date, b.end_date))],
           ...(ch && b.ref ? [["Confirmation code", b.ref] as [string, string]] : []),
-          ...(ch ? [["Guest", b.guest ? b.guest : "Not provided by the site's calendar link. Add it from the reservation."] as [string, string]] : []),
-          ...(ch && b.kind === "reservation" ? [["Payout", b.payout == null ? "Needs entry" : money(b.payout)] as [string, string]] : []),
+          ...(ch ? [["Guest", b.guest ? b.guest : b.kind === "reservation" ? `Name not provided by ${ch.label}` : "No guest details: dates only"] as [string, string]] : []),
+          ...(ch && b.kind === "reservation" ? [["Payout", b.payout == null ? `Not provided by ${ch.label}` : money(b.payout)] as [string, string]] : []),
+          ...(ch ? [["Messaging", b.kind === "reservation" ? `Not connected for ${ch.label}. Reply in the ${ch.label} app.` : "No guest: dates only"] as [string, string]] : []),
           ...(!ch && b.note ? [["Note", b.note] as [string, string]] : []),
         ] as [string, string][] },
         title: `${what}${b.guest ? ` · ${b.guest}` : ""} · ${place(b.property_id)} · ${fmtShort(b.start_date)} → ${fmtShort(b.end_date)}${b.ref ? ` · ${b.ref}` : ""}` };
@@ -471,12 +535,12 @@ function MonthGrid({ p, res, blocks, start, end, today, demand, prices }: { p: P
   type Stay = { key: string; from: string; to: string; cls: string; label: string; href?: string; title: string };
   const stays: Stay[] = [
     ...res.filter(b => b.property_id === p.id || b.property_id === p.parent_id).map(b => ({
-      key: b.id, from: b.check_in, to: b.check_out, cls: b.property_id !== p.id ? "blk" : b.status === "confirmed" ? "ok" : "warn",
+      key: "b:" + b.id, from: b.check_in, to: b.check_out, cls: b.property_id !== p.id ? "blk" : b.status === "confirmed" ? "ok" : "warn",
       label: b.property_id !== p.id ? "Whole house booked" : b.guest_name, href: b.property_id === p.id ? `/trips/${b.code}` : undefined,
       title: `${b.guest_name} · ${b.check_in} → ${b.check_out} · ${b.guests} guests${b.status === "pending" ? " · awaiting approval" : b.status === "awaiting_payment" ? " · awaiting payment" : ""}` })),
     ...blocks.filter(b => b.property_id === p.id || b.property_id === p.parent_id).map(b => {
       const ch = siteOf(b);
-      return { key: b.id, from: b.start_date, to: b.end_date, cls: ch ? `ch-${ch.key}` : "blk",
+      return { key: (ch ? "c:" : "k:") + b.id, from: b.start_date, to: b.end_date, cls: ch ? `ch-${ch.key}` : "blk",
         label: b.property_id !== p.id ? "Whole house blocked" : ch ? ch.label : b.note || "Blocked", title: `${ch ? `Booked on ${ch.label}` : b.note || "Blocked"}: ${b.start_date} → ${b.end_date}` };
     }),
   ];

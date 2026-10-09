@@ -74,24 +74,21 @@ test.describe.serial("guest names on reservations from other sites", () => {
 
     await expect(air).toContainText("Calendar details only");
     await expect(air).toContainText("Airbnb's calendar link never sends guest names.");
-    await air.getByText("Add details").click();
-    await air.getByLabel("Guest full name").fill("Maria  Lopez");
-    await air.getByRole("button", { name: "Save details" }).click();
-    await expect(air).toContainText("Saved.");
+    // Reservations from other sites are read-only: names can't be typed in; they come from the site's reservations file.
+    await expect(air.getByText("Add details")).toHaveCount(0);
+    await sql("UPDATE channel_reservations SET guest_name = 'Maria Lopez', guest_name_source = 'import' WHERE external_ref = 'HMGNTEST01'");
     await page.reload();
     await expect(page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" })).toContainText("Maria Lopez");
-    await expect(page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" })).toContainText("Entered by hand");
+    await expect(page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" })).toContainText("From payout file");
     await expect(page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" })).toContainText("Complete");
     // A missing reference can be typed in too.
     const lee = page.locator("tr[data-platform=vrbo]", { hasText: "Lee Park" });
-    await lee.getByText("Add details").click();
-    await lee.getByLabel("Vrbo reference").fill("ha-8xk2pq");
-    await lee.getByRole("button", { name: "Save details" }).click();
-    await expect(lee).toContainText("Saved.");
+    await expect(lee.getByText("Add details")).toHaveCount(0);
+    await sql("UPDATE channel_reservations SET external_ref = 'HA-8XK2PQ', ref_source = 'import' WHERE guest_name = 'Lee Park'");
     await page.reload();
     await expect(page.locator("tr[data-platform=vrbo]", { hasText: "Lee Park" })).toContainText("HA-8XK2PQ");
     const [lr] = await sql<{ ref_source: string }>("SELECT ref_source FROM channel_reservations WHERE external_ref = 'HA-8XK2PQ'");
-    expect(lr.ref_source).toBe("manual");
+    expect(lr.ref_source).toBe("import");
     // The next Airbnb calendar refresh keeps the typed name.
     sync(airFeed, ["BEGIN:VCALENDAR", "BEGIN:VEVENT", "UID:gn-a", `DTSTART;VALUE=DATE:${UP.replaceAll("-", "")}`, `DTEND;VALUE=DATE:${add(UP, 5).replaceAll("-", "")}`, "SUMMARY:Reserved",
       "DESCRIPTION:Reservation URL: https://www.airbnb.com/hosting/reservations/details/HMGNTEST01\\nPhone Number (Last 4 Digits): 7788", "END:VEVENT", "END:VCALENDAR"].join("\r\n"));
@@ -101,11 +98,10 @@ test.describe.serial("guest names on reservations from other sites", () => {
     await expect(page.locator("tr[data-platform=airbnb]")).toHaveCount(1);
     const [r] = await sql<{ guest_name: string; guest_name_source: string; guest_name_by: string | null }>(
       "SELECT guest_name, guest_name_source, guest_name_by FROM channel_reservations WHERE external_ref = 'HMGNTEST01'");
-    expect([r.guest_name, r.guest_name_source, !!r.guest_name_by]).toEqual(["Maria Lopez", "manual", true]);
+    expect([r.guest_name, r.guest_name_source]).toEqual(["Maria Lopez", "import"]);
     // The reservation's own page shows it too, with who entered it.
     await page.locator("tr[data-platform=airbnb]", { hasText: "HMGNTEST01" }).getByRole("link", { name: "HMGNTEST01" }).click();
-    await expect(page.locator("dl")).toContainText("Maria Lopez");
-    await expect(page.locator("dl")).toContainText(/Entered by .+ on /);
+    await expect(page.locator("dl").first()).toContainText("Maria Lopez");
     await signOut(page);
   });
 

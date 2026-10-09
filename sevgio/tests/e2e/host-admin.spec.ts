@@ -553,7 +553,7 @@ test("calendar: week starts today and month is a whole wall calendar", async ({ 
   await page.goto("/admin/calendar?view=week");
   await expect(page.locator(".mc-day")).toHaveCount(7);
   await expect(page.locator(".mc-day").first()).toHaveClass(/today/);
-  await page.goto("/admin/calendar");
+  await page.goto("/admin/calendar?view=month");
   const grid = page.locator(".mg-all");
   await expect(grid.locator(".mg-day")).toHaveCount(daysInMonth);
   await expect(grid.locator(".mg-num.today")).toHaveCount(1);
@@ -561,10 +561,10 @@ test("calendar: week starts today and month is a whole wall calendar", async ({ 
   // Tapping a day opens that day's details.
   await grid.locator(".mg-num.today").click();
   await expect(page).toHaveURL(/view=day/);
-  await page.goto("/admin/calendar");
+  await page.goto("/admin/calendar?view=month");
   await page.getByRole("link", { name: "Previous month" }).click();
   await expect(page.locator(".mg-all .mg-num.today")).toHaveCount(0);
-  await page.getByRole("link", { name: "Today" }).click();
+  await page.getByRole("link", { name: "This month" }).click();
   await expect(page.locator(".mg-all .mg-num.today")).toHaveCount(1);
   await signOut(page);
 });

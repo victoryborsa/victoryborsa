@@ -21,6 +21,8 @@ import { sendPaymentLinkAction } from "@/app/actions/bookings.ts";
 import { getSettings } from "@/lib/settings.ts";
 import { onlineMethods } from "@/lib/payments.ts";
 import { canPayBalance } from "@/lib/payment-flow.ts";
+import { editRule } from "@/lib/reservation-rules.ts";
+import { Icon } from "@/components/Icon.tsx";
 
 export const metadata: Metadata = { title: "Reservation", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -55,7 +57,9 @@ export default async function AdminReservation({ params, searchParams }: { param
   const canPay = ["awaiting_payment", "confirmed"].includes(b.status) && b.paid_cents < b.total_cents && b.payment_status !== "processing"
     && !(b.status === "awaiting_payment" && (b.payment_method === "card" || b.payment_method === "ach"));
   const canCancel = ["awaiting_payment", "confirmed"].includes(b.status) && b.check_out >= today;
-  const canEdit = ["pending", "awaiting_payment", "confirmed"].includes(b.status);
+  // Only unpaid Sevgio.com bookings can be edited (past ones too); paid ones are read-only. The server checks the same rule.
+  const rule = editRule({ source: "direct", status: b.status, payment_status: b.payment_status, paid_cents: b.paid_cents });
+  const canEdit = rule.editable;
   const canSendPayLink = canPayBalance(b) && onlineMethods(await getSettings()).length > 0;
   const canRefund = ["cancelled", "declined", "expired"].includes(b.status) && b.paid_cents > 0 && b.payment_status !== "refunded";
   const taken = canEdit ? await unavailableNights(b.property_id, b.check_in < today ? b.check_in : today, addDays(today, 3 * 366), undefined, b.id) : [];
@@ -100,6 +104,7 @@ export default async function AdminReservation({ params, searchParams }: { param
           </div>
         )}
         <div className="row rd-links">
+          <Link className="btn btn-primary btn-sm" href={`/trips/${b.code}/messages?back=${encodeURIComponent(self)}`}><Icon name="chats" /> Messages</Link>
           <Link className="btn btn-ghost btn-sm" href={`/trips/${b.code}/invoice`}>Invoice</Link>
           <Link className="btn btn-ghost btn-sm" href={`/trips/${b.code}`}>Guest's confirmation page</Link>
           <Link className="btn btn-ghost btn-sm" href={`/admin/calendar?view=week&start=${b.check_in}`}>Show in calendar</Link>
@@ -156,6 +161,7 @@ export default async function AdminReservation({ params, searchParams }: { param
           )}
         </section>
 
+        {!canEdit && <p className="notice info rd-readonly" data-testid="readonly-note"><span><Icon name="lock" /> <b>Read-only.</b> {rule.reason} You can still view everything here and message the guest.</span></p>}
         {(b.status === "pending" || canPay || canSendPayLink || canCancel || canEdit || canRefund) && (
           <section className="box" aria-labelledby="rd-act">
             <h3 id="rd-act">Actions</h3>

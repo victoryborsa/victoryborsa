@@ -8,7 +8,8 @@ import { channelLabel } from "@/lib/channels.ts";
 import { Flash } from "@/components/Flash.tsx";
 import { BlockStatus, DetailsCell, GuestCell } from "@/components/GuestNameForm.tsx";
 import { ChannelResForm, type ChannelResValues } from "@/components/ChannelResForm.tsx";
-import { deleteChannelResAction, setManualStatusAction } from "@/app/actions/channel.ts";
+import { EXTERNAL_NOTES_EDITABLE } from "@/lib/reservation-rules.ts";
+import { money } from "@/lib/money.ts";
 
 type Res = ChannelResValues & { guest_name_source: string; phone_last4: string; feed_detail: string; ref_source: string; guest_name_at: string | null; guest_name_by_name: string | null; id: string; property_id: string; channel: string; source: string; status: string; eff_kind: string; check_in: string; check_out: string; summary: string;
   feed_name: string | null; first_seen_at: string; last_seen_at: string; modified_at: string | null; cancelled_at: string | null; finance_source: string };
@@ -58,18 +59,22 @@ export default async function OtherSiteReservation({ params, searchParams }: { p
         )}
         {r.source === "ical" && <div><dt>History</dt><dd>First seen {when(r.first_seen_at)} · last seen {when(r.last_seen_at)}{r.modified_at ? ` · dates changed ${when(r.modified_at)}` : ""}{r.cancelled_at ? ` · cancelled ${when(r.cancelled_at)}` : ""}</dd></div>}
       </dl>
-      {r.source === "ical" && <p className="hint">The dates follow the {site} calendar. To change or cancel this stay, do it on {site}; Sevgio picks it up at the next refresh.</p>}
+      <p className="notice info" data-testid="external-readonly"><span><b>Read-only.</b> This {r.eff_kind === "reservation" ? "reservation" : "calendar block"} comes from {site}, so it can&apos;t be edited, cancelled or deleted on Sevgio. Make changes on {site}; Sevgio picks them up at the next refresh. Guest messaging isn&apos;t connected for {site}: reply in the {site} app.</span></p>
       <div className="box">
         <h3>Payout details</h3>
-        <ChannelResForm v={r} />
+        {EXTERNAL_NOTES_EDITABLE ? <ChannelResForm v={r} /> : (
+          <>
+            <dl className="sd-rows">
+              {([["Rent", r.rent_cents], ["Cleaning", r.cleaning_cents], ["Other", r.other_cents], ["Tax", r.tax_cents], ["Commission", r.commission_cents], ["Refund", r.refund_cents],
+                ["Expected payout", r.expected_payout_cents], ["Received payout", r.received_payout_cents]] as const).map(([k, v]) => (
+                <div key={k}><dt>{k}</dt><dd>{v == null ? <span className="muted">Not provided by {site}</span> : money(v)}</dd></div>
+              ))}
+              <div><dt>Payout date</dt><dd>{r.payout_date ? fmtDate(r.payout_date) : <span className="muted">Not provided by {site}</span>}</dd></div>
+            </dl>
+            <p className="hint">Amounts come from the payout file you import from {site} (<Link href="/host/finance/import">Finance → Import</Link>).</p>
+          </>
+        )}
       </div>
-      {r.source !== "ical" && (
-        <div className="row">
-          <form action={setManualStatusAction}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="status" value={r.status === "cancelled" ? "confirmed" : "cancelled"} />
-            <button className="btn btn-ghost">{r.status === "cancelled" ? "Reinstate" : "Mark as cancelled"}</button></form>
-          <form action={deleteChannelResAction}><input type="hidden" name="id" value={r.id} /><button className="btn btn-danger">Delete</button></form>
-        </div>
-      )}
     </div>
   );
 }

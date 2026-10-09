@@ -1,6 +1,7 @@
 import { ActionForm, SubmitButton } from "./forms.tsx";
 import { Badge } from "./Badge.tsx";
 import { saveStayDetailsAction, setKindAction } from "@/app/actions/channel.ts";
+import { EXTERNAL_NOTES_EDITABLE } from "@/lib/reservation-rules.ts";
 
 /** A period a site's calendar link shows as unavailable without saying whether a guest booked it (Booking.com "CLOSED - Not available"). */
 export const CAL_BLOCK = "External Calendar Block";
@@ -39,7 +40,7 @@ export function DetailsCell({ id, channel, site, name, refCode, block }: { id: s
       {block ? <span className="hint">Dates only, from the {site} calendar link.</span>
         : list ? <><Badge tone="neutral" icon="info">Calendar details only</Badge><p className="hint dt-why">{missingWhy(channel, site, missing)}</p></>
         : <Badge tone="ok" icon="check">Complete</Badge>}
-      <details className="gn-edit">
+      {EXTERNAL_NOTES_EDITABLE && <details className="gn-edit">
         <summary className="linkbtn">{block ? "Add reservation details" : list ? "Add details" : "Edit details"}</summary>
         <ActionForm action={saveStayDetailsAction} className="stack gn-form">
           <input type="hidden" name="id" value={id} />
@@ -48,7 +49,7 @@ export function DetailsCell({ id, channel, site, name, refCode, block }: { id: s
           <SubmitButton className="btn btn-primary btn-sm" pendingText="Saving…">Save details</SubmitButton>
           <small className="hint">Copy them from the reservation on {site}. Kept when the {site} calendar refreshes.{block ? " Saving marks these dates as a confirmed reservation." : ""}</small>
         </ActionForm>
-      </details>
+      </details>}
     </div>
   );
 }
@@ -62,8 +63,8 @@ export function BlockStatus({ id, site, summary, back }: { id: string; site: str
   return (
     <div className="bk-check">
       <Badge tone="neutral" icon="info">{CAL_BLOCK}</Badge>
-      <p className="hint">{site} shows these dates as “{summary || "unavailable"}”. Turns Confirmed when a reservations file or your details match it.</p>
-      <details className="bk-sort">
+      <p className="hint">{site} shows these dates as “{summary || "unavailable"}”. Read-only: it turns Confirmed by itself when a matching reservations or payout file is imported.</p>
+      {false && <details className="bk-sort">
         <summary className="linkbtn">Know what it is?</summary>
         <div className="bk-check-actions">
           {([["reservation", "It's a guest reservation"], ["blocked", "It's dates I closed"]] as const).map(([k, text]) => (
@@ -73,7 +74,7 @@ export function BlockStatus({ id, site, summary, back }: { id: string; site: str
             </form>
           ))}
         </div>
-      </details>
+      </details>}
     </div>
   );
 }

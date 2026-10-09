@@ -568,7 +568,8 @@ export async function editReservationAction(_: ActionState, fd: FormData): Promi
   const id = str(fd, "id", 40), totalText = str(fd, "total", 20);
   const totalCents = totalText ? toCents(totalText) : null;
   if (totalText && (totalCents == null || totalCents < 0)) return { error: "Enter the total as an amount, for example 850 or 850.00, or leave it empty." };
-  const r = await changeReservation(id, { checkIn: str(fd, "check_in", 10), checkOut: str(fd, "check_out", 10), guestName: str(fd, "name", 120), guestPhone: str(fd, "phone", 40), guests: int(fd, "guests"), totalCents });
+  // Only unpaid Sevgio.com bookings can be edited; changeReservation re-checks this while the booking is locked.
+  const r = await changeReservation(id, { checkIn: str(fd, "check_in", 10), checkOut: str(fd, "check_out", 10), guestName: str(fd, "name", 120), guestPhone: str(fd, "phone", 40), guests: int(fd, "guests"), totalCents, unpaidOnly: true });
   if (!r.ok) return { error: r.error };
   const { before: a, after: b } = r;
   const changes = [

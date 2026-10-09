@@ -7,6 +7,7 @@ import { addDays, isIsoDate, nightsBetween, todayLocal } from "./dates.ts";
 import { quote, type Party } from "./pricing.ts";
 import { dueNow, type PayMethod } from "./payment-rules.ts";
 import { FIXED_SERVICE_NOTES, REQUEST_EXPIRY_HOURS } from "./constants.ts";
+import { editRule } from "./reservation-rules.ts";
 
 export type Property = {
   id: string; slug: string; host_id: string; title: string; city: string; area: string; address: string; description: string; property_type: string;
@@ -254,7 +255,9 @@ export function repriceForNights(b: Pick<Booking, "nights" | "nightly_price_cent
   return { nights, lodging_cents: lodging, discount_cents: discount, tax_cents: tax, total_cents: preTax + tax };
 }
 
-export type ReservationChange = { checkIn: string; checkOut: string; guestName: string; guestPhone: string; guests: number; totalCents?: number | null };
+export type ReservationChange = { checkIn: string; checkOut: string; guestName: string; guestPhone: string; guests: number; totalCents?: number | null;
+  /** Staff edits: refuse unless it is an unpaid Sevgio.com booking (checked under the row lock, so a payment arriving meanwhile wins). */
+  unpaidOnly?: boolean };
 export type ChangeResult = { ok: true; before: Booking; after: Booking } | { ok: false; error: string };
 
 /**
@@ -274,6 +277,10 @@ export async function changeReservation(bookingId: string, ch: ReservationChange
       await lockProperty(c, cur.property_id);
       const b = (await one<Booking>("SELECT * FROM bookings WHERE id = $1 FOR UPDATE", [bookingId], c))!;
       if (!["pending", "awaiting_payment", "confirmed"].includes(b.status)) return { ok: false, error: "Only active reservations can be changed." } as const;
+      if (ch.unpaidOnly) {
+        const rule = editRule({ source: "direct", status: b.status, payment_status: b.payment_status, paid_cents: b.paid_cents });
+        if (!rule.editable) return { ok: false, error: `This reservation is read-only. ${rule.reason}` } as const;
+      }
       const p = await one<{ max_guests: number }>("SELECT max_guests FROM properties WHERE id = $1", [b.property_id], c);
       if (p && ch.guests > p.max_guests) return { ok: false, error: `This property fits up to ${p.max_guests} guests.` } as const;
       const datesChanged = ch.checkIn !== b.check_in || ch.checkOut !== b.check_out;

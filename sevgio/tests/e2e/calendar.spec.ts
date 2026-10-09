@@ -151,7 +151,7 @@ test.describe.serial("reservations calendar", () => {
     await page.keyboard.press("Escape");
     // The Airbnb booking opens too, and says the guest count lives on Airbnb.
     await page.locator(".mg-tag.ch-airbnb").first().click();
-    await expect(page.getByRole("dialog", { name: "Reservation: Confirmed · Airbnb" })).toContainText("Not provided by the site's calendar link");
+    await expect(page.getByRole("dialog", { name: "Reservation: Confirmed · Airbnb" })).toContainText("Name not provided by Airbnb");
     await page.keyboard.press("Escape");
     // The month's reservations are listed under the calendar.
     await expect(page.getByRole("heading", { name: /Reservations in/ })).toBeVisible();

@@ -106,19 +106,15 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
   test("the host sorts the unclear ones; changes and cancellations update without duplicates", async ({ page }) => {
     await signIn(page, "dana@demo.sevgio.com", "demo-password-2026");
     await page.goto("/host/bookings?view=upcoming");
-    await row(page, "bookingcom", "Platform Test House").getByText("Know what it is?").click();
-    await row(page, "bookingcom", "Platform Test House").getByRole("button", { name: "It's a guest reservation" }).click();
+    // Reservations and blocks from other sites are read-only: no buttons to reclassify them or type details in.
+    await expect(row(page, "bookingcom", "Platform Test House").getByText("Know what it is?")).toHaveCount(0);
+    await expect(row(page, "bookingcom", "Platform Test House").getByText("Add details")).toHaveCount(0);
+    // What a Booking.com reservations file and a Vrbo owner-hold record would set (imports still work).
+    await sql("UPDATE channel_reservations SET kind = 'reservation', kind_locked = true, guest_name = 'Ines Duarte', guest_name_source = 'import', external_ref = '4455112233', ref_source = 'import' WHERE feed_id = $1 AND ical_uid = 'bdc-1@booking.com'", [feeds.bdc]);
+    await sql("UPDATE channel_reservations SET kind = 'blocked', kind_locked = true WHERE feed_id = $1 AND ical_uid = 'vrbo-2'", [feeds.vrbo]);
+    await page.reload();
     await expect(row(page, "bookingcom", "Platform Test House")).toContainText(/Confirmed\s*on Booking\.com/);
-    await row(page, "vrbo", "External Calendar Block").getByText("Know what it is?").click();
-    await row(page, "vrbo", "External Calendar Block").getByRole("button", { name: "It's dates I closed" }).click();
     await expect(row(page, "vrbo", "External Calendar Block")).toHaveCount(0);
-    // The Booking.com reference and guest name, copied from the Booking.com extranet.
-    const bdc = row(page, "bookingcom", "Platform Test House");
-    await bdc.getByText("Add details").click();
-    await bdc.getByLabel("Guest full name").fill("Ines Duarte");
-    await bdc.getByLabel("Booking.com reference").fill("4455112233");
-    await bdc.getByRole("button", { name: "Save details" }).click();
-    await expect(bdc).toContainText("Saved.");
     await expect(page.locator("tbody tr", { hasText: "Platform Test House" })).toHaveCount(3);
 
     // Next refresh: Booking.com moves a day later, Chris Vale cancels on Vrbo; everything else is the same.
@@ -153,11 +149,10 @@ test.describe.serial("reservations from Airbnb, Booking.com and Vrbo in Upcoming
     await expect(item).toContainText("External Calendar Block");
     await expect(item).toContainText("Booking.com shows these dates as “CLOSED - Not available”");
     await expect(item).not.toContainText("Missing");
-    // Adding the guest's name and the Booking.com number makes the block a confirmed reservation by itself.
-    await item.getByText("Add reservation details").click();
-    await item.getByLabel("Guest full name").fill("Tomas Berg");
-    await item.getByLabel("Booking.com reference").fill("4455998877");
-    await item.getByRole("button", { name: "Save details" }).click();
+    // Read-only: no form to type details in. A Booking.com reservations file with the guest and number confirms it.
+    await expect(item.getByText("Add reservation details")).toHaveCount(0);
+    await sql("UPDATE channel_reservations SET kind = 'reservation', kind_locked = true, guest_name = 'Tomas Berg', guest_name_source = 'import', external_ref = '4455998877', ref_source = 'import' WHERE feed_id = $1 AND ical_uid = 'bdc-3@booking.com'", [feeds.bdc]);
+    await page.reload();
     await expect(page.locator(".rs-list li", { hasText: "Platform Test House" }).filter({ hasText: "External Calendar Block" })).toHaveCount(0);
     await page.goto("/admin/bookings?q=berg");
     await expect(page.locator(".rs-list li", { hasText: "4455998877" })).toContainText("Tomas Berg");

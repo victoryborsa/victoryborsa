@@ -100,6 +100,21 @@ test("editing a reservation: new dates are checked against every source, and the
   assert.equal(await isRangeFree(propId, addDays(T, 8), addDays(T, 9)), false);
 });
 
+test("staff edits: a paid booking is refused by the server; an unpaid one (even a past one) is allowed", async () => {
+  const b = await one<{ id: string; check_in: string; check_out: string }>("SELECT id, check_in::text, check_out::text FROM bookings WHERE guest_name = 'Phone Guest Jr'");
+  const same = { checkIn: b!.check_in, checkOut: b!.check_out, guestName: "Phone Guest Jr", guestPhone: "", guests: 2, unpaidOnly: true };
+  await q("UPDATE bookings SET paid_cents = 1000, payment_status = 'deposit_paid' WHERE id = $1", [b!.id]);
+  const refused = await changeReservation(b!.id, same);
+  assert.equal(refused.ok, false);
+  assert.match(!refused.ok ? refused.error : "", /read-only/);
+  await q("UPDATE bookings SET paid_cents = 0, payment_status = 'none' WHERE id = $1", [b!.id]);
+  assert.ok((await changeReservation(b!.id, same)).ok);
+  // A past stay that was never paid can still be corrected.
+  const past = await createManualBooking({ propertyId: propId, guestId, ci: addDays(T, -40), co: addDays(T, -38), name: "Past Unpaid", phone: "", taxPercent: 0 });
+  assert.ok(past.ok);
+  if (past.ok) assert.ok((await changeReservation(past.booking.id, { checkIn: addDays(T, -40), checkOut: addDays(T, -37), guestName: "Past Unpaid", guestPhone: "", guests: 1, unpaidOnly: true })).ok);
+});
+
 test("repricing keeps the agreed nightly rate and fees", () => {
   const r = repriceForNights({ nights: 3, nightly_price_cents: 10000, lodging_cents: 30000, discount_cents: 0, tax_cents: 2450, total_cents: 37450 }, 5);
   assert.deepEqual(r, { nights: 5, lodging_cents: 50000, discount_cents: 0, tax_cents: 3850, total_cents: 58850 });

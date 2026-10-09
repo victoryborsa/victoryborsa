@@ -15,6 +15,10 @@ import { FIELDS, guessMapping, parseCsv, toRecords, type Field, type Mapping } f
 import { applyPayoutRecords, type ImportSummary } from "@/lib/payout-apply.ts";
 import { logEvent } from "@/lib/log.ts";
 import { canUndo, getImport, putBackImport, undoImport } from "@/lib/import-undo.ts";
+import { EXTERNAL_NOTES_EDITABLE } from "@/lib/reservation-rules.ts";
+
+/** Reservations from other sites are read-only (see EXTERNAL_NOTES_EDITABLE): the server refuses changes even if a form is sent by hand. */
+const READ_ONLY = "Reservations from other sites are read-only on Sevgio. Make changes on the site it was booked on; imported payout files still update Finance.";
 
 type Row = { id: string; property_id: string; source: string; check_in: string; check_out: string; status: string; summary: string; channel: string };
 
@@ -59,6 +63,7 @@ export async function saveChannelResAction(_: ActionState, fd: FormData): Promis
   if (id) {
     const r = await manageable(u, id);
     if (!r) return { error: "You can't manage this reservation." };
+    if (!EXTERNAL_NOTES_EDITABLE) return { error: READ_ONLY };
     if (ref && await one("SELECT 1 FROM channel_reservations WHERE channel = $1 AND lower(external_ref) = lower($2) AND id <> $3", [r.channel, ref, id]))
       return { error: `Another ${channelLabel(r.channel)} reservation already has the code ${ref}.` };
     await q(
@@ -113,6 +118,7 @@ export async function saveStayDetailsAction(_: ActionState, fd: FormData): Promi
   const u = await requireUser(["host", "admin"]);
   const r = await manageable(u, str(fd, "id", 40));
   if (!r) return { error: "You can't manage this reservation." };
+  if (!EXTERNAL_NOTES_EDITABLE) return { error: READ_ONLY };
   const name = str(fd, "guest_name", 80).replace(/\s+/g, " ");
   if (name && !/\p{L}/u.test(name)) return { error: "Type the guest's name using letters." };
   const ref = str(fd, "ref", 40).toUpperCase().replace(/\s+/g, "");
@@ -134,41 +140,20 @@ export async function saveStayDetailsAction(_: ActionState, fd: FormData): Promi
   return { ok: "Saved. These details are kept when the calendars refresh." };
 }
 
-/** Marks a calendar period from another site as a reservation or as blocked dates (for sites like Booking.com that don't say). */
-export async function setKindAction(fd: FormData) {
+/**
+ * Reservations and calendar blocks from other sites are read-only: they are never reclassified, cancelled, reinstated or deleted on Sevgio.
+ * These used to be buttons; the server now refuses them and records the attempt, so an old page or a hand-made request changes nothing.
+ */
+async function refuse(fd: FormData, change: string) {
   const u = await requireUser(["host", "admin"]);
   const r = await manageable(u, str(fd, "id", 40));
-  const kind = str(fd, "kind");
-  if (r && ["reservation", "blocked"].includes(kind)) await q("UPDATE channel_reservations SET kind = $2, kind_locked = true, updated_at = now() WHERE id = $1", [r.id, kind]);
-  after(checkConflicts);
-  revalidatePath("/host/bookings/other-sites");
-  revalidatePath("/host/bookings");
+  if (r) await logEvent("warn", "Bookings", `Refused to ${change} a ${channelLabel(r.channel)} reservation: reservations from other sites are read-only`, { reservation: r.id }, u.id);
   const back = str(fd, "back", 300);
-  if (back.startsWith("/host/") || back.startsWith("/admin/")) redirect(back);
+  if (r && (back.startsWith("/host/") || back.startsWith("/admin/"))) redirect(back);
 }
-
-/** Cancels or reinstates a reservation entered by hand. Ones from calendar links follow the other site. */
-export async function setManualStatusAction(fd: FormData) {
-  const u = await requireUser(["host", "admin"]);
-  const r = await manageable(u, str(fd, "id", 40));
-  const status = str(fd, "status");
-  if (!r || r.source === "ical" || !["confirmed", "cancelled"].includes(status)) return;
-  await q("UPDATE channel_reservations SET status = $2, cancelled_at = CASE WHEN $2 = 'cancelled' THEN now() END, updated_at = now() WHERE id = $1", [r.id, status]);
-  await syncManualBlock({ ...r, status }, todayLocal());
-  after(checkConflicts);
-  revalidatePath(`/host/bookings/other-sites/${r.id}`);
-}
-
-export async function deleteChannelResAction(fd: FormData) {
-  const u = await requireUser(["host", "admin"]);
-  const r = await manageable(u, str(fd, "id", 40));
-  if (!r || r.source === "ical") return;
-  await q("DELETE FROM blocks WHERE source = $1", ["res:" + r.id]);
-  await q("DELETE FROM channel_reservations WHERE id = $1", [r.id]);
-  after(checkConflicts);
-  await logEvent("info", "Finance", `Deleted a ${channelLabel(r.channel)} reservation entered by hand (${r.check_in} to ${r.check_out})`, {}, u.id);
-  redirect("/host/bookings/other-sites?msg=resdeleted");
-}
+export async function setKindAction(fd: FormData) { await refuse(fd, "reclassify"); }
+export async function setManualStatusAction(fd: FormData) { await refuse(fd, "cancel or reinstate"); }
+export async function deleteChannelResAction(fd: FormData) { await refuse(fd, "delete"); }
 
 export type ImportState = {
   error?: string; ok?: string; step?: "preview" | "done"; text?: string; fileName?: string; headers?: string[]; mapping?: Mapping; sample?: string[][];

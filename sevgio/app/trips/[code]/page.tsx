@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth.ts";
 import { one } from "@/lib/db.ts";
+import { Icon } from "@/components/Icon.tsx";
 import { expireStaleRequests, unavailableNights, type Booking } from "@/lib/bookings.ts";
 import { EditResDates } from "@/components/EditResDates.tsx";
 import { addDays, fmtDate, todayLocal, fmtWhen } from "@/lib/dates.ts";
@@ -45,6 +46,8 @@ export default async function TripPage({ params, searchParams }: { params: Promi
   // Only the guest, the listing's host, or an admin may see a booking.
   if (!b || !(b.guest_id === u.id || b.host_id === u.id || u.role === "admin")) notFound();
   const settings = forListing(await getSettings(), b);
+  // Messages the other side wrote that this person hasn't opened yet.
+  const unread = (await one<{ n: number }>("SELECT count(*)::int AS n FROM booking_messages WHERE booking_id = $1 AND from_guest = $2 AND read_at IS NULL", [b.id, b.guest_id !== u.id]))?.n ?? 0;
   const confirmed = b.status === "confirmed";
   const today = todayLocal();
   const online = onlineMethods(settings);
@@ -178,6 +181,7 @@ export default async function TripPage({ params, searchParams }: { params: Promi
           <div style={{ borderRadius: "var(--r)", overflow: "hidden", aspectRatio: "4/3" }}>{b.cover_id ? <img src={photoUrl(b.cover_id, "thumb")} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div className="noph" />}</div>
           <PriceBreakdown b={b} />
           {b.security_deposit_cents > 0 && <p className="hint">Refundable security deposit: <b>{money(b.security_deposit_cents)}</b>, collected by your host and returned after check-out. It isn't part of the total above.</p>}
+          <p><Link className="btn btn-primary btn-sm" href={`/trips/${b.code}/messages`} data-testid="trip-messages"><Icon name="chats" /> {b.guest_id === u.id ? "Message your host" : "Message the guest"}{unread ? ` (${unread} new)` : ""}</Link></p>
           <p className="hint">Questions? <Link href="/contact">Contact us</Link> and include your reference {b.code}.</p>
           <p><Link className="btn btn-ghost btn-sm" href={`/trips/${b.code}/invoice`}>View or print invoice</Link></p>
         </aside>

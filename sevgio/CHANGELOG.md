@@ -2,6 +2,15 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-09 — Reservations list, read-only rules and guest messages
+
+- **Calendar → Reservations (now the first tab):** cards like the Booking.com app, grouped by date and then by property, each room named. Every card shows the guest, check-in and check-out, nights, guests, property and room, booking source, confirmation number, reservation status and payment status. Anything a site didn't send says "not provided by Airbnb" (or the site) instead of a guess.
+- **Today / Upcoming / History**, a date picker, **Arrival Date / Reservation Date** sorting and the property filter (All properties by default). **Today's reservations** shows today's arrivals, stays in progress and checkouts across every property; Upcoming (the default) leaves out finished stays; History keeps them. Today is Pittsburgh's date (America/New_York).
+- **Month on phones:** tapping a day opens that day's list with one card per reservation, so a tap can't open a neighbouring booking. Calendar items have unique ids across Sevgio bookings, other-site stays and blocks.
+- **Read-only rules (screens and server):** only unpaid Sevgio.com bookings can be edited (past ones included). Paid or partly paid bookings, reservations from Airbnb, Booking.com, Vrbo and other sites, and external calendar blocks are read-only; the server refuses edits, reclassifying, cancelling and deleting them. Payout file imports still update Finance.
+- **Guest messages:** each Sevgio booking has a conversation (`/trips/{reference}/messages`) for the guest, the host and admins, with an email notice for every message. The message icon on each card opens it, with an unread badge. Statuses: Sending, Sent (saved on Sevgio), Read (the other person opened it) and Failed. Email delivery is never claimed. Other sites' bookings show why messaging isn't available there.
+- Migration `045_booking_messages.sql` adds the `booking_messages` table.
+
 ## 2026-10-08 — Search engines, redirects and faster first screen
 
 - **robots.txt:** Google, Bing and ChatGPT search (OAI-SearchBot) may crawl every public page and the listing and guide photos (`/api/photos/`, `/api/site-photos/` were blocked before). `/host-terms` is no longer blocked by mistake (the old `Disallow: /host` matched it). Language-switch links (`/lang/…`) are not crawled. AI training crawlers (GPTBot, Google-Extended, CCBot and the rest) stay blocked.

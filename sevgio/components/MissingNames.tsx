@@ -20,10 +20,10 @@ export async function MissingNames({ propertyIds, today }: { propertyIds: string
       <Icon name="info" size={20} />
       <div>
         <h3 id="mn-h" className="mn-h">{total} upcoming reservation{total === 1 ? " has" : "s have"} no guest name</h3>
-        <p className="mn-p">{rows.map(r => `${r.n} from ${channelLabel(r.channel)}`).join(" · ")}. Airbnb, Booking.com and Vrbo calendar links never send guest names, so they have to come from the site&apos;s reservations download or be typed in.</p>
+        <p className="mn-p">{rows.map(r => `${r.n} from ${channelLabel(r.channel)}`).join(" · ")}. Airbnb, Booking.com and Vrbo calendar links never send guest names, so they have to come from the site&apos;s reservations download.</p>
         <div className="mn-actions">
           <Link className="btn btn-primary btn-sm" href="/host/finance/import">Import a reservations file</Link>
-          <span className="hint">Fills in every name at once (steps on that page). Or use <b>Add details</b> on a row to type one in.</span>
+          <span className="hint">Fills in every name at once (steps on that page). Reservations from other sites are read-only, so names aren&apos;t typed in by hand.</span>
         </div>
       </div>
     </aside>
