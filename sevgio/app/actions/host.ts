@@ -1,4 +1,5 @@
 "use server";
+import { editRule } from "@/lib/reservation-rules.ts";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { checkConflicts } from "@/lib/conflicts.ts";
@@ -529,6 +530,9 @@ export async function decideBookingAction(_: ActionState, fd: FormData): Promise
   }
   if (decision === "cancel") {
     if (note.length < 5) return { error: "Add a short reason for the guest. It's included in the cancellation email." };
+    // Paid (or partly paid, or processing) bookings are read-only: staff can't cancel them (same rule as editing).
+    const rule = editRule({ source: "direct", status: b.status, payment_status: b.payment_status, paid_cents: b.paid_cents, fixed_price: b.fixed_price });
+    if (!rule.editable) return { error: `This booking can't be cancelled here. ${rule.reason}` };
     const r = await setBookingStatus(b.id, ["pending", "awaiting_payment", "confirmed"], "cancelled", { cancelledBy: u.role === "admin" ? "admin" : "host", hostNote: note });
     if (!r) return { error: "This booking is already cancelled or finished." };
     after(checkConflicts);

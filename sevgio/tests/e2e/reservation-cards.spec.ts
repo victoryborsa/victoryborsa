@@ -120,9 +120,12 @@ test.describe.serial("reservations list", () => {
     await expect(page).toHaveURL(/\/admin\/bookings\/RVARR/);
     await expect(page.getByTestId("readonly-note")).toBeVisible();
     await expect(page.getByText("Edit reservation")).toHaveCount(0);
+    await expect(page.getByText("Cancel booking…")).toHaveCount(0); // paid: can't be cancelled either
     // Past but unpaid: still editable.
     await page.goto("/admin/bookings/RVPAST2");
     await expect(page.getByText("Edit reservation")).toBeVisible();
+    await page.goto("/admin/bookings/RVSTAY");
+    await expect(page.getByText("Cancel booking…")).toBeVisible(); // unpaid and current: can still be cancelled
     // The message icon opens that guest's conversation, not the details panel.
     await page.goto("/admin/calendar?view=list&scope=today");
     await card(page, "Arlo Arriving").getByTestId("res-msg").click();
