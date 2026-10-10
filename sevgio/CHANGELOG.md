@@ -2,6 +2,16 @@
 
 Changes to the Sevgio site, newest first. Nothing existing is removed or renamed.
 
+## 2026-10-10 — Friendlier, more polished look on every page
+
+- New `app/polish.css`, loaded after `globals.css`. Same black, gold and white and the same colour icons; nothing works differently.
+- Buttons, form fields and boxes have softer corners and gentle shadows; a field you click into gets a clear gold glow.
+- Notices with bold words read as one sentence (no more gaps around "Signed in as **you@email**.").
+- Host and admin dashboards: tidier number tiles (five fit on one row on big screens), and empty sections show a soft card with an icon.
+- Prices and amounts use the body font with even-width digits instead of the code font, and stay on one line in tables.
+- Phones: on Stays, check-in and check-out sit side by side so homes appear sooner.
+- Footer: clearer columns, links without underlines (underlined on hover). The header has a thin line under it.
+
 ## 2026-10-09 — Illustrated Pittsburgh panorama replaces the skyline photo
 
 - The skyline photo (UPMC tower and yellow bridges) is replaced by the illustrated panorama (Point fountain, downtown, yellow bridges, red incline car) everywhere it appeared: the Corporate Housing banner and the background of Sign in, Sign up, Contact, Verify email, Forgot password and Reset password.
