@@ -56,10 +56,11 @@ export default async function AdminReservation({ params, searchParams }: { param
   const self = `/admin/bookings/${b.code}${sp.back ? `?back=${encodeURIComponent(back)}` : ""}`;
   const canPay = ["awaiting_payment", "confirmed"].includes(b.status) && b.paid_cents < b.total_cents && b.payment_status !== "processing"
     && !(b.status === "awaiting_payment" && (b.payment_method === "card" || b.payment_method === "ach"));
-  const canCancel = ["awaiting_payment", "confirmed"].includes(b.status) && b.check_out >= today;
   // Only unpaid Sevgio.com bookings can be edited (past ones too); paid ones are read-only. The server checks the same rule.
   const rule = editRule({ source: "direct", status: b.status, payment_status: b.payment_status, paid_cents: b.paid_cents, fixed_price: b.fixed_price });
   const canEdit = rule.editable;
+  // Paid bookings are read-only, so they can't be cancelled here either (the server refuses it too).
+  const canCancel = ["awaiting_payment", "confirmed"].includes(b.status) && b.check_out >= today && rule.editable;
   const canSendPayLink = !b.fixed_price && canPayBalance(b) && onlineMethods(await getSettings()).length > 0;
   const canSendRequest = b.fixed_price && canPayBalance(b);
   const canRefund = ["cancelled", "declined", "expired"].includes(b.status) && b.paid_cents > 0 && b.payment_status !== "refunded";
