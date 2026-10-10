@@ -1,0 +1,151 @@
+[
+  {
+    "listing_kind": "home",
+    "property_type": "apartment",
+    "title": "Charming Tudor-Style Cottage – 3 Bedroom Apt",
+    "city": "Pittsburgh",
+    "area": "Wilkinsburg",
+    "address": "1316 Penn Avenue, Pittsburgh, PA 15221",
+    "description": "Enjoy a comfortable Pittsburgh stay in this three-bedroom apartment with space for up to six guests. Historic character, inviting furnishings and practical amenities make it a welcoming home base for vacations, work trips and longer stays.\n\nThe apartment offers a fully equipped kitchen, Wi-Fi, a dedicated workspace, a TV, air conditioning, heating, and a washer and dryer. Bed linens, towels, extra pillows and blankets are provided.\n\nPrepare meals with the cookware and kitchen appliances, gather around the dining table, or relax after a day of exploring Pittsburgh. Free parking is available on the premises and on the street.\n\nYou have a private entrance and easy self check-in with a keypad. Pets and longer stays are welcome. Please note: stairs are required to reach the apartment.",
+    "max_guests": 6,
+    "base_occupancy": 6,
+    "bedrooms": 3,
+    "bathrooms": 1,
+    "half_bathrooms": 0,
+    "bathroom_type": "private",
+    "kitchen_access": "private",
+    "laundry_access": "private",
+    "stairs_info": "Stairs are required to reach the apartment. The entrance is at the top of the stairs.",
+    "beds": [
+      {
+        "kind": "bed",
+        "size": "queen",
+        "count": 1
+      },
+      {
+        "kind": "bed",
+        "size": "",
+        "count": 2
+      }
+    ],
+    "rooms": [
+      {
+        "name": "Bedroom 1",
+        "beds": [
+          {
+            "kind": "bed",
+            "size": "queen",
+            "count": 1
+          }
+        ],
+        "note": "Blackout curtains"
+      },
+      {
+        "name": "Bedroom 2",
+        "beds": [
+          {
+            "kind": "bed",
+            "size": "",
+            "count": 1
+          }
+        ],
+        "note": ""
+      },
+      {
+        "name": "Bedroom 3",
+        "beds": [
+          {
+            "kind": "bed",
+            "size": "",
+            "count": 1
+          }
+        ],
+        "note": ""
+      }
+    ],
+    "nightly_price": 125,
+    "cleaning_fee": 0,
+    "min_nights": 1,
+    "max_nights": 365,
+    "booking_mode": "instant",
+    "cancellation_policy": "moderate",
+    "check_in_time": "3:00 pm",
+    "check_out_time": "12:00 pm",
+    "children_free_age": 2,
+    "arrival_instructions": "Self check-in with the keypad at the private entrance. Please leave your shoes at the entrance at the top of the stairs.",
+    "has_exterior_cameras": false,
+    "amenities": [
+      "bathtub",
+      "shampoo",
+      "conditioner",
+      "body_wash",
+      "hand_soap",
+      "hot_water",
+      "towels",
+      "toilet_paper",
+      "washer",
+      "dryer",
+      "hangers",
+      "linens",
+      "pillows",
+      "blankets",
+      "iron",
+      "storage",
+      "tv",
+      "crib",
+      "kids_dinnerware",
+      "ac",
+      "ceiling_fan",
+      "portable_fan",
+      "heating",
+      "smoke_alarm",
+      "co_alarm",
+      "first_aid",
+      "wifi",
+      "workspace",
+      "desk",
+      "desk_chair",
+      "kitchen",
+      "fridge",
+      "microwave",
+      "cookware",
+      "utensils",
+      "dishes",
+      "silverware",
+      "freezer",
+      "dishwasher",
+      "stove",
+      "oven",
+      "kettle",
+      "coffee_maker",
+      "wine_glasses",
+      "toaster",
+      "dining_table",
+      "private_entrance",
+      "backyard",
+      "parking",
+      "free_street",
+      "pets",
+      "long_term",
+      "selfcheckin",
+      "keypad",
+      "cleaning_during"
+    ],
+    "house_rules": [
+      "Maximum occupancy: 6 guests.",
+      "Check-in is after 3:00 pm.",
+      "Checkout is before 12:00 pm.",
+      "Self check-in is available with a keypad.",
+      "Pets are allowed.",
+      "Quiet hours are from 7:00 pm to 6:00 am.",
+      "No parties or events.",
+      "No smoking.",
+      "Commercial photography is allowed.",
+      "This is a shoe-free apartment. Please leave your shoes at the entrance at the top of the stairs.",
+      "Please keep the apartment clean and tidy. Our cleaning team handles used bedding and general cleaning after checkout.",
+      "Checkout: place used towels in the hampers provided or on the bathroom floor.",
+      "Checkout: turn off the lights, air conditioning, fans, stove and other appliances. Leave the refrigerator on.",
+      "Checkout: don't lock the main door from the inside when you leave. The keypad lock locks by itself after 15 seconds."
+    ]
+  }
+]
