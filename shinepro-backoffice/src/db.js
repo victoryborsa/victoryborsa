@@ -218,6 +218,21 @@ CREATE TABLE IF NOT EXISTS job_reports (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Other website forms (event quotes, job applications, gift card orders, referrals, local area quotes).
+CREATE TABLE IF NOT EXISTS form_submissions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  form TEXT NOT NULL,               -- the form's name as the website sends it, e.g. "Careers", "Gift card"
+  name TEXT,
+  email TEXT,
+  phone TEXT,
+  preferred_contact TEXT,
+  fields TEXT NOT NULL DEFAULT '{}', -- JSON {field name: text}
+  request_id TEXT,
+  read_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_forms_request ON form_submissions(request_id) WHERE request_id IS NOT NULL;
 `;
 
 // Columns added after the first release. SQLite has no "ADD COLUMN IF NOT EXISTS", so check first.
@@ -227,6 +242,33 @@ function migrate(db) {
     db.exec('ALTER TABLE jobs ADD COLUMN property_id INTEGER REFERENCES properties(id) ON DELETE SET NULL');
   }
   db.exec('CREATE INDEX IF NOT EXISTS idx_jobs_customer ON jobs(customer_id); CREATE INDEX IF NOT EXISTS idx_jobs_property ON jobs(property_id);');
+
+  const add = (table, col, type) => { if (!has(table, col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`); };
+  // Estimates are always priced by the server from public/pricing.js and stored itemized.
+  add('leads', 'addons', 'TEXT');                // comma list of add-on ids, e.g. "fridge,oven"
+  add('leads', 'organizing_hours', 'REAL');
+  add('leads', 'preferred_contact', 'TEXT');     // phone | email | text
+  add('leads', 'request_id', 'TEXT');
+  add('leads', 'preferred_time', 'TEXT');
+  add('leads', 'referred_by', 'TEXT');
+  add('leads', 'gift_code', 'TEXT');            // sent by the website so a double submit is saved once
+  add('leads', 'price_lines', 'TEXT');           // JSON [{kind, label, amount}] incl. the "Travel Fee — $20" line
+  add('leads', 'price_subtotal', 'REAL');
+  add('leads', 'price_discount', 'REAL');
+  add('leads', 'travel_fee', 'REAL');            // estimated_price is the total (travel fee included)
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_request ON leads(request_id) WHERE request_id IS NOT NULL');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at)');
+  add('customers', 'marketing_opt_in_at', 'TEXT');
+  // A booking made from a lead keeps the lead's itemized estimate (same JSON shape as below).
+  add('jobs', 'price_breakdown', 'TEXT');        // JSON {lines, subtotal, discount, travel_fee, total}
+  // Invoice line items: JSON [{description, amount, kind}]. amount is always the sum of the items.
+  add('invoices', 'items', 'TEXT');
+  // Delivery log: what was sent (so a failed one can be retried) and how many tries it took.
+  add('notifications', 'payload', 'TEXT');
+  add('notifications', 'attempts', 'INTEGER NOT NULL DEFAULT 1');
+  add('notifications', 'form_id', 'INTEGER');
+  add('notifications', 'updated_at', 'TEXT');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_notifications_lead ON notifications(lead_id)');
 }
 
 function openDb(file) {

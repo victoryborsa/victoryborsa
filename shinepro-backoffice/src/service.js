@@ -1,8 +1,78 @@
-const { estimatePrice, PRICING } = require('../public/pricing');
+const { quote, PRICING } = require('../public/pricing');
 const { normalizePhone, normalizeEmail, formatPhone, str, num, bool, HttpError } = require('./util');
 
 const LEAD_STATUSES = ['new', 'contacted', 'quoted', 'booked', 'lost'];
 const JOB_STATUSES = ['scheduled', 'completed', 'cancelled'];
+const CONTACT_METHODS = ['phone', 'email', 'text'];
+const DUPLICATE_WINDOW = '-2 minutes';
+const ADDON_IDS = PRICING.addons.map((a) => a.id);
+
+// ---------- pricing (public/pricing.js is the only price list) ----------
+const squash = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+// Accepts an id ("deep") or its label ("Deep Cleaning"). Returns the id, or null if unknown.
+function resolveKey(table, raw) {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const v = String(raw).trim();
+  if (Object.prototype.hasOwnProperty.call(table, v)) return v;
+  const n = squash(v);
+  return Object.keys(table).find((k) => squash(k) === n || squash(table[k].label) === n) || null;
+}
+function parseAddons(raw) {
+  const list = Array.isArray(raw) ? raw : String(raw ?? '').split(',');
+  return [...new Set(list.map((x) => String(x).trim().toLowerCase()).filter((id) => ADDON_IDS.includes(id)))];
+}
+const clampHours = (h) => Math.max(1, Math.min(8, Math.round(Number(h) || 1)));
+const present = (v) => v !== undefined && v !== null && v !== '';
+
+// Turns what the browser sent into stored fields plus the server's own quote.
+// Any price the browser sends (estimated_price, estimated_total) is ignored.
+function priceRequest(body) {
+  const rawService = present(body.service) ? body.service : body.service_type;
+  const serviceId = resolveKey(PRICING.services, rawService);
+  const rawSize = present(body.size) ? body.size : body.bedrooms;
+  const parsedSize = present(rawSize) ? parseInt(String(rawSize), 10) : NaN;
+  const size = Number.isFinite(parsedSize) ? Math.max(1, Math.min(5, parsedSize)) : null;
+  const frequency = resolveKey(PRICING.frequency, body.frequency);
+  const addons = parseAddons(body.addons);
+  const rawHours = present(body.organizing_hours) ? body.organizing_hours : body.organizingHours;
+  const organizing_hours = addons.includes('organizing') ? clampHours(rawHours) : null;
+  const q = serviceId ? quote({ service: serviceId, size: size == null ? undefined : String(size), frequency, addons, organizingHours: organizing_hours }) : null;
+  return {
+    service_type: serviceId || str(rawService, 60), // an unknown service is kept as text, with no price
+    frequency: frequency || str(body.frequency, 40),
+    bedrooms: size,
+    addons,
+    organizing_hours,
+    quote: q,
+  };
+}
+
+// The stored itemized estimate. Quote-only services keep the travel fee line and a null total.
+function breakdownOf(q) {
+  if (!q) return null;
+  return { lines: q.lines, subtotal: q.subtotal, discount: q.discount, travel_fee: q.travelFee, total: q.total, quote_only: Boolean(q.quoteOnly) };
+}
+function leadBreakdown(lead) {
+  if (!lead || !lead.price_lines) return null;
+  let lines;
+  try { lines = JSON.parse(lead.price_lines); } catch { return null; }
+  return {
+    lines, subtotal: lead.price_subtotal, discount: lead.price_discount || 0, travel_fee: lead.travel_fee,
+    total: lead.estimated_price, quote_only: lead.estimated_price == null,
+  };
+}
+// The pricing.js quote() for a stored lead (used to answer a repeated submission).
+function quoteForLead(lead) {
+  if (!lead || !PRICING.services[lead.service_type]) return null;
+  return quote({
+    service: lead.service_type, size: lead.bedrooms == null ? undefined : String(lead.bedrooms), frequency: lead.frequency,
+    addons: lead.addons || '', organizingHours: lead.organizing_hours,
+  });
+}
+function validRequestId(v) {
+  const id = str(v, 100);
+  return id && /^[A-Za-z0-9_.:-]{6,100}$/.test(id) ? id : null;
+}
 
 function createService({ db, notifier, config }) {
   const q = (sql) => db.prepare(sql);
@@ -77,62 +147,124 @@ function createService({ db, notifier, config }) {
     return l;
   }
 
-  // Saves a quote request. The customer record is created/updated first so
-  // contact info is never lost, even if alerts fail afterwards.
-  function createLead(body, source = 'website') {
+  // Contact details shared by every public form. preferred_contact must match a channel they gave us.
+  function contactInput(body, { nameRequired = true } = {}) {
     const name = str(body.name, 120);
     const email = body.email ? normalizeEmail(body.email) : null;
     const phone = body.phone ? normalizePhone(body.phone) : null;
-    if (!name) throw new HttpError(400, 'Please enter your name');
+    if (nameRequired && !name) throw new HttpError(400, 'Please enter your name');
     if (body.email && !email) throw new HttpError(400, 'Please enter a valid email address');
     if (body.phone && !phone) throw new HttpError(400, 'Please enter a valid phone number');
     if (!email && !phone) throw new HttpError(400, 'Please enter a phone number or email so we can reach you');
+    let preferred_contact = null;
+    if (body.preferred_contact) {
+      preferred_contact = String(body.preferred_contact).trim().toLowerCase();
+      if (!CONTACT_METHODS.includes(preferred_contact)) throw new HttpError(400, 'Preferred contact must be phone, text or email');
+      if (preferred_contact === 'email' && !email) throw new HttpError(400, 'Please enter your email address so we can email you');
+      if (preferred_contact !== 'email' && !phone) throw new HttpError(400, 'Please enter your phone number so we can call or text you');
+    }
+    return { name, email, phone, preferred_contact };
+  }
 
-    // With the website's own prices ('site'), keep whatever service/frequency names the site's form sends.
-    const sitePrices = config.priceSource === 'site';
-    const service_type = PRICING.services[body.service_type] ? body.service_type : sitePrices ? str(body.service_type, 60) : null;
-    const frequency = PRICING.frequency[body.frequency] ? body.frequency : sitePrices ? str(body.frequency, 40) : null;
+  // Creates or updates the client record for a contact. Marketing is only ever turned ON here,
+  // and only when the person ticked the separate marketing box (or signed up for the newsletter).
+  function upsertCustomer({ name, email, phone, address = null, zip = null, marketing = 0 }, source) {
+    const customer = findCustomerByContact(email, phone);
+    if (customer) {
+      q(`UPDATE customers SET email = COALESCE(email, ?), phone = COALESCE(phone, ?), address = COALESCE(address, ?),
+         zip = COALESCE(zip, ?),
+         marketing_opt_in_at = CASE WHEN ? = 1 AND marketing_opt_in = 0 THEN datetime('now') ELSE marketing_opt_in_at END,
+         marketing_opt_in = MAX(marketing_opt_in, ?), updated_at = datetime('now') WHERE id = ?`)
+        .run(email, phone, address, zip, marketing, marketing, customer.id);
+      return customer.id;
+    }
+    return Number(q(`INSERT INTO customers (name, email, phone, address, zip, marketing_opt_in, marketing_opt_in_at, source)
+                     VALUES (?, ?, ?, ?, ?, ?, ${marketing ? "datetime('now')" : 'NULL'}, ?)`)
+      .run(name || email || phone, email, phone, address, zip, marketing, source).lastInsertRowid);
+  }
+
+  // An earlier copy of the same submission: the same request_id, or (when checkWindow) the same
+  // email/phone asking for the same service from the same form within the last 2 minutes.
+  function findDuplicateLead({ request_id, email, phone, service_type, source, checkWindow }) {
+    if (request_id) {
+      const same = q('SELECT * FROM leads WHERE request_id = ?').get(request_id);
+      if (same) return same;
+    }
+    if (!checkWindow || (!email && !phone)) return null;
+    return q(`SELECT * FROM leads WHERE source = ? AND service_type IS ? AND created_at >= datetime('now', '${DUPLICATE_WINDOW}')
+              AND ((? IS NOT NULL AND email = ?) OR (? IS NOT NULL AND phone = ?)) ORDER BY id LIMIT 1`)
+      .get(source, service_type, email, email, phone, phone) || null;
+  }
+
+  // Saves a quote request. The customer record is created/updated first so
+  // contact info is never lost, even if alerts fail afterwards.
+  // The price is ALWAYS recalculated here from public/pricing.js.
+  function createLead(body, source = 'website', opts = {}) {
+    return submitLead(body, source, opts).lead;
+  }
+
+  // Like createLead, but also says whether it repeated an earlier submission: { lead, duplicate, quote }.
+  // opts.dedupe: also treat the same contact + service within 2 minutes as a repeat (public forms).
+  // opts.priced = false: store service_type as plain text without pricing (the contact form's "interest").
+  function submitLead(body, source = 'website', { dedupe = false, priced = true } = {}) {
+    const contact = contactInput(body);
+    const request_id = validRequestId(body.request_id);
+    const p = priced ? priceRequest(body)
+      : { service_type: str(body.service_type, 60), frequency: null, bedrooms: null, addons: [], organizing_hours: null, quote: null };
+    const bd = breakdownOf(p.quote);
     const lead = {
-      name, email, phone,
+      ...contact,
       address: str(body.address, 250),
       zip: str(body.zip, 12),
-      service_type,
-      bedrooms: num(body.bedrooms),
+      service_type: p.service_type,
+      bedrooms: p.bedrooms,
       bathrooms: num(body.bathrooms),
       sqft: num(body.sqft),
-      frequency,
+      frequency: p.frequency,
+      addons: p.addons.length ? p.addons.join(',') : null,
+      organizing_hours: p.organizing_hours,
       preferred_date: str(body.preferred_date, 40),
+      preferred_time: str(body.preferred_time, 40),
+      referred_by: str(body.referred_by, 120),
+      gift_code: str(body.gift_code, 60),
       message: str(body.message, 5000),
       marketing_opt_in: bool(body.marketing_opt_in) ? 1 : 0,
+      estimated_price: bd ? bd.total : null,
+      price_lines: bd ? JSON.stringify(bd.lines) : null,
+      price_subtotal: bd ? bd.subtotal : null,
+      price_discount: bd ? bd.discount : null,
+      travel_fee: bd ? bd.travel_fee : null,
     };
-    const sentPrice = num(body.estimated_price);
-    lead.estimated_price = sitePrices
-      ? (sentPrice != null && sentPrice >= 0 && sentPrice < 100000 ? Math.round(sentPrice * 100) / 100 : null)
-      : (PRICING.services[service_type] ? estimatePrice(lead) : sentPrice);
+    const dup = findDuplicateLead({ request_id, email: lead.email, phone: lead.phone, service_type: lead.service_type, source, checkWindow: dedupe });
+    if (dup) return { lead: dup, duplicate: true, quote: quoteForLead(dup) };
 
     db.exec('BEGIN');
     try {
-      let customer = findCustomerByContact(email, phone);
-      if (customer) {
-        q(`UPDATE customers SET email = COALESCE(email, ?), phone = COALESCE(phone, ?), address = COALESCE(address, ?),
-           zip = COALESCE(zip, ?), marketing_opt_in = MAX(marketing_opt_in, ?), updated_at = datetime('now') WHERE id = ?`)
-          .run(email, phone, lead.address, lead.zip, lead.marketing_opt_in, customer.id);
-      } else {
-        customer = { id: q(`INSERT INTO customers (name, email, phone, address, zip, marketing_opt_in, source)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)`)
-          .run(name, email, phone, lead.address, lead.zip, lead.marketing_opt_in, source).lastInsertRowid };
-      }
-      const r = q(`INSERT INTO leads (customer_id, name, email, phone, address, zip, service_type, bedrooms, bathrooms, sqft,
-                   frequency, preferred_date, estimated_price, message, marketing_opt_in, source)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(customer.id, name, email, phone, lead.address, lead.zip, service_type, lead.bedrooms, lead.bathrooms,
-          lead.sqft, frequency, lead.preferred_date, lead.estimated_price, lead.message, lead.marketing_opt_in, source);
+      const customerId = upsertCustomer({ name: lead.name, email: lead.email, phone: lead.phone, address: lead.address, zip: lead.zip, marketing: lead.marketing_opt_in }, source);
+      const cols = ['customer_id', 'name', 'email', 'phone', 'address', 'zip', 'service_type', 'bedrooms', 'bathrooms', 'sqft', 'frequency',
+        'addons', 'organizing_hours', 'preferred_contact', 'preferred_date', 'preferred_time', 'referred_by', 'gift_code', 'estimated_price',
+        'price_lines', 'price_subtotal', 'price_discount', 'travel_fee', 'message', 'marketing_opt_in', 'source', 'request_id'];
+      const row = { ...lead, customer_id: customerId, source, request_id };
+      const r = q(`INSERT INTO leads (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...cols.map((c) => row[c] ?? null));
       db.exec('COMMIT');
-      return getLead(r.lastInsertRowid);
+      return { lead: getLead(r.lastInsertRowid), duplicate: false, quote: p.quote };
     } catch (err) {
       db.exec('ROLLBACK');
       throw err;
     }
+  }
+
+  // Newsletter sign-up: besides the separate marketing checkbox, the only way someone is opted into marketing.
+  function subscribe(body, source = 'newsletter') {
+    const email = body.email ? normalizeEmail(body.email) : null;
+    if (!email) throw new HttpError(400, 'Please enter a valid email address');
+    if (!(body.consent === true || body.consent === 'true' || body.consent === 'on')) {
+      throw new HttpError(400, 'Please tick the box to agree to receive emails from us');
+    }
+    const existing = q('SELECT * FROM customers WHERE email = ? ORDER BY id LIMIT 1').get(email);
+    const already = Boolean(existing && existing.marketing_opt_in);
+    const id = upsertCustomer({ name: str(body.name, 120), email, phone: null, marketing: 1 }, source);
+    return { customer: getCustomer(id), duplicate: already };
   }
 
   function updateLead(id, body) {
@@ -205,7 +337,7 @@ function createService({ db, notifier, config }) {
     if (!to) throw new HttpError(400, `This contact has no ${channel === 'email' ? 'email address' : 'phone number'}`);
     const subj = channel === 'email' ? (str(subject, 200) || `Your ${config.businessName} quote`) : null;
     const result = await notifier.deliver({
-      kind: 'admin_reply', channel, to, leadId,
+      kind: 'admin_reply', channel, to, leadId, retry: false,
       payload: channel === 'email' ? { subject: subj, text } : { body: text },
     });
     const r = insert.run(leadId, cid, 'out', channel, subj, text, result.status, result.error || null);
@@ -292,6 +424,7 @@ function createService({ db, notifier, config }) {
                        WHERE a.job_id = ? ORDER BY e.name`).all(job.id);
     job.customer = q('SELECT id, name, phone, email, address FROM customers WHERE id = ?').get(job.customer_id) || null;
     job.property = job.property_id ? q('SELECT id, name, address FROM properties WHERE id = ?').get(job.property_id) || null : null;
+    if (typeof job.price_breakdown === 'string') { try { job.price_breakdown = JSON.parse(job.price_breakdown); } catch { job.price_breakdown = null; } }
     return job;
   }
 
@@ -355,18 +488,50 @@ function createService({ db, notifier, config }) {
     return employeeIds.filter((id) => !before.includes(id));
   }
 
+  // Cleaners who already have another scheduled job overlapping this time. A warning, never a block.
+  const toMinutes = (local) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local || '');
+    return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) / 60000 : null;
+  };
+  function findConflicts({ employee_ids = [], scheduled_at, duration_hours = 3, exclude_job_id = null }) {
+    const start = toMinutes(scheduled_at);
+    if (start == null) return [];
+    const end = start + (Number(duration_hours) || 3) * 60;
+    const day = scheduled_at.slice(0, 10);
+    const rows = q(`SELECT j.id, j.scheduled_at, j.duration_hours, j.address, j.service_type, e.id AS employee_id, e.name AS employee_name,
+                    c.name AS customer_name
+                    FROM job_assignments a JOIN jobs j ON j.id = a.job_id JOIN employees e ON e.id = a.employee_id
+                    LEFT JOIN customers c ON c.id = j.customer_id
+                    WHERE j.status = 'scheduled' AND j.id IS NOT ? AND a.employee_id IN (${employee_ids.map(() => '?').join(',') || 'NULL'})
+                    AND substr(j.scheduled_at, 1, 10) BETWEEN date(?, '-1 day') AND date(?, '+1 day')`)
+      .all(exclude_job_id, ...employee_ids.map(Number), day, day);
+    return rows.filter((r) => {
+      const s = toMinutes(r.scheduled_at);
+      return s != null && s < end && start < s + (Number(r.duration_hours) || 3) * 60;
+    }).map((r) => ({
+      employee_id: r.employee_id, employee_name: r.employee_name, job_id: r.id, scheduled_at: r.scheduled_at, duration_hours: r.duration_hours,
+      message: `${r.employee_name} already has a job at ${r.scheduled_at.replace('T', ' ')} (${r.duration_hours} h${r.customer_name ? `, ${r.customer_name}` : ''}).`,
+    }));
+  }
+
   async function createJob(body) {
     const d = jobInput(body);
     const cust = getCustomer(d.customer_id);
     const prop = d.property_id ? q('SELECT address FROM properties WHERE id = ?').get(d.property_id) : null;
-    const r = q(`INSERT INTO jobs (customer_id, lead_id, property_id, scheduled_at, duration_hours, address, service_type, price, status, notes)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    // Booking from a lead carries its estimate: price, service and the itemized breakdown.
+    const lead = d.lead_id ? getLead(d.lead_id) : null;
+    const breakdown = leadBreakdown(lead);
+    const price = d.price != null ? d.price : lead ? lead.estimated_price : null;
+    const service = d.service_type || (lead && lead.service_type ? (PRICING.services[lead.service_type] ? PRICING.services[lead.service_type].label : lead.service_type) : null);
+    const r = q(`INSERT INTO jobs (customer_id, lead_id, property_id, scheduled_at, duration_hours, address, service_type, price, status, notes, price_breakdown)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(d.customer_id, d.lead_id, d.property_id, d.scheduled_at, d.duration_hours, d.address || (prop && prop.address) || cust.address,
-        d.service_type, d.price, d.status, d.notes);
+        service, price, d.status, d.notes, breakdown ? JSON.stringify(breakdown) : null);
     const id = r.lastInsertRowid;
     const added = saveAssignments(id, d.employee_ids);
     if (d.lead_id) q(`UPDATE leads SET status = 'booked', updated_at = datetime('now') WHERE id = ?`).run(d.lead_id);
     const job = getJob(id);
+    job.warnings = findConflicts({ employee_ids: d.employee_ids, scheduled_at: d.scheduled_at, duration_hours: d.duration_hours, exclude_job_id: id });
     if (body.notify_employees !== false && added.length) job.notifications = await notifyAssigned(job, added);
     return job;
   }
@@ -379,6 +544,9 @@ function createService({ db, notifier, config }) {
       .run(d.customer_id, d.lead_id, d.property_id, d.scheduled_at, d.duration_hours, d.address, d.service_type, d.price, d.status, d.notes, id);
     const added = saveAssignments(id, d.employee_ids);
     const job = getJob(id);
+    job.warnings = d.status === 'scheduled'
+      ? findConflicts({ employee_ids: d.employee_ids, scheduled_at: d.scheduled_at, duration_hours: d.duration_hours, exclude_job_id: Number(id) })
+      : [];
     if (body.notify_employees !== false && added.length) job.notifications = await notifyAssigned(job, added);
     return job;
   }
@@ -411,7 +579,7 @@ function createService({ db, notifier, config }) {
       unread_replies: one(`SELECT COUNT(*) FROM messages m WHERE direction = 'in' AND created_at >= datetime('now', '-7 days')`),
       pending_requests: one(`SELECT COUNT(*) FROM portal_requests WHERE status = 'pending'`),
       open_invoices: one(`SELECT COUNT(*) FROM invoices WHERE status = 'sent'`),
-      failed_alerts: one(`SELECT COUNT(*) FROM notifications WHERE status IN ('failed', 'skipped') AND kind = 'new_lead' AND created_at >= datetime('now', '-7 days')`),
+      failed_alerts: one(`SELECT COUNT(*) FROM notifications WHERE status IN ('failed', 'skipped') AND kind IN ('new_lead', 'contact_message', 'website_form') AND created_at >= datetime('now', '-7 days')`),
       alerts: {
         email_configured: notifier.senders.emailEnabled,
         sms_configured: notifier.senders.smsEnabled,
@@ -425,10 +593,10 @@ function createService({ db, notifier, config }) {
   return {
     LEAD_STATUSES, JOB_STATUSES,
     createCustomer, updateCustomer, getCustomer, listCustomers,
-    createLead, updateLead, getLead, listLeads,
+    createLead, submitLead, subscribe, contactInput, updateLead, getLead, listLeads, leadBreakdown, quoteForLead,
     sendMessage, listMessages, recordInboundSms,
     createEmployee, updateEmployee, getEmployee, listEmployees,
-    createJob, updateJob, getJob, listJobs, notifyAssigned,
+    createJob, updateJob, getJob, listJobs, notifyAssigned, findConflicts,
     stats,
   };
 }

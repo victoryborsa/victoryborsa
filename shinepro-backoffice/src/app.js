@@ -10,8 +10,9 @@ const { createAi } = require('./ai');
 const { createPhoneVerifier } = require('./firebase');
 const { createAccounts } = require('./accounts');
 const { createPortal } = require('./portal');
+const { createWebsite } = require('./website');
 const { PRICING } = require('../public/pricing');
-const { HttpError, formatPhone, normalizeEmail } = require('./util');
+const { HttpError, formatPhone, normalizeEmail, escapeHtml } = require('./util');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -51,6 +52,7 @@ function createApp({
   const auth = createAuth(config);
   const accounts = createAccounts({ db, config, notifier });
   const portal = createPortal({ db, config, svc, notifier, accounts });
+  const website = createWebsite({ db, svc, notifier });
 
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
@@ -74,9 +76,11 @@ function createApp({
   app.get('/health', (req, res) => res.json({ ok: true }));
   app.get('/robots.txt', (req, res) => res.type('text/plain').send('User-agent: *\nDisallow: /\n'));
 
+  // The website (SITE_ORIGINS) and any extra origins in ALLOWED_ORIGINS may call the public endpoints.
+  const origins = new Set([...config.siteOrigins, ...config.allowedOrigins]);
   const cors = (req, res, next) => {
     const origin = req.get('Origin');
-    if (origin && (config.allowedOrigins.includes(origin) || config.allowedOrigins.includes('*'))) {
+    if (origin && (origins.has(origin) || origins.has('*'))) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -92,20 +96,28 @@ function createApp({
     const body = req.body || {};
     const wantsHtml = !req.is('application/json') && (req.get('Accept') || '').includes('text/html');
     // Honeypot: real people never fill the hidden "company_website" field.
-    if (body.company_website) return wantsHtml ? res.redirect(303, '/thanks.html') : res.json({ ok: true });
+    if (body.company_website) return wantsHtml ? res.redirect(303, '/thanks.html') : res.json({ ok: true, duplicate: false });
 
-    let lead;
+    let result;
     try {
-      lead = svc.createLead(body, body.source === 'embed' ? 'website-embed' : 'website');
+      // The server prices the request itself from public/pricing.js; any price sent by the browser is ignored.
+      result = svc.submitLead(body, body.source === 'embed' ? 'website-embed' : 'website', { dedupe: true });
     } catch (err) {
-      if (wantsHtml && err.status === 400) return res.status(400).send(`<p>${err.message}. <a href="javascript:history.back()">Go back</a></p>`);
+      if (wantsHtml && err.status === 400) return res.status(400).send(`<p>${escapeHtml(err.message)}. <a href="javascript:history.back()">Go back</a></p>`);
       throw err;
     }
+    const { lead, duplicate, quote } = result;
     // Lead is safely saved. Alerts go out in the background so the visitor isn't kept waiting.
-    notifier.newLead(lead).catch((err) => console.error('[lead] alert error', err));
+    // A repeated submission (same request_id, or same contact + service within 2 minutes) sends nothing new.
+    if (!duplicate) notifier.newLead(lead).catch((err) => console.error('[lead] alert error', err));
     if (wantsHtml) return res.redirect(303, `/thanks.html?price=${lead.estimated_price ?? ''}`);
-    res.status(201).json({ ok: true, id: lead.id, estimated_price: lead.estimated_price });
+    res.status(duplicate ? 200 : 201).json({
+      ok: true, id: lead.id, lead_id: lead.id, duplicate, estimated_price: lead.estimated_price, quote, breakdown: svc.leadBreakdown(lead),
+    });
   }));
+
+  // Contact form, newsletter and the other website forms.
+  website.mountPublic(app, { cors, rateLimit, h });
 
   // Twilio "A message comes in" webhook: customers texting back land in the admin.
   app.post('/api/twilio/sms', h(async (req, res) => {
@@ -133,19 +145,27 @@ function createApp({
   admin.use(auth.requireAdmin);
   const id = (req) => Number(req.params.id);
 
-  admin.get('/stats', (req, res) => res.json(svc.stats()));
+  admin.get('/stats', (req, res) => res.json({ ...svc.stats(), unread_forms: website.unreadCount() }));
   admin.get('/meta', (req, res) => res.json({
     pricing: PRICING, leadStatuses: svc.LEAD_STATUSES, jobStatuses: svc.JOB_STATUSES, invoiceStatuses: portal.INVOICE_STATUSES,
     smsConfigured: notifier.senders.smsEnabled, googleVoiceNumber: config.googleVoiceNumber,
     chat: { aiEnabled: Boolean(ai), verification: config.chatVerification, phoneVerification: config.chatVerification === 'codes' && config.requirePhoneVerification, phoneVerificationReady: Boolean(verifyPhoneToken) },
   }));
+  const logColumns = 'id, kind, channel, recipient, status, error, lead_id, form_id, attempts, created_at, updated_at';
   admin.get('/notifications', (req, res) => res.json(
-    db.prepare('SELECT * FROM notifications ORDER BY id DESC LIMIT 200').all()
+    db.prepare(`SELECT ${logColumns} FROM notifications ${req.query.status === 'failed' ? "WHERE status IN ('failed', 'skipped')" : ''} ORDER BY id DESC LIMIT 200`).all()
   ));
+  // Resend a failed (or skipped) email/text once more. A sent one is never sent again.
+  admin.post('/notifications/:id/retry', h(async (req, res) => {
+    const r = await notifier.retry(id(req));
+    if (r.status === 'missing') throw new HttpError(404, r.error);
+    if (!r.notification) throw new HttpError(409, r.error);
+    res.status(r.ok ? 200 : 502).json({ ok: r.ok, error: r.error || null, notification: r.notification });
+  }));
   admin.post('/test-alert', h(async (req, res) => {
     const results = [];
-    for (const to of config.alertEmails) results.push({ to, ...(await notifier.deliver({ kind: 'test', channel: 'email', to, payload: { subject: `Test alert from ${config.businessName}`, text: 'Email alerts are working. You will get a message like this for every new lead.' } })) });
-    for (const to of config.alertPhones) results.push({ to, ...(await notifier.deliver({ kind: 'test', channel: 'sms', to, payload: { body: `${config.businessName}: text alerts are working.` } })) });
+    for (const to of config.alertEmails) results.push({ to, ...(await notifier.deliver({ kind: 'test', retry: false, channel: 'email', to, payload: { subject: `Test alert from ${config.businessName}`, text: 'Email alerts are working. You will get a message like this for every new lead.' } })) });
+    for (const to of config.alertPhones) results.push({ to, ...(await notifier.deliver({ kind: 'test', retry: false, channel: 'sms', to, payload: { body: `${config.businessName}: text alerts are working.` } })) });
     if (!results.length) throw new HttpError(400, 'No ALERT_EMAILS or ALERT_PHONES configured');
     res.json(results);
   }));
@@ -164,6 +184,8 @@ function createApp({
       messages: svc.listMessages({ leadId: lead.id }),
       customer: lead.customer_id ? db.prepare('SELECT * FROM customers WHERE id = ?').get(lead.customer_id) : null,
       jobs: svc.listJobs().filter((j) => j.lead_id === lead.id),
+      breakdown: svc.leadBreakdown(lead),
+      notifications: db.prepare(`SELECT ${logColumns} FROM notifications WHERE lead_id = ? ORDER BY id`).all(lead.id),
     });
   });
   admin.patch('/leads/:id', (req, res) => res.json(svc.updateLead(id(req), req.body)));
@@ -239,6 +261,12 @@ function createApp({
 
   // jobs / bookings
   admin.get('/jobs', (req, res) => res.json(svc.listJobs(req.query)));
+  // Live warning in the booking form: which chosen cleaners are already busy then.
+  admin.get('/jobs/conflicts', (req, res) => res.json(svc.findConflicts({
+    employee_ids: String(req.query.employee_ids || '').split(',').map(Number).filter(Boolean),
+    scheduled_at: String(req.query.scheduled_at || ''), duration_hours: Number(req.query.duration_hours) || 3,
+    exclude_job_id: Number(req.query.job_id) || null,
+  })));
   admin.post('/jobs', h(async (req, res) => res.status(201).json(await svc.createJob(req.body))));
   admin.get('/jobs/:id', (req, res) => res.json(svc.getJob(id(req))));
   admin.put('/jobs/:id', h(async (req, res) => res.json(await svc.updateJob(id(req), req.body))));
@@ -249,6 +277,7 @@ function createApp({
   });
 
   portal.mountAdmin(admin, { h });
+  website.mountAdmin(admin);
 
   app.use('/api/admin', admin);
 
@@ -275,7 +304,7 @@ function createApp({
     res.status(status).json({ error: status >= 500 && status !== 502 ? 'Something went wrong' : err.message, message_record: err.message_record });
   });
 
-  Object.assign(app.locals, { db, svc, notifier, accounts, portal });
+  Object.assign(app.locals, { db, svc, notifier, accounts, portal, website });
   return app;
 }
 
