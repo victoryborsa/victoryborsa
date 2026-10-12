@@ -45,7 +45,7 @@
       lat: lat,
       lon: lon,
       miles: miles,
-      inArea: miles <= cfg.serviceRadiusMiles
+      inArea: miles <= window.ShinePricing.PRICING.business.radiusMiles
     };
   }
 

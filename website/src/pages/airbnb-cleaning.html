@@ -1,14 +1,14 @@
 <!--page {
   "path": "/airbnb-cleaning",
-  "title": "Airbnb Turnover Cleaning Pittsburgh | Shine Pro — From $95",
-  "description": "Airbnb and short-term rental turnover cleaning in Pittsburgh from $95 per turn. Calendar-synced scheduling, photo damage reports, same cleaner every time."
+  "title": "Airbnb Turnover Cleaning Pittsburgh | Shine Pro — From {{from airbnb}}",
+  "description": "Airbnb and short-term rental turnover cleaning in Pittsburgh from {{from airbnb}} per turn. Calendar-synced scheduling, photo damage reports, same cleaner every time."
 } -->
 <section class="page-hero page-hero-media">
   <div class="wrap hero-grid">
     <div class="hero-copy">
       <span class="eyebrow">Pittsburgh's STR Cleaning Specialists</span>
       <h1>Airbnb turnover cleaning Pittsburgh hosts trust.</h1>
-      <p class="lead">From $95/turn. We sync with your checkout calendar, handle the full reset, and send a photo damage report — so you're always ready for the next guest.</p>
+      <p class="lead">From {{from airbnb}}/turn. We sync with your checkout calendar, handle the full reset, and send a photo damage report — so you're always ready for the next guest.</p>
       <div class="hero-ctas">
         <a class="btn btn-primary" href="/free-estimate?service=airbnb">Book a Turnover</a>
         <a class="btn btn-ghost" href="tel:+14124478047"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-phone" /></svg> (412) 447-8047</a>
@@ -44,14 +44,14 @@
   <div class="wrap feature-split">
     <div class="reveal">
       <h2>No surprises. Ever.</h2>
-      <p class="lead">Flat rates by bedroom count. What you see is what you pay — no hidden fees, no fuel surcharges.</p>
-      <p class="small-muted" style="margin-top:16px">Add-ons available: inside fridge (+$35), inside oven (+$35), interior windows (+$40), laundry (+$25)</p>
+      <p class="lead">Flat rates by bedroom count, plus one {{travel}} travel fee per turn. No other fees.</p>
+      <p class="small-muted" style="margin-top:16px">Add-ons available: inside fridge (+{{addon fridge}}), inside oven (+{{addon oven}}), interior windows (+{{addon windows}}), laundry (+{{addon laundry}})</p>
     </div>
     <div class="price-table-card reveal">
       <ul class="price-rows">
-        <li><span>Studio / 1 BR</span><span class="amt">$95 <small>per turn</small></span></li>
-        <li><span>2 Bedrooms</span><span class="amt">$125 <small>per turn</small></span></li>
-        <li><span>3 Bedrooms</span><span class="amt">$155 <small>per turn</small></span></li>
+        <li><span>Studio / 1 BR</span><span class="amt">{{price airbnb 1}} <small>per turn</small></span></li>
+        <li><span>2 Bedrooms</span><span class="amt">{{price airbnb 2}} <small>per turn</small></span></li>
+        <li><span>3 Bedrooms</span><span class="amt">{{price airbnb 3}} <small>per turn</small></span></li>
         <li><span>4+ Bedrooms</span><span class="amt amt-text">Custom - contact us</span></li>
       </ul>
       <a class="btn btn-primary btn-block" style="margin-top:18px" href="/free-estimate?service=airbnb">Get an exact quote</a>
@@ -119,7 +119,7 @@
       <details><summary>What's included in the damage report? <span class="plus" aria-hidden="true"></span></summary><div class="answer">After every turnover we send a timestamped photo report covering the condition of each room, any damage or missing items, and restock levels. It's your paper trail for Airbnb resolution center claims.</div></details>
       <details><summary>Do you supply linens and toiletries? <span class="plus" aria-hidden="true"></span></summary><div class="answer">We restock from your on-site supply. If you'd like us to manage a linen or amenity supply program, ask us about our property manager packages.</div></details>
       <details><summary>Can I book recurring turnovers on a set schedule? <span class="plus" aria-hidden="true"></span></summary><div class="answer">Absolutely. We offer recurring turnover packages with priority scheduling and discounted rates for hosts with consistent booking calendars.</div></details>
-      <details><summary>What areas of Pittsburgh do you serve? <span class="plus" aria-hidden="true"></span></summary><div class="answer">We cover the Pittsburgh metro within ~15 miles of Downtown — including Lawrenceville, Shadyside, Squirrel Hill, South Side, North Side, Oakland, East Liberty, and more.</div></details>
+      <details><summary>What areas of Pittsburgh do you serve? <span class="plus" aria-hidden="true"></span></summary><div class="answer">We cover the Pittsburgh metro within {{biz radiusMiles}} miles of Downtown — including Lawrenceville, Shadyside, Squirrel Hill, South Side, North Side, Oakland, East Liberty, and more.</div></details>
       <details><summary>Do you work with property managers? <span class="plus" aria-hidden="true"></span></summary><div class="answer">Yes. We offer custom rates, consolidated owner reporting, and priority scheduling for property managers with multiple units. Contact us for a custom quote.</div></details>
     </div>
   </div>

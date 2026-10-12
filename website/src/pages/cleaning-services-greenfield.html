@@ -1,7 +1,7 @@
 <!--page {
   "path": "/cleaning-services/greenfield",
   "title": "House Cleaning in Greenfield, Pittsburgh | PGH Shine Pro",
-  "description": "House cleaning and recurring maid service in Greenfield. Insured, background-checked cleaners, supplies included. Standard clean from $149. Free estimate.",
+  "description": "House cleaning and recurring maid service in Greenfield. Insured, background-checked cleaners, supplies included. Standard clean from {{from standard}}. Free estimate.",
   "scripts": ["forms.js"]
 } -->
 <section class="page-hero page-hero-plain">
@@ -19,13 +19,13 @@
     <div class="price-table-card">
       <h2 class="list-title">Greenfield pricing — Standard Clean</h2>
       <ul class="price-rows">
-        <li><span>1 Bedroom</span><span class="amt">$149</span></li>
-        <li><span>2 Bedrooms</span><span class="amt">$189</span></li>
-        <li><span>3 Bedrooms</span><span class="amt">$229</span></li>
-        <li><span>4 Bedrooms</span><span class="amt">$269</span></li>
-        <li><span>5+ Bedrooms</span><span class="amt">$319</span></li>
+        <li><span>1 Bedroom</span><span class="amt">{{price standard 1}}</span></li>
+        <li><span>2 Bedrooms</span><span class="amt">{{price standard 2}}</span></li>
+        <li><span>3 Bedrooms</span><span class="amt">{{price standard 3}}</span></li>
+        <li><span>4 Bedrooms</span><span class="amt">{{price standard 4}}</span></li>
+        <li><span>5+ Bedrooms</span><span class="amt">{{price standard 5}}</span></li>
       </ul>
-      <p class="small-muted">Deep clean from $249 · Move-in/out from $299 · Airbnb turnover from $95. <a href="/services">All prices</a></p>
+      <p class="small-muted">Deep clean from {{from deep}} · Move-in/out from {{from move}} · Airbnb turnover from {{from airbnb}}. Every visit adds a {{travel}} travel fee, shown as its own line on your estimate. <a href="/services">All prices</a></p>
     </div>
   </div>
 </section>
@@ -46,21 +46,22 @@
       <p class="lead">Tell us about your home and we'll send your personalized quote, usually the same day. No payment required.</p>
       <ul class="check-list check-list-plain" style="margin-top:20px">
         <li>Flat-rate pricing — no hidden fees</li>
-        <li>Weekly 15% off, biweekly 10% off, monthly 5% off</li>
+        <li>Weekly {{off weekly}} off, biweekly {{off biweekly}} off, monthly {{off monthly}} off</li>
         <li>Not right? Tell us within 24 hours and we come back and re-clean it free</li>
       </ul>
       <div class="side-call" style="margin-top:24px"><strong>Already a client?</strong><span>Log in to see your bookings, invoices, profile and scheduling options.</span><a class="link-arrow" href="/portal/login">Client Login <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg></a></div>
     </div>
-    <form class="form-card reveal" data-form="Quote request (Greenfield)" novalidate>
+    <form class="form-card reveal" data-form="Quote request (Greenfield)" data-api="lead" novalidate>
       <div class="form-body">
         <input type="hidden" name="Area" value="Greenfield" />
         <div class="form-grid">
-          <div class="field"><label for="n-name">Name *</label><input class="input" id="n-name" name="Name" autocomplete="name" required /><span class="field-error">Please enter your name.</span></div>
-          <div class="field"><label for="n-phone">Phone *</label><input class="input" id="n-phone" name="Phone" type="tel" autocomplete="tel" required /><span class="field-error">Please enter a 10-digit phone number.</span></div>
-          <div class="field full"><label for="n-email">Email *</label><input class="input" id="n-email" name="Email" type="email" autocomplete="email" required /><span class="field-error">Please enter a valid email.</span></div>
-          <div class="field"><label for="n-service">Service</label><select class="select" id="n-service" name="Service"><option>Standard Cleaning</option><option>Deep Cleaning</option><option>Move-In / Move-Out</option><option>Recurring Cleaning</option><option>Apartment Cleaning</option><option>Airbnb Turnovers</option></select></div>
-          <div class="field"><label for="n-beds">Bedrooms</label><select class="select" id="n-beds" name="Bedrooms"><option>1 Bedroom</option><option selected>2 Bedrooms</option><option>3 Bedrooms</option><option>4 Bedrooms</option><option>5+ Bedrooms</option></select></div>
+          <div class="field full"><label for="n-name">Name *</label><input class="input" id="n-name" name="Name" autocomplete="name" required /><span class="field-error">Please enter your name.</span></div>
+          <!-- @include contact-pref -->
+          <div class="field"><label for="n-service">Service</label><select class="select" id="n-service" name="Service"><option value="standard">Standard Cleaning</option><option value="deep">Deep Cleaning</option><option value="move">Move-In / Move-Out</option><option value="recurring">Recurring Cleaning</option><option value="apartment">Apartment Cleaning</option><option value="airbnb">Airbnb Turnovers</option></select></div>
+          <div class="field"><label for="n-beds">Bedrooms</label><select class="select" id="n-beds" name="Bedrooms"><option value="1">Studio / 1 Bedroom</option><option value="2" selected>2 Bedrooms</option><option value="3">3 Bedrooms</option><option value="4">4 Bedrooms</option><option value="5">5+ Bedrooms</option></select></div>
+          <div class="field full"><label for="n-freq">How often?</label><select class="select" id="n-freq" name="Frequency"><option value="once">One time</option><option value="weekly">Weekly (save {{off weekly}})</option><option value="biweekly">Every 2 weeks (save {{off biweekly}})</option><option value="monthly">Monthly (save {{off monthly}})</option></select></div>
           <div class="field full"><label for="n-msg">Address or notes <span class="opt">(optional)</span></label><textarea class="textarea" id="n-msg" name="Notes"></textarea></div>
+          <!-- @include marketing-optin -->
         </div>
         <button class="btn btn-primary btn-block" type="submit">Get My Free Quote</button>
       </div>

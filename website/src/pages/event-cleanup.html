@@ -74,8 +74,7 @@
         <div class="form-grid">
           <div class="field"><label for="ev-first">First name *</label><input class="input" id="ev-first" name="First name" autocomplete="given-name" required /><span class="field-error">Please enter your first name.</span></div>
           <div class="field"><label for="ev-last">Last name *</label><input class="input" id="ev-last" name="Last name" autocomplete="family-name" required /><span class="field-error">Please enter your last name.</span></div>
-          <div class="field"><label for="ev-phone">Phone number *</label><input class="input" id="ev-phone" name="Phone" type="tel" autocomplete="tel" required /><span class="field-error">Please enter a 10-digit phone number.</span></div>
-          <div class="field"><label for="ev-email">Email address *</label><input class="input" id="ev-email" name="Email" type="email" autocomplete="email" required /><span class="field-error">Please enter a valid email.</span></div>
+          <!-- @include contact-pref -->
           <div class="field full"><label for="ev-address">Property address or ZIP code</label><input class="input" id="ev-address" name="Property address or ZIP" autocomplete="street-address" /></div>
           <div class="field"><label for="ev-ptype">Property type *</label><select class="select" id="ev-ptype" name="Property type" required><option value="">Select property type</option><option>Residential</option><option>Commercial</option></select><span class="field-error">Please choose a property type.</span></div>
           <div class="field"><label for="ev-type">Type of event *</label><select class="select" id="ev-type" name="Type of event" required><option value="">Select event type</option><option>Birthday party</option><option>Anniversary celebration</option><option>Graduation party</option><option>Baby shower</option><option>Holiday gathering</option><option>Wedding / engagement party</option><option>Family gathering</option><option>Corporate event</option><option>Private party</option><option>Residential event</option><option>Business / commercial event</option><option>Other</option></select><span class="field-error">Please choose an event type.</span></div>
@@ -87,6 +86,7 @@
           <div class="field"><label for="ev-time">Preferred cleaning time *</label><select class="select" id="ev-time" name="Preferred cleaning time" required><option value="">Select a time</option><option>Morning (8 AM – 12 PM)</option><option>Afternoon (12 PM – 4 PM)</option><option>Evening (4 PM – 7 PM)</option><option>Flexible</option></select><span class="field-error">Please choose a time.</span></div>
           <div class="field full"><label for="ev-details">Additional details or special requests</label><textarea class="textarea" id="ev-details" name="Additional details"></textarea></div>
           <label class="consent full"><input type="checkbox" name="Agreed to be contacted" value="Yes" required /><span>* I agree to be contacted by PGH Shine Pro regarding this quote request.</span></label>
+          <!-- @include marketing-optin -->
         </div>
         <button class="btn btn-primary btn-block" type="submit">Submit Quote Request</button>
         <p class="quote-fine">No payment required. We'll contact you to discuss your personalized quote.</p>

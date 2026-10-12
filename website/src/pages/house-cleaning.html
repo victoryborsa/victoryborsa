@@ -1,7 +1,7 @@
 <!--page {
   "path": "/house-cleaning",
-  "title": "House Cleaning Pittsburgh | Shine Pro — From $149",
-  "description": "Professional house cleaning Pittsburgh trusts. Insured, background-checked cleaners, eco-friendly products, satisfaction guaranteed. Standard clean from $149, recurring plans save up to 20%."
+  "title": "House Cleaning Pittsburgh | Shine Pro — From {{from standard}}",
+  "description": "Professional house cleaning Pittsburgh trusts. Insured, background-checked cleaners, eco-friendly products, satisfaction guaranteed. Standard clean from {{from standard}}, recurring plans save up to {{off weekly}}."
 } -->
 <section class="page-hero page-hero-media">
   <div class="wrap hero-grid">
@@ -29,7 +29,8 @@
     <div class="plan-grid plan-grid-3">
       <article class="plan-card reveal">
         <h3>Standard Clean</h3>
-        <p class="plan-price"><strong>$149</strong> starting price</p>
+        <p class="plan-price"><strong>{{from standard}}</strong> starting price</p>
+        <p class="travel-note">Plus {{travel}} travel fee per visit</p>
         <p class="plan-sub">Perfect for regular maintenance. Keeps your home consistently clean and guest-ready.</p>
         <ul class="check-list check-list-plain">
           <li>Dusting all surfaces, shelves &amp; ceiling fans</li>
@@ -46,7 +47,7 @@
       <article class="plan-card plan-card-featured reveal">
         <span class="tag">Most Popular</span>
         <h3>Recurring Clean</h3>
-        <p class="plan-price"><strong>Save 20%</strong></p>
+        <p class="plan-price"><strong>Save up to {{off weekly}}</strong></p>
         <p class="plan-sub">Weekly, bi-weekly, or monthly. Lock in lower rates and always have the same trusted cleaner.</p>
         <ul class="check-list check-list-plain">
           <li>Everything in Standard Clean</li>
@@ -61,10 +62,10 @@
       <article class="plan-card reveal">
         <h3>Optional add-ons</h3>
         <ul class="price-rows">
-          <li><span>Inside Fridge</span><span class="amt">$25</span></li>
-          <li><span>Inside Oven</span><span class="amt">$25</span></li>
-          <li><span>Interior Windows</span><span class="amt">$50</span></li>
-          <li><span>One Load of Laundry</span><span class="amt">$30</span></li>
+          <li><span>Inside Fridge</span><span class="amt">{{addon fridge}}</span></li>
+          <li><span>Inside Oven</span><span class="amt">{{addon oven}}</span></li>
+          <li><span>Interior Windows</span><span class="amt">{{addon windows}}</span></li>
+          <li><span>One Load of Laundry</span><span class="amt">{{addon laundry}}</span></li>
         </ul>
       </article>
     </div>
@@ -105,7 +106,7 @@
   <div class="wrap faq-layout">
     <div class="section-head reveal"><span class="eyebrow">FAQ</span><h2>Common questions</h2></div>
     <div class="faq-list reveal">
-      <details><summary>How much does house cleaning cost in Pittsburgh? <span class="plus" aria-hidden="true"></span></summary><div class="answer">Standard cleaning starts at $149 for most homes. Pricing depends on square footage and frequency. Recurring clients save up to 20%. Get a free quote for your exact home.</div></details>
+      <details><summary>How much does house cleaning cost in Pittsburgh? <span class="plus" aria-hidden="true"></span></summary><div class="answer">Standard cleaning starts at {{from standard}} for most homes. Pricing depends on the number of bedrooms and how often we come. Recurring clients save up to 20%. Get a free quote for your exact home. Each visit also includes one {{travel}} travel fee, listed separately on your estimate and bill.</div></details>
       <details><summary>Do I need to be home during the cleaning? <span class="plus" aria-hidden="true"></span></summary><div class="answer">No — most clients provide a key or door code. We are fully insured and background-checked so you can trust us in your home.</div></details>
       <details><summary>What cleaning products do you use? <span class="plus" aria-hidden="true"></span></summary><div class="answer">We use eco-friendly, non-toxic products that are safe for children and pets. If you have specific product preferences, just let us know.</div></details>
       <details><summary>How often should I have my home cleaned? <span class="plus" aria-hidden="true"></span></summary><div class="answer">Most Pittsburgh homeowners choose bi-weekly cleaning. Weekly is great for busy families; monthly works well for smaller homes or light use.</div></details>

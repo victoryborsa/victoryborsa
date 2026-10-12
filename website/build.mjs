@@ -11,6 +11,16 @@
 // Links are written as site-root paths ("/services"). `node build.mjs --preview`
 // rewrites them to relative file links so the site can be browsed without a
 // web server (used for the shareable preview).
+//
+// Prices, the travel fee, discounts, hours and the service radius all come from
+// one file, ../shinepro-backoffice/public/pricing.js (shared with the back
+// office). Pages never type a price; they write a token that the build fills in:
+//   {{price deep 2}}  -> $309      {{from deep}}      -> $249 (lowest size)
+//   {{addon fridge}}  -> $35       {{addon organizing}} -> $50/hr
+//   {{off weekly}}    -> 15%       {{travel}}         -> $20
+//   {{biz hours}}     -> Mon–Sat, 8am–6pm   (any field of PRICING.business)
+// The same file is copied to /assets/js/pricing.js for the forms and calculators.
+import { createRequire } from "node:module";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -24,6 +34,45 @@ const site = "https://pghshinepro.com";
 rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist, { recursive: true });
 cpSync(join(src, "public"), dist, { recursive: true });
+
+const pricingFile = join(root, "..", "shinepro-backoffice", "public", "pricing.js");
+const { PRICING, money } = createRequire(import.meta.url)(pricingFile);
+cpSync(pricingFile, join(dist, "assets", "js", "pricing.js"));
+
+function token(kind, args, from) {
+  const fail = () => {
+    throw new Error(`${from}: unknown price token {{${[kind, ...args].join(" ")}}}`);
+  };
+  if (kind === "travel") return money(PRICING.travelFee);
+  if (kind === "price" || kind === "from") {
+    const s = PRICING.services[args[0]];
+    if (!s || !s.prices) fail();
+    const p = kind === "from" ? Math.min(...s.prices.filter((x) => x != null)) : s.prices[Number(args[1]) - 1];
+    if (p == null) fail();
+    return money(p);
+  }
+  if (kind === "addon") {
+    const a = PRICING.addons.find((x) => x.id === args[0]);
+    if (!a) fail();
+    return money(a.price) + (a.perHour ? "/hr" : "");
+  }
+  if (kind === "off") {
+    const f = PRICING.frequency[args[0]];
+    if (!f) fail();
+    return Math.round(f.discount * 100) + "%";
+  }
+  if (kind === "biz") {
+    if (!(args[0] in PRICING.business)) fail();
+    return String(PRICING.business[args[0]]);
+  }
+  fail();
+}
+
+function fillPrices(html, from) {
+  return html.replace(/\{\{(price|from|addon|off|travel|biz)((?:\s+[\w-]+)*)\s*\}\}/g, (_, kind, rest) =>
+    token(kind, rest.trim() ? rest.trim().split(/\s+/) : [], from)
+  );
+}
 
 const partials = {};
 for (const file of readdirSync(join(src, "partials"))) {
@@ -60,7 +109,7 @@ for (const file of readdirSync(join(src, "pages")).filter((f) => f.endsWith(".ht
   const raw = readFileSync(join(src, "pages", file), "utf8");
   const m = raw.match(/^<!--page\s+(\{[\s\S]*?\})\s*-->/);
   if (!m) throw new Error(`${file}: missing <!--page {...} --> settings`);
-  const meta = JSON.parse(m[1]);
+  const meta = JSON.parse(fillPrices(m[1], file));
   const body = raw.slice(m[0].length);
   pages.push({ file, meta, body });
 }
@@ -75,9 +124,9 @@ for (const { file, meta, body } of pages) {
     robots: meta.noindex ? '<meta name="robots" content="noindex" />' : "",
     head: meta.head || "",
     scripts: (meta.scripts || []).map((s) => `<script src="/assets/js/${s}"></script>`).join("\n  "),
-    content: include(body, file)
+    content: fillPrices(include(body, file), file)
   };
-  let html = include(partials.layout, "layout").replace(/\{\{(\w+)\}\}/g, (_, k) => {
+  let html = fillPrices(include(partials.layout, "layout"), "layout").replace(/\{\{(\w+)\}\}/g, (_, k) => {
     if (!(k in vars)) throw new Error(`layout: unknown variable ${k}`);
     return vars[k];
   });

@@ -1,8 +1,8 @@
 <!--page {
   "path": "/",
-  "title": "Pittsburgh House Cleaning Service | PGH Shine Pro — From $149",
+  "title": "Pittsburgh House Cleaning Service | PGH Shine Pro — From {{from standard}}",
   "description": "Insured, background-checked cleaners. Supplies included. House cleaning, deep cleaning, move-in/move-out and Airbnb turnovers in Pittsburgh. Free estimate in under 2 minutes.",
-  "head": "<script type=\"application/ld+json\">{\"@context\":\"https://schema.org\",\"@type\":\"HouseCleaningService\",\"name\":\"PGH Shine Pro Cleaning Services\",\"url\":\"https://pghshinepro.com/\",\"telephone\":\"+1-412-447-8047\",\"email\":\"pghshinepro@gmail.com\",\"priceRange\":\"$95 - $579\",\"address\":{\"@type\":\"PostalAddress\",\"addressLocality\":\"Pittsburgh\",\"addressRegion\":\"PA\",\"postalCode\":\"15222\",\"addressCountry\":\"US\"},\"openingHoursSpecification\":[{\"@type\":\"OpeningHoursSpecification\",\"dayOfWeek\":[\"Monday\",\"Tuesday\",\"Wednesday\",\"Thursday\",\"Friday\",\"Saturday\"],\"opens\":\"08:00\",\"closes\":\"18:00\"}],\"aggregateRating\":{\"@type\":\"AggregateRating\",\"ratingValue\":\"5.0\",\"reviewCount\":\"47\"},\"sameAs\":[\"https://www.instagram.com/pghshinepro\",\"https://www.facebook.com/PGHShineProCleaning\",\"https://x.com/pghshinepro\"]}</script>"
+  "head": "<script type=\"application/ld+json\">{\"@context\":\"https://schema.org\",\"@type\":\"HouseCleaningService\",\"name\":\"PGH Shine Pro Cleaning Services\",\"url\":\"https://pghshinepro.com/\",\"telephone\":\"+1-412-447-8047\",\"email\":\"pghshinepro@gmail.com\",\"priceRange\":\"{{from airbnb}} - {{price move 5}}\",\"address\":{\"@type\":\"PostalAddress\",\"addressLocality\":\"Pittsburgh\",\"addressRegion\":\"PA\",\"postalCode\":\"15222\",\"addressCountry\":\"US\"},\"openingHoursSpecification\":[{\"@type\":\"OpeningHoursSpecification\",\"dayOfWeek\":[\"Monday\",\"Tuesday\",\"Wednesday\",\"Thursday\",\"Friday\",\"Saturday\"],\"opens\":\"08:00\",\"closes\":\"18:00\"}],\"aggregateRating\":{\"@type\":\"AggregateRating\",\"ratingValue\":\"5.0\",\"reviewCount\":\"47\"},\"sameAs\":[\"https://www.instagram.com/pghshinepro\",\"https://www.facebook.com/PGHShineProCleaning\",\"https://x.com/pghshinepro\"]}</script>"
 } -->
 <section class="hero">
   <div class="wrap hero-grid">
@@ -37,7 +37,7 @@
     <form class="quote-card quote-wide" id="quote" action="/free-estimate" method="get" aria-labelledby="quote-title">
       <header>
         <h2 id="quote-title">Instant price estimate</h2>
-        <span class="badge"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-clock" /></svg> Flat-rate, no hidden fees</span>
+        <span class="badge"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-clock" /></svg> Flat-rate, {{travel}} travel fee included</span>
       </header>
       <div class="quote-row">
         <div class="field">
@@ -52,7 +52,8 @@
       <div class="quote-total" aria-live="polite">
         <div>
           <div class="label" data-q-label>Estimated price</div>
-          <div class="amount" data-q-amount>$149</div>
+          <div class="amount" data-q-amount>{{from standard}}</div>
+          <div class="q-break" data-q-break>Includes the {{travel}} travel fee per visit</div>
         </div>
         <div class="quote-actions">
           <button class="btn btn-light" type="submit">Get a Free Estimate</button>
@@ -73,31 +74,31 @@
         <span class="ico"><svg class="icon" aria-hidden="true"><use href="#i-home" /></svg></span>
         <h3>House Cleaning</h3>
         <p>Standard &amp; recurring maid service for any home.</p>
-        <footer><span class="price-from">From <strong>$149</strong></span><span class="link-arrow">Learn more <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg></span></footer>
+        <footer><span class="price-from">From <strong>{{from standard}}</strong></span><span class="link-arrow">Learn more <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg></span></footer>
       </a>
       <a class="service-card reveal" href="/deep-cleaning">
         <span class="ico"><svg class="icon" aria-hidden="true"><use href="#i-deep" /></svg></span>
         <h3>Deep Cleaning</h3>
         <p>Top-to-bottom scrub — baseboards, inside appliances, and more.</p>
-        <footer><span class="price-from">From <strong>$249</strong></span><span class="link-arrow">Learn more <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg></span></footer>
+        <footer><span class="price-from">From <strong>{{from deep}}</strong></span><span class="link-arrow">Learn more <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg></span></footer>
       </a>
       <a class="service-card reveal" href="/move-in-out-cleaning">
         <span class="ico"><svg class="icon" aria-hidden="true"><use href="#i-box" /></svg></span>
         <h3>Move-In / Move-Out</h3>
         <p>Get your deposit back. Move-ready in one visit.</p>
-        <footer><span class="price-from">From <strong>$299</strong></span><span class="link-arrow">Learn more <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg></span></footer>
+        <footer><span class="price-from">From <strong>{{from move}}</strong></span><span class="link-arrow">Learn more <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg></span></footer>
       </a>
       <a class="service-card reveal" href="/airbnb-cleaning">
         <span class="ico"><svg class="icon" aria-hidden="true"><use href="#i-key" /></svg></span>
         <h3>Airbnb / STR Turnover</h3>
         <p>Guest-ready resets between every stay.</p>
-        <footer><span class="price-from">From <strong>$95</strong></span><span class="link-arrow">Learn more <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg></span></footer>
+        <footer><span class="price-from">From <strong>{{from airbnb}}</strong></span><span class="link-arrow">Learn more <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg></span></footer>
       </a>
       <a class="service-card reveal" href="/apartment-condo-cleaning">
         <span class="ico"><svg class="icon" aria-hidden="true"><use href="#i-building" /></svg></span>
         <h3>Apartment &amp; Condo</h3>
         <p>High-rises, studios, and rentals of all sizes.</p>
-        <footer><span class="price-from">From <strong>$149</strong></span><span class="link-arrow">Learn more <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg></span></footer>
+        <footer><span class="price-from">From <strong>{{from standard}}</strong></span><span class="link-arrow">Learn more <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg></span></footer>
       </a>
       <a class="service-card reveal" href="/event-cleanup">
         <span class="ico"><svg class="icon" aria-hidden="true"><use href="#i-confetti" /></svg></span>
@@ -217,7 +218,7 @@
       </details>
       <details>
         <summary>Do you offer recurring cleaning discounts? <span class="plus" aria-hidden="true"></span></summary>
-        <div class="answer">Yes — weekly 15% off, biweekly 10% off, and monthly 5% off. The loyalty discount is applied automatically.</div>
+        <div class="answer">Yes — weekly {{off weekly}} off, biweekly {{off biweekly}} off, and monthly {{off monthly}} off. The discount is applied automatically to the cleaning price (not to add-ons or the travel fee).</div>
       </details>
     </div>
   </div>

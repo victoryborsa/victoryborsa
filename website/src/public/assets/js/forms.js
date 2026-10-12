@@ -17,28 +17,56 @@
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      if (!F.validate(form)) return;
+      if (!F.validate(form) || form._sending) return;
+      F.showError(form, "");
       var submit = form.querySelector("button[type=submit]");
-      submit.disabled = true;
       var fields = F.collect(form);
       var who = fields["Name"] || fields["Full name"] || fields["Your name"] || fields["First name"] || "";
+      var subject = form.getAttribute("data-form") + (who ? " from " + who : "");
+      var contact = F.contactBody(form, fields);
+      // Everything except who/how-to-reach goes along as label: value pairs.
+      var rest = {};
+      Object.keys(fields).forEach(function (k) {
+        if (["preferred_contact", "marketing_opt_in", "consent"].indexOf(k) === -1) rest[k] = fields[k];
+      });
+      if (fields.preferred_contact) rest["Preferred contact"] = fields.preferred_contact === "email" ? "Email" : "Phone or text";
+      var api = form.getAttribute("data-api");
+      var request =
+        api === "contact"
+          ? { path: "/api/contact", body: Object.assign(contact, { message: fields["Message"] || "", interest: fields["Interested in"] || "" }) }
+          : api === "lead"
+            // Short quote forms (local area pages) become estimate requests like the main form.
+            ? { path: "/api/leads", body: Object.assign(contact, {
+                service_type: (fields["Frequency"] || "once") !== "once" && ["standard", "apartment"].indexOf(fields["Service"]) !== -1 ? "recurring" : fields["Service"], bedrooms: fields["Bedrooms"], frequency: fields["Frequency"] || "once",
+                address: fields["Area"] || "", message: fields["Notes"] || ""
+              }) }
+            : { path: "/api/forms", body: Object.assign(contact, { form: form.getAttribute("data-form"), fields: rest }) };
+      var sendIt = function () {
+        return F.submit({ subject: subject, fields: rest, path: request.path, body: request.body });
+      };
+
       // Gift cards with a Stripe Payment Link: send the order details, then go to Stripe to pay.
       var payLink = form.hasAttribute("data-gift") && (cfg.giftCardLinks || {})[fields["Amount"]];
       if (payLink) {
         var go = function () {
           window.location.href = payLink + (payLink.indexOf("?") === -1 ? "?" : "&") + "prefilled_email=" + encodeURIComponent(fields["Your email"]);
         };
-        if (cfg.formEndpoint) F.send("Gift card order from " + who, fields).then(go, go);
+        if (cfg.backofficeUrl || cfg.formEndpoint) sendIt().then(go, go);
         else go();
         return;
       }
-      F.send(form.getAttribute("data-form") + (who ? " from " + who : ""), fields)
+      submit.disabled = true;
+      form._sending = true;
+      sendIt()
         .then(function () {
           F.showSuccess(form);
         })
-        .catch(function () {
+        .catch(function (err) {
           submit.disabled = false;
-          alert("Sorry, something went wrong. Please call us at " + cfg.phone + ".");
+          F.showError(form, err.message);
+        })
+        .then(function () {
+          form._sending = false;
         });
     });
   });
