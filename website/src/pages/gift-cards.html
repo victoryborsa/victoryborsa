@@ -1,0 +1,55 @@
+<!--page {
+  "path": "/gift-cards",
+  "title": "Gift Cards | Give the Gift of a Spotless Home | PGH Shine Pro",
+  "description": "Shine Pro gift cards from $50 to $250. Perfect for new homeowners, busy parents, or anyone who deserves a break. Redeemable for any cleaning service in Pittsburgh.",
+  "scripts": ["forms.js"]
+} -->
+<section class="page-hero page-hero-plain">
+  <div class="wrap narrow">
+    <span class="ico ico-lg"><svg class="icon" aria-hidden="true"><use href="#i-gift" /></svg></span>
+    <h1>Give the gift of a spotless home</h1>
+    <p class="lead">Perfect for new homeowners, busy parents, or anyone who deserves a break. Redeemable for any Shine Pro cleaning service in Pittsburgh.</p>
+  </div>
+</section>
+
+<section class="section section-tight">
+  <div class="wrap narrow">
+    <form class="form-card" data-form="Gift card order" data-gift novalidate>
+      <div class="form-body">
+        <fieldset class="field">
+          <legend><h2>Choose an amount</h2></legend>
+          <div class="choice-grid gift-amounts">
+            <label class="choice compact"><input type="radio" name="Amount" value="$50" /><span class="box"><strong>$50</strong></span></label>
+            <label class="choice compact"><input type="radio" name="Amount" value="$75" /><span class="box"><strong>$75</strong></span></label>
+            <label class="choice compact"><input type="radio" name="Amount" value="$100" checked /><span class="box"><strong>$100</strong></span></label>
+            <label class="choice compact"><input type="radio" name="Amount" value="$150" /><span class="box"><strong>$150</strong></span></label>
+            <label class="choice compact"><input type="radio" name="Amount" value="$200" /><span class="box"><strong>$200</strong></span></label>
+            <label class="choice compact"><input type="radio" name="Amount" value="$250" /><span class="box"><strong>$250</strong></span></label>
+          </div>
+        </fieldset>
+        <h2 class="form-section-title">Your information</h2>
+        <div class="form-grid">
+          <div class="field"><label for="g-name">Your name *</label><input class="input" id="g-name" name="Your name" autocomplete="name" required /><span class="field-error">Please enter your name.</span></div>
+          <div class="field"><label for="g-email">Your email *</label><input class="input" id="g-email" name="Your email" type="email" autocomplete="email" required /><span class="field-hint">Your receipt will be sent here.</span><span class="field-error">Please enter a valid email.</span></div>
+          <div class="field"><label for="g-rname">Recipient name <span class="opt">(optional)</span></label><input class="input" id="g-rname" name="Recipient name" /></div>
+          <div class="field"><label for="g-remail">Recipient email <span class="opt">(optional)</span></label><input class="input" id="g-remail" name="Recipient email" type="email" /><span class="field-hint">If you add a recipient email, we'll send them the gift card code directly.</span></div>
+          <div class="field full"><label for="g-msg">Personal message <span class="opt">(optional)</span></label><textarea class="textarea" id="g-msg" name="Personal message"></textarea></div>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit" data-gift-button>Purchase $100 Gift Card</button>
+        <p class="quote-fine"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-shield" /></svg> Secured by Stripe · PCI-compliant · No card info stored on our servers</p>
+      </div>
+      <!-- @include form-success -->
+    </form>
+  </div>
+</section>
+
+<section class="section steps-section">
+  <div class="wrap">
+    <div class="section-head center reveal"><h2>How gift cards work</h2></div>
+    <ol class="steps">
+      <li class="reveal"><h3>Purchase online</h3><p>Choose an amount and complete secure checkout. You'll receive a confirmation email instantly.</p></li>
+      <li class="reveal"><h3>Share the code</h3><p>The gift card code is emailed to you (and optionally to the recipient). No physical card needed.</p></li>
+      <li class="reveal"><h3>Redeem at booking</h3><p>Enter the code at checkout on the booking form. The balance is automatically deducted from the total.</p></li>
+    </ol>
+  </div>
+</section>

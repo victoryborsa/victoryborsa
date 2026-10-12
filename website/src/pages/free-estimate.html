@@ -1,0 +1,120 @@
+<!--page {
+  "path": "/free-estimate",
+  "title": "Free Cleaning Estimate | PGH Shine Pro Pittsburgh",
+  "description": "Professional residential cleaning throughout Pittsburgh. Tell us what you need and receive a free, no-obligation estimate. No payment required.",
+  "scripts": ["address.js", "estimate.js"]
+} -->
+<section class="page-hero page-hero-plain estimate-hero">
+  <div class="wrap two-col">
+    <div>
+      <h1>A cleaner home. A lighter week.</h1>
+      <p class="lead">Professional residential cleaning throughout Pittsburgh. Tell us what you need and receive a free, no-obligation estimate.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="#estimate-form">Get My Free Estimate</a>
+        <a class="btn btn-ghost" href="tel:+14124478047"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-phone" /></svg> Call Us</a>
+      </div>
+      <ul class="hero-trust">
+        <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check" /></svg> No payment required</li>
+        <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check" /></svg> All supplies included</li>
+        <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check" /></svg> Friendly local team</li>
+      </ul>
+    </div>
+    <div class="price-table-card">
+      <p class="list-title">Trusted by Pittsburgh homeowners, renters, and Airbnb hosts.</p>
+      <ul class="check-list check-list-plain">
+        <li>Insured &amp; bonded</li>
+        <li>Professional-grade results</li>
+        <li>We make it right</li>
+        <li>Transparent pricing</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section section-tight" id="estimate-form">
+  <div class="wrap estimate-layout">
+    <aside class="estimate-side">
+      <h2>Tell us about your home.</h2>
+      <p>This short form takes about a minute. We'll review your request and contact you with your personalized estimate.</p>
+      <ul class="check-list check-list-plain">
+        <li>No payment information</li>
+        <li>No property-access questions</li>
+        <li>Your information is handled securely</li>
+        <li>No obligation to book</li>
+      </ul>
+      <div class="side-call">
+        <strong>Prefer to speak with us?</strong>
+        <a href="tel:+14124478047">(412) 447-8047</a>
+        <small>Monday–Saturday, 8 AM–7 PM ET</small>
+      </div>
+    </aside>
+
+    <form class="book-card" id="estimate" data-estimate novalidate>
+      <ol class="stepper stepper-4" aria-label="Progress">
+        <li class="current">Service</li><li>Your home</li><li>Location</li><li>Contact</li>
+      </ol>
+
+      <section class="book-step active" data-step="1">
+        <header><h2>What type of cleaning do you need?</h2><p>Select the service that best fits your home.</p></header>
+        <div class="choice-grid two" role="radiogroup">
+          <label class="choice"><input type="radio" name="service" value="standard" /><span class="box"><strong>Standard Cleaning</strong><small>Dependable upkeep for a consistently fresh home.</small><em>From $149</em></span></label>
+          <label class="choice"><input type="radio" name="service" value="deep" /><span class="box"><strong>Deep Cleaning</strong><small>Detailed attention to built-up dust and a true reset.</small><em>From $249</em></span></label>
+          <label class="choice"><input type="radio" name="service" value="move" /><span class="box"><strong>Move-In / Move-Out</strong><small>A thorough clean for an easier move and a spotless new beginning.</small><em>From $299</em></span></label>
+          <label class="choice"><input type="radio" name="service" value="recurring" /><span class="box"><strong>Recurring Cleaning</strong><small>Weekly, biweekly, or monthly service built around your routine.</small><em>From $149</em></span></label>
+          <label class="choice"><input type="radio" name="service" value="apartment" /><span class="box"><strong>Apartment Cleaning</strong><small>Efficient, careful cleaning for apartments and condominiums.</small><em>From $149</em></span></label>
+          <label class="choice"><input type="radio" name="service" value="airbnb" /><span class="box"><strong>Airbnb Turnovers</strong><small>Reliable resets that help hosts welcome every guest with confidence.</small><em>From $95</em></span></label>
+        </div>
+        <p class="step-error" role="alert"></p>
+        <div class="step-actions"><button class="btn btn-primary" type="button" data-next>Continue</button></div>
+      </section>
+
+      <section class="book-step" data-step="2">
+        <header><h2>Tell us about your home</h2><p>This helps us estimate the time and price.</p></header>
+        <div class="form-grid">
+          <div class="field"><label for="e-beds">Bedrooms</label><select class="select" id="e-beds" name="bedrooms" data-sizes></select></div>
+          <div class="field"><label for="e-baths">Bathrooms</label><select class="select" id="e-baths" name="bathrooms"><option>1</option><option>1.5</option><option selected>2</option><option>2.5</option><option>3</option><option>3.5</option><option>4+</option></select></div>
+          <fieldset class="field full" data-frequency-field><legend>How often?</legend><div class="segmented" data-frequencies></div></fieldset>
+          <fieldset class="field full"><legend>Add-ons <span class="opt">(optional)</span></legend><div class="pill-options" data-addons></div></fieldset>
+        </div>
+        <div class="estimate-price" aria-live="polite"><span>Estimated starting price</span><strong data-e-price>$189</strong><small data-e-note>Final price confirmed after we review your request.</small></div>
+        <div class="step-actions"><button class="btn btn-ghost" type="button" data-back>Back</button><button class="btn btn-primary" type="button" data-next>Continue</button></div>
+      </section>
+
+      <section class="book-step" data-step="3">
+        <header><h2>Where and when?</h2><p>We serve Pittsburgh and communities within about 20 miles of Downtown.</p></header>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="e-address">Address or neighborhood *</label>
+            <div class="autocomplete" data-autocomplete>
+              <svg class="icon" aria-hidden="true"><use href="#i-pin" /></svg>
+              <input class="input" id="e-address" name="address" type="text" autocomplete="off" placeholder="Start typing your address" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="e-suggestions" required />
+              <ul class="suggestions" id="e-suggestions" role="listbox" hidden></ul>
+            </div>
+            <span class="field-error">Please enter your address or neighborhood.</span>
+          </div>
+          <div class="field"><label for="e-zip">ZIP code</label><input class="input" id="e-zip" name="zip" inputmode="numeric" maxlength="5" autocomplete="postal-code" /></div>
+          <div class="field"><label for="e-date">Preferred date</label><input class="input" id="e-date" name="date" type="date" /></div>
+          <div class="field full"><label for="e-time">Preferred time</label><select class="select" id="e-time" name="time"><option value="">No preference</option><option>Morning (8 AM – 12 PM)</option><option>Afternoon (12 PM – 4 PM)</option><option>Evening (4 PM – 7 PM)</option><option>Flexible</option></select></div>
+        </div>
+        <div class="step-actions"><button class="btn btn-ghost" type="button" data-back>Back</button><button class="btn btn-primary" type="button" data-next>Continue</button></div>
+      </section>
+
+      <section class="book-step" data-step="4">
+        <header><h2>How can we reach you?</h2><p>We'll send your personalized estimate, usually the same day.</p></header>
+        <div class="form-grid">
+          <div class="field"><label for="e-name">Full name *</label><input class="input" id="e-name" name="name" autocomplete="name" required /><span class="field-error">Please enter your name.</span></div>
+          <div class="field"><label for="e-phone">Phone *</label><input class="input" id="e-phone" name="phone" type="tel" autocomplete="tel" required /><span class="field-error">Please enter a 10-digit phone number.</span></div>
+          <div class="field full"><label for="e-email">Email *</label><input class="input" id="e-email" name="email" type="email" autocomplete="email" required /><span class="field-error">Please enter a valid email.</span></div>
+          <div class="field"><label for="e-ref">Referred by <span class="opt">(optional)</span></label><input class="input" id="e-ref" name="referred" placeholder="Friend's name or referral code" /></div>
+          <div class="field"><label for="e-gift">Gift card code <span class="opt">(optional)</span></label><input class="input" id="e-gift" name="gift" /></div>
+          <div class="field full"><label for="e-notes">Anything else we should know? <span class="opt">(optional)</span></label><textarea class="textarea" id="e-notes" name="notes" placeholder="Pets, problem areas, special requests"></textarea></div>
+          <label class="consent full"><input type="checkbox" name="consent" required /><span>* I agree to be contacted by PGH Shine Pro about my estimate by phone, text, or email.</span></label>
+        </div>
+        <div class="step-actions"><button class="btn btn-ghost" type="button" data-back>Back</button><button class="btn btn-primary" type="submit">Get My Free Estimate</button></div>
+        <p class="quote-fine">No payment required. No obligation to book.</p>
+      </section>
+
+      <!-- @include form-success -->
+    </form>
+  </div>
+</section>
