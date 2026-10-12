@@ -47,7 +47,7 @@
   const freqLabel = (k) => (META && META.pricing.frequency[k] ? META.pricing.frequency[k].label : k || '');
   // An itemized estimate (from public/pricing.js, priced by the server) as a small table.
   const lineAmount = (l) => (l.kind === 'included' ? 'Included' : l.kind === 'travel' ? money(l.amount) : `${l.amount < 0 ? '−' : ''}${money(Math.abs(l.amount))}`);
-  const linesTable = (b) => (b && b.lines ? `<table class="lines">${b.lines.map((l) => `<tr><td>${esc(l.label)}</td><td class="num">${esc(lineAmount(l))}</td></tr>`).join('')}
+  const linesTable = (b) => (b && b.lines ? `<table class="lines">${b.lines.map((l) => `<tr><td>${esc(l.label.replace(/ — (included|\$\d+)$/, ''))}</td><td class="num">${esc(lineAmount(l))}</td></tr>`).join('')}
       <tr class="total"><td>Total</td><td class="num">${b.total != null ? money(b.total) : 'Custom quote'}</td></tr></table>` : '');
   // Delivery log rows (emails/texts) with a Retry button for failed ones.
   const notificationItem = (n) => `<div class="item"><div class="main"><div class="title">${esc(n.kind.replace(/_/g, ' '))} · ${esc(n.channel)} → ${esc(n.recipient || '')}</div>
