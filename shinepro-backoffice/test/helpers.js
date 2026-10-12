@@ -8,7 +8,7 @@ const { loadConfig } = require('../src/config');
 function setup({ emailEnabled = true, smsEnabled = true, failEmail = false, env = {}, ai = null, verifyPhoneToken = null } = {}) {
   const uploadsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shinepro-test-uploads-'));
   const config = loadConfig({
-    PRICE_SOURCE: 'package',
+    NOTIFY_RETRY_DELAYS_MS: '5,10',
     UPLOADS_DIR: uploadsDir,
     ...env,
     ADMIN_PASSWORD: 'test-password-123',
@@ -20,10 +20,17 @@ function setup({ emailEnabled = true, smsEnabled = true, failEmail = false, env 
     ALLOWED_ORIGINS: 'https://pghshinepro.com',
   });
   const sent = [];
+  const attempts = []; // every email send attempt, including failed ones
+  // failEmail: true (always fail) or a function (message, attemptNumber) => true to fail that attempt.
+  const shouldFail = typeof failEmail === 'function' ? failEmail : () => failEmail;
   const senders = {
     emailEnabled,
     smsEnabled,
-    async email(m) { if (failEmail) throw new Error('SMTP down'); sent.push({ channel: 'email', ...m }); },
+    async email(m) {
+      attempts.push(m);
+      if (shouldFail(m, attempts.filter((a) => a.to === m.to && a.subject === m.subject).length)) throw new Error('SMTP down');
+      sent.push({ channel: 'email', ...m });
+    },
     async sms(m) { sent.push({ channel: 'sms', ...m }); },
   };
   const app = createApp({ config, db: openDb(':memory:'), senders, ai, verifyPhoneToken });
@@ -54,7 +61,7 @@ function setup({ emailEnabled = true, smsEnabled = true, failEmail = false, env 
   const login = () => req('/api/admin/login', { method: 'POST', body: { password: 'test-password-123' } });
   const until = async (fn) => { for (let i = 0; i < 50; i++) { if (fn()) return; await new Promise((r) => setTimeout(r, 10)); } };
   const close = () => { server.close(); fs.rmSync(uploadsDir, { recursive: true, force: true }); };
-  return { app, server, req, session, login, sent, config, until, close };
+  return { app, server, req, session, login, sent, attempts, config, until, close };
 }
 
 module.exports = { setup };

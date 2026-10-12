@@ -7,18 +7,20 @@ Lead capture, website chat and admin for **pghshinepro.com**. Built so no potent
 | Feature | What it does |
 |---|---|
 | **Website chat** | A "Chat With Us" button on every page. The customer types their name, email and phone, and you get an email right away. They can tap a **popular question** and get the answer instantly, or type their own: the **AI assistant** answers what they asked, asks one follow-up question at a time, and its answer appears word by word while it's still being written, so there's no long wait. "Urgent? Call or text (412) 447-8047" is always on screen, and they can tap **"Request a call back"**. You can also reply from the admin, and your reply appears in their chat window. |
-| **Quote requests** | Your website's existing quote form (with your real prices) also sends each request here. It is saved *first*, then alerts go out. |
-| **New-lead alerts** | An email the moment someone requests a quote, starts a chat or asks for a call back, with a link straight to the lead. Turn on Gmail notifications on your phone and it pops up like a text. |
+| **Estimate requests** | The website's free estimate form sends each request here. The back office **prices it again itself** from `public/pricing.js` (a price changed in the browser is ignored) and saves the itemized estimate: the service, add-ons ("included" ones free), any recurring discount and exactly one **Travel Fee — $20** per visit. Custom-quote services (events, commercial, post-construction, upholstery, Airbnb 4+ bedrooms) are saved with no price. A double click or retry is saved once. Saved *first*, then alerts go out. |
+| **Contact & newsletter** | The website's contact form becomes a lead (with an email to you and a confirmation to the customer). The newsletter sign-up adds the email to your clients with marketing turned on. Marketing is only ever turned on by the newsletter or the separate, unticked marketing checkbox, never by an estimate request. |
+| **Website forms** | Event quotes, job applications, gift card orders, referrals and local area quotes land in Admin → **Website forms** (unread ones are marked) and email you. |
+| **New-lead alerts** | An email the moment someone requests an estimate, starts a chat or asks for a call back, with a link straight to the lead. Estimate emails (yours and the customer's) list every line, the Travel Fee and the total, and say: "This is an estimate, not a booking. Your appointment is confirmed when we contact you to confirm the date and time." Turn on Gmail notifications on your phone and it pops up like a text. |
 | **Leads pipeline** | New → Contacted → Quoted → Booked / Lost. Call-back requests are pinned to the top in red. |
 | **Reply to customers** | Email directly from the admin. For texts, press "Text via Google Voice" (412) 447-8047: it copies your message and opens Google Voice. You can also reply into the website chat. Quick-reply templates and private notes are included. |
 | **Clients** | Add, edit, search, delete. Every lead and chat creates or updates a client. Export everyone, or only people who agreed to receive offers, to CSV for marketing. |
 | **Employees** | Add or edit cleaners, mark them inactive, see each person's jobs. |
-| **Bookings & calendar** | Book a job from a lead or client and assign cleaners. They're emailed the details, and each has a Google Voice text button. The week calendar highlights jobs with no cleaner. |
-| **Alerts log** | Every email shows as sent or failed. There's a "Send test alert" button and dashboard warnings if something isn't set up. |
+| **Bookings & calendar** | Book a job from a lead or client and assign cleaners. A booking made from a lead keeps its price and itemized estimate. You're warned (not blocked) if a cleaner already has a job at that time. Cleaners are emailed the details, and each has a Google Voice text button. The week calendar highlights jobs with no cleaner. |
+| **Alerts log** | Every email and text is logged as sent, failed or skipped, with the number of tries. A failed one is **retried automatically** (3 tries in total, a few seconds apart) and never sent twice; press **Retry** to send it again. Each lead page shows what was sent about it. There's a "Send test alert" button and dashboard warnings if something isn't set up. |
 | **Client portal** (`/portal`) | Your clients log in with their email and a password. They see their next cleaning, upcoming and past bookings (date, time, service, address, status, cleaner's first name), and can ask to **reschedule** or **cancel**, or **request a new cleaning**. They see their **invoices**, print them and press **Pay now**. They can update their phone, address and email preferences, and change their password. |
 | **Host portal** (`/host`) | For Airbnb / short-term-rental owners. They add their **properties** (address, size, lockbox/door code, checkout and check-in times), **request turnovers**, see upcoming and past turnovers, and read each turnover's **report**: cleaning notes, damage, low supplies and photos. |
 | **Requests inbox** | Every reschedule, cancel and turnover request lands in Admin → Requests and emails you. Approve it (the booking is moved, cancelled or created) or decline it with a note. The client gets an email either way. |
-| **Invoices** | Create an invoice from a booking (amount filled in) or a blank one. Mark it sent, paid or void, add a **Stripe Payment Link**, and email it to the client in one click. Clients never see drafts. |
+| **Invoices** | Create an invoice from a booking or a blank one. Invoices have **lines**: one from a booking starts with its service line and exactly one Travel Fee — $20 line (it can't be added twice), you can edit the lines, and the total is always their sum. Clients see every line in the portal and on the printable invoice. Mark it sent, paid or void, add a **Stripe Payment Link**, and email it to the client in one click. Clients never see drafts. |
 | **Turnover reports** | On any booking, press "Report & photos" to write notes, damage and inventory, and upload photos from your phone. Only that host and you can see the photos. |
 
 ## Try it on your computer
@@ -74,7 +76,7 @@ Edit **`knowledge.md`** in plain English: service area, hours, what's included, 
 
 ## Prices
 
-Your website's prices stay exactly as they are (`PRICE_SOURCE=site`, the default). Leads keep the price your website's form showed, and the chat assistant never quotes dollar amounts. It sends customers to your quote form or offers a call back. `public/pricing.js` holds sample prices that are only used if you switch to `PRICE_SOURCE=package`.
+**All prices live in one file: `public/pricing.js`.** It has the price per service and home size, what each service already includes, the add-ons, the recurring discounts and the $20 travel fee that is added once to every visit (never discounted). The website, the estimate widget, the back office (which re-prices every request it receives), invoices and the chat assistant all use it. To change a price, edit that file, rebuild the website and redeploy the back office. Nothing else needs to change.
 
 ## Texting with Google Voice
 
@@ -91,5 +93,5 @@ Your website's prices stay exactly as they are (`PRICE_SOURCE=site`, the default
 - Chat: email codes are 6 digits, expire in 10 minutes, can be used once, and lock after 5 wrong tries. Phone numbers are verified by Firebase, and the server checks Google's signature. Chats are rate-limited.
 - Admin: password login with a signed, HttpOnly cookie. Login attempts are rate-limited, and forms are protected against cross-site requests.
 - Portals: passwords are stored hashed (scrypt with a separate salt per person), never in plain text. Password links work once and expire. Logins are rate-limited. Every page only ever shows the logged-in client's own bookings, invoices, properties, reports and photos (this is tested). Changing a password logs out other devices.
-- Quote form: spam honeypot, rate limit, validation. The server recalculates prices.
+- Website forms (estimate, contact, newsletter, other forms): spam honeypot, rate limit, validation, duplicate protection. The server recalculates every price.
 - CSV export is protected against spreadsheet formula injection.

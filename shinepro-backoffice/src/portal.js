@@ -8,11 +8,14 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const express = require('express');
 const { str, num, normalizePhone, HttpError } = require('./util');
+const { PRICING, money: pricingMoney } = require('../public/pricing');
 
 const INVOICE_STATUSES = ['draft', 'sent', 'paid', 'void'];
 const REQUEST_KINDS = ['reschedule', 'cancel', 'turnover'];
 const TURNOVER_SERVICE = 'Airbnb / STR Turnover';
 const MAX_PHOTOS = 40;
+const MAX_ITEMS = 50;
+const ITEM_KINDS = ['service', 'addon', 'included', 'discount', 'travel', 'other'];
 const IMAGE_TYPES = [
   { type: 'image/jpeg', ext: 'jpg', test: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
   { type: 'image/png', ext: 'png', test: (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) },
@@ -41,7 +44,7 @@ function createPortal({ db, config, svc, notifier, accounts }) {
     })));
   }
   // Booking / request updates to the client. They can turn these off on their profile page.
-  function emailClient(customerId, kind, subject, text, { force = false } = {}) {
+  function emailClient(customerId, kind, subject, text, { force = false, retry = true } = {}) {
     const customer = q('SELECT * FROM customers WHERE id = ?').get(customerId);
     const account = accounts.accountForCustomer(customerId);
     const to = (account && account.email) || (customer && customer.email);
@@ -49,7 +52,7 @@ function createPortal({ db, config, svc, notifier, accounts }) {
     if (!force && account && !account.email_updates) return Promise.resolve({ ok: false, status: 'skipped', error: 'Client turned off email updates' });
     const portal = `${config.publicUrl}/${account && account.is_host ? 'host' : 'portal'}`;
     return notifier.deliver({
-      kind, channel: 'email', to,
+      kind, channel: 'email', to, retry,
       payload: {
         subject,
         text: `Hi ${firstName(customer.name) || 'there'},\n\n${text}\n\nSee your account: ${portal}\nQuestions? Call or text ${config.businessPhone}.\n\n— ${config.businessName}`,
@@ -87,6 +90,55 @@ function createPortal({ db, config, svc, notifier, accounts }) {
   }
 
   // ---------- invoices ----------
+  // Line items: [{description, amount, kind}], kind = service | addon | included | discount | travel | other.
+  // The invoice amount is always the sum of its items. An invoice covers one visit, so it has at most
+  // one "Travel Fee — $20" line, and that line's amount always comes from public/pricing.js.
+  const travelItem = () => ({ description: `${PRICING.travelFeeLabel} — ${pricingMoney(PRICING.travelFee)}`, amount: PRICING.travelFee, kind: 'travel' });
+  const isTravel = (it) => it.kind === 'travel' || /^\s*travel\s*fee/i.test(it.description || '');
+  const cents = (n) => Math.round(Number(n) * 100) / 100;
+  const sumItems = (items) => cents(items.reduce((s, it) => s + Number(it.amount || 0), 0));
+
+  function parseItems(raw) {
+    if (Array.isArray(raw)) return raw;
+    if (!raw) return null;
+    try { const v = JSON.parse(raw); return Array.isArray(v) ? v : null; } catch { return null; }
+  }
+
+  function itemsInput(raw) {
+    if (!Array.isArray(raw)) throw new HttpError(400, 'Invoice lines must be a list');
+    if (raw.length > MAX_ITEMS) throw new HttpError(400, `An invoice can have up to ${MAX_ITEMS} lines`);
+    const items = [];
+    for (const it of raw) {
+      const description = str(it && it.description, 200);
+      const amount = num(it && it.amount);
+      if (!description && (amount == null || amount === 0)) continue; // empty row in the form
+      if (!description) throw new HttpError(400, 'Every invoice line needs a description');
+      if (amount == null || Math.abs(amount) >= 1000000) throw new HttpError(400, `Enter an amount for "${description}"`);
+      const kind = ITEM_KINDS.includes(it.kind) ? it.kind : 'other';
+      items.push({ description, amount: cents(amount), kind });
+    }
+    const travel = items.filter(isTravel);
+    if (travel.length > 1) throw new HttpError(400, 'The travel fee is charged once per visit. Remove the extra travel fee line.');
+    if (travel.length) Object.assign(travel[0], travelItem());
+    if (!items.length) throw new HttpError(400, 'Add at least one invoice line');
+    return items;
+  }
+
+  // What an invoice for this job should say: the booked estimate's lines when the price still matches,
+  // otherwise one service line plus exactly one travel fee line. job.price includes the travel fee.
+  function itemsForJob(job) {
+    let bd = job.price_breakdown;
+    if (typeof bd === 'string') { try { bd = JSON.parse(bd); } catch { bd = null; } }
+    if (bd && Array.isArray(bd.lines) && bd.total != null && job.price != null && Number(bd.total) === Number(job.price)) {
+      const items = bd.lines.map((l) => (l.kind === 'travel' ? travelItem() : { description: l.label, amount: cents(l.amount), kind: ITEM_KINDS.includes(l.kind) ? l.kind : 'other' }));
+      if (!items.some(isTravel)) items.push(travelItem());
+      return items;
+    }
+    if (job.price == null) return null;
+    const label = `${job.service_type || 'Cleaning service'} — ${fmtWhen(job.scheduled_at)}`;
+    return [{ description: label, amount: cents(Number(job.price) - PRICING.travelFee), kind: 'service' }, travelItem()];
+  }
+
   function getInvoice(id) {
     const inv = q('SELECT * FROM invoices WHERE id = ?').get(Number(id));
     if (!inv) throw new HttpError(404, 'Invoice not found');
@@ -97,7 +149,11 @@ function createPortal({ db, config, svc, notifier, accounts }) {
     const job = inv.job_id ? q('SELECT id, scheduled_at, service_type, address, property_id FROM jobs WHERE id = ?').get(inv.job_id) : null;
     const customer = q('SELECT id, name, email, phone, address, city, zip FROM customers WHERE id = ?').get(inv.customer_id);
     const today = nowLocal().slice(0, 10);
-    return { ...inv, job: job || null, customer, overdue: inv.status === 'sent' && inv.due_date && inv.due_date < today ? 1 : 0 };
+    // Invoices made before line items existed show as one line.
+    const items = parseItems(inv.items) || [{
+      description: job ? `${job.service_type || 'Cleaning service'} — ${fmtWhen(job.scheduled_at)}` : 'Cleaning services', amount: inv.amount, kind: 'other',
+    }];
+    return { ...inv, items, job: job || null, customer, overdue: inv.status === 'sent' && inv.due_date && inv.due_date < today ? 1 : 0 };
   }
 
   function invoiceInput(body, existing) {
@@ -105,23 +161,37 @@ function createPortal({ db, config, svc, notifier, accounts }) {
       customer_id: existing ? existing.customer_id : num(body.customer_id),
       job_id: body.job_id === undefined && existing ? existing.job_id : num(body.job_id),
       amount: body.amount === undefined && existing ? existing.amount : num(body.amount),
+      items: existing ? parseItems(existing.items) : null,
       status: body.status || (existing ? existing.status : 'draft'),
       due_date: body.due_date === undefined && existing ? existing.due_date : str(body.due_date, 10),
       pay_url: body.pay_url === undefined && existing ? existing.pay_url : str(body.pay_url, 500),
       notes: body.notes === undefined && existing ? existing.notes : str(body.notes, 5000),
       number: body.number === undefined && existing ? existing.number : str(body.number, 40),
     };
+    let job = null;
     if (d.job_id) {
-      const job = q('SELECT * FROM jobs WHERE id = ?').get(d.job_id);
+      job = q('SELECT * FROM jobs WHERE id = ?').get(d.job_id);
       if (!job) throw new HttpError(404, 'Job not found');
       if (!d.customer_id) d.customer_id = job.customer_id;
       if (job.customer_id !== d.customer_id) throw new HttpError(400, "That job belongs to a different client");
-      if (d.amount == null && !existing) d.amount = job.price;
+    }
+    if (body.items !== undefined && body.items !== null) {
+      d.items = itemsInput(body.items);
+      d.amount = sumItems(d.items);
+    } else if (!existing) {
+      if (job && body.amount === undefined) d.items = itemsForJob(job); // prefilled from the booking
+      else if (d.amount != null) d.items = [{ description: job ? `${job.service_type || 'Cleaning service'} — ${fmtWhen(job.scheduled_at)}` : 'Cleaning services', amount: d.amount, kind: 'other' }];
+      if (d.items) d.amount = sumItems(d.items);
+    } else if (body.amount !== undefined && d.items) {
+      // Only the amount was changed: fine for a one-line invoice; otherwise the lines decide the amount.
+      if (d.items.length === 1) d.items = [{ ...d.items[0], amount: d.amount == null ? d.items[0].amount : cents(d.amount) }];
+      else if (d.amount !== sumItems(d.items)) throw new HttpError(400, 'This invoice has several lines. Change the lines and the total follows.');
+      d.amount = sumItems(d.items);
     }
     if (!d.customer_id) throw new HttpError(400, 'Choose a client');
     svc.getCustomer(d.customer_id);
-    if (d.amount == null || d.amount < 0 || d.amount >= 1000000) throw new HttpError(400, 'Enter the invoice amount');
-    d.amount = Math.round(d.amount * 100) / 100;
+    if (d.amount == null || d.amount < 0 || d.amount >= 1000000) throw new HttpError(400, d.items ? 'The invoice total cannot be below $0' : 'Enter the invoice amount');
+    d.amount = cents(d.amount);
     if (!INVOICE_STATUSES.includes(d.status)) throw new HttpError(400, `Status must be one of: ${INVOICE_STATUSES.join(', ')}`);
     if (d.due_date && !DATE.test(d.due_date)) throw new HttpError(400, 'Due date must be a date');
     // A Stripe Payment Link (https://buy.stripe.com/...) or any other secure payment page.
@@ -135,19 +205,20 @@ function createPortal({ db, config, svc, notifier, accounts }) {
   }
 
   function saveInvoice(id, d, existing) {
+    const items = d.items ? JSON.stringify(d.items) : null;
     try {
       if (!existing) {
-        const r = q(`INSERT INTO invoices (customer_id, job_id, number, amount, status, due_date, pay_url, notes, sent_at, paid_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${d.status === 'sent' || d.status === 'paid' ? "datetime('now')" : 'NULL'}, ${d.status === 'paid' ? "datetime('now')" : 'NULL'})`)
-          .run(d.customer_id, d.job_id, d.number || `tmp-${crypto.randomBytes(8).toString('hex')}`, d.amount, d.status, d.due_date, d.pay_url, d.notes);
+        const r = q(`INSERT INTO invoices (customer_id, job_id, number, amount, items, status, due_date, pay_url, notes, sent_at, paid_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ${d.status === 'sent' || d.status === 'paid' ? "datetime('now')" : 'NULL'}, ${d.status === 'paid' ? "datetime('now')" : 'NULL'})`)
+          .run(d.customer_id, d.job_id, d.number || `tmp-${crypto.randomBytes(8).toString('hex')}`, d.amount, items, d.status, d.due_date, d.pay_url, d.notes);
         id = Number(r.lastInsertRowid);
         if (!d.number) q('UPDATE invoices SET number = ? WHERE id = ?').run(`SP-${1000 + id}`, id);
       } else {
-        q(`UPDATE invoices SET job_id=?, number=?, amount=?, status=?, due_date=?, pay_url=?, notes=?,
+        q(`UPDATE invoices SET job_id=?, number=?, amount=?, items=?, status=?, due_date=?, pay_url=?, notes=?,
            sent_at = CASE WHEN ? IN ('sent', 'paid') AND sent_at IS NULL THEN datetime('now') ELSE sent_at END,
            paid_at = CASE WHEN ? = 'paid' THEN COALESCE(paid_at, datetime('now')) ELSE NULL END,
            updated_at=datetime('now') WHERE id=?`)
-          .run(d.job_id, d.number || existing.number, d.amount, d.status, d.due_date, d.pay_url, d.notes, d.status, d.status, id);
+          .run(d.job_id, d.number || existing.number, d.amount, items, d.status, d.due_date, d.pay_url, d.notes, d.status, d.status, id);
       }
     } catch (err) {
       if (/UNIQUE/.test(err.message)) throw new HttpError(409, 'That invoice number is already used');
@@ -176,17 +247,18 @@ function createPortal({ db, config, svc, notifier, accounts }) {
 
   // Emails the client the invoice: amount, due date, Pay now link and a link to view / print it.
   async function sendInvoice(id) {
-    let inv = getInvoice(id);
+    let inv = hydrateInvoice(getInvoice(id));
     if (inv.status === 'void') throw new HttpError(400, 'This invoice is void');
     if (inv.status === 'draft') inv = saveInvoice(inv.id, invoiceInput({ status: 'sent' }, inv), inv);
     const account = accounts.accountForCustomer(inv.customer_id);
     const viewLink = `${config.publicUrl}/${account && account.is_host ? 'host' : 'portal'}/invoices/${inv.id}`;
     const text = `Here is invoice ${inv.number} from ${config.businessName} for ${money(inv.amount)}`
       + `${inv.due_date ? `, due ${fmtDate(inv.due_date)}` : ''}.`
+      + `\n\n${inv.items.map((it) => `  • ${it.description}: ${it.amount < 0 ? '−' : ''}${money(Math.abs(it.amount))}`).join('\n')}\n  Total: ${money(inv.amount)}`
       + `${inv.status === 'paid' ? '\n\nThis invoice is paid. Thank you!' : inv.pay_url ? `\n\nPay online: ${inv.pay_url}` : ''}`
       + `\n\nView or print it${account ? '' : ' (log in or set up your client portal with this email address)'}: ${viewLink}`
       + `${inv.notes ? `\n\n${inv.notes}` : ''}`;
-    const result = await emailClient(inv.customer_id, 'invoice', `Invoice ${inv.number} from ${config.businessName}: ${money(inv.amount)}`, text, { force: true });
+    const result = await emailClient(inv.customer_id, 'invoice', `Invoice ${inv.number} from ${config.businessName}: ${money(inv.amount)}`, text, { force: true, retry: false });
     if (!result.ok) throw new HttpError(502, `Invoice not emailed: ${result.error}`);
     return hydrateInvoice(getInvoice(inv.id));
   }
@@ -518,7 +590,8 @@ function createPortal({ db, config, svc, notifier, accounts }) {
         address: str(b.address, 250) || [c.address, c.city].filter(Boolean).join(', '), zip: str(b.zip, 12) || c.zip,
         service_type: b.service_type, frequency: b.frequency, bedrooms: b.bedrooms, bathrooms: b.bathrooms,
         preferred_date: b.preferred_date, message: b.message, marketing_opt_in: c.marketing_opt_in,
-      }, 'portal');
+        size: b.size, addons: b.addons, organizing_hours: b.organizing_hours, request_id: b.request_id,
+      }, 'portal', { dedupe: true });
       notifier.newLead(lead).catch((err) => console.error('[portal] lead alert error', err));
       res.status(201).json({ ok: true, id: lead.id });
     }));
@@ -571,7 +644,7 @@ function createPortal({ db, config, svc, notifier, accounts }) {
   }
   function clientInvoiceView(inv) {
     return {
-      id: inv.id, number: inv.number, amount: inv.amount, status: inv.status, due_date: inv.due_date,
+      id: inv.id, number: inv.number, amount: inv.amount, items: inv.items, status: inv.status, due_date: inv.due_date,
       pay_url: inv.status === 'sent' ? inv.pay_url : null, notes: inv.notes, created_at: inv.created_at, sent_at: inv.sent_at,
       paid_at: inv.paid_at, overdue: inv.overdue, customer: inv.customer,
       job: inv.job ? { scheduled_at: inv.job.scheduled_at, service_type: inv.job.service_type, address: inv.job.address } : null,
@@ -611,6 +684,12 @@ function createPortal({ db, config, svc, notifier, accounts }) {
 
     // invoices
     admin.get('/invoices', (req, res) => res.json(listInvoices(req.query)));
+    // Suggested lines for an invoice made from this booking (service line + one travel fee line).
+    admin.get('/invoices/prefill', (req, res) => {
+      const job = q('SELECT * FROM jobs WHERE id = ?').get(Number(req.query.job_id));
+      if (!job) throw new HttpError(404, 'Job not found');
+      res.json({ job_id: job.id, items: itemsForJob(job) || [{ description: `${job.service_type || 'Cleaning service'} — ${fmtWhen(job.scheduled_at)}`, amount: 0, kind: 'service' }, travelItem()], travel_item: travelItem() });
+    });
     admin.post('/invoices', (req, res) => res.status(201).json(createInvoice(req.body || {})));
     admin.get('/invoices/:id', (req, res) => res.json(hydrateInvoice(getInvoice(id(req)))));
     admin.put('/invoices/:id', (req, res) => res.json(updateInvoice(id(req), req.body || {})));
@@ -648,7 +727,7 @@ function createPortal({ db, config, svc, notifier, accounts }) {
   return {
     INVOICE_STATUSES, REQUEST_KINDS,
     createPortalRouter, mountAdmin,
-    listInvoices, createInvoice, updateInvoice, sendInvoice, listProperties, createProperty, listRequests,
+    listInvoices, createInvoice, itemsForJob, updateInvoice, sendInvoice, listProperties, createProperty, listRequests,
     approveRequest, declineRequest, getReport, saveReport, addPhoto,
   };
 }

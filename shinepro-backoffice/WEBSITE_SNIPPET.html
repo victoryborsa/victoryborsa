@@ -11,39 +11,36 @@
 <script src="https://admin.pghshinepro.com/chat.js" async></script>
 
 
-<!-- 2) KEEP THE WEBSITE'S EXISTING QUOTE FORM AND PRICES (the owner's prices are final).
-        Just ALSO send each submission to the back office so the lead is saved and the
-        owner is emailed. Add this after the form's existing submit logic succeeds.
-        Map field names to whatever the current form uses; only "name" and phone or email are required. -->
+<!-- 2) THE WEBSITE'S FORMS POST HERE. Prices come only from public/pricing.js (the website build
+        copies that file). The back office prices every estimate again itself and ignores any
+        price the browser sends. Full field lists and responses: DEVELOPER_HANDOFF.md.
+        Make one request_id per form fill and reuse it if the visitor presses submit again. -->
 <script>
-  function sendLeadToShinePro(data) {
-    return fetch('https://admin.pghshinepro.com/api/leads', {
+  function shineRequestId() {
+    return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'r-' + Date.now().toString(36) + Math.random().toString(36).slice(2);
+  }
+  function sendToShinePro(path, body) {
+    return fetch('https://admin.pghshinepro.com' + path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: data.name,                     // required
-        phone: data.phone,                   // phone and/or email required
-        email: data.email,
-        address: data.address,
-        zip: data.zip,
-        service_type: data.service,          // any text, e.g. "Deep Cleaning"
-        bedrooms: data.bedrooms,
-        bathrooms: data.bathrooms,
-        sqft: data.sqft,
-        frequency: data.frequency,           // any text, e.g. "Every 2 weeks"
-        preferred_date: data.date,
-        estimated_price: data.price,         // the price YOUR form showed (kept exactly)
-        message: data.notes,
-        marketing_opt_in: data.optIn === true
-      })
-    }).catch(function () { /* never block the customer if this fails */ });
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error); return d; }); });
   }
+  // Free estimate form:
+  // sendToShinePro('/api/leads', { name, email, phone, preferred_contact: 'phone' | 'email' | 'text',
+  //   service_type: 'deep', bedrooms: '2', frequency: 'once', addons: ['fridge'], organizing_hours: 2,
+  //   address, zip, preferred_date, preferred_time, referred_by, gift_code, message,
+  //   marketing_opt_in: false, request_id, company_website: '' })
+  //   -> { ok, id, lead_id, duplicate, estimated_price, quote, breakdown }
+  // Contact:    sendToShinePro('/api/contact', { name, email, phone, preferred_contact, interest, message, marketing_opt_in, request_id, company_website })
+  // Newsletter: sendToShinePro('/api/newsletter', { email, consent: true, request_id, company_website })
+  // Other forms: sendToShinePro('/api/forms', { form: 'Careers', name, email, phone, preferred_contact, fields: { 'Position': 'Cleaner' }, request_id, company_website })
 </script>
 
 
-<!-- 3) NOT NEEDED (the site already has a quote form). The package's own quote widget
-        (embed.js) uses SAMPLE prices; only use it after copying the real prices into
-        public/pricing.js and setting PRICE_SOURCE=package. -->
+<!-- 3) OPTIONAL: the back office's own estimate widget (same prices, from pricing.js):
+        <div id="shinepro-quote"></div>
+        <script src="https://admin.pghshinepro.com/embed.js" async></script> -->
 
 
 <!-- 4) RECOMMENDED — link the existing Back Office tiles to the new admin:

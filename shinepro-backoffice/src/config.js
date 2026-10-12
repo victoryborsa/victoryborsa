@@ -20,6 +20,9 @@ function loadConfig(env = process.env) {
     sessionSecret: env.SESSION_SECRET || '',
     allowedOrigins: (env.ALLOWED_ORIGINS || 'https://pghshinepro.com,https://www.pghshinepro.com')
       .split(',').map((s) => s.trim()).filter(Boolean),
+    // The public website's address(es). Its forms post to /api/leads, /api/contact, /api/newsletter and /api/forms.
+    siteOrigins: (env.SITE_ORIGINS || 'https://pghshinepro.com,https://www.pghshinepro.com')
+      .split(',').map((s) => s.trim().replace(/\/$/, '')).filter(Boolean),
     // Where new-lead alerts go (comma separated lists allowed)
     alertEmails: (env.ALERT_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean),
     alertPhones: (env.ALERT_PHONES || '').split(',').map((s) => s.trim()).filter(Boolean),
@@ -38,11 +41,9 @@ function loadConfig(env = process.env) {
       from: env.TWILIO_FROM_NUMBER || '',
     },
     sendCustomerConfirmation: env.SEND_CUSTOMER_CONFIRMATION !== 'false',
-    // Where prices come from:
-    //  'site'    (default) the website already has its own prices/quote form. Leads keep the price the
-    //            website sent, and the chat assistant never quotes numbers (sends people to the quote form).
-    //  'package' use the price table in public/pricing.js everywhere (quote widget, leads, chat).
-    priceSource: env.PRICE_SOURCE === 'package' ? 'package' : 'site',
+    // Prices always come from public/pricing.js: the server recalculates every estimate it receives.
+    // Failed emails/texts are retried automatically: 3 attempts in total, waiting this long (ms) before each retry.
+    notifyRetryDelaysMs: (env.NOTIFY_RETRY_DELAYS_MS || '5000,30000').split(',').map(Number).filter((n) => Number.isFinite(n) && n >= 0),
     // Website chat
     anthropicApiKey: env.ANTHROPIC_API_KEY || '',
     aiModel: env.AI_MODEL || 'claude-opus-5-5',

@@ -5,7 +5,7 @@ It's a small, self-contained Node.js service. Run it on a subdomain next to the 
 
 ## What the owner needs
 
-1. **No lead is ever lost.** Every quote request and chat is saved before any alert is sent.
+1. **No lead is ever lost.** Every estimate request, contact message, website form and chat is saved before any alert is sent. Failed alerts are retried automatically.
 2. **Instant email alert** for every new lead, new chat, and call-back request. The owner uses Gmail phone notifications.
 3. **Website chat:**
    - The customer enters name, email and phone, then chats right away (`CHAT_VERIFICATION=none`, the default). The older code-verified flow is still available with `CHAT_VERIFICATION=codes`.
@@ -25,7 +25,7 @@ All of the above is covered by `npm test` (integration tests, including the chat
 
 - **Node.js ≥ 22.13**, Express 4, Nodemailer, `@anthropic-ai/sdk`. There is no build step.
 - **SQLite** via Node's built-in `node:sqlite`, stored in one file (`DATABASE_FILE`). It needs a **persistent disk**.
-- **Prices:** `PRICE_SOURCE=site` (default) means the website's prices are the source of truth. The chat assistant **never quotes dollar amounts**; it collects the estimate details and the team confirms the price.
+- **Prices:** only in `public/pricing.js` (see *Prices* below). The server re-prices every estimate; the chat assistant quotes estimates from the same list, always with the $20 travel fee.
 - **AI:** Claude via the official Anthropic SDK (`src/ai.js`), model `claude-opus-5-5` (override with `AI_MODEL`).
   - Streamed (`?stream=1` on `/api/chat/message` returns Server-Sent Events), low effort for short, fast answers.
   - If replies ever feel slow to start, `AI_MODEL=claude-haiku-4-5` is the quickest model to first words (simpler answers).
@@ -41,15 +41,16 @@ src/chat.js        website chat: email codes, phone-token check, sessions, AI re
 src/ai.js          Claude call + system prompt (built from knowledge.md + pricing)
 src/firebase.js    Firebase ID-token verification (no firebase-admin needed)
 src/service.js     leads, customers, messages, employees, jobs
-src/notifier.js    email delivery, every attempt logged to `notifications`
+src/notifier.js    email/text delivery: every send logged to `notifications`, automatic retries, admin Retry
+src/website.js     /api/contact, /api/newsletter, /api/forms + Admin → Website forms
 src/auth.js        admin login, signed HttpOnly cookie, rate limit
 src/db.js          schema (created automatically; new columns are added by migrate() on startup)
 src/accounts.js    portal logins: scrypt passwords, one-time set/reset links, portal session cookie, rate limit
 src/portal.js      client/host portal API (/api/portal) + admin invoices, properties, requests, reports
 knowledge.md       what the chat assistant knows. The OWNER edits this.
 public/chat.js     chat widget (one <script> tag)
-public/embed.js    quote-form widget
-public/pricing.js  price table, used by browser, server and AI
+public/embed.js    estimate widget (optional; same prices)
+public/pricing.js  THE price list and calculator: website, server, invoices and AI
 public/admin.*     admin app
 public/portal.*    client portal (/portal) and host portal (/host): one page, screen chosen from the URL
 WEBSITE_SNIPPET.html  exactly what to paste into the website
@@ -82,26 +83,47 @@ WEBSITE_SNIPPET.html  exactly what to paste into the website
 
 ## Put it on the website
 
-Everything is in **`WEBSITE_SNIPPET.html`**:
+Everything to paste is in **`WEBSITE_SNIPPET.html`**:
 - **Chat:** `<script src="https://admin.pghshinepro.com/chat.js" async></script>` before `</body>` on every page. **Remove the site's current "Chat With Us" widget** so there's only one.
-- **Quote form: keep the website's existing form and prices.** The owner's prices are final. Also POST each submission to `/api/leads` so the lead is saved and the owner is alerted (`sendLeadToShinePro()` in the snippet). With the default `PRICE_SOURCE=site`, the back office stores the price and service names **exactly as your form sends them** and never re-prices. Don't install the package's `embed.js` quote widget: it uses sample prices, and is only for `PRICE_SOURCE=package`.
-- The site's origins must be in `ALLOWED_ORIGINS` (defaults to both `https://pghshinepro.com` and `https://www.pghshinepro.com`).
+- **Forms:** the static website posts JSON to the four endpoints below. Its origins must be in **`SITE_ORIGINS`** (comma separated, default `https://pghshinepro.com,https://www.pghshinepro.com`); `ALLOWED_ORIGINS` (used by the chat) is also accepted.
+- The package's own estimate widget (`embed.js`) uses the same `pricing.js` and posts to `/api/leads`; it's optional.
 
-**`/api/leads` fields** (POST JSON or a normal form):
+### Prices: change them only in `public/pricing.js`
+
+`public/pricing.js` is **the** price list and calculator (service × home size, what each service already includes, add-ons, recurring discounts, and `travelFee: 20`). `quote(input)` returns itemized lines (`service`, `addon`, `included`, `discount`, `travel`) and a total that always includes **one "Travel Fee — $20" line per visit**; `estimatePrice(input)` returns the total, or `null` for a custom quote. The website build copies this file; the back office uses it to **re-price every request** (whatever price the browser sends is ignored), for invoices and in the chat assistant's prompt. To change a price: edit `pricing.js`, rebuild the website, redeploy the back office.
+
+### Endpoints the website uses
+
+All take JSON (`Content-Type: application/json`), answer CORS for `SITE_ORIGINS`, are rate limited (20 per hour per IP each) and have a honeypot: a hidden `company_website` field that must stay empty (if it's filled the answer is `200 {ok:true}` and nothing is saved). Every one accepts **`request_id`** (6–100 characters of letters, digits, `_ . : -`; a UUID from `crypto.randomUUID()` is ideal). Make one per form fill and reuse it when the visitor retries: a repeat returns the **original** record with `200` and `duplicate: true` and sends no new emails. Errors are `400 {error: "A plain sentence for the visitor"}` (`429` when rate limited).
+
+`preferred_contact` is `phone`, `text` or `email` and must match a channel they gave (choosing `email` needs an email, `phone`/`text` need a phone). At least one of `phone` / `email` is always required. Marketing is separate from service messages: only `marketing_opt_in: true` (a separate, unticked checkbox) or the newsletter turns it on, and nothing ever turns it off here.
+
+**`POST /api/leads`** (free estimate)
 
 | field | notes |
 |---|---|
 | `name` | required |
 | `phone`, `email` | at least one required |
-| `service_type` | any text (e.g. "Deep Cleaning") |
-| `bedrooms`, `bathrooms`, `sqft` | numbers |
-| `frequency` | any text |
-| `estimated_price` | the price your form showed. It's stored as-is when `PRICE_SOURCE=site`. |
-| `address`, `zip`, `preferred_date`, `message` | text |
-| `marketing_opt_in` | boolean |
-| `company_website` | honeypot: keep it hidden and empty |
+| `preferred_contact` | `phone` \| `text` \| `email` |
+| `service_type` (alias `service`) | a `pricing.js` service id: `standard`, `deep`, `move`, `recurring`, `apartment`, `airbnb`, `event`, `commercial`, `postconstruction`, `upholstery` (labels like "Deep Cleaning" also work). Unknown text is stored as-is with no price. |
+| `bedrooms` (alias `size`) | `'1'`…`'5'` (5 = 5+) |
+| `frequency` | `once` \| `weekly` \| `biweekly` \| `monthly` (only used for `recurring`) |
+| `addons` | array (or comma list) of add-on ids: `fridge`, `oven`, `windows`, `laundry`, `cabinets`, `organizing`, `walls`, `balcony`, `dishes` |
+| `organizing_hours` (alias `organizingHours`) | 1–8, with the `organizing` add-on |
+| `bathrooms`, `sqft` | numbers, stored for the team |
+| `address`, `zip`, `preferred_date`, `preferred_time`, `referred_by`, `gift_code`, `message` | text |
+| `marketing_opt_in` | `true` only if the separate marketing box was ticked |
+| `request_id`, `company_website` | see above |
+| `estimated_price` / `estimated_total` | ignored (display only on the website) |
 
-A JSON post returns `201 {ok, id, estimated_price}`. A normal form post redirects with a 303 to `/thanks.html`.
+Duplicates: the same `request_id`, **or** the same email/phone asking for the same service within 2 minutes. Answer: `201` (new) or `200` (duplicate)
+`{ ok: true, id, lead_id, duplicate, estimated_price, quote, breakdown }` where `quote` is the `pricing.js` `quote()` result the server computed (or `null` for an unknown service) and `breakdown` is what was stored: `{ lines, subtotal, discount, travel_fee, total, quote_only }`. Custom-quote services (`event`, `commercial`, `postconstruction`, `upholstery`, `airbnb` with 4+ bedrooms) have `estimated_price: null`, `quote.quoteOnly: true`, and their lines still contain the travel fee. A normal HTML form post (not JSON, `Accept: text/html`) redirects with a 303 to `/thanks.html`.
+
+**`POST /api/contact`**: `name` (required), `email` and/or `phone`, `preferred_contact`, `interest` (text, e.g. "Deep cleaning"; never priced), `message` (required), `marketing_opt_in`, `request_id`, `company_website`. Saved as a lead with source `contact` (it shows in Admin → Leads), the owner gets an email and the customer a confirmation. Duplicates as for leads. Answer `201`/`200 { ok, id, lead_id, duplicate }`.
+
+**`POST /api/newsletter`**: `email` (required), `consent: true` (required, otherwise 400 "Please tick the box…"), optional `name`, `request_id`, `company_website`. Creates or updates the client with `marketing_opt_in = 1` (and `marketing_opt_in_at`). Answer `201 { ok, id, duplicate: false }`, or `200 { ok, id, duplicate: true }` if that email was already subscribed.
+
+**`POST /api/forms`** (event quotes, careers, gift card orders, referrals, local area quotes…): `form` (required, the form's name as shown, up to 80 characters, e.g. `"Careers"`, `"Gift card"`, `"Quote request (Shadyside)"`), `name`, `email` and/or `phone`, `preferred_contact`, `fields` (an object of `label: value`; arrays are joined with commas; other top-level keys are kept as fields too), `request_id`, `company_website`. Limits: 40 fields, labels 80 characters, each value 5,000 characters, 20,000 characters in total. Saved in `form_submissions` (Admin → **Website forms**, with read/unread), owner emailed. Duplicates: the same `request_id`, or the same form + contact + answers within 2 minutes. Answer `201`/`200 { ok, id, duplicate }`.
 
 **The existing Back Office page:** point its tiles at the new admin (the URLs are in the snippet file), or port `src/service.js`, `src/chat.js` and `src/notifier.js` into the existing backend. None of them depend on the framework.
 
@@ -147,7 +169,7 @@ On the website, point the "Client Login" menu item at `https://admin.pghshinepro
 
 **Requests.** Reschedule / cancel (client) and turnover (host) requests go into `portal_requests` and email `ALERT_EMAILS`. In Admin → Requests: *Approve* moves the job (and tells assigned cleaners), cancels it, or creates a turnover job on the property (start = checkout time, address and access notes from the property); *Decline* takes a note. The client is emailed either way, unless they turned off "booking and request updates" on their profile. "Request a cleaning" in the portal creates a normal lead, exactly like `/api/leads`.
 
-**Invoices.** `invoices` table: customer, optional job, number (auto `SP-1001`…, editable, unique), amount, status `draft | sent | paid | void`, due date, `pay_url`, notes, `sent_at`, `paid_at`. Creating from a job fills in the client and the job's price. `pay_url` must be `https://` (meant for a **Stripe Payment Link**; any secure payment page works). "Save & email to client" marks a draft as sent and emails the amount, due date, pay link and the portal link. The "Pay now" button shows only while the invoice is `sent`. Payment is not reconciled automatically: mark it paid when Stripe shows the payment. (A Stripe webhook could do this later; it would need `STRIPE_WEBHOOK_SECRET` and the Payment Link's metadata.)
+**Invoices.** `invoices` table: customer, optional job, number (auto `SP-1001`…, editable, unique), `items` (JSON lines `[{description, amount, kind}]`, kind `service|addon|included|discount|travel|other`), amount (always the sum of the items), status `draft | sent | paid | void`, due date, `pay_url`, notes, `sent_at`, `paid_at`. Creating from a job fills in the client and its lines: the booked estimate's lines when the job price still matches it, otherwise one service line (job price − $20) plus exactly one "Travel Fee — $20" line (`jobs.price` includes the travel fee). An invoice can't have a second travel fee line, and that line's amount always comes from `pricing.js`. Changing only `amount` works for a one-line invoice; with several lines, edit the lines. Invoices from before line items show as one line. `pay_url` must be `https://` (meant for a **Stripe Payment Link**; any secure payment page works). "Save & email to client" marks a draft as sent and emails the amount, due date, pay link and the portal link. The "Pay now" button shows only while the invoice is `sent`. Payment is not reconciled automatically: mark it paid when Stripe shows the payment. (A Stripe webhook could do this later; it would need `STRIPE_WEBHOOK_SECRET` and the Payment Link's metadata.)
 
 **Properties and turnover reports.** `properties` (owner customer, name, address, bedrooms, bathrooms, access notes, default checkout / check-in times, notes); hosts add and edit their own, the admin can too. `jobs.property_id` (nullable) links a turnover to a property; it is added to existing databases by `migrate()` in `src/db.js`. `job_reports` holds notes, damage notes, inventory notes and a JSON list of photos. Photos are uploaded by the admin (booking → "Report & photos"), sent as base64 JSON so the JSON-only CSRF rule still applies, checked by their actual bytes (JPEG, PNG, WebP or GIF only), limited to `UPLOAD_MAX_MB` (default 8 MB, browsers shrink big phone photos to 2000 px first) and 40 per report. Files are stored in `UPLOADS_DIR/jobs/<job id>/<random>.jpg`, by default an `uploads` folder next to `DATABASE_FILE` (so on the persistent disk; include it in backups). They are served only through `/api/portal/photos/…` (owning host) and `/api/admin/photos/…` (admin), never as static files.
 
@@ -159,13 +181,14 @@ Hosts only: `GET|POST /properties` · `GET|PUT /properties/:id` · `GET|POST /tu
 
 ## Admin API (`/api/admin`, cookie session, JSON bodies)
 
-`POST /login` · `POST /logout` · `GET /stats` · `GET /meta` · `GET /notifications` · `POST /test-alert`
+`POST /login` · `POST /logout` · `GET /stats` · `GET /meta` · `GET /notifications?status=failed` · `POST /notifications/:id/retry` · `POST /test-alert`
+`GET /forms?status=all|unread|read` · `GET|DELETE /forms/:id` · `PATCH /forms/:id {read}`
 `GET|POST /leads` · `GET|PATCH|DELETE /leads/:id` · `POST /leads/:id/messages {channel: email|gvoice|sms_in|chat|note, subject?, body}`
 `GET|POST /customers` · `GET|PUT|DELETE /customers/:id` · `POST /customers/:id/messages` · `GET /customers/export.csv?opted_in=1`
 `GET|POST /employees` · `GET|PUT|DELETE /employees/:id`
-`GET|POST /jobs?from&to&status&employee_id&customer_id&property_id` · `GET|PUT|DELETE /jobs/:id` (jobs accept `property_id`)
+`GET|POST /jobs?from&to&status&employee_id&customer_id&property_id` · `GET|PUT|DELETE /jobs/:id` (jobs accept `property_id`; a job made with `lead_id` copies the lead's price, service and `price_breakdown`; saving returns `warnings` when an assigned cleaner has an overlapping scheduled job) · `GET /jobs/conflicts?employee_ids=1,2&scheduled_at&duration_hours&job_id`
 `PUT /customers/:id/portal {enabled,is_host,send_link}` · `POST /customers/:id/portal/invite`
-`GET|POST /invoices?status=all|draft|open|paid|void&customer_id` · `GET|PUT|DELETE /invoices/:id` · `POST /invoices/:id/send`
+`GET|POST /invoices?status=all|draft|open|paid|void&customer_id` · `GET /invoices/prefill?job_id` · `GET|PUT|DELETE /invoices/:id` (`items: [{description, amount, kind}]`) · `POST /invoices/:id/send`
 `GET|POST /properties?customer_id` · `GET|PUT|DELETE /properties/:id`
 `GET /requests?status=pending|approved|declined|all` · `POST /requests/:id/approve {scheduled_at?,price?,duration_hours?,employee_ids?,admin_note?}` · `POST /requests/:id/decline {admin_note}`
 `GET|PUT /jobs/:id/report {notes,damage_notes,inventory_notes}` · `POST /jobs/:id/report/photos {name,data(base64)}` · `DELETE /jobs/:id/report/photos/:file` · `GET /photos/:jobId/:file`
@@ -173,9 +196,10 @@ Hosts only: `GET|POST /properties` · `GET|PUT /properties/:id` · `GET|POST /tu
 ## Operations
 
 - **Backups:** the DB is one file (`shinepro.db*`), and turnover photos are in `UPLOADS_DIR` (default `uploads/` next to it). Snapshot the disk daily (Render does this).
-- **Health check:** `GET /health`. Failed emails appear in Admin → Alerts and as a dashboard warning.
+- **Health check:** `GET /health`.
+- **Email/text log and retries:** every email/text is one row in `notifications` (kind, channel, recipient, status `sending|retrying|sent|failed|skipped`, error, attempts, lead or form, and the message itself so it can be resent). The first try happens right away; if it fails it is tried again after `NOTIFY_RETRY_DELAYS_MS` (default 5 s, then 30 s), 3 tries in total. A sent message is never sent again. Messages the admin sends by hand (replies, invoices, test alerts) are not auto-retried: the admin sees the error. Admin → Alerts and each lead page list them with a **Retry** button for failed/skipped ones (`POST /api/admin/notifications/:id/retry`). Failed owner alerts also show as a dashboard warning.
 - **Costs to watch:** Firebase SMS (set a budget alert), Anthropic usage (set a spend limit in the console).
-- **Not included:** taking card payments directly (invoices link to a Stripe Payment Link instead, and are marked paid by hand), gift cards, job applications. These stay on the existing site.
+- **Not included:** taking card payments directly (invoices link to a Stripe Payment Link instead, and are marked paid by hand), or selling gift cards online. Gift card orders and job applications arrive as website forms.
 
 ## Go-live checklist
 
@@ -187,11 +211,11 @@ Hosts only: `GET|POST /properties` · `GET|PUT /properties/:id` · `GET|POST /tu
 - [ ] **End-to-end chat test on the live site:**
   - The chat won't start with a missing name, a bad email or a bad phone, and the owner gets a "New website chat" email when it starts.
   - Tapping a popular question answers instantly; "I want my house cleaned" gets an answer that starts within about 2 seconds and asks about bedrooms and bathrooms.
-  - The AI answers a price question without giving a number.
+  - The AI's price answers match `pricing.js` and include the $20 travel fee.
   - "Request a call back" sends the owner an urgent email.
   - A reply from the admin shows up in the chat.
-- [ ] Existing quote form also posts to `/api/leads`. A real test quote shows in Admin → Leads **with the same price the website showed**, and the owner email and customer confirmation arrive.
-- [ ] Ask the chat "how much is a deep clean?". It should ask for the home's details, not give a number.
+- [ ] `SITE_ORIGINS` lists the website's origins. A real test estimate (deep, 2 bedrooms) shows in Admin → Leads at **$329** with the Travel Fee line, the owner email and customer confirmation arrive with the lines and total, and pressing submit twice saves it once.
+- [ ] Contact form, newsletter and one website form (e.g. Careers) each arrive (Leads / Clients with marketing on / Website forms).
 - [ ] On a lead, "Text via Google Voice" opens (412) 447-8047
 - [ ] Owner reviewed `knowledge.md` (all `[CONFIRM]` lines)
 - [ ] Existing Back Office tiles link to the new admin

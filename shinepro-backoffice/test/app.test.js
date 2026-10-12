@@ -15,8 +15,8 @@ test('website quote is saved as lead + customer, and owner is alerted by email a
   const r = await s.req('/api/leads', { method: 'POST', body: quote, headers: { Origin: 'https://pghshinepro.com' } });
   assert.equal(r.status, 201);
   assert.equal(r.headers.get('access-control-allow-origin'), 'https://pghshinepro.com');
-  // deep 200 + 3*25 + 2*30 + 40 (sqft) = 375, minus 10% = 337.5 -> 338
-  assert.equal(r.data.estimated_price, 338);
+  // deep, 3 bedrooms = $359 (no recurring discount on a deep clean) + $20 travel fee
+  assert.equal(r.data.estimated_price, 379);
 
   await s.until(() => s.sent.length >= 3);
   const ownerEmail = s.sent.find((m) => m.channel === 'email' && m.to === 'owner@example.com');
@@ -24,7 +24,7 @@ test('website quote is saved as lead + customer, and owner is alerted by email a
   const confirmation = s.sent.find((m) => m.to === 'jane@example.com');
   assert.ok(ownerEmail && ownerEmail.text.includes('Jane Doe') && ownerEmail.text.includes('+14125550199'));
   assert.equal(ownerSms.to, '+14125550100');
-  assert.ok(confirmation.text.includes('$338'));
+  assert.ok(confirmation.text.includes('Total: $379'));
 
   await s.login();
   const leads = await s.req('/api/admin/leads');
@@ -36,8 +36,8 @@ test('website quote is saved as lead + customer, and owner is alerted by email a
   assert.equal(customers.data[0].email, 'jane@example.com');
   assert.equal(customers.data[0].marketing_opt_in, 1);
 
-  // Second quote from the same person reuses the customer record
-  await s.req('/api/leads', { method: 'POST', body: { ...quote, email: 'jane@example.com' } });
+  // Second quote from the same person (another service) reuses the customer record
+  await s.req('/api/leads', { method: 'POST', body: { ...quote, service_type: 'standard', email: 'jane@example.com' } });
   assert.equal((await s.req('/api/admin/customers')).data.length, 1);
   assert.equal((await s.req('/api/admin/leads')).data.length, 2);
 });
@@ -175,7 +175,7 @@ test('employees and jobs: book from lead, assign cleaners, cleaners get notified
   s.sent.length = 0;
   const job = await s.req('/api/admin/jobs', {
     method: 'POST',
-    body: { customer_id: leadDetail.customer_id, lead_id: lead.id, scheduled_at: '2030-05-01T09:00', price: 338, service_type: 'Deep Cleaning', employee_ids: [e1.id], notes: 'Key under mat' },
+    body: { customer_id: leadDetail.customer_id, lead_id: lead.id, scheduled_at: '2030-05-01T09:00', price: 379, service_type: 'Deep Cleaning', employee_ids: [e1.id], notes: 'Key under mat' },
   });
   assert.equal(job.status, 201);
   assert.equal(job.data.address, '1 Main St');
@@ -229,21 +229,24 @@ test('Google Voice mode: email alerts, manual texts are logged, customer replies
   assert.deepEqual(s.sent.map((m) => m.to), ['maria@x.com']);
 });
 
-test("website's own prices are kept (default): lead stores the site's price and service name as sent", async (t) => {
-  const s = setup({ env: { PRICE_SOURCE: 'site' } });
+test('the server always prices: browser prices are ignored, unknown services are kept as text with no price', async (t) => {
+  const s = setup();
   t.after(s.close);
-  const r = await s.req('/api/leads', { method: 'POST', body: { name: 'Site Form', phone: '4125550111', service_type: 'Deep Clean Package', frequency: 'Every 2 weeks', estimated_price: 289.5 } });
+  const r = await s.req('/api/leads', { method: 'POST', body: { name: 'Site Form', phone: '4125550111', service_type: 'deep', bedrooms: '2', estimated_price: 1, estimated_total: 2 } });
   assert.equal(r.status, 201);
-  assert.equal(r.data.estimated_price, 289.5);
-  // a known package key is NOT re-priced from the sample table either
-  const r2 = await s.req('/api/leads', { method: 'POST', body: { name: 'Site Form 2', phone: '4125550112', service_type: 'deep', bedrooms: 3, estimated_price: 199 } });
-  assert.equal(r2.data.estimated_price, 199);
-  const bad = await s.req('/api/leads', { method: 'POST', body: { name: 'Bad Price', phone: '4125550113', estimated_price: -5 } });
-  assert.equal(bad.data.estimated_price, null);
+  assert.equal(r.data.estimated_price, 329);
+  assert.equal(r.data.quote.total, 329);
+  const odd = await s.req('/api/leads', { method: 'POST', body: { name: 'Odd Service', phone: '4125550112', service_type: 'Window Washing Deluxe', frequency: 'Every 2 weeks', estimated_price: 199 } });
+  assert.equal(odd.status, 201);
+  assert.equal(odd.data.estimated_price, null);
+  assert.equal(odd.data.quote, null);
   await s.login();
-  const lead = (await s.req(`/api/admin/leads/${r.data.id}`)).data;
-  assert.equal(lead.service_type, 'Deep Clean Package');
-  assert.equal(lead.frequency, 'Every 2 weeks');
+  const lead = (await s.req(`/api/admin/leads/${odd.data.id}`)).data;
+  assert.equal(lead.service_type, 'Window Washing Deluxe');
+  assert.equal(lead.estimated_price, null);
+  // a service label is understood too
+  const label = await s.req('/api/leads', { method: 'POST', body: { name: 'Label', phone: '4125550113', service_type: 'Deep Cleaning', bedrooms: 2 } });
+  assert.equal(label.data.estimated_price, 329);
 });
 
 test('SEO: back office is never indexed (only the main website should rank)', async (t) => {
@@ -262,5 +265,5 @@ test('pages and embed are served', async (t) => {
   for (const p of ['/admin', '/quote', '/embed.js', '/pricing.js', '/admin.js', '/styles.css', '/thanks.html']) {
     assert.equal((await s.req(p)).status, 200, p);
   }
-  assert.equal((await s.req('/api/pricing')).data.services.deep.base, 200);
+  assert.deepEqual((await s.req('/api/pricing')).data.services.deep.prices, [249, 309, 359, 419, 489]);
 });
