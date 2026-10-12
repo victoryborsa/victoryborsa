@@ -352,6 +352,16 @@
     });
   }
 
+  // On a service page, the header and bottom-bar estimate buttons keep that
+  // service, so the estimate form opens with it already chosen.
+  var serviceLink = $('main a[href*="free-estimate?service="]');
+  if (serviceLink) {
+    var svc = serviceLink.getAttribute("href").match(/service=([\w-]+)/)[1];
+    $$('.site-header a[href$="free-estimate"], .mobile-menu a[href$="free-estimate"], [data-mobile-bar] a[href$="free-estimate"], .site-header a[href$="free-estimate/index.html"], .mobile-menu a[href$="free-estimate/index.html"], [data-mobile-bar] a[href$="free-estimate/index.html"]').forEach(function (a) {
+      a.setAttribute("href", a.getAttribute("href") + "?service=" + svc);
+    });
+  }
+
   // "Chat With Us": opens the chat link if set, otherwise a text message.
   $$("[data-chat]").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -389,7 +399,7 @@
   if (quoteForm) {
     var qService = $("[data-quote-services]", quoteForm);
     var qSize = $("[data-quote-sizes]", quoteForm);
-    fillSelect(qService, serviceList(function (s) { return !s.recurring; }), "standard");
+    fillSelect(qService, serviceList(function (s) { return !s.recurring && (!s.quoteOnly || s.id === "event"); }), "standard");
     fillSelect(qSize, PR.sizes, "2");
     var updateQuote = function () {
       var q = SP.quote({ service: qService.value, size: qSize.value });

@@ -544,6 +544,7 @@ p {
 }
 .quote-card header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -2473,7 +2474,7 @@ fieldset.has-error .field-error { display: block; }
 @media (max-width: 720px) {
   .cta-bar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
-    display: grid; grid-template-columns: auto 1fr auto; gap: 8px;
+    display: grid; grid-template-columns: auto auto 1fr auto; gap: 6px;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
     background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid var(--line);
@@ -2481,6 +2482,7 @@ fieldset.has-error .field-error { display: block; }
   }
   .cta-bar.show { transform: none; }
   .cta-bar .btn { min-height: 52px; padding: 0 12px; }
+  .cta-bar .btn-ghost { min-width: 48px; }
   .cta-bar .btn-ghost span { display: none; }
   .cta-quote { display: grid !important; gap: 0; line-height: 1.15; text-align: center; }
   .cta-quote small { font-size: 0.7rem; font-weight: 600; opacity: 0.85; }
@@ -2522,3 +2524,7 @@ img { max-width: 100%; }
 .form-alert a { color: inherit; font-weight: 700; }
 .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .travel-note { font-size: 0.88rem; color: var(--muted); margin-top: 10px; }
+.quote-row > * { min-width: 0; }
+.quote-row .select { width: 100%; }
+.quote-card { grid-template-columns: minmax(0, 1fr); }
+.quote-total { flex-wrap: wrap; }

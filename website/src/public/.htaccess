@@ -5,10 +5,8 @@ DirectoryIndex index.html
 
 # Old pages that showed the same content as another page.
 <IfModule mod_alias.c>
-  Redirect 301 /post-construction-cleaning /deep-cleaning
   Redirect 301 /special-event-cleaning /event-cleanup
   Redirect 301 /eco-friendly-cleaning /house-cleaning
-  Redirect 301 /upholstery-cleaning /services
 
   # Client and host portals run on the back office server.
   # Change the address below if the back office lives somewhere else.

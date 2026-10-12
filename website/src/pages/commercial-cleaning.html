@@ -1,7 +1,8 @@
 <!--page {
   "path": "/commercial-cleaning",
   "title": "Commercial Cleaning Pittsburgh | Shine Pro",
-  "description": "Office and commercial cleaning Pittsburgh businesses trust. Offices, medical and dental, retail, restaurants, gyms and property management. Flexible scheduling, insured cleaners."
+  "description": "Office and commercial cleaning Pittsburgh businesses trust. Offices, medical and dental, retail, restaurants, gyms and property management. Flexible scheduling, insured cleaners.",
+  "scripts": ["forms.js"]
 } -->
 <section class="page-hero page-hero-media">
   <div class="wrap hero-grid">
@@ -10,7 +11,7 @@
       <h1>Office &amp; commercial cleaning Pittsburgh businesses trust.</h1>
       <p class="lead">Reliable, professional commercial cleaning for Pittsburgh offices, retail spaces, medical offices, and more. Flexible scheduling, insured cleaners, consistent results.</p>
       <div class="hero-ctas">
-        <a class="btn btn-primary" href="/contact">Get a Free Quote</a>
+        <a class="btn btn-primary" href="#quote-form">Get a Free Quote</a>
         <a class="btn btn-ghost" href="tel:+14124478047"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-phone" /></svg> Call (412) 447-8047</a>
       </div>
       <ul class="hero-trust">
@@ -71,11 +72,44 @@
   </div>
 </section>
 
+<section class="section" id="quote-form">
+  <div class="wrap two-col">
+    <div class="reveal">
+      <h2>Get a commercial cleaning quote</h2>
+      <p class="lead">Tell us about your space and schedule, and we will send custom pricing or set up a free on-site visit.</p>
+      <ul class="check-list check-list-plain" style="margin-top:20px">
+        <li>Free, no-obligation quote. No payment needed to ask.</li>
+        <li>Every visit includes one {{travel}} travel fee, listed on its own line.</li>
+        <li>Sending this form is a quote request. Nothing is booked until we confirm a date and time with you.</li>
+      </ul>
+      <div class="side-call" style="margin-top:24px"><strong>Rather talk it through?</strong><a href="tel:+14124478047">Call (412) 447-8047</a><a href="sms:+14124478047">or text us</a><small>{{biz hours}}</small></div>
+    </div>
+    <form class="form-card reveal" data-form="Commercial cleaning quote request" novalidate>
+      <div class="form-body">
+        <div class="form-grid">
+          <div class="field full"><label for="cm-name">Name *</label><input class="input" id="cm-name" name="Name" autocomplete="name" required /><span class="field-error">Please enter your name.</span></div>
+          <!-- @include contact-pref -->
+          <div class="field full"><label for="cm-addr">Address or ZIP code *</label><input class="input" id="cm-addr" name="Address or ZIP" autocomplete="street-address" required /><span class="field-error">Please enter the address or ZIP code.</span></div>
+          <div class="field"><label for="cm-type">What needs cleaning? *</label><select class="select" id="cm-type" name="What needs cleaning" required><option value="">Choose one</option><option>Office</option><option>Medical or dental office</option><option>Retail store</option><option>Restaurant</option><option>Gym or studio</option><option>Common areas / property management</option><option>Other</option></select><span class="field-error">Please choose one.</span></div>
+          <div class="field"><label for="cm-date">Preferred date</label><input class="input" id="cm-date" name="Preferred date" type="date" /></div>
+          <div class="field full"><label for="cm-freq">How often? <span class="opt">(optional)</span></label><select class="select" id="cm-freq" name="How often"><option value="">Not sure yet</option><option>One time</option><option>Weekly</option><option>Several times a week</option><option>Every 2 weeks</option><option>Monthly</option></select></div>
+          <div class="field full"><label for="cm-details">Details <span class="opt">(optional)</span></label><textarea class="textarea" id="cm-details" name="Details" placeholder="Size, condition, anything we should know"></textarea></div>
+          <label class="consent full"><input type="checkbox" name="consent" value="Yes" required /><span>* PGH Shine Pro may contact me about this quote request.</span></label>
+          <!-- @include marketing-optin -->
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Request My Free Quote</button>
+        <p class="quote-fine">No payment required. We'll contact you with your personalized quote.</p>
+      </div>
+      <!-- @include form-success -->
+    </form>
+  </div>
+</section>
+
 <section class="section final-cta" style="padding-top:0">
   <div class="wrap">
     <div class="guarantee reveal">
       <div><h2>Ready for a cleaner Pittsburgh workplace?</h2><p>Contact us for a free on-site quote. Custom pricing for every business size and scope.</p></div>
-      <div class="final-cta-actions"><a class="btn btn-light" href="/contact">Get a Free Quote</a><a class="btn btn-outline-light" href="tel:+14124478047">Call (412) 447-8047</a></div>
+      <div class="final-cta-actions"><a class="btn btn-light" href="#quote-form">Get a Free Quote</a><a class="btn btn-outline-light" href="tel:+14124478047">Call (412) 447-8047</a></div>
     </div>
   </div>
 </section>
