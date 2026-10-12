@@ -9,19 +9,23 @@ A page-for-page rebuild of the current pghshinepro.com, at the same web addresse
 - `src/pages/`: one file per page. The comment at the top holds the page's address, title and description.
 - `src/partials/`: pieces shared by every page (header, footer, mobile action bar, icons).
 - `src/public/`: CSS, JavaScript, fonts, images, `robots.txt` and the `.htaccess` file for GoDaddy.
-- Forms (free estimate, contact, careers, event quote, gift cards, newsletter) send through `formEndpoint` in `config.js`.
+- Forms (free estimate, contact, careers, event, specialty and local quotes, gift cards, newsletter) are saved in the back office when `backofficeUrl` is set in `config.js`; otherwise they go to `formEndpoint`, or open the visitor's email app.
 
 The client portal (`/portal/...`), host portal (`/host/...`) and admin dashboard need a server and database, so they run in the back office app (`shinepro-backoffice/`, planned at admin.pghshinepro.com). `.htaccess` forwards `/portal` and `/host` there; change that address if the back office lives elsewhere.
 
 The 24 local pages (`/cleaning-services/...`) are generated: edit `scripts/neighborhood-pages.mjs`, run it, then build.
 
-## Change prices, phone, email or discounts
+## Change prices, discounts, the travel fee, hours or service radius
 
-Everything you are likely to change is in one file: `src/public/assets/js/config.js` (or `assets/js/config.js` in the uploaded site). Edit the numbers or text, rebuild, and upload again.
+All of these live in one file shared with the back office: `../shinepro-backoffice/public/pricing.js`. Edit it, rebuild the website and redeploy the back office; every page, the estimate calculator, the server's price check, emails and invoices then show the same numbers.
+
+Pages never type a price. They use tokens that the build fills in from that file, for example `{{price deep 2}}` ($309), `{{from airbnb}}` ($95), `{{addon fridge}}`, `{{off weekly}}` (15%), `{{travel}}` ($20) and `{{biz hours}}`. The build stops with an error if a token names something that doesn't exist.
+
+Phone, email, gift card links and where forms are sent are in `src/public/assets/js/config.js`.
 
 ## Get form requests in your inbox
 
-By default, estimate and contact requests open the visitor's email app with everything filled in. To receive them automatically instead:
+With the back office running, set `backofficeUrl` in `config.js` (e.g. `https://admin.pghshinepro.com`) and every request is saved there, checked against the price list, and emailed to you and the customer. Without it, by default, estimate and contact requests open the visitor's email app with everything filled in. To receive them automatically instead:
 
 1. Create a free form at [formspree.io](https://formspree.io) using your business email.
 2. Copy its endpoint, e.g. `https://formspree.io/f/abcdwxyz`.
