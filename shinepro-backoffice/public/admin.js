@@ -45,6 +45,21 @@
   const status = (s) => `<span class="status st-${esc(s)}">${esc(s)}</span>`;
   const serviceLabel = (k) => (META && META.pricing.services[k] ? META.pricing.services[k].label : k || '');
   const freqLabel = (k) => (META && META.pricing.frequency[k] ? META.pricing.frequency[k].label : k || '');
+  // An itemized estimate (from public/pricing.js, priced by the server) as a small table.
+  const lineAmount = (l) => (l.kind === 'included' ? 'Included' : l.kind === 'travel' ? money(l.amount) : `${l.amount < 0 ? '−' : ''}${money(Math.abs(l.amount))}`);
+  const linesTable = (b) => (b && b.lines ? `<table class="lines">${b.lines.map((l) => `<tr><td>${esc(l.label)}</td><td class="num">${esc(lineAmount(l))}</td></tr>`).join('')}
+      <tr class="total"><td>Total</td><td class="num">${b.total != null ? money(b.total) : 'Custom quote'}</td></tr></table>` : '');
+  // Delivery log rows (emails/texts) with a Retry button for failed ones.
+  const notificationItem = (n) => `<div class="item"><div class="main"><div class="title">${esc(n.kind.replace(/_/g, ' '))} · ${esc(n.channel)} → ${esc(n.recipient || '')}</div>
+      <div class="sub">${esc(fmtAgo(n.updated_at || n.created_at))}${n.attempts > 1 ? ` · ${n.attempts} attempts` : ''}${n.error ? ` · ${esc(n.error)}` : ''}${n.lead_id ? ` · <a href="#/leads/${n.lead_id}">lead #${n.lead_id}</a>` : ''}${n.form_id ? ' · <a href="#/forms">website form</a>' : ''}</div></div>
+      <div style="text-align:right">${status(n.status)}${['failed', 'skipped'].includes(n.status) ? `<div style="margin-top:6px"><button type="button" class="btn sm secondary" data-retry="${n.id}">↻ Retry</button></div>` : ''}</div></div>`;
+  function bindRetry() {
+    $$('[data-retry]').forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      try { await api(`/notifications/${b.dataset.retry}/retry`, { method: 'POST', body: {} }); toast('Sent ✅'); } catch (err) { toast(`Still not sent: ${err.message}`, true); }
+      render();
+    }));
+  }
   const localISO = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   // Google Voice has no API: we open the conversation for that number and copy the message to paste.
   const gvLink = (phone) => `https://voice.google.com/u/0/messages?itemId=t.${encodeURIComponent(phone)}`;
@@ -63,7 +78,7 @@
     for (const el of form.elements) {
       if (!el.name) continue;
       if (el.type === 'checkbox') {
-        if (el.dataset.multi) { (out[el.name] ||= []); if (el.checked) out[el.name].push(Number(el.value)); }
+        if (el.dataset.multi) { (out[el.name] ||= []); if (el.checked) out[el.name].push(el.dataset.multi === 'str' ? el.value : Number(el.value)); }
         else out[el.name] = el.checked;
       } else out[el.name] = el.value;
     }
@@ -143,6 +158,7 @@
     [/^\/alerts$/, alertsPage],
     [/^\/invoices$/, invoicesPage],
     [/^\/requests$/, requestsPage],
+    [/^\/forms$/, formsPage],
   ];
 
   async function render() {
@@ -171,6 +187,9 @@
       const rb = $('#requests-badge');
       rb.textContent = s.pending_requests;
       rb.classList.toggle('hidden', !s.pending_requests);
+      const fb = $('#forms-badge');
+      fb.textContent = s.unread_forms;
+      fb.classList.toggle('hidden', !s.unread_forms);
       document.title = `${s.new_leads ? `(${s.new_leads}) ` : ''}Back Office · Shine Pro Cleaning`;
     } catch { /* ignore */ }
   }
@@ -200,6 +219,7 @@
         ${tile('#/employees', '🧹', 'i-cyan', 'Employees', `${s.active_employees} active`)}
         ${tile('#/requests', '📨', 'i-red', 'Requests', `${s.pending_requests} waiting`)}
         ${tile('#/invoices', '🧾', 'i-gold', 'Invoices', `${s.open_invoices} unpaid`)}
+        ${tile('#/forms', '📝', 'i-teal', 'Website forms', `${s.unread_forms} unread`)}
         ${tile('#/alerts', '🔔', 'i-purple', 'Alerts', 'Email & text log')}
       </div>
       <div class="stats">
@@ -252,9 +272,11 @@
       ${input('name', 'Name *', l.name)}${input('phone', 'Phone', fmtPhone(l.phone), { type: 'tel' })}
       ${input('email', 'Email', l.email, { type: 'email' })}${input('zip', 'ZIP', l.zip)}
       ${input('address', 'Address', l.address, { full: true })}
-      ${lead ? '' : select('service_type', 'Service', services, l.service_type) + select('frequency', 'Frequency', freqs, l.frequency)
-        + input('bedrooms', 'Bedrooms', l.bedrooms, { type: 'number' }) + input('bathrooms', 'Bathrooms', l.bathrooms, { type: 'number', attrs: 'step="0.5"' })
-        + input('sqft', 'Square feet', l.sqft, { type: 'number' })}
+      ${lead ? '' : select('service_type', 'Service', services, l.service_type) + select('frequency', 'Frequency (recurring only)', freqs, l.frequency)
+        + select('size', 'Home size', META.pricing.sizes.map((z) => [z.id, z.label]), '2') + input('bathrooms', 'Bathrooms', l.bathrooms, { type: 'number', attrs: 'step="0.5"' })
+        + `<div class="field full"><label>Add-ons (priced by the server from pricing.js; included ones are free)</label>${META.pricing.addons.map((a) => `<label class="check"><input type="checkbox" name="addons" data-multi="str" value="${esc(a.id)}"> ${esc(a.label)} <span class="muted small">${money(a.price)}${a.perHour ? '/hr' : ''}</span></label>`).join('')}</div>`
+        + input('organizing_hours', 'Organizing hours', 2, { type: 'number', attrs: 'min="1" max="8"' })
+        + input('preferred_time', 'Preferred time', l.preferred_time)}
       ${input('preferred_date', 'Preferred date', l.preferred_date)}
       ${lead ? input('estimated_price', 'Quoted price ($)', l.estimated_price, { type: 'number' }) : ''}
       ${textarea('message', 'Notes / details', l.message)}
@@ -289,8 +311,12 @@
               <dt>Service</dt><dd>${esc(serviceLabel(l.service_type)) || '—'}</dd>
               <dt>Home</dt><dd>${l.bedrooms ?? '?'} bed · ${l.bathrooms ?? '?'} bath${l.sqft ? ` · ${l.sqft} sqft` : ''}</dd>
               <dt>Frequency</dt><dd>${esc(freqLabel(l.frequency)) || '—'}</dd>
-              <dt>Preferred date</dt><dd>${esc(l.preferred_date) || '—'}</dd>
-              <dt>Estimate</dt><dd><strong>${money(l.estimated_price) || '—'}</strong></dd>
+              ${l.addons ? `<dt>Add-ons</dt><dd>${esc(l.addons.split(',').map((id) => (META.pricing.addons.find((a) => a.id === id) || { label: id }).label).join(', '))}${l.organizing_hours ? ` (${l.organizing_hours} hr organizing)` : ''}</dd>` : ''}
+              <dt>Preferred date</dt><dd>${esc([l.preferred_date, l.preferred_time].filter(Boolean).join(' ')) || '—'}</dd>
+              ${l.preferred_contact ? `<dt>Contact by</dt><dd>${esc(l.preferred_contact)}</dd>` : ''}
+              ${l.referred_by ? `<dt>Referred by</dt><dd>${esc(l.referred_by)}</dd>` : ''}
+              ${l.gift_code ? `<dt>Gift card</dt><dd>${esc(l.gift_code)}</dd>` : ''}
+              <dt>Estimate</dt><dd><strong>${money(l.estimated_price) || (l.breakdown ? 'Custom quote' : '—')}</strong>${l.breakdown ? linesTable(l.breakdown) : ''}</dd>
               <dt>Marketing OK</dt><dd>${l.marketing_opt_in ? '✅ Yes' : 'No'}</dd>
               ${l.callback_requested ? `<dt>Call back</dt><dd><strong style="color:var(--danger)">📞 Requested</strong></dd>` : ''}
               <dt>Admin alerted</dt><dd>${l.admin_notified ? '✅ Yes' : '⚠️ No — alert failed or not configured'}</dd>
@@ -300,6 +326,9 @@
           </div>
           ${l.customer ? `<div class="card"><h3>Client record</h3><a class="item" href="#/customers/${l.customer.id}"><div class="main"><div class="title">${esc(l.customer.name)}</div><div class="sub">${esc([fmtPhone(l.customer.phone), l.customer.email].filter(Boolean).join(' · '))}</div></div><span>›</span></a></div>` : ''}
           ${l.jobs.length ? `<div class="card"><h3>Jobs</h3><div class="list">${l.jobs.map(jobItem).join('')}</div></div>` : ''}
+          <div class="card"><h3>Emails & texts about this lead</h3>
+            <div class="list">${l.notifications.length ? l.notifications.map(notificationItem).join('') : '<div class="empty small">Nothing sent yet</div>'}</div>
+            <p class="muted small">Failed ones are retried automatically (3 tries). Press Retry to send one again.</p></div>
         </div>
         ${conversationCard(l.messages, l)}
       </div>`;
@@ -313,6 +342,7 @@
     });
     bindConversation(`/leads/${l.id}/messages`);
     bindJobItems();
+    bindRetry();
   }
 
   // ---------- conversation ----------
@@ -563,8 +593,10 @@
       ${input('address', 'Address (defaults to client or property address)', job.address, { full: true })}
       ${existing ? `<div class="field full"><div class="row"><button type="button" class="btn sm secondary" id="job-report">📝 Report & photos</button><button type="button" class="btn sm secondary" id="job-invoice">🧾 Create invoice</button></div></div>` : ''}
       ${existing ? select('status', 'Status', META.jobStatuses.map((s) => [s, s]), job.status, { full: true }) : ''}
+      ${job.price_breakdown && job.price_breakdown.lines ? `<div class="field full"><label>Estimate from the lead</label>${linesTable(job.price_breakdown)}</div>` : ''}
       <div class="field full"><label>Assign cleaner(s)</label>
         ${employees.filter((e) => e.active || assigned.has(e.id)).map((e) => `<label class="check"><input type="checkbox" name="employee_ids" data-multi="1" value="${e.id}" ${assigned.has(e.id) ? 'checked' : ''}> ${esc(e.name)} <span class="muted small">${esc(fmtPhone(e.phone))}</span></label>`).join('') || '<div class="muted small">No employees yet — <a href="#/employees">add one</a>.</div>'}
+        <div class="warn-box hidden" id="conflicts"></div>
       </div>
       ${checkbox('notify_employees', META.smsConfigured ? 'Text/email newly assigned cleaners the job details' : 'Email newly assigned cleaners the job details', true)}
       ${existing && !META.smsConfigured && (job.employees || []).some((e) => e.phone) ? `<div class="field full"><label>Text cleaners (Google Voice)</label><div class="row">${job.employees.filter((e) => e.phone).map((e) => `<button type="button" class="btn sm secondary" data-gv="${esc(e.phone)}">💬 Text ${esc(e.name.split(' ')[0])}</button>`).join('')}</div><div class="muted small">Copies the job details and opens Google Voice.</div></div>` : ''}
@@ -574,7 +606,8 @@
       data.employee_ids ||= [];
       const saved = existing ? await api(`/jobs/${job.id}`, { method: 'PUT', body: data }) : await api('/jobs', { method: 'POST', body: data });
       const failed = (saved.notifications || []).filter((n) => !n.ok);
-      if (failed.length) toast(`Job saved, but ${failed.length} cleaner notification(s) failed: ${failed[0].error}`, true);
+      if (saved.warnings && saved.warnings.length) toast(`Job saved. Heads up: ${saved.warnings.map((w) => w.message).join(' ')}`, true);
+      else if (failed.length) toast(`Job saved, but ${failed.length} cleaner notification(s) failed: ${failed[0].error}`, true);
       else if (!META.smsConfigured && saved.employees.some((e) => e.phone)) toast('Job saved. Open the job to text cleaners via Google Voice.');
       else toast(saved.notifications && saved.notifications.length ? 'Job saved & cleaners notified ✅' : 'Job saved');
       render();
@@ -589,6 +622,21 @@
       $('#property-field', form).classList.toggle('hidden', !mine.length);
     };
     syncProperties();
+    // Warn (never block) when a chosen cleaner already has a job at that time.
+    const checkConflicts = async () => {
+      const ids = $$('input[name=employee_ids]:checked', form).map((el) => el.value);
+      const box = $('#conflicts', form);
+      if (!ids.length || !form.scheduled_at.value) { box.classList.add('hidden'); return; }
+      try {
+        const list = await api(`/jobs/conflicts?employee_ids=${ids.join(',')}&scheduled_at=${encodeURIComponent(form.scheduled_at.value)}&duration_hours=${encodeURIComponent(form.duration_hours.value)}${existing ? `&job_id=${job.id}` : ''}`);
+        box.innerHTML = list.map((w) => `⚠️ ${esc(w.message)}`).join('<br>');
+        box.classList.toggle('hidden', !list.length);
+      } catch { box.classList.add('hidden'); }
+    };
+    $$('input[name=employee_ids]', form).forEach((el) => el.addEventListener('change', checkConflicts));
+    form.scheduled_at.addEventListener('change', checkConflicts);
+    form.duration_hours.addEventListener('change', checkConflicts);
+    checkConflicts();
     form.property_id.addEventListener('change', () => {
       const p = properties.find((x) => String(x.id) === form.property_id.value);
       if (p) { form.address.value = p.address || ''; if (!form.service_type.value) form.service_type.value = form.service_type.querySelector('option[value="Airbnb / STR Turnover"]') ? 'Airbnb / STR Turnover' : ''; }
@@ -601,7 +649,7 @@
     });
     if (existing) {
       $('#job-report', form).onclick = () => { form.closest('.modal-backdrop').remove(); reportForm(job); };
-      $('#job-invoice', form).onclick = () => { form.closest('.modal-backdrop').remove(); invoiceForm({ customer_id: job.customer_id, job_id: job.id, amount: job.price }); };
+      $('#job-invoice', form).onclick = () => { form.closest('.modal-backdrop').remove(); invoiceForm({ customer_id: job.customer_id, job_id: job.id }); };
     }
   }
 
@@ -652,9 +700,10 @@
       </div>
       <div class="card">
         <h2>Recent notifications</h2>
-        <div class="list">${log.length ? log.map((n) => `<div class="item"><div class="main"><div class="title">${esc(n.kind.replace(/_/g, ' '))} · ${esc(n.channel)} → ${esc(n.recipient || '')}</div>
-          <div class="sub">${esc(fmtAgo(n.created_at))}${n.error ? ` · ${esc(n.error)}` : ''}${n.lead_id ? ` · <a href="#/leads/${n.lead_id}">lead #${n.lead_id}</a>` : ''}</div></div>${status(n.status)}</div>`).join('') : '<div class="empty">Nothing sent yet</div>'}</div>
+        <p class="muted small">Every email and text is listed here. A failed one is tried again automatically (3 tries in total); press Retry to send it once more.</p>
+        <div class="list">${log.length ? log.map(notificationItem).join('') : '<div class="empty">Nothing sent yet</div>'}</div>
       </div>`;
+    bindRetry();
     $('#test').onclick = async (e) => {
       e.target.disabled = true;
       try {
@@ -777,11 +826,18 @@
     const jobs = await jobOptions(inv.customer_id);
     const jobSelect = (list, value) => [['', '— No job (blank invoice) —'], ...list.map((j) => [j.id, `${fmtWhen(j.scheduled_at)} · ${j.service_type || 'Job'}${j.price != null ? ` · ${money(j.price)}` : ''}`])]
       .map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(value ?? '') ? 'selected' : ''}>${esc(l)}</option>`).join('');
+    // Line items. A booking's invoice starts with its service line and exactly one travel fee line.
+    let items = existing ? inv.items.map((it) => ({ ...it })) : [];
+    if (!existing && inv.job_id) items = (await api(`/invoices/prefill?job_id=${inv.job_id}`)).items;
+    const travel = { description: `${META.pricing.travelFeeLabel} — $${META.pricing.travelFee}`, amount: META.pricing.travelFee, kind: 'travel' };
     const form = modal(existing ? `Invoice ${inv.number}` : 'New invoice', `<div class="form-grid">
       ${existing ? `<div class="field full"><label>Client</label><div>${esc(inv.customer.name)} <span class="muted small">${esc(inv.customer.email || 'no email on file')}</span></div></div>`
         : select('customer_id', 'Client *', [['', '— Choose client —'], ...customers.map((c) => [c.id, `${c.name}${c.email ? ` · ${c.email}` : ''}`])], inv.customer_id, { full: true })}
       <div class="field full"><label for="f-job_id">Job</label><select id="f-job_id" name="job_id">${jobSelect(jobs, inv.job_id)}</select></div>
-      ${input('amount', 'Amount ($) *', inv.amount ?? '', { type: 'number', attrs: 'step="0.01" min="0"' })}
+      <div class="field full"><label>Lines *</label><div id="items"></div>
+        <div class="row" style="margin-top:6px"><button type="button" class="btn sm secondary" id="add-item">+ Line</button><button type="button" class="btn sm secondary" id="add-travel">+ Travel Fee — $${esc(META.pricing.travelFee)}</button>
+        <span style="flex:1"></span><strong id="items-total"></strong></div>
+        <div class="muted small">The total is the sum of the lines. The travel fee is charged once per visit.</div></div>
       ${input('due_date', 'Due date', inv.due_date || (existing ? '' : localISO(due).slice(0, 10)), { type: 'date' })}
       ${existing ? input('number', 'Invoice number', inv.number) : ''}
       ${select('status', 'Status', META.invoiceStatuses.map((x) => [x, x]), inv.status || 'draft')}
@@ -792,21 +848,45 @@
         ${inv.status !== 'paid' ? '<button type="button" class="btn sm secondary" data-inv="paid">✅ Mark paid</button>' : ''}
         ${inv.status !== 'void' ? '<button type="button" class="btn sm secondary" data-inv="void">Void</button>' : ''}
         <a class="btn sm secondary" href="/admin/invoices/${inv.id}" target="_blank" rel="noopener">🖨 Printable</a>
-      </div><div class="muted small" style="margin-top:6px">${inv.sent_at ? `Sent ${esc(fmtAgo(inv.sent_at))}. ` : ''}${inv.paid_at ? `Paid ${esc(fmtAgo(inv.paid_at))}. ` : ''}The email has the amount, due date, Pay link and a link to view the invoice in the client portal.</div></div>` : ''}
+      </div><div class="muted small" style="margin-top:6px">${inv.sent_at ? `Sent ${esc(fmtAgo(inv.sent_at))}. ` : ''}${inv.paid_at ? `Paid ${esc(fmtAgo(inv.paid_at))}. ` : ''}The email lists every line, the total, the due date, the Pay link and a link to view the invoice in the client portal.</div></div>` : ''}
       </div>`, async (data) => {
       if (data.job_id === '') data.job_id = null;
+      data.items = readItems();
       if (existing) await api(`/invoices/${inv.id}`, { method: 'PUT', body: data });
       else await api('/invoices', { method: 'POST', body: data });
       toast(existing ? 'Invoice saved' : 'Invoice created');
       render();
     }, { submitLabel: existing ? 'Save' : 'Create invoice', danger: existing ? { label: 'Delete', confirm: 'Delete this invoice? (Tip: use Void to keep a record.)', action: async () => { await api(`/invoices/${inv.id}`, { method: 'DELETE' }); render(); } } : null });
-    // Picking a job fills in the amount from the job's price.
-    const fillFromJob = (list) => {
-      const j = list.find((x) => String(x.id) === form.job_id.value);
-      if (j && j.price != null && !form.amount.value) form.amount.value = j.price;
-    };
+
+    const box = $('#items', form);
+    const isTravel = (it) => it.kind === 'travel';
+    function readItems() {
+      return $$('.item-row', box).map((row, i) => ({ ...items[i], description: $('[data-desc]', row).value, amount: Number($('[data-amt]', row).value || 0) }));
+    }
+    function drawItems() {
+      box.innerHTML = items.map((it, i) => `<div class="item-row">
+          <input data-desc value="${esc(it.description)}" placeholder="Description" ${isTravel(it) ? 'readonly' : ''}>
+          <input data-amt type="number" step="0.01" value="${esc(it.amount)}" ${isTravel(it) ? 'readonly' : ''}>
+          <button type="button" class="btn sm secondary" data-del-item="${i}" title="Remove line">✕</button></div>`).join('') || '<div class="muted small">No lines yet.</div>';
+      $$('[data-del-item]', box).forEach((b) => (b.onclick = () => { items = readItems(); items.splice(Number(b.dataset.delItem), 1); drawItems(); }));
+      $$('input', box).forEach((el) => (el.oninput = sumUp));
+      $('#add-travel', form).disabled = items.some(isTravel);
+      sumUp();
+    }
+    function sumUp() {
+      const total = readItems().reduce((s, it) => s + (Number(it.amount) || 0), 0);
+      $('#items-total', form).textContent = `Total ${moneyCents(total)}`;
+    }
+    $('#add-item', form).onclick = () => { items = readItems(); items.push({ description: '', amount: 0, kind: 'other' }); drawItems(); };
+    $('#add-travel', form).onclick = () => { items = readItems(); if (!items.some(isTravel)) items.push({ ...travel }); drawItems(); };
+    drawItems();
+
+    // Picking a job fills in its lines (service + one travel fee line) when the invoice has none yet.
     let current = jobs;
-    form.job_id.onchange = () => fillFromJob(current);
+    form.job_id.onchange = async () => {
+      if (!form.job_id.value || readItems().some((it) => it.description)) return;
+      try { items = (await api(`/invoices/prefill?job_id=${form.job_id.value}`)).items; drawItems(); } catch (err) { toast(err.message, true); }
+    };
     if (!existing) {
       form.customer_id.onchange = async () => {
         current = await jobOptions(form.customer_id.value);
@@ -818,6 +898,7 @@
       try {
         const data = formData(form);
         if (data.job_id === '') data.job_id = null;
+        data.items = readItems();
         if (b.dataset.inv === 'paid') data.status = 'paid';
         if (b.dataset.inv === 'void') { if (!confirm('Void this invoice? The client will see it as void.')) return; data.status = 'void'; }
         await api(`/invoices/${inv.id}`, { method: 'PUT', body: data });
@@ -892,6 +973,46 @@
       toast(res.email && res.email.ok ? 'Declined. Client emailed' : `Declined. Client not emailed: ${res.email ? res.email.error : ''}`, !(res.email && res.email.ok));
       render();
     }, { submitLabel: 'Decline' });
+  }
+
+  // ---------- website forms (event quotes, careers, gift cards, referrals, local quotes) ----------
+  async function formsPage(params) {
+    const st = params.get('status') || 'all';
+    const list = await api(`/forms?status=${encodeURIComponent(st)}`);
+    app.innerHTML = `
+      <h1>Website forms</h1>
+      <p class="muted small">Event quotes, job applications, gift card orders, referrals and local area quotes sent from the website. Estimate requests and contact messages are in <a href="#/leads">Leads</a>.</p>
+      <div class="tabs">${[['all', 'All'], ['unread', 'Unread'], ['read', 'Read']].map(([v, l]) => `<button data-st="${v}" class="${v === st ? 'active' : ''}">${l}</button>`).join('')}</div>
+      <div class="list">${list.length ? list.map((f) => `<a class="item" href="#" data-form="${f.id}">
+        <div class="main"><div class="title">${f.read_at ? '' : '🔵 '}${esc(f.form)}${f.name ? ` · ${esc(f.name)}` : ''}</div>
+        <div class="sub">${esc([fmtPhone(f.phone), f.email, Object.entries(f.fields).slice(0, 2).map(([k, v]) => `${k}: ${v}`).join(' · ').slice(0, 120)].filter(Boolean).join(' · '))}</div></div>
+        <div style="text-align:right">${status(f.read_at ? 'read' : 'unread')}<div class="sub small">${esc(fmtAgo(f.created_at))}</div></div></a>`).join('') : '<div class="empty">No forms here</div>'}</div>`;
+    $$('.tabs button').forEach((b) => (b.onclick = () => { location.hash = `#/forms?status=${b.dataset.st}`; }));
+    $$('[data-form]').forEach((a) => (a.onclick = async (e) => {
+      e.preventDefault();
+      try { formDetail(await api(`/forms/${a.dataset.form}`)); } catch (err) { toast(err.message, true); }
+    }));
+  }
+
+  async function formDetail(f) {
+    // Opening it marks it read.
+    if (!f.read_at) { try { f = { ...f, ...(await api(`/forms/${f.id}`, { method: 'PATCH', body: { read: true } })) }; refreshBadge(); } catch { /* still show it */ } }
+    const form = modal(`${f.form}${f.name ? ` · ${f.name}` : ''}`, `<dl class="kv">
+        <dt>Received</dt><dd>${esc(utcDate(f.created_at).toLocaleString())}</dd>
+        ${f.name ? `<dt>Name</dt><dd>${esc(f.name)}</dd>` : ''}
+        <dt>Phone</dt><dd>${esc(fmtPhone(f.phone)) || '—'}</dd>
+        <dt>Email</dt><dd>${esc(f.email) || '—'}</dd>
+        ${f.preferred_contact ? `<dt>Contact by</dt><dd>${esc(f.preferred_contact)}</dd>` : ''}
+        ${Object.entries(f.fields).map(([k, v]) => `<dt>${esc(k)}</dt><dd style="white-space:pre-wrap">${esc(v)}</dd>`).join('')}
+      </dl>
+      <div style="margin-top:12px">${contactLinks(f)}</div>
+      ${f.notifications && f.notifications.length ? `<h3>Alerts</h3><div class="list">${f.notifications.map(notificationItem).join('')}</div>` : ''}`, async () => {
+      await api(`/forms/${f.id}`, { method: 'PATCH', body: { read: false } });
+      toast('Marked unread');
+      render();
+    }, { submitLabel: 'Mark unread', danger: { label: 'Delete', confirm: 'Delete this form submission?', action: async () => { await api(`/forms/${f.id}`, { method: 'DELETE' }); render(); } } });
+    $$('[data-close]', form.parentElement).forEach((b) => b.addEventListener('click', () => render()));
+    bindRetry();
   }
 
   // ---------- job / turnover report with photos ----------

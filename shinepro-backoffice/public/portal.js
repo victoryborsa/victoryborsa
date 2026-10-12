@@ -399,6 +399,8 @@
     const inv = await api(`/invoices/${id}`);
     const c = inv.customer || {};
     const line = inv.job ? `${inv.job.service_type || 'Cleaning service'} — ${fmtWhen(inv.job.scheduled_at)}` : 'Cleaning services';
+    // Every line of the invoice (older invoices have a single line).
+    const items = inv.items && inv.items.length ? inv.items : [{ description: line, amount: inv.amount, kind: 'other' }];
     document.title = `Invoice ${inv.number} · ${BUSINESS}`;
     app.innerHTML = `
       <div class="row between no-print" style="margin-bottom:14px">
@@ -430,7 +432,8 @@
         </div>
         <table class="inv-table">
           <thead><tr><th>Description</th><th class="num">Amount</th></tr></thead>
-          <tbody><tr><td>${esc(line)}${inv.job && inv.job.address ? `<div class="muted small">${esc(inv.job.address)}</div>` : ''}${inv.notes ? `<div class="small inv-notes">${esc(inv.notes)}</div>` : ''}</td><td class="num">${money(inv.amount)}</td></tr></tbody>
+          <tbody>${items.map((it, i) => `<tr><td>${esc(it.description)}${i === 0 && inv.job && inv.job.address ? `<div class="muted small">${esc(inv.job.address)}</div>` : ''}</td><td class="num">${it.kind === 'included' && !Number(it.amount) ? 'Included' : `${Number(it.amount) < 0 ? '−' : ''}${money(Math.abs(it.amount))}`}</td></tr>`).join('')}
+            ${inv.notes ? `<tr><td colspan="2"><div class="small inv-notes">${esc(inv.notes)}</div></td></tr>` : ''}</tbody>
           <tfoot><tr><td>Total</td><td class="num">${money(inv.amount)}</td></tr>
             ${inv.status === 'paid' ? `<tr class="paid-row"><td>Paid${inv.paid_at ? ` ${esc(utcDate(inv.paid_at).toLocaleDateString())}` : ''}</td><td class="num">${money(inv.amount)}</td></tr><tr><td>Balance due</td><td class="num">${money(0)}</td></tr>` : ''}
           </tfoot>
