@@ -1,6 +1,6 @@
 # What the chat assistant knows about Shine Pro Cleaning
 <!-- Edit this file in plain English. The chat assistant answers ONLY from what is written here
-     (it does not quote prices unless you write them here; customers are sent to the website's quote form). Restart the server after editing.
+     plus the price list in public/pricing.js (prices are never written here: change them only in pricing.js). Restart the server after editing.
      Lines marked [CONFIRM] are reasonable defaults the owner should check. -->
 
 ## Contact
@@ -22,8 +22,8 @@
 - Airbnb / rental turnover: cleaning between guests, bed linen change and restocking basics if supplies are left for us. [CONFIRM]
 - Office / commercial: small offices. Larger spaces get a custom quote.
 
-## Add-ons [CONFIRM prices]
-- Inside oven, inside fridge, interior windows, laundry: priced on request. The team confirms.
+## Add-ons
+- Add-on prices, what each service already includes, recurring discounts and the $20 travel fee per visit come from public/pricing.js.
 
 ## Policies [CONFIRM all]
 - We bring our own supplies and equipment. Tell us if you prefer specific products.
