@@ -27,6 +27,7 @@ function chatSetup(opts = {}) {
     verifyPhoneToken,
     ai: opts.noAi ? null : async (messages) => { aiCalls.push(messages); return 'A standard clean for 2 bed / 1 bath is about $200.'; },
     ...opts,
+    env: { CHAT_VERIFICATION: 'codes', ...opts.env },
   });
   const codeFor = (email) => {
     const m = [...s.sent].reverse().find((x) => x.to === email && /verification code/.test(x.subject || ''));
@@ -73,13 +74,13 @@ test('chat requires a verified email code AND a verified phone', async (t) => {
   const ok = await s.req('/api/chat/start', { method: 'POST', body: { ...person, email_code: code, phone_token: firebaseToken() } });
   assert.equal(ok.status, 201);
   assert.ok(ok.data.token);
-  assert.match(ok.data.messages[0].body, /Hi Jane/);
+  assert.match(ok.data.messages[0].body, /Thanks, Jane!/);
   // A code can only be used once
   const reuse = await s.req('/api/chat/start', { method: 'POST', body: { ...person, email_code: code, phone_token: firebaseToken() } });
   assert.equal(reuse.status, 400);
 
   // Owner is alerted; customer + lead saved as verified
-  await s.until(() => s.sent.some((m) => /New verified chat/.test(m.subject || '')));
+  await s.until(() => s.sent.some((m) => /New verified website chat/.test(m.subject || '')));
   await s.login();
   const leads = (await s.req('/api/admin/leads')).data;
   assert.equal(leads.length, 1);
@@ -122,14 +123,14 @@ test('AI answers questions using the conversation history', async (t) => {
   assert.equal((await s.req('/api/chat/message', { method: 'POST', body: { message: 'again' }, headers: auth })).status, 429);
 });
 
-test('without AI, customer gets a polite reply and the owner is emailed the question', async (t) => {
+test('without AI, an unknown question gets a polite reply and the owner is emailed the question', async (t) => {
   const s = chatSetup({ noAi: true });
   t.after(s.close);
   const { data: session } = await s.start();
-  const r = await s.req('/api/chat/message', { method: 'POST', body: { message: 'Do you clean windows?' }, headers: { Authorization: `Bearer ${session.token}` } });
-  assert.match(r.data.messages[1].body, /Request a call back/);
+  const r = await s.req('/api/chat/message', { method: 'POST', body: { message: 'Do you sell gift certificates?' }, headers: { Authorization: `Bearer ${session.token}` } });
+  assert.match(r.data.messages[1].body, /team member will reply shortly.*\(412\) 447-8047/);
   await s.until(() => s.sent.some((m) => /needs a reply/.test(m.subject || '')));
-  assert.ok(s.sent.some((m) => /needs a reply/.test(m.subject || '') && m.text.includes('Do you clean windows?')));
+  assert.ok(s.sent.some((m) => /needs a reply/.test(m.subject || '') && m.text.includes('Do you sell gift certificates?')));
 });
 
 test('call-back request: note saved, lead flagged, owner alerted; admin can reply into the chat', async (t) => {
@@ -161,15 +162,15 @@ test('call-back request: note saved, lead flagged, owner alerted; admin can repl
   assert.equal((await s.req(`/api/admin/leads/${other.id}/messages`, { method: 'POST', body: { channel: 'chat', body: 'hi' } })).status, 400);
 });
 
-test('chat is switched off (not silently unverified) when verification is not configured', async (t) => {
-  const s = setup({ ai: null, verifyPhoneToken: null });
+test('chat is switched off (not silently unverified) when code verification is not configured', async (t) => {
+  const s = setup({ ai: null, verifyPhoneToken: null, env: { CHAT_VERIFICATION: 'codes' } });
   t.after(s.close);
   const cfg = (await s.req('/api/chat/config')).data;
   assert.equal(cfg.enabled, false);
   assert.match(cfg.reason, /Firebase/);
   assert.equal((await s.req('/api/chat/email-code', { method: 'POST', body: { email: person.email } })).status, 503);
 
-  const noEmail = setup({ emailEnabled: false, verifyPhoneToken });
+  const noEmail = setup({ emailEnabled: false, verifyPhoneToken, env: { CHAT_VERIFICATION: 'codes' } });
   t.after(noEmail.close);
   assert.equal((await noEmail.req('/api/chat/config')).data.enabled, false);
 });
@@ -180,4 +181,136 @@ test('chat widget script is served with CORS', async (t) => {
   const r = await s.req('/chat.js', { headers: { Origin: 'https://pghshinepro.com' } });
   assert.equal(r.status, 200);
   assert.match(r.data, /Request a call back/);
+});
+
+// ---------- simple chat (default): contact details, then instant + streamed answers ----------
+
+function simpleSetup(opts = {}) {
+  const s = setup(opts);
+  const start = (body = person) => s.req('/api/chat/start', { method: 'POST', body });
+  // POST a message with ?stream=1 and collect the Server-Sent Events, with arrival times.
+  const stream = async (token, body) => {
+    const t0 = Date.now();
+    const res = await fetch(`http://127.0.0.1:${s.server.address().port}/api/chat/message?stream=1`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body),
+    });
+    assert.match(res.headers.get('content-type'), /text\/event-stream/);
+    const events = [];
+    const dec = new TextDecoder();
+    let buf = '';
+    for await (const chunk of res.body) {
+      buf += dec.decode(chunk, { stream: true });
+      const parts = buf.split('\n\n');
+      buf = parts.pop();
+      for (const p of parts) {
+        const ev = /^event: (.*)$/m.exec(p)[1];
+        events.push({ ev, data: JSON.parse(/^data: (.*)$/m.exec(p)[1]), ms: Date.now() - t0 });
+      }
+    }
+    return events;
+  };
+  return { ...s, start, stream };
+}
+
+test('simple chat: name, email and phone start the chat right away (no codes)', async (t) => {
+  const s = simpleSetup({ emailEnabled: false });
+  t.after(s.close);
+  const cfg = (await s.req('/api/chat/config')).data;
+  assert.equal(cfg.enabled, true);
+  assert.equal(cfg.verification, 'none');
+  assert.ok(cfg.questions.length >= 4);
+  assert.ok(cfg.questions.every((q) => q.id && q.label && q.answer && !/\$\d/.test(q.answer)));
+
+  assert.equal((await s.start({ ...person, name: '' })).status, 400);
+  assert.equal((await s.start({ ...person, email: 'jane@' })).status, 400);
+  assert.equal((await s.start({ ...person, phone: '555-01' })).status, 400);
+  assert.equal((await s.req('/api/chat/email-code', { method: 'POST', body: { email: person.email } })).status, 400);
+
+  const ok = await s.start();
+  assert.equal(ok.status, 201);
+  assert.equal(ok.data.messages[0].body, 'Thanks, Jane! 👋 How can we help you today?');
+  await s.login();
+  const lead = (await s.req('/api/admin/leads')).data[0];
+  assert.equal(lead.source, 'chat');
+  assert.equal(lead.phone, '+14125550199');
+});
+
+test('simple chat: owner is emailed name, phone and email when a chat starts', async (t) => {
+  const s = simpleSetup();
+  t.after(s.close);
+  await s.start();
+  await s.until(() => s.sent.some((m) => /New website chat/.test(m.subject || '')));
+  const alert = s.sent.find((m) => /New website chat/.test(m.subject || ''));
+  assert.equal(alert.subject, '💬 New website chat: Jane Doe, (412) 555-0199, jane@example.com');
+});
+
+test('preloaded questions are answered instantly without calling the AI', async (t) => {
+  const aiCalls = [];
+  const s = simpleSetup({ ai: async (m) => { aiCalls.push(m); return 'AI answer'; } });
+  t.after(s.close);
+  const { data } = await s.start();
+  const q = (await s.req('/api/chat/config')).data.questions.find((x) => x.id === 'price');
+  const events = await s.stream(data.token, { question_id: 'price' });
+  assert.deepEqual(events.map((e) => e.ev), ['mine', 'delta', 'done']);
+  assert.equal(events[0].data.body, q.label);
+  assert.equal(events[2].data.body, q.answer);
+  assert.match(q.answer, /bedrooms and bathrooms/);
+  assert.equal(aiCalls.length, 0);
+});
+
+test('typed questions stream the AI answer: first words arrive before the answer is finished', async (t) => {
+  const calls = [];
+  const ai = async (messages, { onText } = {}) => {
+    calls.push(messages);
+    const words = ["We'd ", 'love ', 'to ', 'help! ', 'How ', 'many ', 'bedrooms ', 'and ', 'bathrooms?'];
+    for (const w of words) { onText && onText(w); await new Promise((r) => setTimeout(r, 40)); }
+    return words.join('');
+  };
+  const s = simpleSetup({ ai });
+  t.after(s.close);
+  const { data } = await s.start();
+  const events = await s.stream(data.token, { message: 'I want my house cleaned' });
+  const deltas = events.filter((e) => e.ev === 'delta');
+  const done = events.find((e) => e.ev === 'done');
+  assert.ok(deltas.length > 3, 'answer arrives in pieces');
+  assert.ok(deltas[0].ms < done.ms - 200, `first words at ${deltas[0].ms}ms, finished at ${done.ms}ms`);
+  assert.equal(deltas.map((d) => d.data.text).join(''), done.data.body);
+  assert.equal(done.data.status, 'ai');
+  assert.deepEqual(calls[0], [{ role: 'user', content: 'I want my house cleaned' }]);
+  // The conversation is saved for the admin
+  await s.login();
+  const lead = (await s.req('/api/admin/leads')).data[0];
+  const saved = (await s.req(`/api/admin/leads/${lead.id}`)).data.messages.map((m) => m.body);
+  assert.ok(saved.includes('I want my house cleaned') && saved.includes(done.data.body));
+});
+
+test('without AI (or if it fails), typed questions still get a real answer with one follow-up question', async (t) => {
+  for (const ai of [null, async () => null]) {
+    const s = simpleSetup({ ai });
+    t.after(s.close);
+    const { data } = await s.start();
+    const ask = async (message) => {
+      await new Promise((r) => setTimeout(r, 1050));
+      return (await s.req('/api/chat/message', { method: 'POST', body: { message }, headers: { Authorization: `Bearer ${data.token}` } })).data.messages[1].body;
+    };
+    assert.match(await ask('I want my house cleaned'), /bedrooms and bathrooms/);
+    assert.match(await ask('Can I get a quote?'), /ZIP code/);
+    assert.match(await ask('3 bedrooms 2 baths'), /ZIP code/);
+    assert.match(await ask('15217'), /standard, deep, or move-in/);
+    assert.match(await ask('I need someone ASAP, it is urgent'), /call or text us at \(412\) 447-8047/);
+    for (const a of [await ask('How much is it?'), await ask('Do you do deep cleaning?')]) {
+      assert.doesNotMatch(a, /\$\d/);
+      assert.equal((a.match(/\?/g) || []).length, 1, `one question only: ${a}`);
+    }
+  }
+});
+
+test('streamed reply falls back to an instant answer when the AI fails', async (t) => {
+  const s = simpleSetup({ ai: async () => null });
+  t.after(s.close);
+  const { data } = await s.start();
+  const events = await s.stream(data.token, { message: 'Do you bring your own supplies?' });
+  assert.deepEqual(events.map((e) => e.ev), ['mine', 'delta', 'done']);
+  assert.match(events[2].data.body, /bring all our own supplies/);
+  await s.until(() => s.sent.some((m) => /needs a reply/.test(m.subject || '')));
 });
