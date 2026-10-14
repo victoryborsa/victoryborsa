@@ -1,0 +1,30 @@
+---
+workflow: product-launch-video
+flow: automation
+storyboard: no
+message: "Book your next short stay at sevgio.com"
+destination: instagram-reels
+aspect: 1080x1920
+language: en
+audience: travelers looking for a short-term rental (tourists, couples, families, remote workers)
+length: 30s
+angle: invitation
+---
+
+## Intent
+
+A promo for Sevgio, the user's short-term rental business (sevgio.com), for Instagram and
+Facebook Reels/Stories. User asked to "just do it" — autonomous run. Warm, welcoming,
+"feel at home" tone; ends on a clear call to action: book at sevgio.com.
+
+## Customizations
+
+- Silent cut (no voiceover, no baked-in music): the user adds a track from Instagram/Facebook's
+  music library when posting. Text-on-screen carries the message so it works muted.
+
+## Notes
+
+- No-capture mode: sevgio.com is unreachable from this environment; no photos or logo supplied.
+- Do NOT invent specifics (location, amenities, prices, reviews, ratings). Keep copy generic and
+  true for any short-term rental: comfortable stays, easy booking, feel at home.
+- Photos can be swapped in later when the user supplies them.

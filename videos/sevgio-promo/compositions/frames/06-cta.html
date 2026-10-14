@@ -1,0 +1,49 @@
+<template>
+  <script src="assets/vendor/gsap.min.js"></script>
+  <style>
+        @font-face { font-family: "Source Serif 4"; font-weight: 400; src: url("assets/fonts/source-serif-4-latin-400-normal.woff2") format("woff2"); }
+        @font-face { font-family: "Source Serif 4"; font-weight: 500; src: url("assets/fonts/source-serif-4-latin-500-normal.woff2") format("woff2"); }
+        @font-face { font-family: "Source Serif 4"; font-weight: 600; src: url("assets/fonts/source-serif-4-latin-600-normal.woff2") format("woff2"); }
+        @font-face { font-family: "JetBrains Mono"; font-weight: 500; src: url("assets/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2"); }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: "Source Serif 4", serif; }
+    .f06-cta-ground { position: absolute; inset: 0; background: #2e4a2a; }
+    .f06-cta-topbar { position: absolute; left: 72px; right: 72px; top: 96px; height: 110px; display: flex; align-items: center; justify-content: space-between; }
+    .f06-cta-label { font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: 28px; letter-spacing: 0.18em; text-transform: uppercase; color: #efe7d4; }
+    .f06-cta-mono { width: 110px; height: 110px; border: 2px solid #e89cb1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: 40px; color: #e89cb1; }
+    .f06-cta-toprule { position: absolute; left: 72px; right: 72px; top: 236px; height: 2px; background: #e89cb1; transform-origin: left center; }
+    .rw { display: inline-block; }
+    .rwm { display: inline-block; overflow: hidden; padding-bottom: 0.24em; margin-bottom: -0.24em; vertical-align: top; }
+    
+    #c-stamp { position: absolute; left: 365px; top: 380px; width: 350px; height: 350px; border: 2px solid #e89cb1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 220px; color: #e89cb1; line-height: 1; padding-bottom: 20px; }
+    .c-a { position: absolute; left: 60px; right: 60px; top: 880px; text-align: center; font-weight: 500; font-size: 128px; line-height: 0.95; letter-spacing: -0.02em; color: #efe7d4; }
+    #c-pill { position: absolute; left: 110px; right: 110px; top: 1120px; height: 200px; border: 2px solid #e89cb1; border-radius: 100px; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 120px; letter-spacing: -0.02em; color: #e89cb1; }
+    #c-foot { position: absolute; left: 72px; right: 72px; top: 1420px; text-align: center; font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: 32px; letter-spacing: 0.18em; text-transform: uppercase; color: #efe7d4; }
+  </style>
+  <div id="root" data-composition-id="06-cta" data-width="1080" data-height="1920">
+    <div id="f06-cta-ground" class="clip f06-cta-ground" data-start="0" data-duration="5" data-track-index="0"></div>
+    <div class="f06-cta-topbar"><div class="f06-cta-label" id="f06-cta-label">Sevgio · Short stays</div><div class="f06-cta-mono" id="f06-cta-mono">S</div></div>
+    <div class="f06-cta-toprule" id="f06-cta-toprule"></div>
+    <div id="c-stamp">S</div>
+    <div class="c-a-line c-a" id="c-a"><span class="rwm c-a-wm"><span class="rw c-a-w">Book</span></span> <span class="rwm c-a-wm"><span class="rw c-a-w">your</span></span> <span class="rwm c-a-wm"><span class="rw c-a-w">stay</span></span></div>
+    <div id="c-pill">sevgio.com</div>
+    <div id="c-foot">Link in bio · sevgio.com</div>
+  </div>
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+      const E = "power3.out";
+      const rise = (sel, at, stagger) => tl.fromTo(sel, { yPercent: 140 }, { yPercent: 0, duration: 0.8, ease: E, stagger: stagger || 0.12 }, at);
+      const fadeUp = (sel, at) => tl.fromTo(sel, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.7, ease: E }, at);
+      const draw = (sel, at, d) => tl.fromTo(sel, { scaleX: 0 }, { scaleX: 1, duration: d || 0.8, ease: E }, at);
+      fadeUp("#f06-cta-label", 0.05);
+      tl.fromTo("#f06-cta-mono", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.6, ease: E }, 0.1);
+      draw("#f06-cta-toprule", 0.15, 0.9);
+      tl.fromTo("#c-stamp", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.9, ease: E }, 0.2);
+      rise(".c-a-w", 1.0, 0.12);
+      tl.fromTo("#c-pill", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.8, ease: E }, 2.2);
+      fadeUp("#c-foot", 3.4);
+      tl.to({}, { duration: 0 }, 5);
+      window.__timelines["06-cta"] = tl;
+    })();
+  </script>
+</template>

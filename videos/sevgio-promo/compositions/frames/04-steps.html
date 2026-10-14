@@ -1,0 +1,54 @@
+<template>
+  <script src="assets/vendor/gsap.min.js"></script>
+  <style>
+        @font-face { font-family: "Source Serif 4"; font-weight: 400; src: url("assets/fonts/source-serif-4-latin-400-normal.woff2") format("woff2"); }
+        @font-face { font-family: "Source Serif 4"; font-weight: 500; src: url("assets/fonts/source-serif-4-latin-500-normal.woff2") format("woff2"); }
+        @font-face { font-family: "Source Serif 4"; font-weight: 600; src: url("assets/fonts/source-serif-4-latin-600-normal.woff2") format("woff2"); }
+        @font-face { font-family: "JetBrains Mono"; font-weight: 500; src: url("assets/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2"); }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: "Source Serif 4", serif; }
+    .f04-steps-ground { position: absolute; inset: 0; background: #efe7d4; }
+    .f04-steps-topbar { position: absolute; left: 72px; right: 72px; top: 96px; height: 110px; display: flex; align-items: center; justify-content: space-between; }
+    .f04-steps-label { font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: 28px; letter-spacing: 0.18em; text-transform: uppercase; color: #2e4a2a; }
+    .f04-steps-mono { width: 110px; height: 110px; border: 2px solid #2e4a2a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: 40px; color: #2e4a2a; }
+    .f04-steps-toprule { position: absolute; left: 72px; right: 72px; top: 236px; height: 2px; background: #2e4a2a; transform-origin: left center; }
+    .rw { display: inline-block; }
+    .rwm { display: inline-block; overflow: hidden; padding-bottom: 0.24em; margin-bottom: -0.24em; vertical-align: top; }
+    
+    .s-h { position: absolute; left: 72px; right: 72px; top: 330px; font-weight: 500; font-size: 120px; line-height: 0.95; letter-spacing: -0.02em; color: #2e4a2a; line-height: 1.0; }
+    .s-step { position: absolute; left: 72px; right: 72px; height: 270px; border-radius: 8px; border: 2.5px solid #2e4a2a; padding: 36px 48px; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+    .s-rule { height: 2px; transform-origin: left center; }
+    .s-ord { font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: 28px; letter-spacing: 0.14em; }
+    .s-title { font-weight: 500; font-size: 84px; line-height: 0.98; letter-spacing: -0.01em; }
+    #s-1 { top: 640px; background: #efe7d4; color: #2e4a2a; } #s-1 .s-rule { background: #2e4a2a; }
+    #s-2 { top: 940px; background: #2e4a2a; color: #efe7d4; } #s-2 .s-rule { background: #e89cb1; } #s-2 .s-ord { color: #e89cb1; }
+    #s-3 { top: 1240px; background: #e89cb1; border-color: #e89cb1; color: #243a21; } #s-3 .s-rule { background: #243a21; }
+  </style>
+  <div id="root" data-composition-id="04-steps" data-width="1080" data-height="1920">
+    <div id="f04-steps-ground" class="clip f04-steps-ground" data-start="0" data-duration="6" data-track-index="0"></div>
+    <div class="f04-steps-topbar"><div class="f04-steps-label" id="f04-steps-label">Sevgio · Short stays</div><div class="f04-steps-mono" id="f04-steps-mono">S</div></div>
+    <div class="f04-steps-toprule" id="f04-steps-toprule"></div>
+    <div class="s-h-line s-h" id="s-h"><span class="rwm s-h-wm"><span class="rw s-h-w">Booking</span></span> <span class="rwm s-h-wm"><span class="rw s-h-w">is</span></span> <span class="rwm s-h-wm"><span class="rw s-h-w">simple</span></span></div>
+    <div class="s-step" id="s-1"><div class="s-ord">Step 01</div><div class="s-rule"></div><div class="s-title">Pick your dates</div></div>
+    <div class="s-step" id="s-2"><div class="s-ord">Step 02</div><div class="s-rule"></div><div class="s-title">Choose your place</div></div>
+    <div class="s-step" id="s-3"><div class="s-ord">Step 03</div><div class="s-rule"></div><div class="s-title">Check in &amp; relax</div></div>
+  </div>
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+      const E = "power3.out";
+      const rise = (sel, at, stagger) => tl.fromTo(sel, { yPercent: 140 }, { yPercent: 0, duration: 0.8, ease: E, stagger: stagger || 0.12 }, at);
+      const fadeUp = (sel, at) => tl.fromTo(sel, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.7, ease: E }, at);
+      const draw = (sel, at, d) => tl.fromTo(sel, { scaleX: 0 }, { scaleX: 1, duration: d || 0.8, ease: E }, at);
+      fadeUp("#f04-steps-label", 0.05);
+      tl.fromTo("#f04-steps-mono", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.6, ease: E }, 0.1);
+      draw("#f04-steps-toprule", 0.15, 0.9);
+      rise(".s-h-w", 0.3, 0.1);
+      ["#s-1", "#s-2", "#s-3"].forEach((s, i) => {
+        tl.fromTo(s, { opacity: 0, x: -120 }, { opacity: 1, x: 0, duration: 0.8, ease: E }, 1.0 + i * 1.4);
+        draw(s + " .s-rule", 1.3 + i * 1.4, 0.7);
+      });
+      tl.to({}, { duration: 0 }, 6);
+      window.__timelines["04-steps"] = tl;
+    })();
+  </script>
+</template>
