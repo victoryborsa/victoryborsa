@@ -1,0 +1,48 @@
+<template>
+  <script src="assets/vendor/gsap.min.js"></script>
+  <style>
+    @font-face { font-family: "Bricolage Grotesque"; font-weight: 700; src: url("assets/fonts/bricolage-grotesque-latin-700-normal.woff2") format("woff2"); }
+    @font-face { font-family: "Bricolage Grotesque"; font-weight: 800; src: url("assets/fonts/bricolage-grotesque-latin-800-normal.woff2") format("woff2"); }
+    @font-face { font-family: "Figtree"; font-weight: 500; src: url("assets/fonts/figtree-latin-500-normal.woff2") format("woff2"); }
+    @font-face { font-family: "Figtree"; font-weight: 600; src: url("assets/fonts/figtree-latin-600-normal.woff2") format("woff2"); }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: "Figtree", sans-serif; }
+    .f05-comfort-photo { position: absolute; inset: 0; overflow: hidden; background: #0C4F4C; }
+    .f05-comfort-pan { position: absolute; inset: 0; transform-origin: 50% 60%; }
+    .f05-comfort-pan img { position: absolute; top: -115px; height: 2150px; width: auto; max-width: none; }
+    .f05-comfort-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,40,38,0.35) 0%, rgba(8,40,38,0) 18%, rgba(8,40,38,0) 42%, rgba(8,40,38,0.55) 62%, rgba(8,40,38,0.88) 100%); }
+    .f05-comfort-logo { position: absolute; left: 64px; top: 84px; display: flex; align-items: center; gap: 14px; padding: 14px 28px 14px 18px; background: rgba(255,255,255,0.94); border-radius: 999px; }
+    .f05-comfort-logo b { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 44px; letter-spacing: -0.02em; color: #0C4F4C; }
+    .f05-comfort-text { position: absolute; left: 72px; right: 72px; bottom: 380px; }
+    .f05-comfort-kick { font-family: "Figtree", sans-serif; font-weight: 600; font-size: 34px; letter-spacing: 0.16em; text-transform: uppercase; color: #F2C14E; margin-bottom: 26px; }
+    .f05-comfort-line { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 116px; line-height: 1.0; letter-spacing: -0.025em; color: #fff; }
+    .f05-comfort-sub { font-family: "Figtree", sans-serif; font-weight: 500; font-size: 40px; line-height: 1.3; color: rgba(255,255,255,0.92); margin-top: 30px; }
+  </style>
+  <div id="root" data-composition-id="05-comfort" data-width="1080" data-height="1920" data-duration="5">
+    <div id="f05-comfort-photo" class="clip f05-comfort-photo" data-start="0" data-duration="5" data-track-index="0">
+      <div class="f05-comfort-pan" id="f05-comfort-pan"><img id="f05-comfort-img" src="assets/photos/skyline.jpg" style="left: -2750px" alt="" /></div>
+      <div class="f05-comfort-shade"></div>
+    </div>
+    <div class="f05-comfort-logo" id="f05-comfort-logo"><svg viewBox="0 0 32 32" width="56" height="56" aria-hidden="true"><path d="M4 15 16 4l12 11v13H4Z" fill="#127A76"/><path d="M16 23s-5-3.2-5-6.4a2.6 2.6 0 0 1 5-1 2.6 2.6 0 0 1 5 1C21 19.8 16 23 16 23Z" fill="#ffffff"/></svg><b>Sevgio</b></div>
+    <div class="f05-comfort-text">
+      <div class="f05-comfort-kick" id="f05-comfort-kick">Sevgio Stays</div>
+      <div class="f05-comfort-line" id="f05-comfort-l0">Comfortable</div>
+      <div class="f05-comfort-line" id="f05-comfort-l1">homes.</div>
+      <div class="f05-comfort-sub" id="f05-comfort-sub">Easy booking, right on sevgio.com.</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+      // Slow drift across the whole scene: pan + gentle push-in.
+      tl.fromTo("#f05-comfort-img", { x: 0 }, { x: -500, duration: 4.5, ease: "none" }, 0);
+      tl.fromTo("#f05-comfort-pan", { scale: 1.0 }, { scale: 1.06, duration: 4.5, ease: "none" }, 0);
+      tl.fromTo("#f05-comfort-logo", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.9, ease: "power2.out" }, 0.2);
+      tl.fromTo("#f05-comfort-kick", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 1.0, ease: "power2.out" }, 0.5);
+      tl.fromTo("#f05-comfort-l0", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 1.1, ease: "power2.out" }, 0.90);
+      tl.fromTo("#f05-comfort-l1", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 1.1, ease: "power2.out" }, 1.35);
+      tl.fromTo("#f05-comfort-sub", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 1.0, ease: "power2.out" }, 2.20);
+      tl.to({}, { duration: 0 }, 4.5);
+      window.__timelines["05-comfort"] = tl;
+    })();
+  </script>
+</template>

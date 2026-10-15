@@ -42,52 +42,52 @@
       data-height="1920"
     >
       <div
-        id="el-01-hook"
+        id="el-01-skyline"
         class="scene"
-        data-composition-id="01-hook"
-        data-composition-src="compositions/frames/01-hook.html"
+        data-composition-id="01-skyline"
+        data-composition-src="compositions/frames/01-skyline.html"
         data-start="0"
-        data-duration="4.5"
+        data-duration="6"
         data-track-index="0"
       ></div>
 
       <div
-        id="el-02-home"
+        id="el-02-bridges"
         class="scene"
-        data-composition-id="02-home"
-        data-composition-src="compositions/frames/02-home.html"
-        data-start="4"
+        data-composition-id="02-bridges"
+        data-composition-src="compositions/frames/02-bridges.html"
+        data-start="5.5"
         data-duration="5.5"
         data-track-index="1"
       ></div>
 
       <div
-        id="el-03-features"
+        id="el-03-fountain"
         class="scene"
-        data-composition-id="03-features"
-        data-composition-src="compositions/frames/03-features.html"
-        data-start="9"
-        data-duration="6.5"
+        data-composition-id="03-fountain"
+        data-composition-src="compositions/frames/03-fountain.html"
+        data-start="10.5"
+        data-duration="5.5"
         data-track-index="0"
       ></div>
 
       <div
-        id="el-04-steps"
+        id="el-04-ballpark"
         class="scene"
-        data-composition-id="04-steps"
-        data-composition-src="compositions/frames/04-steps.html"
-        data-start="15"
-        data-duration="6.5"
+        data-composition-id="04-ballpark"
+        data-composition-src="compositions/frames/04-ballpark.html"
+        data-start="15.5"
+        data-duration="5.5"
         data-track-index="1"
       ></div>
 
       <div
-        id="el-05-promise"
+        id="el-05-comfort"
         class="scene"
-        data-composition-id="05-promise"
-        data-composition-src="compositions/frames/05-promise.html"
-        data-start="21"
-        data-duration="4.5"
+        data-composition-id="05-comfort"
+        data-composition-src="compositions/frames/05-comfort.html"
+        data-start="20.5"
+        data-duration="5"
         data-track-index="0"
       ></div>
 
@@ -101,6 +101,16 @@
         data-track-index="1"
       ></div>
 
+      <!-- BGM -->
+      <audio
+        id="el-bgm"
+        src="assets/bgm/sevgio-peaceful.mp3"
+        data-start="0"
+        data-duration="30"
+        data-track-index="11"
+        data-volume="0.9"
+      ></audio>
+
     </div>
 
     <script>
@@ -108,15 +118,15 @@
       window.__timelines["main"] = gsap.timeline({ paused: true });
       // ── frame transitions (injected by transitions.mjs) ──
       (function () { var tl = window.__timelines["main"];
-        tl.to("#el-01-hook", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 4);
-        tl.fromTo("#el-02-home", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 4);
-        tl.to("#el-02-home", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 9);
-        tl.fromTo("#el-03-features", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 9);
-        tl.to("#el-03-features", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 15);
-        tl.fromTo("#el-04-steps", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 15);
-        tl.to("#el-04-steps", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 21);
-        tl.fromTo("#el-05-promise", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 21);
-        tl.to("#el-05-promise", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 25);
+        tl.to("#el-01-skyline", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 5.5);
+        tl.fromTo("#el-02-bridges", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 5.5);
+        tl.to("#el-02-bridges", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 10.5);
+        tl.fromTo("#el-03-fountain", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 10.5);
+        tl.to("#el-03-fountain", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 15.5);
+        tl.fromTo("#el-04-ballpark", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 15.5);
+        tl.to("#el-04-ballpark", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 20.5);
+        tl.fromTo("#el-05-comfort", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 20.5);
+        tl.to("#el-05-comfort", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 25);
         tl.fromTo("#el-06-cta", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 25);
         tl.to({}, { duration: 30 }, 0); // full-span anchor — main.duration() == composition total (Studio master duration)
       })();

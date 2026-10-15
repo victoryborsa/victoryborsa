@@ -1,7 +1,7 @@
 {
   "version": 1,
   "historyId": "c5c649e1-4bd9-46dd-958d-602522e7fba6",
-  "currentRevision": "72bc4705-822b-4e04-b4ed-0d1014ab5f0c",
+  "currentRevision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
   "pendingChanges": false,
   "files": {
     "AGENTS.md": {
@@ -17,8 +17,8 @@
       "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/1d/1d4f0c8ca2507b94fd7c9df709fff01416adbd51a0f922b9d6ed2f40129147d5"
     },
     "STORYBOARD.md": {
-      "hash": "77649fa026e99f6c3510cd67fc908f48d6beb5aff9d86e78601bc008bc00ad1f",
-      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/77/77649fa026e99f6c3510cd67fc908f48d6beb5aff9d86e78601bc008bc00ad1f"
+      "hash": "5d51e8e6f7f5d318c25a4054839b1d521695e71ebbcf1931370b82e84ebb953b",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/5d/5d51e8e6f7f5d318c25a4054839b1d521695e71ebbcf1931370b82e84ebb953b"
     },
     "assets/fonts/OFL-jetbrains-mono.txt": {
       "hash": "403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b",
@@ -60,29 +60,9 @@
       "hash": "9589001e34e836b13c76e289cd6aa0459b34716aa54c0552226f3f36c74ef89f",
       "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/95/9589001e34e836b13c76e289cd6aa0459b34716aa54c0552226f3f36c74ef89f"
     },
-    "compositions/frames/01-hook.html": {
-      "hash": "ea4bca3c1e85c64f7be2b0a97ae5260f0b46e9a5d82b9a1dc2e0fea9ace1f1d1",
-      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/ea/ea4bca3c1e85c64f7be2b0a97ae5260f0b46e9a5d82b9a1dc2e0fea9ace1f1d1"
-    },
-    "compositions/frames/02-home.html": {
-      "hash": "b37103f71456c49b4e3c4e548029590186ce81607e8c8111a20090e5a9c38ab5",
-      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/b3/b37103f71456c49b4e3c4e548029590186ce81607e8c8111a20090e5a9c38ab5"
-    },
-    "compositions/frames/03-features.html": {
-      "hash": "23e21e90241235d50fee783cae4195ab602ff7888dd32d2ecd02aebba3cbd1e6",
-      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/23/23e21e90241235d50fee783cae4195ab602ff7888dd32d2ecd02aebba3cbd1e6"
-    },
-    "compositions/frames/04-steps.html": {
-      "hash": "486d73cb7368930a9408c475cb5a1a2ef82413f2c993a7e830684a66bd86f803",
-      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/48/486d73cb7368930a9408c475cb5a1a2ef82413f2c993a7e830684a66bd86f803"
-    },
-    "compositions/frames/05-promise.html": {
-      "hash": "26610f78f8c20e2b2bee4eeca1310b9bf33a7f6965ba968e5c3c8c0578b91c0d",
-      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/26/26610f78f8c20e2b2bee4eeca1310b9bf33a7f6965ba968e5c3c8c0578b91c0d"
-    },
     "compositions/frames/06-cta.html": {
-      "hash": "390db3d72a7d9828f962b5d7e396e077a58f172ab5dd065317e3be7c23a6aad5",
-      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/39/390db3d72a7d9828f962b5d7e396e077a58f172ab5dd065317e3be7c23a6aad5"
+      "hash": "5b2f8bc58d8244dbc1620b028130b6a792bc16af56626459ce56066426420dbf",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/5b/5b2f8bc58d8244dbc1620b028130b6a792bc16af56626459ce56066426420dbf"
     },
     "frame.md": {
       "hash": "ceeb2ab768367da1e1f3e1eca36ab9feeb3de3e4d15493319b0044c3d869329c",
@@ -93,8 +73,8 @@
       "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/44/44d4e8dcefebce0a13f5afa82aa270b0b19a1d3f82e434f92616010cee775dc4"
     },
     "index.html": {
-      "hash": "2ef9213c0ca2463f187260684ec657a2a90c9f19a25101e4f022ee1ed174e4f1",
-      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/2e/2ef9213c0ca2463f187260684ec657a2a90c9f19a25101e4f022ee1ed174e4f1"
+      "hash": "cc70dc85125fc7280b578f98e8355764efc6147ab10e2ca11afa5120c0e638d3",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/cc/cc70dc85125fc7280b578f98e8355764efc6147ab10e2ca11afa5120c0e638d3"
     },
     "meta.json": {
       "hash": "a0d4adf455e773889a984d1e127f2eac77098ea105dae7c83083d94105daabd4",
@@ -103,6 +83,74 @@
     "package.json": {
       "hash": "4ca3d57827bb17abf20a5ca23370765f23603ffe09a6eac0248fae343da87862",
       "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/4c/4ca3d57827bb17abf20a5ca23370765f23603ffe09a6eac0248fae343da87862"
+    },
+    "assets/bgm/sevgio-peaceful.mp3": {
+      "hash": "6dbb83fe6db6df54d9d982ecee1887f3ce7b1991f3012fac86c0e5dd9ab5472d",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/6d/6dbb83fe6db6df54d9d982ecee1887f3ce7b1991f3012fac86c0e5dd9ab5472d"
+    },
+    "assets/fonts/bricolage-grotesque-latin-700-normal.woff2": {
+      "hash": "4c373ce3c1cca41c864eb3e27c059a59fc6310547ab9c9b6cd780d387ba24206",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/4c/4c373ce3c1cca41c864eb3e27c059a59fc6310547ab9c9b6cd780d387ba24206"
+    },
+    "assets/fonts/bricolage-grotesque-latin-800-normal.woff2": {
+      "hash": "3e1b5f0a56ee995b7c1445bc54e6ec98c5dffb585ef5c4baf86731cf68e27c61",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/3e/3e1b5f0a56ee995b7c1445bc54e6ec98c5dffb585ef5c4baf86731cf68e27c61"
+    },
+    "assets/fonts/figtree-latin-500-normal.woff2": {
+      "hash": "953a6a4294b1205a1b4d4b9e5529478e8c9e1c5a67a9aa24a551414cd85b6f51",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/95/953a6a4294b1205a1b4d4b9e5529478e8c9e1c5a67a9aa24a551414cd85b6f51"
+    },
+    "assets/fonts/figtree-latin-600-normal.woff2": {
+      "hash": "367d713287918784702563518f59239989da815c80d3c7337686b9816635a08b",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/36/367d713287918784702563518f59239989da815c80d3c7337686b9816635a08b"
+    },
+    "assets/fonts/OFL-bricolage-grotesque.txt": {
+      "hash": "923f4ddf0fd39f9b7794ab0df7332f3d95dc43e8ad7ec2289d6d9e8491177f51",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/92/923f4ddf0fd39f9b7794ab0df7332f3d95dc43e8ad7ec2289d6d9e8491177f51"
+    },
+    "assets/fonts/OFL-figtree.txt": {
+      "hash": "ee23e6c84000126692e112ff067b456470493349f993ceaa8b4d3766dd6fad5d",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/ee/ee23e6c84000126692e112ff067b456470493349f993ceaa8b4d3766dd6fad5d"
+    },
+    "assets/photos/ballpark.jpg": {
+      "hash": "4962c53d0f904852c91c5670c77ca3bd0e2f86d7afc909f06af37f837812718a",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/49/4962c53d0f904852c91c5670c77ca3bd0e2f86d7afc909f06af37f837812718a"
+    },
+    "assets/photos/bridge.jpg": {
+      "hash": "22f8e6543b85330fc3958f51501064c204ddca1fbc31be97ef29f94a94bdc9b1",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/22/22f8e6543b85330fc3958f51501064c204ddca1fbc31be97ef29f94a94bdc9b1"
+    },
+    "assets/photos/fountain.jpg": {
+      "hash": "e32e6217355e80a3fc436dd9ce411d2a4397e9c96836c894d4159795af5d6180",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/e3/e32e6217355e80a3fc436dd9ce411d2a4397e9c96836c894d4159795af5d6180"
+    },
+    "assets/photos/skyline.jpg": {
+      "hash": "62e2ff7ab9f1ec679ea87af09055014e3e6d0e375ce39c19a42a3a808951405c",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/62/62e2ff7ab9f1ec679ea87af09055014e3e6d0e375ce39c19a42a3a808951405c"
+    },
+    "audio_meta.json": {
+      "hash": "f0e68e4de7e424b85e097c1b1a38b36c04b2fc5f55a65809cd7d72419de2d012",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/f0/f0e68e4de7e424b85e097c1b1a38b36c04b2fc5f55a65809cd7d72419de2d012"
+    },
+    "compositions/frames/01-skyline.html": {
+      "hash": "8588a92112235dffe220277fbccea213389cd7fd1f63e1f23eae53c61a28253b",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/85/8588a92112235dffe220277fbccea213389cd7fd1f63e1f23eae53c61a28253b"
+    },
+    "compositions/frames/02-bridges.html": {
+      "hash": "efd4a643ebba752295ae03f7600b00a77ea5b8d3bbb83e361bb851ed3719306c",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/ef/efd4a643ebba752295ae03f7600b00a77ea5b8d3bbb83e361bb851ed3719306c"
+    },
+    "compositions/frames/03-fountain.html": {
+      "hash": "89a9e464aab6fc9d9e9b4113e3911afb7dc561ef914af8839bd35153150dcf6e",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/89/89a9e464aab6fc9d9e9b4113e3911afb7dc561ef914af8839bd35153150dcf6e"
+    },
+    "compositions/frames/04-ballpark.html": {
+      "hash": "5d00c76b42fad7e03d4c77efc766add9e9d6d2aa0d0f94c2bbe2eaaa1446071d",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/5d/5d00c76b42fad7e03d4c77efc766add9e9d6d2aa0d0f94c2bbe2eaaa1446071d"
+    },
+    "compositions/frames/05-comfort.html": {
+      "hash": "4625c1e0154035a34035e3bafce594c0e1bf7a486782bfdf84c4f7e5a3d7b777",
+      "content": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/46/4625c1e0154035a34035e3bafce594c0e1bf7a486782bfdf84c4f7e5a3d7b777"
     }
   },
   "revisions": {
@@ -260,12 +308,123 @@
           "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/39/390db3d72a7d9828f962b5d7e396e077a58f172ab5dd065317e3be7c23a6aad5"
         }
       }
+    },
+    "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1792022688257,
+      "endedAt": 1792022688300,
+      "files": {
+        "assets/bgm/sevgio-peaceful.mp3": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/6d/6dbb83fe6db6df54d9d982ecee1887f3ce7b1991f3012fac86c0e5dd9ab5472d"
+        },
+        "assets/fonts/bricolage-grotesque-latin-700-normal.woff2": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/4c/4c373ce3c1cca41c864eb3e27c059a59fc6310547ab9c9b6cd780d387ba24206"
+        },
+        "assets/fonts/bricolage-grotesque-latin-800-normal.woff2": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/3e/3e1b5f0a56ee995b7c1445bc54e6ec98c5dffb585ef5c4baf86731cf68e27c61"
+        },
+        "assets/fonts/figtree-latin-500-normal.woff2": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/95/953a6a4294b1205a1b4d4b9e5529478e8c9e1c5a67a9aa24a551414cd85b6f51"
+        },
+        "assets/fonts/figtree-latin-600-normal.woff2": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/36/367d713287918784702563518f59239989da815c80d3c7337686b9816635a08b"
+        },
+        "assets/fonts/OFL-bricolage-grotesque.txt": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/92/923f4ddf0fd39f9b7794ab0df7332f3d95dc43e8ad7ec2289d6d9e8491177f51"
+        },
+        "assets/fonts/OFL-figtree.txt": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/ee/ee23e6c84000126692e112ff067b456470493349f993ceaa8b4d3766dd6fad5d"
+        },
+        "assets/photos/ballpark.jpg": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/49/4962c53d0f904852c91c5670c77ca3bd0e2f86d7afc909f06af37f837812718a"
+        },
+        "assets/photos/bridge.jpg": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/22/22f8e6543b85330fc3958f51501064c204ddca1fbc31be97ef29f94a94bdc9b1"
+        },
+        "assets/photos/fountain.jpg": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/e3/e32e6217355e80a3fc436dd9ce411d2a4397e9c96836c894d4159795af5d6180"
+        },
+        "assets/photos/skyline.jpg": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/62/62e2ff7ab9f1ec679ea87af09055014e3e6d0e375ce39c19a42a3a808951405c"
+        },
+        "audio_meta.json": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/f0/f0e68e4de7e424b85e097c1b1a38b36c04b2fc5f55a65809cd7d72419de2d012"
+        },
+        "compositions/frames/01-hook.html": {
+          "before": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/ea/ea4bca3c1e85c64f7be2b0a97ae5260f0b46e9a5d82b9a1dc2e0fea9ace1f1d1",
+          "after": null
+        },
+        "compositions/frames/01-skyline.html": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/85/8588a92112235dffe220277fbccea213389cd7fd1f63e1f23eae53c61a28253b"
+        },
+        "compositions/frames/02-bridges.html": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/ef/efd4a643ebba752295ae03f7600b00a77ea5b8d3bbb83e361bb851ed3719306c"
+        },
+        "compositions/frames/02-home.html": {
+          "before": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/b3/b37103f71456c49b4e3c4e548029590186ce81607e8c8111a20090e5a9c38ab5",
+          "after": null
+        },
+        "compositions/frames/03-features.html": {
+          "before": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/23/23e21e90241235d50fee783cae4195ab602ff7888dd32d2ecd02aebba3cbd1e6",
+          "after": null
+        },
+        "compositions/frames/03-fountain.html": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/89/89a9e464aab6fc9d9e9b4113e3911afb7dc561ef914af8839bd35153150dcf6e"
+        },
+        "compositions/frames/04-ballpark.html": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/5d/5d00c76b42fad7e03d4c77efc766add9e9d6d2aa0d0f94c2bbe2eaaa1446071d"
+        },
+        "compositions/frames/04-steps.html": {
+          "before": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/48/486d73cb7368930a9408c475cb5a1a2ef82413f2c993a7e830684a66bd86f803",
+          "after": null
+        },
+        "compositions/frames/05-comfort.html": {
+          "before": null,
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/46/4625c1e0154035a34035e3bafce594c0e1bf7a486782bfdf84c4f7e5a3d7b777"
+        },
+        "compositions/frames/05-promise.html": {
+          "before": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/26/26610f78f8c20e2b2bee4eeca1310b9bf33a7f6965ba968e5c3c8c0578b91c0d",
+          "after": null
+        },
+        "compositions/frames/06-cta.html": {
+          "before": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/39/390db3d72a7d9828f962b5d7e396e077a58f172ab5dd065317e3be7c23a6aad5",
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/5b/5b2f8bc58d8244dbc1620b028130b6a792bc16af56626459ce56066426420dbf"
+        },
+        "index.html": {
+          "before": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/2e/2ef9213c0ca2463f187260684ec657a2a90c9f19a25101e4f022ee1ed174e4f1",
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/cc/cc70dc85125fc7280b578f98e8355764efc6147ab10e2ca11afa5120c0e638d3"
+        },
+        "STORYBOARD.md": {
+          "before": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/77/77649fa026e99f6c3510cd67fc908f48d6beb5aff9d86e78601bc008bc00ad1f",
+          "after": "/root/.cache/hyperframes/history/c5c649e1-4bd9-46dd-958d-602522e7fba6/blobs/5d/5d51e8e6f7f5d318c25a4054839b1d521695e71ebbcf1931370b82e84ebb953b"
+        }
+      }
     }
   },
   "checks": {
     "latest": {
-      "revision": "72bc4705-822b-4e04-b4ed-0d1014ab5f0c",
-      "id": "cdac43bc-379a-4246-93fa-065183ba09f7"
+      "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+      "id": "73940069-4aa7-4add-86bb-ab723aa5be6b"
     },
     "revisions": {
       "28290f90-2ec2-4d91-b0b8-0bc170bfd38c": [
@@ -386,6 +545,62 @@
           "inputScope": "local-project-files",
           "attribution": "recorded-revision"
         }
+      ],
+      "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec": [
+        {
+          "id": "cd4bea0e-cb32-45b5-b797-1c1d6794a497",
+          "scope": "project",
+          "report": "/home/user/victoryborsa/videos/sevgio-promo/.hyperframes/artifacts/checks/cd4bea0e-cb32-45b5-b797-1c1d6794a497.json",
+          "metadata": {
+            "ok": true,
+            "browserSkipped": false,
+            "options": {
+              "samples": 9,
+              "atTransitions": false,
+              "maxIssues": 80,
+              "collapseStatic": true,
+              "tolerance": 2,
+              "timeout": 3000,
+              "contrast": true,
+              "strict": false,
+              "snapshots": false,
+              "browserGpuMode": "auto"
+            }
+          },
+          "createdAt": 1792022707488,
+          "contentHash": "425e59f3c93b90ef720471b157857eee0913ba1077cc7e7edfb2aa1df7d4d4a8",
+          "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+          "inputFingerprint": "29a44795d8bc23bf6f442aa634eb640cb2db3b40ccb8b8ad555df01927308d6c",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "id": "73940069-4aa7-4add-86bb-ab723aa5be6b",
+          "scope": "project",
+          "report": "/home/user/victoryborsa/videos/sevgio-promo/.hyperframes/artifacts/checks/73940069-4aa7-4add-86bb-ab723aa5be6b.json",
+          "metadata": {
+            "ok": true,
+            "browserSkipped": false,
+            "options": {
+              "samples": 9,
+              "atTransitions": false,
+              "maxIssues": 80,
+              "collapseStatic": true,
+              "tolerance": 2,
+              "timeout": 3000,
+              "contrast": true,
+              "strict": false,
+              "snapshots": false,
+              "browserGpuMode": "auto"
+            }
+          },
+          "createdAt": 1792022746602,
+          "contentHash": "425e59f3c93b90ef720471b157857eee0913ba1077cc7e7edfb2aa1df7d4d4a8",
+          "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+          "inputFingerprint": "29a44795d8bc23bf6f442aa634eb640cb2db3b40ccb8b8ad555df01927308d6c",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        }
       ]
     },
     "unversioned": [
@@ -447,8 +662,8 @@
   },
   "snapshots": {
     "latest": {
-      "revision": "72bc4705-822b-4e04-b4ed-0d1014ab5f0c",
-      "id": "2cd14f4f-77ba-446e-b829-4e8f1e2e7a65-2"
+      "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+      "id": "3042a8dd-9b11-48a3-ba2e-29439d53d348-8"
     },
     "revisions": {
       "df20e65e-87d2-4664-a319-6bf0b49c9679": [
@@ -961,19 +1176,202 @@
           "inputScope": "local-project-files",
           "attribution": "recorded-revision"
         }
+      ],
+      "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec": [
+        {
+          "scope": "full",
+          "id": "3042a8dd-9b11-48a3-ba2e-29439d53d348-0",
+          "image": "/home/user/victoryborsa/videos/sevgio-promo/.hyperframes/artifacts/snapshots/e8ed570b-be44-4b43-87d0-cafdd0496e01/frame-00-at-0.4s.png",
+          "time": 0.4,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792022718385,
+          "contentHash": "a32455d211cc65dadd036c8abf7f905e1e8000a2ddf4990ebe54021e34377974",
+          "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+          "inputFingerprint": "29a44795d8bc23bf6f442aa634eb640cb2db3b40ccb8b8ad555df01927308d6c",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "3042a8dd-9b11-48a3-ba2e-29439d53d348-1",
+          "image": "/home/user/victoryborsa/videos/sevgio-promo/.hyperframes/artifacts/snapshots/e8ed570b-be44-4b43-87d0-cafdd0496e01/frame-01-at-2.5s.png",
+          "time": 2.5,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792022718385,
+          "contentHash": "8336cc6c61ee641f585cef2d476490ab464c0865cafc6c81587f0a8fa2c56041",
+          "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+          "inputFingerprint": "29a44795d8bc23bf6f442aa634eb640cb2db3b40ccb8b8ad555df01927308d6c",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "3042a8dd-9b11-48a3-ba2e-29439d53d348-2",
+          "image": "/home/user/victoryborsa/videos/sevgio-promo/.hyperframes/artifacts/snapshots/e8ed570b-be44-4b43-87d0-cafdd0496e01/frame-02-at-5.2s.png",
+          "time": 5.2,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792022718385,
+          "contentHash": "76c9036d899062b37591e810ea85b72e5f001299cc3b990ca9657203788edb6e",
+          "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+          "inputFingerprint": "29a44795d8bc23bf6f442aa634eb640cb2db3b40ccb8b8ad555df01927308d6c",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "3042a8dd-9b11-48a3-ba2e-29439d53d348-3",
+          "image": "/home/user/victoryborsa/videos/sevgio-promo/.hyperframes/artifacts/snapshots/e8ed570b-be44-4b43-87d0-cafdd0496e01/frame-03-at-8.5s.png",
+          "time": 8.5,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792022718385,
+          "contentHash": "59c37f2e3da3308550fc12b3c211b86e42d7f7fe77f3c773e68360f570f32bbe",
+          "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+          "inputFingerprint": "29a44795d8bc23bf6f442aa634eb640cb2db3b40ccb8b8ad555df01927308d6c",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "3042a8dd-9b11-48a3-ba2e-29439d53d348-4",
+          "image": "/home/user/victoryborsa/videos/sevgio-promo/.hyperframes/artifacts/snapshots/e8ed570b-be44-4b43-87d0-cafdd0496e01/frame-04-at-13.5s.png",
+          "time": 13.5,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792022718385,
+          "contentHash": "16cd4804ac72c2297199967bef4e09c04cdeec460e4eaed14a541ee7ea6fbfcb",
+          "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+          "inputFingerprint": "29a44795d8bc23bf6f442aa634eb640cb2db3b40ccb8b8ad555df01927308d6c",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "3042a8dd-9b11-48a3-ba2e-29439d53d348-5",
+          "image": "/home/user/victoryborsa/videos/sevgio-promo/.hyperframes/artifacts/snapshots/e8ed570b-be44-4b43-87d0-cafdd0496e01/frame-05-at-18.5s.png",
+          "time": 18.5,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792022718385,
+          "contentHash": "d0e87aca62e63b58c2cf9d96043d0543c4ac701d1f28b7d3a115113e395d778c",
+          "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+          "inputFingerprint": "29a44795d8bc23bf6f442aa634eb640cb2db3b40ccb8b8ad555df01927308d6c",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "3042a8dd-9b11-48a3-ba2e-29439d53d348-6",
+          "image": "/home/user/victoryborsa/videos/sevgio-promo/.hyperframes/artifacts/snapshots/e8ed570b-be44-4b43-87d0-cafdd0496e01/frame-06-at-23.5s.png",
+          "time": 23.5,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792022718385,
+          "contentHash": "1aa70444fcb2ffd91e5f8c6299fb4cdb4d2fe38f983f4aadfa1b075f0a86fb4a",
+          "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+          "inputFingerprint": "29a44795d8bc23bf6f442aa634eb640cb2db3b40ccb8b8ad555df01927308d6c",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "3042a8dd-9b11-48a3-ba2e-29439d53d348-7",
+          "image": "/home/user/victoryborsa/videos/sevgio-promo/.hyperframes/artifacts/snapshots/e8ed570b-be44-4b43-87d0-cafdd0496e01/frame-07-at-28.5s.png",
+          "time": 28.5,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792022718385,
+          "contentHash": "9bd8acb04e4635ddbc83478b654c045e5afebd497e2a5d920b2076bd32320252",
+          "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+          "inputFingerprint": "29a44795d8bc23bf6f442aa634eb640cb2db3b40ccb8b8ad555df01927308d6c",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "3042a8dd-9b11-48a3-ba2e-29439d53d348-8",
+          "image": "/home/user/victoryborsa/videos/sevgio-promo/.hyperframes/artifacts/snapshots/e8ed570b-be44-4b43-87d0-cafdd0496e01/frame-08-at-29.1s.png",
+          "time": 29.1,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792022718385,
+          "contentHash": "dff4bafca72d4f98295bd247e109bfff0e32a4b43435cb788bf95ee750ac0ca5",
+          "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
+          "inputFingerprint": "29a44795d8bc23bf6f442aa634eb640cb2db3b40ccb8b8ad555df01927308d6c",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        }
       ]
     },
     "unversioned": []
   },
   "renders": {
     "latest": {
-      "id": "85438f47-5d6a-4d83-b358-cef5d764cf40",
-      "completedAt": 1792022218277,
+      "id": "7115bb07-8f34-4e7a-96eb-ec4801ea485c",
+      "completedAt": 1792022865056,
       "output": "/home/user/victoryborsa/videos/sevgio-promo/renders/video.mp4",
       "status": "completed",
-      "revision": "72bc4705-822b-4e04-b4ed-0d1014ab5f0c"
+      "revision": "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec"
     },
     "retainedRevisions": [
+      "ce1f6b85-5dda-4ce8-9a49-efce6220c7ec",
       "72bc4705-822b-4e04-b4ed-0d1014ab5f0c"
     ]
   },
