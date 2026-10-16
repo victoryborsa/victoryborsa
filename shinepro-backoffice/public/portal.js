@@ -514,7 +514,7 @@
     document.title = `Invoice ${inv.number} · ${BUSINESS}`;
     app.innerHTML = `
       <div class="row between no-print" style="margin-bottom:14px">
-        <a href="${ADMIN_PRINT ? '/admin#/invoices' : `${BASE}/invoices`}">← ${ADMIN_PRINT ? 'Back to admin' : 'All invoices'}</a>
+        <a class="portal-back" style="margin:0" href="${ADMIN_PRINT ? '/admin#/invoices' : `${BASE}/invoices`}">${icon('chev')}<span>${ADMIN_PRINT ? 'Back to admin' : 'Back to invoices'}</span></a>
         <div class="row">
           <button class="btn secondary" id="print">Print or save PDF</button>
           ${safeUrl(inv.pay_url) && inv.status === 'sent' ? `<a class="btn" href="${esc(safeUrl(inv.pay_url))}" target="_blank" rel="noopener">Pay now ${money(inv.amount)}</a>` : ''}
@@ -685,7 +685,7 @@
   async function turnoverReport(id) {
     const { job, report } = await api(`/turnovers/${id}`);
     app.innerHTML = `
-      <p><a href="/host/turnovers?view=past">← All turnovers</a></p>
+      <a class="portal-back" href="/host/turnovers?view=past">${icon('chev')}<span>Back to turnovers</span></a>
       <h1>Turnover report</h1>
       <div class="card"><dl class="kv">
         <dt>When</dt><dd>${esc(fmtWhen(job.scheduled_at))}</dd>
@@ -729,9 +729,23 @@
     ];
     for (const [re, fn] of routes) {
       const m = re.exec(sub);
-      if (m) return guard(() => fn(...m.slice(1)));
+      if (m) return guard(async () => { await fn(...m.slice(1)); addBackLink(); });
     }
     app.innerHTML = `<div class="empty">Page not found. <a href="${BASE}">Go to your account</a></div>`;
+  }
+
+  // A "Back" link at the top of each section page (detail pages have their own).
+  function addBackLink() {
+    if (!sub || sub.includes('/')) return;
+    const back = document.createElement('a');
+    back.className = 'portal-back';
+    back.href = BASE;
+    back.innerHTML = `${icon('chev')}<span>Back to home</span>`;
+    back.onclick = (e) => {
+      const fromHere = document.referrer && new URL(document.referrer).origin === location.origin && document.referrer !== location.href;
+      if (fromHere && history.length > 1) { e.preventDefault(); history.back(); }
+    };
+    app.prepend(back);
   }
 
   async function guard(fn) {

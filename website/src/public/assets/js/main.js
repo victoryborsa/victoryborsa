@@ -381,6 +381,19 @@
     else img.addEventListener("error", function () { markMissing(img); }, { once: true });
   });
 
+  // Back link: one step back when the visitor came from this site, otherwise the parent page.
+  $$("[data-back]").forEach(function (link) {
+    link.addEventListener("click", function (e) {
+      var ref = document.referrer;
+      var fromHere = false;
+      try { fromHere = !!ref && new URL(ref).origin === window.location.origin && ref !== window.location.href; } catch (err) {}
+      if (fromHere && window.history.length > 1) {
+        e.preventDefault();
+        window.history.back();
+      }
+    });
+  });
+
   // Fade-in on scroll
   var reveals = $$(".reveal");
   if ("IntersectionObserver" in window) {

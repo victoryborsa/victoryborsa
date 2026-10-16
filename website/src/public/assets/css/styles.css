@@ -2550,3 +2550,43 @@ img.img-missing {
   color: transparent;
   font-size: 0;
 }
+
+/* Back link at the top of inner pages */
+.backbar {
+  padding: 14px 0 0;
+}
+.backbar .wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+.backbar a {
+  text-decoration: none;
+  color: var(--muted);
+  font-weight: 600;
+}
+.backbar [data-back] {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent-ink);
+  padding: 8px 14px 8px 10px;
+  margin-left: -10px;
+  border-radius: 999px;
+}
+.backbar [data-back] .icon {
+  transform: rotate(180deg);
+}
+.backbar [data-back]:hover {
+  background: var(--accent-soft);
+}
+.backbar-parent::before {
+  content: "/";
+  margin-right: 8px;
+  color: var(--line-strong);
+}
+.backbar-parent:hover {
+  color: var(--accent-ink);
+}
+.backbar + .page-hero, .backbar + section { padding-top: clamp(16px, 3vw, 36px); }
