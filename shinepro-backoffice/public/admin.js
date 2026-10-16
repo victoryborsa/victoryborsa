@@ -422,7 +422,7 @@
   async function leadDetail(id) {
     const l = await api(`/leads/${id}`);
     app.innerHTML = `
-      <p><a href="#/leads">← All leads</a></p>
+      <p><a class="back" href="#/leads">← Back</a></p>
       <div class="row between"><h1>${esc(l.name)}</h1>
         <div class="row">
           <select id="lead-status" style="width:auto">${META.leadStatuses.map((s) => `<option ${s === l.status ? 'selected' : ''}>${s}</option>`).join('')}</select>
@@ -581,7 +581,7 @@
     const c = await api(`/chats/${leadId}`);
     let lastId = c.messages.reduce((m, x) => Math.max(m, x.id), 0);
     app.innerHTML = `
-      <p><a href="#/chats">← All chats</a></p>
+      <p><a class="back" href="#/chats">← Back</a></p>
       <div class="row between"><div><h1 style="margin-bottom:4px">${esc(c.name)}</h1><div class="muted small" id="chat-presence">${seenText(c)}</div></div>
         <div class="row">${contactLinks(c)}<a class="btn sm secondary" href="#/leads/${c.lead_id}">Lead details</a><button class="btn sm" id="chat-book">📅 Book job</button></div></div>
       <div class="card chat-live">
@@ -685,7 +685,7 @@
   async function customerDetail(id) {
     const c = await api(`/customers/${id}`);
     app.innerHTML = `
-      <p><a href="#/customers">← All clients</a></p>
+      <p><a class="back" href="#/customers">← Back</a></p>
       <div class="row between"><h1>${esc(c.name)}</h1>
         <div class="row"><button class="btn secondary" id="edit">Edit</button><button class="btn" id="book">📅 Book job</button></div></div>
       <div class="grid-2">
@@ -755,7 +755,7 @@
     const upcoming = e.jobs.filter((j) => j.scheduled_at >= today.slice(0, 10));
     const past = e.jobs.filter((j) => j.scheduled_at < today.slice(0, 10)).reverse();
     app.innerHTML = `
-      <p><a href="#/employees">← All employees</a></p>
+      <p><a class="back" href="#/employees">← Back</a></p>
       <div class="row between"><h1>${esc(e.name)}</h1><button class="btn secondary" id="edit">Edit</button></div>
       <div class="card"><dl class="kv">
         <dt>Role</dt><dd>${esc(e.role)}</dd><dt>Phone</dt><dd>${esc(fmtPhone(e.phone)) || '—'}</dd>
@@ -1527,7 +1527,13 @@
     render();
   }
 
-  window.addEventListener('hashchange', () => { if (META) render(); });
+  // "← Back" returns to wherever you came from (Today, Calendar, a list); opened from a link, it goes to the list.
+  let inAppNavs = 0;
+  window.addEventListener('hashchange', () => { inAppNavs += 1; if (META) render(); });
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a.back');
+    if (a && inAppNavs > 0 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); history.back(); }
+  });
   // Re-check for new leads and chat messages while the page is open.
   setInterval(() => { if (META && !document.hidden) refreshBadge(); }, 15000);
   start();
