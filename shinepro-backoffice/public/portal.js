@@ -164,8 +164,8 @@
   // ---------- public screens (no login) ----------
   function authCard(inner) {
     app.innerHTML = `<div class="login-wrap"><div class="card login">
-      <div class="auth-head"><svg class="brand-logo" aria-hidden="true"><use href="#i-logo" /></svg>
-        <div><strong>${BUSINESS}</strong><div class="muted small">${MODE === 'host' ? 'Host portal for Airbnb and short-term rental owners' : 'Client portal'}</div></div></div>
+      <div class="auth-head"><img class="brand-img" src="/logo.png" alt="" width="720" height="152"></div>
+      <div class="auth-sub"><div><div class="muted small">${MODE === 'host' ? 'Host portal for Airbnb and short-term rental owners' : 'Client portal'}</div></div></div>
       ${inner}</div></div>`;
   }
 

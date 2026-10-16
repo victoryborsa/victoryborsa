@@ -7,6 +7,8 @@ DirectoryIndex index.html
 <IfModule mod_alias.c>
   Redirect 301 /special-event-cleaning /event-cleanup
   Redirect 301 /eco-friendly-cleaning /house-cleaning
+  Redirect 301 /book /free-estimate
+  Redirect 301 /quote /free-estimate
 
   # Client and host portals run on the back office server.
   # Change the address below if the back office lives somewhere else.
