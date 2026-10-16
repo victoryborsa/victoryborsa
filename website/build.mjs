@@ -17,7 +17,8 @@
 // office). Pages never type a price; they write a token that the build fills in:
 //   {{price deep 2}}  -> $309      {{from deep}}      -> $249 (lowest size)
 //   {{addon fridge}}  -> $35       {{addon organizing}} -> $50/hr
-//   {{off weekly}}    -> 15%       {{travel}}         -> $20
+//   {{off weekly}}    -> 15%       {{travel}}         -> $25
+//   {{travel miles}}  -> 5 miles   {{travel base}}    -> Downtown Pittsburgh
 //   {{biz hours}}     -> Mon–Sat, 8am–6pm   (any field of PRICING.business)
 // The same file is copied to /assets/js/pricing.js for the forms and calculators.
 import { createRequire } from "node:module";
@@ -43,7 +44,12 @@ function token(kind, args, from) {
   const fail = () => {
     throw new Error(`${from}: unknown price token {{${[kind, ...args].join(" ")}}}`);
   };
-  if (kind === "travel") return money(PRICING.travelFee);
+  if (kind === "travel") {
+    if (!args.length) return money(PRICING.travelFee);
+    if (args[0] === "miles") return `${PRICING.travelFreeMiles} miles`;
+    if (args[0] === "base") return PRICING.travelBase.label;
+    fail();
+  }
   if (kind === "price" || kind === "from") {
     const s = PRICING.services[args[0]];
     if (!s || !s.prices) fail();

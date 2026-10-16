@@ -19,6 +19,8 @@
   var marks = $$(".stepper li");
   var current = 0;
   var params = new URLSearchParams(window.location.search);
+  // Map point of the address picked from the suggestions (for the travel fee distance).
+  var mapPoint = {};
 
   F.clearErrorOnInput(form);
 
@@ -75,7 +77,10 @@
       size: $("[data-sizes]").value,
       frequency: f ? f.value : null,
       addons: picked(),
-      organizingHours: $("#e-hours").value
+      organizingHours: $("#e-hours").value,
+      zip: $("#e-zip").value || $("#e-address").value,
+      lat: mapPoint.lat,
+      lon: mapPoint.lon
     });
   }
 
@@ -100,11 +105,21 @@
     $("[data-e-lines]").innerHTML = rows;
     $("[data-e-summary]").innerHTML = rows;
     var note = $("[data-e-note]");
-    if (q.quoteOnly) note.textContent = "We'll send a personalized price for this home. The " + P.money(PR.travelFee) + " travel fee applies per visit.";
-    else if (s.recurring) note.textContent = "Price per visit. The recurring discount applies to the cleaning only, not add-ons or the travel fee. Each visit includes the travel fee once.";
-    else note.textContent = "Final price confirmed after we review your request.";
+    var travelNote = q.travelMiles == null
+      ? " The " + P.money(PR.travelFee) + " travel fee is removed for homes within " + PR.travelFreeMiles + " miles of " + PR.travelBase.label + "; add your address or ZIP to check."
+      : q.travelFee ? " Your home is about " + q.travelMiles + " miles away, so the " + P.money(PR.travelFee) + " travel fee applies." : " Your home is within " + PR.travelFreeMiles + " miles, so there's no travel fee.";
+    if (q.quoteOnly) note.textContent = "We'll send a personalized price for this home." + travelNote;
+    else if (s.recurring) note.textContent = "Price per visit. The recurring discount applies to the cleaning only, not add-ons or the travel fee." + travelNote;
+    else note.textContent = "Final price confirmed after we review your request." + travelNote;
   }
   form.addEventListener("change", updatePrice);
+  // Typing a new address or ZIP drops the map point from an earlier pick.
+  ["#e-zip", "#e-address"].forEach(function (sel) {
+    $(sel).addEventListener("input", function (e) {
+      if (e.isTrusted) mapPoint = {};
+      if (sel === "#e-zip" && /^\d{5}$/.test(e.target.value)) updatePrice();
+    });
+  });
 
   function show(i) {
     steps.forEach(function (s, n) {
@@ -148,6 +163,8 @@
     ShineAddress.attach(form.querySelector("[data-autocomplete]"), {
       onSelect: function (p) {
         if (p.zip) $("#e-zip").value = p.zip;
+        mapPoint = { lat: p.lat, lon: p.lon };
+        updatePrice();
       }
     });
   }
@@ -167,7 +184,7 @@
     var estimate = q.lines
       .map(function (l) {
         return (l.kind === "travel" ? PR.travelFeeLabel : l.label) + ": " +
-          (l.kind === "included" ? "Included" : (l.amount < 0 ? "-" : "") + P.money(Math.abs(l.amount)));
+          (l.kind === "included" ? "Included" : l.kind === "travel" && !l.amount ? "Free (within " + PR.travelFreeMiles + " miles)" : (l.amount < 0 ? "-" : "") + P.money(Math.abs(l.amount)));
       })
       .concat(["Estimated total: " + (q.quoteOnly ? "Custom quote" : P.money(q.total))])
       .join("\n");
@@ -194,6 +211,8 @@
     var body = Object.assign(F.contactBody(form, data), {
       address: data.address,
       zip: data.zip,
+      lat: mapPoint.lat,
+      lon: mapPoint.lon,
       service_type: data.service,
       bedrooms: data.bedrooms,
       bathrooms: data.bathrooms,

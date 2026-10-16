@@ -16,7 +16,7 @@ test('website quote is saved as lead + customer, and owner is alerted by email a
   assert.equal(r.status, 201);
   assert.equal(r.headers.get('access-control-allow-origin'), 'https://pghshinepro.com');
   // deep, 3 bedrooms = $359 (no recurring discount on a deep clean) + $20 travel fee
-  assert.equal(r.data.estimated_price, 379);
+  assert.equal(r.data.estimated_price, 359);
 
   await s.until(() => s.sent.length >= 3);
   const ownerEmail = s.sent.find((m) => m.channel === 'email' && m.to === 'owner@example.com');
@@ -24,7 +24,7 @@ test('website quote is saved as lead + customer, and owner is alerted by email a
   const confirmation = s.sent.find((m) => m.to === 'jane@example.com');
   assert.ok(ownerEmail && ownerEmail.text.includes('Jane Doe') && ownerEmail.text.includes('+14125550199'));
   assert.equal(ownerSms.to, '+14125550100');
-  assert.ok(confirmation.text.includes('Total: $379'));
+  assert.ok(confirmation.text.includes('Total: $359'));
 
   await s.login();
   const leads = await s.req('/api/admin/leads');
@@ -234,8 +234,8 @@ test('the server always prices: browser prices are ignored, unknown services are
   t.after(s.close);
   const r = await s.req('/api/leads', { method: 'POST', body: { name: 'Site Form', phone: '4125550111', service_type: 'deep', bedrooms: '2', estimated_price: 1, estimated_total: 2 } });
   assert.equal(r.status, 201);
-  assert.equal(r.data.estimated_price, 329);
-  assert.equal(r.data.quote.total, 329);
+  assert.equal(r.data.estimated_price, 334);
+  assert.equal(r.data.quote.total, 334);
   const odd = await s.req('/api/leads', { method: 'POST', body: { name: 'Odd Service', phone: '4125550112', service_type: 'Window Washing Deluxe', frequency: 'Every 2 weeks', estimated_price: 199 } });
   assert.equal(odd.status, 201);
   assert.equal(odd.data.estimated_price, null);
@@ -246,7 +246,7 @@ test('the server always prices: browser prices are ignored, unknown services are
   assert.equal(lead.estimated_price, null);
   // a service label is understood too
   const label = await s.req('/api/leads', { method: 'POST', body: { name: 'Label', phone: '4125550113', service_type: 'Deep Cleaning', bedrooms: 2 } });
-  assert.equal(label.data.estimated_price, 329);
+  assert.equal(label.data.estimated_price, 334);
 });
 
 test('SEO: back office is never indexed (only the main website should rank)', async (t) => {

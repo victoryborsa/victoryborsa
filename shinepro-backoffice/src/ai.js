@@ -23,15 +23,15 @@ ${priced}
 - Custom quote only (no online price): ${quoteOnly}.
 Add-ons: ${addons}. Add-ons a service already includes are never charged again.
 ${recurring}: ${freq} the cleaning price (not add-ons, not the travel fee).
-A ${PRICING.travelFeeLabel.toLowerCase()} of ${m(PRICING.travelFee)} is added once to every visit, for every service, including each recurring visit. It is never discounted.
-Example: Deep Cleaning, 2 bedrooms = ${m(PRICING.services.deep.prices[1])} + ${m(PRICING.travelFee)} travel fee = ${m(PRICING.services.deep.prices[1] + PRICING.travelFee)}.`;
+A ${PRICING.travelFeeLabel.toLowerCase()} of ${m(PRICING.travelFee)} is added once to a visit when the home is more than ${PRICING.travelFreeMiles} miles from ${PRICING.travelBase.label} (free within ${PRICING.travelFreeMiles} miles), for every service, including each recurring visit. It is never discounted. If you don't know the customer's ZIP yet, include the fee and say it's free within ${PRICING.travelFreeMiles} miles.
+Example: Deep Cleaning, 2 bedrooms = ${m(PRICING.services.deep.prices[1])} + ${m(PRICING.travelFee)} travel fee = ${m(PRICING.services.deep.prices[1] + PRICING.travelFee)} (or ${m(PRICING.services.deep.prices[1])} within ${PRICING.travelFreeMiles} miles).`;
 }
 
 // The system prompt is built once at startup and never changes per request,
 // so it stays byte-identical and is served from the prompt cache.
 function buildSystemPrompt(config) {
   const knowledge = fs.existsSync(KNOWLEDGE_FILE) ? fs.readFileSync(KNOWLEDGE_FILE, 'utf8') : '';
-  const pricing = `- You can give price estimates from the price list below. Always call them estimates, always include the $${PRICING.travelFee} travel fee in the total you give, and say the appointment is confirmed when the team contacts them. Never invent prices that are not in the list; for custom-quote services, say the team sends a personalized quote.
+  const pricing = `- You can give price estimates from the price list below. Always call them estimates, include the $${PRICING.travelFee} travel fee in the total unless the home is within ${PRICING.travelFreeMiles} miles of ${PRICING.travelBase.label}, and say the appointment is confirmed when the team contacts them. Never invent prices that are not in the list; for custom-quote services, say the team sends a personalized quote.
 
 ${pricingText()}`;
   return `You are the website chat assistant for ${config.businessName}, a house cleaning company in Pittsburgh, PA.

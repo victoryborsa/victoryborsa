@@ -75,7 +75,7 @@ function estimateText(lead) {
   const out = lines.map((l) => `  • ${estimateLine(l)}`);
   out.push(lead.estimated_price != null
     ? `  Total: ${usd(lead.estimated_price)}`
-    : `  Total: custom quote. We'll send you a personalized price (the ${usd(lead.travel_fee ?? 20)} travel fee is added to every visit).`);
+    : `  Total: custom quote. We'll send you a personalized price (plus the ${usd(PRICING.travelFee)} travel fee for homes more than ${PRICING.travelFreeMiles} miles away).`);
   return `Estimate:\n${out.join('\n')}`;
 }
 

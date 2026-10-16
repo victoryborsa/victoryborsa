@@ -307,10 +307,12 @@
       await api('/bookings/new', { method: 'POST', body: {
         service_type: data.service_type, bedrooms: data.bedrooms, frequency: recurring ? data.frequency : 'once', addons,
         organizing_hours: addons.includes('organizing') ? Number(data.organizing_hours) : null,
-        preferred_date: data.preferred_date, address: data.address, message: data.message, request_id: requestId,
+        preferred_date: data.preferred_date, address: data.address, zip: zipFor(), message: data.message, request_id: requestId,
       } });
       toast('Request sent. We will call or email to confirm a time.');
     });
+    // The travel fee depends on distance: a ZIP typed in the address, else the one on file.
+    const zipFor = () => ((/\b\d{5}\b/.exec(form.address.value) || [])[0] || profile.zip || '');
     const update = () => {
       const s = PR.services[form.service_type.value];
       const picked = PR.addons.filter((a) => form[`addon_${a.id}`].checked).map((a) => a.id);
@@ -322,14 +324,17 @@
         l.classList.toggle('is-included', inc);
         $('[data-addon-price]', l).textContent = inc ? 'Included' : `+$${a.price}${a.perHour ? '/hr' : ''}`;
       });
-      const q = SP.quote({ service: form.service_type.value, size: form.bedrooms.value, frequency: s.recurring ? form.frequency.value : null, addons: picked, organizingHours: form.organizing_hours.value });
-      const amt = (l) => (l.kind === 'included' ? 'Included' : `${l.amount < 0 ? '−' : ''}$${Math.abs(l.amount)}`);
-      const label = (l) => (l.kind === 'travel' ? PR.travelFeeLabel : l.label.replace(/ — included$/, ''));
+      const q = SP.quote({ service: form.service_type.value, size: form.bedrooms.value, frequency: s.recurring ? form.frequency.value : null, addons: picked, organizingHours: form.organizing_hours.value, zip: zipFor() });
+      const amt = (l) => (l.kind === 'included' ? 'Included' : l.kind === 'travel' && !l.amount ? 'Free' : `${l.amount < 0 ? '−' : ''}$${Math.abs(l.amount)}`);
+      const label = (l) => (l.kind === 'travel' ? `${PR.travelFeeLabel}${l.amount ? '' : ` (within ${PR.travelFreeMiles} miles)`}` : l.label.replace(/ — included$/, ''));
       $('[data-lines]', form).innerHTML = q.lines.map((l) => `<li class="q-${l.kind}"><span>${esc(label(l))}</span><span>${amt(l)}</span></li>`).join('')
         + `<li class="q-total"><span>${s.recurring ? 'Total per visit' : 'Estimated total'}</span><span>${q.quoteOnly ? 'Custom quote' : `$${q.total}`}</span></li>`;
-      $('[data-note]', form).textContent = q.quoteOnly
-        ? `We'll send a personalized price. The $${PR.travelFee} travel fee applies per visit.`
-        : 'This is an estimate. We confirm the price and time with you before booking.';
+      const travelNote = q.travelMiles == null
+        ? ` The $${PR.travelFee} travel fee is removed for homes within ${PR.travelFreeMiles} miles; add your ZIP to the address to check.`
+        : q.travelFee ? ` Your home is about ${q.travelMiles} miles away, so the $${PR.travelFee} travel fee applies.` : ` Your home is within ${PR.travelFreeMiles} miles, so there's no travel fee.`;
+      $('[data-note]', form).textContent = (q.quoteOnly
+        ? "We'll send a personalized price."
+        : 'This is an estimate. We confirm the price and time with you before booking.') + travelNote;
     };
     // A running total beside the Send button, so it stays in view on a phone.
     const total = document.createElement('div');

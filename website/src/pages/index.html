@@ -37,7 +37,7 @@
     <form class="quote-card quote-wide" id="quote" action="/free-estimate" method="get" aria-labelledby="quote-title">
       <header>
         <h2 id="quote-title">Instant price estimate</h2>
-        <span class="badge"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-clock" /></svg> Flat-rate, {{travel}} travel fee included</span>
+        <span class="badge"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-clock" /></svg> Flat-rate, no travel fee within {{travel miles}}</span>
       </header>
       <div class="quote-row">
         <div class="field">
@@ -53,7 +53,7 @@
         <div>
           <div class="label" data-q-label>Estimated price</div>
           <div class="amount" data-q-amount>{{from standard}}</div>
-          <div class="q-break" data-q-break>Includes the {{travel}} travel fee per visit</div>
+          <div class="q-break" data-q-break>Plus {{travel}} travel fee beyond {{travel miles}}</div>
         </div>
         <div class="quote-actions">
           <button class="btn btn-light" type="submit">Get a Free Estimate</button>
