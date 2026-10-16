@@ -56,6 +56,30 @@
   const money = (n) => `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const status = (s, label) => `<span class="status st-${esc(s)}">${esc(label || s)}</span>`;
   const localISO = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const icon = (name) => `<svg class="ico" aria-hidden="true"><use href="#i-${name}" /></svg>`;
+  // "in 3 days", "tomorrow", "today" for the next visit.
+  const untilText = (local) => {
+    const day = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+    const n = Math.round((day(local) - day(new Date())) / 86400000);
+    return n <= 0 ? 'Today' : n === 1 ? 'Tomorrow' : n < 7 ? `In ${n} days` : `In ${Math.round(n / 7)} week${n < 11 ? '' : 's'}`;
+  };
+  // Downloads a calendar file (.ics) for a visit; works with Apple, Google and Outlook calendars.
+  function addToCalendar(j) {
+    const start = new Date(j.scheduled_at);
+    const end = new Date(start.getTime() + (Number(j.duration_hours) || 3) * 3600000);
+    const stamp = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const clean = (t) => String(t || '').replace(/[,;\\]/g, (c) => `\\${c}`).replace(/\n/g, ' ');
+    const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PGH Shine Pro//Portal//EN', 'BEGIN:VEVENT',
+      `UID:shinepro-job-${j.id}@pghshinepro.com`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(start)}`, `DTEND:${stamp(end)}`,
+      `SUMMARY:${clean(`${j.service_type || 'Cleaning'} · PGH Shine Pro`)}`,
+      j.address ? `LOCATION:${clean(j.address)}` : '',
+      `DESCRIPTION:${clean(`${cleanersText(j)}. Questions? Call or text ${PHONE}.`)}`,
+      'END:VEVENT', 'END:VCALENDAR'].filter(Boolean).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+    a.download = `shinepro-cleaning-${new Date(j.scheduled_at).toISOString().slice(0, 10)}.ics`;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
   const safeUrl = (u) => (/^https:\/\//i.test(u || '') ? u : '');
 
   function formData(form) {
@@ -108,13 +132,13 @@
     const pill = $('#portal-pill');
     const nav = $('#nav');
     if (ADMIN_PRINT) {
-      pill.textContent = '🛡 Admin';
+      pill.textContent = 'Admin';
       pill.classList.remove('hidden');
       nav.innerHTML = '<a href="/admin#/invoices">← Back to invoices</a>';
       nav.classList.remove('hidden');
       return;
     }
-    pill.textContent = MODE === 'host' ? '🏠 Host portal' : '👤 Client portal';
+    pill.textContent = MODE === 'host' ? 'Host portal' : 'Client portal';
     pill.classList.remove('hidden');
     if (!SESSION || !SESSION.loggedIn) return;
     const links = MODE === 'host'
@@ -125,18 +149,23 @@
       + (MODE === 'host' ? '<a href="/portal/bookings">All bookings</a>' : SESSION.is_host ? '<a href="/host">Host portal</a>' : '')
       + '<a href="#" id="logout">Log out</a>';
     nav.classList.remove('hidden');
-    $('#logout').onclick = async (e) => {
-      e.preventDefault();
-      await api('/logout', { method: 'POST', body: {} }).catch(() => {});
-      location.href = `${BASE}/login`;
-    };
+    const icons = { '': 'home', bookings: 'calendar', turnovers: 'repeat', properties: 'building', invoices: 'receipt', profile: 'user' };
+    const tabbar = $('#tabbar');
+    tabbar.innerHTML = links.map(([p, l]) => `<a href="${BASE}${p ? `/${p}` : ''}" class="${section === p ? 'active' : ''}"${section === p ? ' aria-current="page"' : ''}>${icon(icons[p])}<span>${l}</span></a>`).join('');
+    tabbar.classList.remove('hidden');
+    $('#logout').onclick = (e) => { e.preventDefault(); logout(); };
+  }
+
+  async function logout() {
+    await api('/logout', { method: 'POST', body: {} }).catch(() => {});
+    location.href = `${BASE}/login`;
   }
 
   // ---------- public screens (no login) ----------
   function authCard(inner) {
     app.innerHTML = `<div class="login-wrap"><div class="card login">
-      <div class="row" style="margin-bottom:6px"><span class="brand-mark">S</span><strong>${BUSINESS}</strong></div>
-      <p class="muted small" style="margin-top:0">${MODE === 'host' ? 'Host portal for Airbnb & short-term rental owners' : 'Client portal'}</p>
+      <div class="auth-head"><svg class="brand-logo" aria-hidden="true"><use href="#i-logo" /></svg>
+        <div><strong>${BUSINESS}</strong><div class="muted small">${MODE === 'host' ? 'Host portal for Airbnb and short-term rental owners' : 'Client portal'}</div></div></div>
       ${inner}</div></div>`;
   }
 
@@ -150,7 +179,8 @@
       </form>
       <p class="small" style="margin-top:14px"><a href="${BASE}/forgot">Forgot your password?</a></p>
       <p class="small">First time here? <a href="${BASE}/register">Set up your account</a></p>
-      ${helpLine}`);
+      ${helpLine}
+      <p class="muted small owner-note">Business owner? The admin dashboard has its own sign-in at <a href="/admin">/admin</a>.</p>`);
     $('#login-form').onsubmit = async (e) => {
       e.preventDefault();
       const btn = $('button', e.target);
@@ -229,12 +259,13 @@
         <div class="inline-status">${status(j.status)}</div>
         <div class="title">${esc(fmtWhen(j.scheduled_at))}</div>
         <div class="sub">${esc([j.property && j.property.name, j.service_type].filter(Boolean).join(' · ') || 'Cleaning')}</div>
-        ${j.address ? `<div class="sub">📍 ${esc(j.address)}</div>` : ''}
-        <div class="sub">🧹 ${esc(cleanersText(j))}</div>
-        ${j.pending_request ? `<div class="sub"><span class="status st-new">⏳ ${esc(requestLabel(j.pending_request))}</span></div>` : ''}
-        ${actions && !j.pending_request ? `<div class="row" style="margin-top:8px">
-          <button class="btn sm secondary" data-resched="${j.id}">Reschedule</button>
-          <button class="btn sm danger" data-cancel="${j.id}">Cancel</button></div>` : ''}
+        ${j.address ? `<div class="sub">${icon('pin')}<span>${esc(j.address)}</span></div>` : ''}
+        <div class="sub">${icon('broom')}<span>${esc(cleanersText(j))}</span></div>
+        ${j.pending_request ? `<div class="sub"><span class="status st-new">${esc(requestLabel(j.pending_request))}</span></div>` : ''}
+        ${actions ? `<div class="row" style="margin-top:10px">
+          <button class="btn sm secondary" data-ics="${j.id}">${icon('plus-cal')}Add to calendar</button>
+          ${!j.pending_request ? `<button class="btn sm secondary" data-resched="${j.id}">Reschedule</button>
+          <button class="btn sm danger" data-cancel="${j.id}">Cancel</button>` : ''}</div>` : ''}
         ${j.has_report && MODE === 'host' ? `<div style="margin-top:8px"><a class="btn sm secondary" href="/host/turnovers/${j.id}">View report</a></div>` : ''}
       </div>
       <div class="right">${status(j.status)}</div>
@@ -252,7 +283,71 @@
       <div class="right">${status(r.status === 'pending' ? 'new' : r.status === 'approved' ? 'booked' : 'cancelled', r.status)}</div></div>`;
   }
 
+  // Request form with the same price list and itemized estimate as the website.
   function newCleaningForm(profile) {
+    const SP = window.ShinePricing;
+    if (!SP) return legacyCleaningForm(profile);
+    const PR = SP.PRICING;
+    const ids = ['standard', 'deep', 'move', 'recurring', 'apartment', 'airbnb', 'event'].filter((id) => PR.services[id]);
+    const freqs = Object.keys(PR.frequency).filter((id) => PR.frequency[id].discount > 0);
+    const requestId = `portal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const form = modal('Request a cleaning', `<div class="form-grid">
+      ${select('service_type', 'Service', ids.map((id) => [id, PR.services[id].label]), 'standard', { full: true })}
+      ${select('bedrooms', 'Home size', PR.sizes.map((z) => [z.id, z.label]), '2')}
+      <div class="field" data-freq>${select('frequency', 'How often', freqs.map((id) => [id, `${PR.frequency[id].label} (save ${Math.round(PR.frequency[id].discount * 100)}%)`]), 'biweekly').replace(/^<div class="field ">|<\/div>$/g, '')}</div>
+      <div class="field full"><span class="label-like">Add-ons (optional)</span><div class="addon-picks">${PR.addons.map((a) => `<label data-addon="${a.id}"><input type="checkbox" name="addon_${a.id}"> <span>${esc(a.label)}</span> <small class="muted" data-addon-price></small></label>`).join('')}</div></div>
+      <div class="field" data-hours hidden>${input('organizing_hours', 'Organizing hours', '2', { type: 'number', attrs: 'min="1" max="8" step="1"' }).replace(/^<div class="field ">|<\/div>$/g, '')}</div>
+      ${input('preferred_date', 'Preferred date', '', { type: 'date', attrs: `min="${localISO(new Date()).slice(0, 10)}"` })}
+      ${input('address', 'Address', [profile.address, profile.city].filter(Boolean).join(', '), { full: true, attrs: 'autocomplete="street-address"' })}
+      ${textarea('message', 'Anything we should know?', '', { placeholder: 'Pets, parking, rooms to focus on…' })}
+      </div>
+      <div class="estimate-box" aria-live="polite"><h3>Your estimate</h3><ul class="q-lines" data-lines></ul><p class="muted small" data-note></p></div>`, async (data) => {
+      const addons = PR.addons.filter((a) => data[`addon_${a.id}`]).map((a) => a.id);
+      const recurring = !!PR.services[data.service_type].recurring;
+      await api('/bookings/new', { method: 'POST', body: {
+        service_type: data.service_type, bedrooms: data.bedrooms, frequency: recurring ? data.frequency : 'once', addons,
+        organizing_hours: addons.includes('organizing') ? Number(data.organizing_hours) : null,
+        preferred_date: data.preferred_date, address: data.address, message: data.message, request_id: requestId,
+      } });
+      toast('Request sent. We will call or email to confirm a time.');
+    });
+    const update = () => {
+      const s = PR.services[form.service_type.value];
+      const picked = PR.addons.filter((a) => form[`addon_${a.id}`].checked).map((a) => a.id);
+      $('[data-freq]', form).hidden = !s.recurring;
+      $('[data-hours]', form).hidden = !picked.includes('organizing');
+      $$('[data-addon]', form).forEach((l) => {
+        const a = PR.addons.find((x) => x.id === l.dataset.addon);
+        const inc = (s.included || []).includes(a.id);
+        l.classList.toggle('is-included', inc);
+        $('[data-addon-price]', l).textContent = inc ? 'Included' : `+$${a.price}${a.perHour ? '/hr' : ''}`;
+      });
+      const q = SP.quote({ service: form.service_type.value, size: form.bedrooms.value, frequency: s.recurring ? form.frequency.value : null, addons: picked, organizingHours: form.organizing_hours.value });
+      const amt = (l) => (l.kind === 'included' ? 'Included' : `${l.amount < 0 ? '−' : ''}$${Math.abs(l.amount)}`);
+      const label = (l) => (l.kind === 'travel' ? PR.travelFeeLabel : l.label.replace(/ — included$/, ''));
+      $('[data-lines]', form).innerHTML = q.lines.map((l) => `<li class="q-${l.kind}"><span>${esc(label(l))}</span><span>${amt(l)}</span></li>`).join('')
+        + `<li class="q-total"><span>${s.recurring ? 'Total per visit' : 'Estimated total'}</span><span>${q.quoteOnly ? 'Custom quote' : `$${q.total}`}</span></li>`;
+      $('[data-note]', form).textContent = q.quoteOnly
+        ? `We'll send a personalized price. The $${PR.travelFee} travel fee applies per visit.`
+        : 'This is an estimate. We confirm the price and time with you before booking.';
+    };
+    // A running total beside the Send button, so it stays in view on a phone.
+    const total = document.createElement('div');
+    total.className = 'modal-total';
+    $('.actions', form).prepend(total);
+    const baseUpdate = update;
+    const withTotal = () => {
+      baseUpdate();
+      const t = $('[data-lines] .q-total span:last-child', form);
+      total.innerHTML = `<span class="muted small">Estimate</span><strong>${t ? esc(t.textContent) : ''}</strong>`;
+    };
+    form.addEventListener('change', withTotal);
+    form.addEventListener('input', withTotal);
+    withTotal();
+  }
+
+  // Fallback if the price list didn't load.
+  function legacyCleaningForm(profile) {
     modal('Request a cleaning', `<div class="form-grid">
       ${select('service_type', 'Service', SERVICES.map((s) => [s, s]), SERVICES[0], { full: true })}
       ${select('frequency', 'How often', FREQUENCIES.map((s) => [s, s]), FREQUENCIES[0])}
@@ -261,77 +356,91 @@
       ${textarea('message', 'Anything we should know?', '', { placeholder: 'Rooms, pets, add-ons like inside the fridge or oven…' })}
       </div><p class="muted small">We will confirm the price and time with you before booking.</p>`, async (data) => {
       await api('/bookings/new', { method: 'POST', body: data });
-      toast("Thanks! We got your request and will contact you shortly.");
+      toast('Request sent. We will call or email to confirm a time.');
     });
   }
 
   // ---------- client: dashboard ----------
+  const tile = (href, ico, t, d, extra = '') => `<a class="tile${extra}" href="${href}"><span class="icon">${icon(ico)}</span><span><div class="t">${t}</div><div class="d">${d}</div></span><span class="chev">${icon('chev')}</span></a>`;
+  const pendingBanner = (n) => (n ? `<div class="banner warn">You have ${n} request${n === 1 ? '' : 's'} waiting for our reply. We usually answer the same day.</div>` : '');
+  const invoiceCard = (d) => `<div class="card hero-card">
+          <div class="label">Open invoices</div>
+          <div class="big">${money(d.open_invoices.total)}</div>
+          <div class="muted">${d.open_invoices.count ? `${d.open_invoices.count} invoice${d.open_invoices.count === 1 ? '' : 's'} to pay` : 'You are all paid up. Thank you!'}</div>
+          <div class="row" style="margin-top:14px"><a class="btn sm secondary" href="${BASE}/invoices">${icon('receipt')}See invoices</a></div>
+        </div>`;
+  const greeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; };
+
   async function dashboard() {
     const d = await api('/dashboard');
     const first = (d.name || '').split(' ')[0];
     if (MODE === 'host') return hostDashboard(d, first);
     const n = d.next_job;
     app.innerHTML = `
-      <h1>Hi${first ? `, ${esc(first)}` : ''}!</h1>
+      <h1>${greeting()}${first ? `, ${esc(first)}` : ''}</h1>
+      <p class="page-sub">${n ? 'Here is what is coming up at your place.' : 'Everything for your cleanings in one place.'}</p>
       <div class="grid-2">
-        <div class="card hero-card">
-          <div class="muted small label">Your next cleaning</div>
-          ${n ? `<div class="big">${esc(fmtDay(n.scheduled_at))}</div>
-            <div class="mid">${esc(fmtTime(n.scheduled_at))}${n.service_type ? ` · ${esc(n.service_type)}` : ''}</div>
-            ${n.address ? `<div class="muted">📍 ${esc(n.address)}</div>` : ''}
-            <div class="muted">🧹 ${esc(cleanersText(n))}</div>
-            ${n.pending_request ? `<div style="margin-top:8px"><span class="status st-new">⏳ ${esc(requestLabel(n.pending_request))}</span></div>` : ''}
-            <div class="row" style="margin-top:14px"><a class="btn sm secondary" href="/portal/bookings">Manage bookings</a></div>`
-            : `<div class="big">Nothing booked yet</div><p class="muted">Ready for a sparkling home? Request a cleaning and we will get back to you fast.</p>`}
+        <div class="card hero-card${n ? ' next-visit' : ''}">
+          ${n ? `<span class="when-chip">${icon('clock')}${esc(untilText(n.scheduled_at))}</span>
+            <div class="label">Your next cleaning</div>
+            <div class="big">${esc(fmtDay(n.scheduled_at))}</div>
+            <div class="meta">
+              <div>${icon('clock')}<span>${esc(fmtTime(n.scheduled_at))}${n.service_type ? `, ${esc(n.service_type)}` : ''}</span></div>
+              ${n.address ? `<div>${icon('pin')}<span>${esc(n.address)}</span></div>` : ''}
+              <div>${icon('broom')}<span>${esc(cleanersText(n))}</span></div>
+            </div>
+            ${n.pending_request ? `<div style="margin-top:8px"><span class="status st-new">${esc(requestLabel(n.pending_request))}</span></div>` : ''}
+            <div class="row" style="margin-top:16px"><button class="btn sm light" id="ics">${icon('plus-cal')}Add to calendar</button><a class="btn sm ghost-light" href="/portal/bookings">Manage bookings</a></div>`
+            : `<div class="label">Your next cleaning</div><div class="big">Nothing booked yet</div><p class="muted">Tell us what you need and we will get back to you the same day with a time.</p>
+            <div class="row" style="margin-top:6px"><button class="btn sm" data-new>${icon('sparkle')}Request a cleaning</button></div>`}
         </div>
-        <div class="card hero-card">
-          <div class="muted small label">Open invoices</div>
-          <div class="big">${money(d.open_invoices.total)}</div>
-          <div class="muted">${d.open_invoices.count ? `${d.open_invoices.count} invoice${d.open_invoices.count === 1 ? '' : 's'} to pay` : 'You are all paid up. Thank you!'}</div>
-          <div class="row" style="margin-top:14px"><a class="btn sm secondary" href="/portal/invoices">See invoices</a></div>
-        </div>
+        ${invoiceCard(d)}
       </div>
-      ${d.pending_requests ? `<div class="banner warn">⏳ You have ${d.pending_requests} request${d.pending_requests === 1 ? '' : 's'} waiting for our reply. We usually answer the same day.</div>` : ''}
+      ${pendingBanner(d.pending_requests)}
+      <h2 class="section-title">Quick actions</h2>
       <div class="tiles">
-        <a class="tile" href="#" id="new-cleaning"><span class="icon i-teal">✨</span><span><div class="t">Request a cleaning</div><div class="d">Book your next visit</div></span><span class="chev">›</span></a>
-        <a class="tile" href="/portal/bookings"><span class="icon i-blue">📅</span><span><div class="t">My bookings</div><div class="d">${d.upcoming_count} upcoming</div></span><span class="chev">›</span></a>
-        <a class="tile" href="/portal/invoices"><span class="icon i-gold">🧾</span><span><div class="t">Invoices</div><div class="d">View, print & pay</div></span><span class="chev">›</span></a>
-        <a class="tile" href="/portal/profile"><span class="icon i-green">👤</span><span><div class="t">My profile</div><div class="d">Address, phone, password</div></span><span class="chev">›</span></a>
-        ${d.is_host ? `<a class="tile" href="/host"><span class="icon i-purple">🏠</span><span><div class="t">Host portal</div><div class="d">Properties & turnovers</div></span><span class="chev">›</span></a>` : ''}
-        <a class="tile" href="${PHONE_LINK}"><span class="icon i-cyan">📞</span><span><div class="t">Call or text us</div><div class="d">${PHONE}</div></span><span class="chev">›</span></a>
+        <a class="tile primary" href="#" data-new><span class="icon">${icon('sparkle')}</span><span><div class="t">Request a cleaning</div><div class="d">See your price before you send</div></span><span class="chev">${icon('chev')}</span></a>
+        ${tile('/portal/bookings', 'calendar', 'My bookings', `${d.upcoming_count} upcoming`)}
+        ${tile('/portal/invoices', 'receipt', 'Invoices', 'View, print and pay')}
+        ${tile('/portal/profile', 'user', 'My profile', 'Address, phone, password')}
+        ${d.is_host ? tile('/host', 'building', 'Host portal', 'Properties and turnovers') : ''}
+        ${tile(PHONE_LINK, 'phone', 'Call or text us', PHONE)}
       </div>`;
-    $('#new-cleaning').onclick = async (e) => { e.preventDefault(); newCleaningForm(await api('/profile')); };
+    $$('[data-new]').forEach((b) => (b.onclick = async (e) => { e.preventDefault(); newCleaningForm(await api('/profile')); }));
+    if (n) $('#ics').onclick = () => addToCalendar(n);
   }
 
   function hostDashboard(d, first) {
     const n = d.next_turnover;
     app.innerHTML = `
-      <h1>Hi${first ? `, ${esc(first)}` : ''}!</h1>
+      <h1>${greeting()}${first ? `, ${esc(first)}` : ''}</h1>
+      <p class="page-sub">Your rentals, turnovers and cleaning reports.</p>
       <div class="grid-2">
-        <div class="card hero-card">
-          <div class="muted small label">Next turnover</div>
-          ${n ? `<div class="big">${esc(fmtDay(n.scheduled_at))}</div>
-            <div class="mid">${esc(fmtTime(n.scheduled_at))}${n.property ? ` · ${esc(n.property.name)}` : ''}</div>
-            <div class="muted">🧹 ${esc(cleanersText(n))}</div>
-            <div class="row" style="margin-top:14px"><a class="btn sm secondary" href="/host/turnovers">All turnovers</a></div>`
-            : `<div class="big">No turnovers booked</div><p class="muted">Add your guest checkout dates and we will handle the rest.</p>`}
+        <div class="card hero-card${n ? ' next-visit' : ''}">
+          ${n ? `<span class="when-chip">${icon('clock')}${esc(untilText(n.scheduled_at))}</span>
+            <div class="label">Next turnover</div>
+            <div class="big">${esc(fmtDay(n.scheduled_at))}</div>
+            <div class="meta">
+              <div>${icon('clock')}<span>${esc(fmtTime(n.scheduled_at))}</span></div>
+              ${n.property ? `<div>${icon('building')}<span>${esc(n.property.name)}</span></div>` : ''}
+              <div>${icon('broom')}<span>${esc(cleanersText(n))}</span></div>
+            </div>
+            <div class="row" style="margin-top:16px"><button class="btn sm light" id="ics">${icon('plus-cal')}Add to calendar</button><a class="btn sm ghost-light" href="/host/turnovers">All turnovers</a></div>`
+            : `<div class="label">Next turnover</div><div class="big">No turnovers booked</div><p class="muted">Add your guest checkout dates and we will handle the rest.</p>`}
         </div>
-        <div class="card hero-card">
-          <div class="muted small label">Open invoices</div>
-          <div class="big">${money(d.open_invoices.total)}</div>
-          <div class="muted">${d.open_invoices.count ? `${d.open_invoices.count} invoice${d.open_invoices.count === 1 ? '' : 's'} to pay` : 'You are all paid up. Thank you!'}</div>
-          <div class="row" style="margin-top:14px"><a class="btn sm secondary" href="/host/invoices">See invoices</a></div>
-        </div>
+        ${invoiceCard(d)}
       </div>
-      ${d.pending_requests ? `<div class="banner warn">⏳ You have ${d.pending_requests} request${d.pending_requests === 1 ? '' : 's'} waiting for our reply.</div>` : ''}
+      ${pendingBanner(d.pending_requests)}
+      <h2 class="section-title">Quick actions</h2>
       <div class="tiles">
-        <a class="tile" href="/host/turnovers?request=1"><span class="icon i-teal">🔁</span><span><div class="t">Request a turnover</div><div class="d">Checkout date & times</div></span><span class="chev">›</span></a>
-        <a class="tile" href="/host/turnovers"><span class="icon i-blue">📅</span><span><div class="t">Turnovers</div><div class="d">${d.upcoming_turnovers} upcoming · reports</div></span><span class="chev">›</span></a>
-        <a class="tile" href="/host/properties"><span class="icon i-purple">🏠</span><span><div class="t">Properties</div><div class="d">${d.properties} propert${d.properties === 1 ? 'y' : 'ies'}</div></span><span class="chev">›</span></a>
-        <a class="tile" href="/host/invoices"><span class="icon i-gold">🧾</span><span><div class="t">Invoices</div><div class="d">View, print & pay</div></span><span class="chev">›</span></a>
-        <a class="tile" href="/host/profile"><span class="icon i-green">👤</span><span><div class="t">Profile</div><div class="d">Contact info, password</div></span><span class="chev">›</span></a>
-        <a class="tile" href="${PHONE_LINK}"><span class="icon i-cyan">📞</span><span><div class="t">Call or text us</div><div class="d">${PHONE}</div></span><span class="chev">›</span></a>
+        ${tile('/host/turnovers?request=1', 'repeat', 'Request a turnover', 'Checkout date and times', ' primary')}
+        ${tile('/host/turnovers', 'calendar', 'Turnovers', `${d.upcoming_turnovers} upcoming, plus reports`)}
+        ${tile('/host/properties', 'building', 'Properties', `${d.properties} propert${d.properties === 1 ? 'y' : 'ies'}`)}
+        ${tile('/host/invoices', 'receipt', 'Invoices', 'View, print and pay')}
+        ${tile('/host/profile', 'user', 'Profile', 'Contact info, password')}
+        ${tile(PHONE_LINK, 'phone', 'Call or text us', PHONE)}
       </div>`;
+    if (n) $('#ics').onclick = () => addToCalendar(n);
   }
 
   // ---------- client: bookings ----------
@@ -340,7 +449,7 @@
     const view = new URLSearchParams(location.search).get('view') || 'upcoming';
     const list = view === 'past' ? b.past : b.upcoming;
     app.innerHTML = `
-      <div class="row between"><h1>My bookings</h1><button class="btn" id="new">+ Request a cleaning</button></div>
+      <div class="row between"><h1>My bookings</h1><button class="btn" id="new">${icon('sparkle')}Request a cleaning</button></div>
       <div class="tabs"><button data-v="upcoming" class="${view === 'upcoming' ? 'active' : ''}">Upcoming (${b.upcoming.length})</button><button data-v="past" class="${view === 'past' ? 'active' : ''}">Past (${b.past.length})</button></div>
       <div class="list">${list.length ? list.map((j) => bookingCard(j, { actions: view === 'upcoming' })).join('')
         : `<div class="empty">${view === 'upcoming' ? 'No upcoming cleanings. Tap “Request a cleaning” to book one.' : 'No past cleanings yet.'}</div>`}</div>
@@ -349,6 +458,7 @@
     $$('.tabs button').forEach((btn) => (btn.onclick = () => { location.search = `?view=${btn.dataset.v}`; }));
     $('#new').onclick = () => newCleaningForm(profile);
     const byId = (id) => b.upcoming.find((j) => String(j.id) === id);
+    $$('[data-ics]').forEach((btn) => (btn.onclick = () => addToCalendar(byId(btn.dataset.ics))));
     $$('[data-resched]').forEach((btn) => (btn.onclick = () => {
       const j = byId(btn.dataset.resched);
       const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(9, 0, 0, 0);
@@ -406,7 +516,7 @@
       <div class="row between no-print" style="margin-bottom:14px">
         <a href="${ADMIN_PRINT ? '/admin#/invoices' : `${BASE}/invoices`}">← ${ADMIN_PRINT ? 'Back to admin' : 'All invoices'}</a>
         <div class="row">
-          <button class="btn secondary" id="print">🖨 Print / Save PDF</button>
+          <button class="btn secondary" id="print">Print or save PDF</button>
           ${safeUrl(inv.pay_url) && inv.status === 'sent' ? `<a class="btn" href="${esc(safeUrl(inv.pay_url))}" target="_blank" rel="noopener">Pay now ${money(inv.amount)}</a>` : ''}
         </div>
       </div>
@@ -473,10 +583,13 @@
           <p class="muted small">Changing your password logs you out on your other devices.</p>
           <button class="btn" type="submit">Change password</button>
         </form>
-      </div>${helpLine}`;
+      </div>
+      <div class="card row between" style="margin-top:16px"><div><strong>Signed in as ${esc(p.email)}</strong><div class="muted small">Log out when you're done on a shared device.</div></div><button class="btn secondary" id="logout-btn">${icon('out')}Log out</button></div>
+      ${helpLine}`;
+    $('#logout-btn').onclick = logout;
     $('#profile-form').onsubmit = async (e) => {
       e.preventDefault();
-      try { await api('/profile', { method: 'PUT', body: formData(e.target) }); toast('Saved ✅'); } catch (err) { toast(err.message, true); }
+      try { await api('/profile', { method: 'PUT', body: formData(e.target) }); toast('Changes saved'); } catch (err) { toast(err.message, true); }
     };
     $('#password-form').onsubmit = async (e) => {
       e.preventDefault();
@@ -485,7 +598,7 @@
       try {
         await api('/password', { method: 'POST', body: { current_password: f.current_password.value, new_password: f.new_password.value } });
         f.reset();
-        toast('Password changed ✅');
+        toast('Password changed');
       } catch (err) { toast(err.message, true); }
     };
   }
@@ -511,10 +624,10 @@
   async function propertiesPage() {
     const list = await api('/properties');
     app.innerHTML = `
-      <div class="row between"><h1>My properties</h1><button class="btn" id="add">+ Add property</button></div>
+      <div class="row between"><h1>My properties</h1><button class="btn" id="add">${icon('building')}Add property</button></div>
       <div class="prop-grid">${list.length ? list.map((p) => `<div class="card prop">
-        <div class="row between"><h2>🏠 ${esc(p.name)}</h2><button class="btn sm secondary" data-edit="${p.id}">Edit</button></div>
-        <div class="muted">📍 ${esc(p.address)}</div>
+        <div class="row between"><h2>${esc(p.name)}</h2><button class="btn sm secondary" data-edit="${p.id}">Edit</button></div>
+        <div class="muted row" style="gap:6px">${icon('pin')}<span>${esc(p.address)}</span></div>
         <dl class="kv" style="margin-top:10px">
           <dt>Size</dt><dd>${p.bedrooms == null && p.bathrooms == null ? '—' : `${p.bedrooms ?? '?'} bed · ${p.bathrooms ?? '?'} bath`}</dd>
           <dt>Checkout</dt><dd>${esc(fmtClock(p.checkout_time)) || '—'}</dd>
@@ -538,7 +651,7 @@
     const list = view === 'past' ? t.past : t.upcoming;
     const pending = t.requests.filter((r) => r.status === 'pending');
     app.innerHTML = `
-      <div class="row between"><h1>Turnovers</h1><button class="btn" id="req">+ Request a turnover</button></div>
+      <div class="row between"><h1>Turnovers</h1><button class="btn" id="req">${icon('repeat')}Request a turnover</button></div>
       ${pending.length ? `<div class="card"><h2>Waiting for our confirmation</h2><div class="list">${pending.map(requestItem).join('')}</div></div>` : ''}
       <div class="tabs"><button data-v="upcoming" class="${view === 'upcoming' ? 'active' : ''}">Upcoming (${t.upcoming.length})</button><button data-v="past" class="${view === 'past' ? 'active' : ''}">Past & reports (${t.past.length})</button></div>
       <div class="list">${list.length ? list.map((j) => bookingCard(j)).join('') : `<div class="empty">${view === 'upcoming' ? 'No upcoming turnovers.' : 'No past turnovers yet.'}</div>`}</div>
@@ -582,11 +695,11 @@
         <dt>Cleaner</dt><dd>${esc(job.cleaners.join(', ') || '—')}</dd>
       </dl></div>
       ${report ? `<div class="grid-2">
-        <div class="card"><h2>🧹 Cleaning notes</h2><p class="pre">${esc(report.notes || 'No notes.')}</p></div>
-        <div class="card ${report.damage_notes ? 'damage' : ''}"><h2>⚠️ Damage</h2><p class="pre">${esc(report.damage_notes || 'No damage found.')}</p></div>
-        <div class="card"><h2>📦 Inventory & supplies</h2><p class="pre">${esc(report.inventory_notes || 'Nothing to report.')}</p></div>
+        <div class="card"><h2>Cleaning notes</h2><p class="pre">${esc(report.notes || 'No notes.')}</p></div>
+        <div class="card ${report.damage_notes ? 'damage' : ''}"><h2>Damage</h2><p class="pre">${esc(report.damage_notes || 'No damage found.')}</p></div>
+        <div class="card"><h2>Inventory and supplies</h2><p class="pre">${esc(report.inventory_notes || 'Nothing to report.')}</p></div>
       </div>
-      <div class="card"><h2>📷 Photos (${report.photos.length})</h2>
+      <div class="card"><h2>Photos (${report.photos.length})</h2>
         ${report.photos.length ? `<div class="photo-grid">${report.photos.map((p) => `<a href="/api/portal/photos/${job.id}/${esc(p.file)}" target="_blank" rel="noopener"><img src="/api/portal/photos/${job.id}/${esc(p.file)}" alt="${esc(p.name)}" loading="lazy"></a>`).join('')}</div>` : '<div class="empty small">No photos for this turnover.</div>'}
       </div>` : '<div class="card empty">The report for this turnover is not ready yet.</div>'}
       ${helpLine}`;
