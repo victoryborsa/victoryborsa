@@ -370,6 +370,17 @@
     });
   });
 
+  // A photo that fails to load shows a soft brand panel instead of a broken image.
+  function markMissing(img) {
+    img.classList.add("img-missing");
+    img.removeAttribute("srcset");
+    img.src = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+  }
+  $$("img").forEach(function (img) {
+    if (img.complete && img.naturalWidth === 0 && img.getAttribute("src")) markMissing(img);
+    else img.addEventListener("error", function () { markMissing(img); }, { once: true });
+  });
+
   // Fade-in on scroll
   var reveals = $$(".reveal");
   if ("IntersectionObserver" in window) {
