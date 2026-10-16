@@ -39,7 +39,7 @@ function priceRequest(body) {
   const addons = parseAddons(body.addons);
   const rawHours = present(body.organizing_hours) ? body.organizing_hours : body.organizingHours;
   const organizing_hours = addons.includes('organizing') ? clampHours(rawHours) : null;
-  const q = serviceId ? quote({ service: serviceId, size: size == null ? undefined : String(size), frequency, addons, organizingHours: organizing_hours }) : null;
+  const q = serviceId ? quote({ service: serviceId, size: size == null ? undefined : String(size), frequency, addons, organizingHours: organizing_hours, zip: body.zip || body.address, lat: body.lat, lon: body.lon }) : null;
   return {
     service_type: serviceId || str(rawService, 60), // an unknown service is kept as text, with no price
     frequency: frequency || str(body.frequency, 40),
@@ -69,7 +69,7 @@ function quoteForLead(lead) {
   if (!lead || !PRICING.services[lead.service_type]) return null;
   return quote({
     service: lead.service_type, size: lead.bedrooms == null ? undefined : String(lead.bedrooms), frequency: lead.frequency,
-    addons: lead.addons || '', organizingHours: lead.organizing_hours,
+    addons: lead.addons || '', organizingHours: lead.organizing_hours, zip: lead.zip || lead.address,
   });
 }
 function validRequestId(v) {

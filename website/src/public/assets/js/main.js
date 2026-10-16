@@ -41,8 +41,9 @@
   function quoteRows(q) {
     if (!q) return "";
     var rows = q.lines.map(function (l) {
-      var amt = l.kind === "included" ? "Included" : l.amount < 0 ? "−" + money(-l.amount) : money(l.amount);
-      var label = l.kind === "travel" ? PR.travelFeeLabel : l.kind === "included" ? l.label.replace(/ — included$/, "") : l.label;
+      var freeTravel = l.kind === "travel" && !l.amount;
+      var amt = l.kind === "included" ? "Included" : freeTravel ? "Free" : l.amount < 0 ? "−" + money(-l.amount) : money(l.amount);
+      var label = l.kind === "travel" ? PR.travelFeeLabel + (freeTravel ? " (within " + PR.travelFreeMiles + " miles)" : "") : l.kind === "included" ? l.label.replace(/ — included$/, "") : l.label;
       return '<li class="q-line q-' + l.kind + '"><span>' + label + "</span><span>" + amt + "</span></li>";
     });
     rows.push('<li class="q-line q-total"><span>Estimated total' + (q.quoteOnly ? "" : q.unit === "turn" ? " per turn" : " per visit") +
@@ -370,6 +371,30 @@
     });
   });
 
+  // A photo that fails to load shows a soft brand panel instead of a broken image.
+  function markMissing(img) {
+    img.classList.add("img-missing");
+    img.removeAttribute("srcset");
+    img.src = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+  }
+  $$("img").forEach(function (img) {
+    if (img.complete && img.naturalWidth === 0 && img.getAttribute("src")) markMissing(img);
+    else img.addEventListener("error", function () { markMissing(img); }, { once: true });
+  });
+
+  // Back link: one step back when the visitor came from this site, otherwise the parent page.
+  $$("[data-back]").forEach(function (link) {
+    link.addEventListener("click", function (e) {
+      var ref = document.referrer;
+      var fromHere = false;
+      try { fromHere = !!ref && new URL(ref).origin === window.location.origin && ref !== window.location.href; } catch (err) {}
+      if (fromHere && window.history.length > 1) {
+        e.preventDefault();
+        window.history.back();
+      }
+    });
+  });
+
   // Fade-in on scroll
   var reveals = $$(".reveal");
   if ("IntersectionObserver" in window) {
@@ -406,9 +431,10 @@
       qSize.disabled = !!PR.services[qService.value].quoteOnly;
       $("[data-q-amount]", quoteForm).innerHTML = q.quoteOnly ? "Custom" : money(q.total) + (q.unit === "turn" ? "<small>/ turn</small>" : "<small>/ visit</small>");
       $("[data-q-label]", quoteForm).textContent = q.quoteOnly ? "We'll send a personalized quote" : "Estimated total";
+      // No address yet, so the total includes the travel fee and says when it's free.
       $("[data-q-break]", quoteForm).textContent = q.quoteOnly
-        ? "Plus " + PR.travelFeeLabel + " — " + money(PR.travelFee) + " per visit"
-        : "Cleaning " + money(q.subtotal) + " + " + PR.travelFeeLabel + " — " + money(q.travelFee);
+        ? "Plus " + money(PR.travelFee) + " travel fee beyond " + PR.travelFreeMiles + " miles"
+        : "Cleaning " + money(q.subtotal) + " + " + money(q.travelFee) + " travel fee (free within " + PR.travelFreeMiles + " miles)";
     };
     quoteForm.addEventListener("change", updateQuote);
     updateQuote();

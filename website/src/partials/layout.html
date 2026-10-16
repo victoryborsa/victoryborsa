@@ -20,12 +20,14 @@
   <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/assets/fonts/jakarta-400.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/assets/css/styles.css" />
+  <script>document.documentElement.classList.add("js")</script>
   {{head}}
 </head>
 <body class="has-mobile-bar {{bodyClass}}">
   <!-- @include sprite -->
   <!-- @include header -->
   <main id="main">
+{{backbar}}
 {{content}}
   </main>
   <!-- @include footer -->

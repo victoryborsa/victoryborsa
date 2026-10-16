@@ -14,22 +14,22 @@ const lead = (extra) => ({ name: 'Price Check', phone: '4125550180', ...extra })
 test('exact prices from pricing.js, travel fee included once', () => {
   // deep, 2 bedrooms = $309 + $20
   const deep = quote({ service: 'deep', size: '2' });
-  assert.equal(deep.total, 329);
-  assert.deepEqual(deep.lines.map((l) => [l.kind, l.amount]), [['service', 309], ['travel', 20]]);
-  assert.equal(travelLines(deep)[0].label, 'Travel Fee — $20');
+  assert.equal(deep.total, 334);
+  assert.deepEqual(deep.lines.map((l) => [l.kind, l.amount]), [['service', 309], ['travel', 25]]);
+  assert.equal(travelLines(deep)[0].label, 'Travel Fee — $25');
 
   // deep + fridge: the fridge is included in a deep clean, never charged again
   const fridge = quote({ service: 'deep', size: '2', addons: ['fridge'] });
-  assert.equal(fridge.total, 329);
+  assert.equal(fridge.total, 334);
   assert.ok(fridge.lines.some((l) => l.kind === 'included' && l.amount === 0));
 
   // recurring, 1 bedroom, weekly: $149 − $22 (15%) + $20
   const weekly = quote({ service: 'recurring', size: '1', frequency: 'weekly' });
-  assert.equal(weekly.total, 147);
+  assert.equal(weekly.total, 152);
   assert.equal(weekly.discount, 22);
 
   // standard, 2 bedrooms + fridge + oven + 2 hrs organizing: 189 + 35 + 35 + 100 + 20
-  assert.equal(estimatePrice({ service: 'standard', size: '2', addons: 'fridge,oven,organizing', organizingHours: 2 }), 379);
+  assert.equal(estimatePrice({ service: 'standard', size: '2', addons: 'fridge,oven,organizing', organizingHours: 2 }), 384);
 
   // airbnb, 4 bedrooms: custom quote, but the travel fee is still noted
   const airbnb = quote({ service: 'airbnb', size: '4' });
@@ -55,7 +55,7 @@ test('a recurring discount never touches the travel fee or the add-ons', () => {
     const discount = Math.round(price * PRICING.frequency[frequency].discount);
     assert.equal(q.discount, discount);
     assert.equal(q.total, price - discount + 25 + 30 + PRICING.travelFee, frequency);
-    assert.equal(travelLines(q)[0].amount, 20);
+    assert.equal(travelLines(q)[0].amount, 25);
   }
 });
 
@@ -63,11 +63,11 @@ test('server prices every lead itself: tampered prices ignored, breakdown stored
   const s = setup();
   t.after(s.close);
   const cases = [
-    [{ service_type: 'deep', bedrooms: '2' }, 329],
-    [{ service_type: 'deep', bedrooms: '2', addons: ['fridge'] }, 329],
-    [{ service_type: 'recurring', bedrooms: '1', frequency: 'weekly' }, 147],
-    [{ service_type: 'standard', bedrooms: '2', addons: ['fridge', 'oven', 'organizing'], organizing_hours: 2 }, 379],
-    [{ service: 'standard', size: '2', addons: 'fridge,oven,organizing', organizingHours: 2 }, 379],
+    [{ service_type: 'deep', bedrooms: '2' }, 334],
+    [{ service_type: 'deep', bedrooms: '2', addons: ['fridge'] }, 334],
+    [{ service_type: 'recurring', bedrooms: '1', frequency: 'weekly' }, 152],
+    [{ service_type: 'standard', bedrooms: '2', addons: ['fridge', 'oven', 'organizing'], organizing_hours: 2 }, 384],
+    [{ service: 'standard', size: '2', addons: 'fridge,oven,organizing', organizingHours: 2 }, 384],
   ];
   for (const [i, [body, total]] of cases.entries()) {
     const r = await s.req('/api/leads', { method: 'POST', body: lead({ ...body, phone: `41255501${80 + i}`, estimated_price: 5, estimated_total: 5 }) });
@@ -82,29 +82,29 @@ test('server prices every lead itself: tampered prices ignored, breakdown stored
   assert.equal(airbnb.status, 201);
   assert.equal(airbnb.data.estimated_price, null);
   assert.equal(airbnb.data.breakdown.quote_only, true);
-  assert.deepEqual(airbnb.data.breakdown.lines.map((l) => l.label), ['Travel Fee — $20']);
+  assert.deepEqual(airbnb.data.breakdown.lines.map((l) => l.label), ['Travel Fee — $25']);
   for (const service of ['event', 'commercial', 'postconstruction', 'upholstery']) {
     const r = await s.req('/api/leads', { method: 'POST', body: lead({ phone: '4125550199', service_type: service, request_id: `quote-only-${service}` }) });
     assert.equal(r.data.estimated_price, null, service);
-    assert.equal(r.data.breakdown.travel_fee, 20, service);
+    assert.equal(r.data.breakdown.travel_fee, 25, service);
   }
 
   await s.login();
   const stored = (await s.req(`/api/admin/leads/${airbnb.data.id}`)).data;
   assert.equal(stored.estimated_price, null);
-  assert.equal(stored.travel_fee, 20);
+  assert.equal(stored.travel_fee, 25);
   const leads = (await s.req('/api/admin/leads')).data;
   const standard = leads.find((l) => l.service_type === 'standard');
   assert.equal(standard.addons, 'fridge,oven,organizing');
   assert.equal(standard.organizing_hours, 2);
   assert.equal(standard.price_subtotal, 359);
-  assert.equal(standard.travel_fee, 20);
+  assert.equal(standard.travel_fee, 25);
   assert.equal(JSON.parse(standard.price_lines).filter((l) => l.kind === 'travel').length, 1);
 
   // Alerts: owner email and customer confirmation show the lines, the travel fee, the total and the note.
   await s.until(() => s.sent.some((m) => m.to === 'host@example.com'));
   const confirmation = s.sent.find((m) => m.to === 'host@example.com');
-  assert.match(confirmation.text, /Travel Fee — \$20/);
+  assert.match(confirmation.text, /Travel Fee — \$25/);
   assert.match(confirmation.text, /custom quote/);
   assert.match(confirmation.text, /This is an estimate, not a booking\. Your appointment is confirmed when we contact you to confirm the date and time\./);
 });
@@ -113,15 +113,15 @@ test('estimate emails list every line with the Travel Fee and the total', async 
   const s = setup();
   t.after(s.close);
   const r = await s.req('/api/leads', { method: 'POST', body: lead({ email: 'kim@example.com', service_type: 'recurring', bedrooms: '1', frequency: 'weekly', addons: ['laundry'], preferred_contact: 'email' }) });
-  assert.equal(r.data.estimated_price, 172);
+  assert.equal(r.data.estimated_price, 177);
   await s.until(() => s.sent.filter((m) => m.channel === 'email').length >= 2);
   for (const to of ['owner@example.com', 'kim@example.com']) {
     const m = s.sent.find((x) => x.to === to);
     assert.match(m.text, /Recurring Cleaning — 1 Bedroom: \$149/, to);
     assert.match(m.text, /One laundry load: \$25/, to);
     assert.match(m.text, /Weekly discount \(15% off cleaning\): −\$22/, to);
-    assert.equal(m.text.match(/Travel Fee — \$20/g).length, 1, to);
-    assert.match(m.text, /Total: \$172/, to);
+    assert.equal(m.text.match(/Travel Fee — \$25/g).length, 1, to);
+    assert.match(m.text, /Total: \$177/, to);
     assert.match(m.text, /This is an estimate, not a booking\. Your appointment is confirmed when we contact you to confirm the date and time\./, to);
   }
 });
@@ -138,7 +138,7 @@ test('request_id and a quick repeat are saved once and alert once', async (t) =>
   assert.equal(again.status, 200);
   assert.equal(again.data.id, first.data.id);
   assert.equal(again.data.duplicate, true);
-  assert.equal(again.data.quote.total, 329);
+  assert.equal(again.data.quote.total, 334);
 
   // No request_id, but the same phone asking for the same service within 2 minutes
   const noId = await s.req('/api/leads', { method: 'POST', body: lead({ email: 'dup@example.com', service_type: 'deep', bedrooms: '3' }) });
@@ -196,4 +196,19 @@ test('validation: phone or email, preferred contact must match', async (t) => {
   await bad({ name: 'X', email: 'x@example.com', preferred_contact: 'pigeon' }, /Preferred contact/);
   const ok = await s.req('/api/leads', { method: 'POST', body: { name: 'X', email: 'x@example.com', preferred_contact: 'email', service_type: 'deep', bedrooms: 2 } });
   assert.equal(ok.status, 201);
+});
+
+test('travel fee: free within 5 miles of the base, $25 beyond, $25 when the distance is unknown', () => {
+  const fee = (input) => travelLines(quote({ service: 'deep', size: '2', ...input }))[0];
+  assert.equal(fee({ zip: '15232' }).amount, 0); // Shadyside, about 3.5 miles
+  assert.equal(fee({ zip: '15232' }).label, 'Travel Fee — free within 5 miles');
+  assert.equal(fee({ zip: '15228' }).amount, 25); // Mt. Lebanon, about 5.4 miles
+  assert.equal(fee({ zip: '16066' }).amount, 25); // Cranberry Township
+  assert.equal(fee({}).amount, 25);
+  assert.equal(fee({ zip: '512 S Negley Ave, Pittsburgh, PA 15232' }).amount, 0); // a ZIP inside an address
+  assert.equal(fee({ lat: 40.45, lon: -79.95 }).amount, 0); // exact map point beats the ZIP
+  assert.equal(fee({ lat: 40.45, lon: -79.95, zip: '16066' }).amount, 0);
+  assert.equal(fee({ lat: 0, lon: 0, zip: '16066' }).amount, 25); // junk coordinates are ignored
+  assert.equal(quote({ service: 'deep', size: '2', zip: '15232' }).total, 309);
+  assert.equal(quote({ service: 'event', zip: '15232' }).lines.length, 1);
 });

@@ -207,7 +207,7 @@ test('notifications: admin Retry resends a failed one once', async (t) => {
   assert.equal(ok.data.notification.status, 'sent');
   const owner = s.sent.filter((m) => m.to === 'owner@example.com');
   assert.equal(owner.length, 1);
-  assert.match(owner[0].text, /Travel Fee — \$20/);
+  assert.match(owner[0].text, /Travel Fee — \$25/);
   assert.equal((await s.req(`/api/admin/notifications/${failed.id}/retry`, { method: 'POST', body: {} })).status, 409);
   assert.equal(s.sent.filter((m) => m.to === 'owner@example.com').length, 1);
   lead = (await s.req(`/api/admin/leads/${r.data.id}`)).data;
@@ -219,21 +219,21 @@ test('booking from a lead carries the estimate; its invoice has the lines and ex
   const s = setup();
   t.after(s.close);
   const { data: lead } = await s.req('/api/leads', { method: 'POST', body: { name: 'Ivy Inv', email: 'ivy@example.com', service_type: 'deep', bedrooms: 2, addons: ['fridge', 'laundry'] } });
-  assert.equal(lead.estimated_price, 354); // 309 + fridge included + laundry 25 + travel 20
+  assert.equal(lead.estimated_price, 359); // 309 + fridge included + laundry 25 + travel 25 (no ZIP)
   await s.login();
   const customerId = (await s.req(`/api/admin/leads/${lead.id}`)).data.customer_id;
   const job = (await s.req('/api/admin/jobs', { method: 'POST', body: { customer_id: customerId, lead_id: lead.id, scheduled_at: '2030-06-01T09:00' } })).data;
-  assert.equal(job.price, 354);
+  assert.equal(job.price, 359);
   assert.equal(job.service_type, 'Deep Cleaning');
-  assert.equal(job.price_breakdown.total, 354);
+  assert.equal(job.price_breakdown.total, 359);
   assert.equal(job.price_breakdown.lines.filter((l) => l.kind === 'travel').length, 1);
 
   const prefill = (await s.req(`/api/admin/invoices/prefill?job_id=${job.id}`)).data;
   assert.equal(prefill.items.filter((i) => i.kind === 'travel').length, 1);
   const inv = (await s.req('/api/admin/invoices', { method: 'POST', body: { job_id: job.id } })).data;
-  assert.equal(inv.amount, 354);
+  assert.equal(inv.amount, 359);
   assert.deepEqual(inv.items.map((i) => [i.description, i.amount]), [
-    ['Deep Cleaning — 2 Bedrooms', 309], ['Inside refrigerator — included', 0], ['One laundry load', 25], ['Travel Fee — $20', 20],
+    ['Deep Cleaning — 2 Bedrooms', 309], ['Inside refrigerator — included', 0], ['One laundry load', 25], ['Travel Fee — $25', 25],
   ]);
 
   // The travel fee can't be added twice, and its amount always comes from pricing.js
@@ -244,9 +244,16 @@ test('booking from a lead carries the estimate; its invoice has the lines and ex
     { description: 'Deep Cleaning — 2 Bedrooms', amount: 309, kind: 'service' }, { description: 'Extra: balcony', amount: 45 },
     { description: 'Travel Fee', amount: 99, kind: 'travel' },
   ] } })).data;
-  assert.equal(edited.amount, 374); // 309 + 45 + 20 (not 99)
-  assert.equal(edited.items[2].description, 'Travel Fee — $20');
-  assert.equal(edited.items[2].amount, 20);
+  assert.equal(edited.amount, 379); // 309 + 45 + 25 (not 99)
+  assert.equal(edited.items[2].description, 'Travel Fee — $25');
+  assert.equal(edited.items[2].amount, 25);
+  // A $0 travel line stays free (home within 5 miles)
+  const free = (await s.req(`/api/admin/invoices/${inv.id}`, { method: 'PUT', body: { items: [
+    { description: 'Deep Cleaning — 2 Bedrooms', amount: 309, kind: 'service' }, { description: 'Travel Fee', amount: 0, kind: 'travel' },
+  ] } })).data;
+  assert.equal(free.amount, 309);
+  assert.equal(free.items[1].description, 'Travel Fee — free within 5 miles');
+  await s.req(`/api/admin/invoices/${inv.id}`, { method: 'PUT', body: { items: edited.items } });
   // Changing only the amount of a several-line invoice is refused (the lines decide the total)
   assert.equal((await s.req(`/api/admin/invoices/${inv.id}`, { method: 'PUT', body: { amount: 10 } })).status, 400);
 
@@ -254,7 +261,7 @@ test('booking from a lead carries the estimate; its invoice has the lines and ex
   const manual = (await s.req('/api/admin/jobs', { method: 'POST', body: { customer_id: customerId, scheduled_at: '2030-06-08T09:00', price: 238, service_type: 'Deep Cleaning' } })).data;
   const inv2 = (await s.req('/api/admin/invoices', { method: 'POST', body: { job_id: manual.id } })).data;
   assert.equal(inv2.amount, 238);
-  assert.deepEqual(inv2.items.map((i) => [i.kind, i.amount]), [['service', 218], ['travel', 20]]);
+  assert.deepEqual(inv2.items.map((i) => [i.kind, i.amount]), [['service', 213], ['travel', 25]]);
 
   // Client portal and email show every line and the total
   await s.req(`/api/admin/customers/${customerId}/portal`, { method: 'PUT', body: { enabled: true, send_link: true } });
@@ -265,11 +272,11 @@ test('booking from a lead carries the estimate; its invoice has the lines and ex
   await s.req(`/api/admin/invoices/${inv.id}/send`, { method: 'POST', body: {} });
   const mail = s.sent.find((m) => m.to === 'ivy@example.com');
   assert.match(mail.text, /Extra: balcony: \$45\.00/);
-  assert.match(mail.text, /Travel Fee — \$20: \$20\.00/);
-  assert.match(mail.text, /Total: \$374\.00/);
+  assert.match(mail.text, /Travel Fee — \$25: \$25\.00/);
+  assert.match(mail.text, /Total: \$379\.00/);
   const view = (await client(`/api/portal/invoices/${inv.id}`)).data;
   assert.equal(view.items.length, 3);
-  assert.equal(view.amount, 374);
+  assert.equal(view.amount, 379);
 });
 
 test('old invoices without line items still show as one line', async (t) => {

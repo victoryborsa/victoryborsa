@@ -17,7 +17,8 @@
 // office). Pages never type a price; they write a token that the build fills in:
 //   {{price deep 2}}  -> $309      {{from deep}}      -> $249 (lowest size)
 //   {{addon fridge}}  -> $35       {{addon organizing}} -> $50/hr
-//   {{off weekly}}    -> 15%       {{travel}}         -> $20
+//   {{off weekly}}    -> 15%       {{travel}}         -> $25
+//   {{travel miles}}  -> 5 miles   {{travel base}}    -> Downtown Pittsburgh
 //   {{biz hours}}     -> Mon–Sat, 8am–6pm   (any field of PRICING.business)
 // The same file is copied to /assets/js/pricing.js for the forms and calculators.
 import { createRequire } from "node:module";
@@ -43,7 +44,12 @@ function token(kind, args, from) {
   const fail = () => {
     throw new Error(`${from}: unknown price token {{${[kind, ...args].join(" ")}}}`);
   };
-  if (kind === "travel") return money(PRICING.travelFee);
+  if (kind === "travel") {
+    if (!args.length) return money(PRICING.travelFee);
+    if (args[0] === "miles") return `${PRICING.travelFreeMiles} miles`;
+    if (args[0] === "base") return PRICING.travelBase.label;
+    fail();
+  }
   if (kind === "price" || kind === "from") {
     const s = PRICING.services[args[0]];
     if (!s || !s.prices) fail();
@@ -114,6 +120,30 @@ for (const file of readdirSync(join(src, "pages")).filter((f) => f.endsWith(".ht
   pages.push({ file, meta, body });
 }
 
+// Photos still served by the old Airo site use the local copy once
+// scripts/fetch-airo-images.mjs has saved it (any image extension).
+const localPhotos = {};
+const photoDir = join(src, "public", "assets", "img", "site");
+if (existsSync(photoDir)) {
+  for (const f of readdirSync(photoDir, { recursive: true })) {
+    const m = String(f).match(/^(.*)\.(jpe?g|png|webp|avif|gif|svg)$/);
+    if (m) localPhotos[m[1].split("\\").join("/")] = "/assets/img/site/" + String(f).split("\\").join("/");
+  }
+}
+const usePhotos = (html) =>
+  html.replace(/https:\/\/pghshinepro\.com\/airo-assets\/([^"')\s]+)/g, (url, p) => localPhotos[p] || url);
+
+// A "back" link at the top of every page except the home page. It goes back
+// one step when the visitor came from this site, otherwise to the parent page.
+const SERVICE_PAGES = ["/house-cleaning", "/deep-cleaning", "/move-in-out-cleaning", "/airbnb-cleaning", "/apartment-condo-cleaning",
+  "/event-cleanup", "/commercial-cleaning", "/post-construction-cleaning", "/upholstery-cleaning", "/eco-friendly-cleaning", "/special-event-cleaning"];
+function backbar(path) {
+  if (path === "/" || path === "/404") return "";
+  const [href, label] = path.startsWith("/cleaning-services/") ? ["/service-areas", "Service areas"]
+    : SERVICE_PAGES.includes(path) ? ["/services", "All services"] : ["/", "Home"];
+  return `<nav class="backbar" aria-label="Back"><div class="wrap"><a href="${href}" data-back><svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg><span>Back</span></a><a class="backbar-parent" href="${href}">${label}</a></div></nav>`;
+}
+
 for (const { file, meta, body } of pages) {
   const target = outFile(meta.path);
   const vars = {
@@ -121,10 +151,11 @@ for (const { file, meta, body } of pages) {
     description: meta.description || "",
     canonical: site + (meta.path === "/" ? "/" : meta.path),
     bodyClass: meta.bodyClass || "",
+    backbar: backbar(meta.path),
     robots: meta.noindex ? '<meta name="robots" content="noindex" />' : "",
     head: meta.head || "",
     scripts: (meta.scripts || []).map((s) => `<script src="/assets/js/${s}"></script>`).join("\n  "),
-    content: fillPrices(include(body, file), file)
+    content: usePhotos(fillPrices(include(body, file), file))
   };
   let html = fillPrices(include(partials.layout, "layout"), "layout").replace(/\{\{(\w+)\}\}/g, (_, k) => {
     if (!(k in vars)) throw new Error(`layout: unknown variable ${k}`);

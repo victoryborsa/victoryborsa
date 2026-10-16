@@ -8,7 +8,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const express = require('express');
 const { str, num, normalizePhone, fmtLocal, HttpError } = require('./util');
-const { PRICING, money: pricingMoney } = require('../public/pricing');
+const { PRICING, money: pricingMoney, travelLine } = require('../public/pricing');
 
 const INVOICE_STATUSES = ['draft', 'sent', 'paid', 'void'];
 const REQUEST_KINDS = ['reschedule', 'cancel', 'turnover'];
@@ -92,8 +92,12 @@ function createPortal({ db, config, svc, notifier, accounts }) {
   // ---------- invoices ----------
   // Line items: [{description, amount, kind}], kind = service | addon | included | discount | travel | other.
   // The invoice amount is always the sum of its items. An invoice covers one visit, so it has at most
-  // one "Travel Fee — $20" line, and that line's amount always comes from public/pricing.js.
-  const travelItem = () => ({ description: `${PRICING.travelFeeLabel} — ${pricingMoney(PRICING.travelFee)}`, amount: PRICING.travelFee, kind: 'travel' });
+  // one travel fee line, and that line always comes from public/pricing.js: the full fee, or free
+  // when the home is within the free distance (free: true).
+  const travelItem = (free = false) => (free
+    ? { description: `${PRICING.travelFeeLabel} — free within ${PRICING.travelFreeMiles} miles`, amount: 0, kind: 'travel' }
+    : { description: `${PRICING.travelFeeLabel} — ${pricingMoney(PRICING.travelFee)}`, amount: PRICING.travelFee, kind: 'travel' });
+  const travelItemFor = (address) => travelItem(travelLine({ zip: address }).amount === 0);
   const isTravel = (it) => it.kind === 'travel' || /^\s*travel\s*fee/i.test(it.description || '');
   const cents = (n) => Math.round(Number(n) * 100) / 100;
   const sumItems = (items) => cents(items.reduce((s, it) => s + Number(it.amount || 0), 0));
@@ -119,7 +123,7 @@ function createPortal({ db, config, svc, notifier, accounts }) {
     }
     const travel = items.filter(isTravel);
     if (travel.length > 1) throw new HttpError(400, 'The travel fee is charged once per visit. Remove the extra travel fee line.');
-    if (travel.length) Object.assign(travel[0], travelItem());
+    if (travel.length) Object.assign(travel[0], travelItem(Number(travel[0].amount) === 0)); // $0 keeps it free
     if (!items.length) throw new HttpError(400, 'Add at least one invoice line');
     return items;
   }
@@ -130,13 +134,14 @@ function createPortal({ db, config, svc, notifier, accounts }) {
     let bd = job.price_breakdown;
     if (typeof bd === 'string') { try { bd = JSON.parse(bd); } catch { bd = null; } }
     if (bd && Array.isArray(bd.lines) && bd.total != null && job.price != null && Number(bd.total) === Number(job.price)) {
-      const items = bd.lines.map((l) => (l.kind === 'travel' ? travelItem() : { description: l.label, amount: cents(l.amount), kind: ITEM_KINDS.includes(l.kind) ? l.kind : 'other' }));
-      if (!items.some(isTravel)) items.push(travelItem());
+      const items = bd.lines.map((l) => (l.kind === 'travel' ? travelItem(Number(l.amount) === 0) : { description: l.label, amount: cents(l.amount), kind: ITEM_KINDS.includes(l.kind) ? l.kind : 'other' }));
+      if (!items.some(isTravel)) items.push(travelItemFor(job.address));
       return items;
     }
     if (job.price == null) return null;
     const label = `${job.service_type || 'Cleaning service'} — ${fmtWhen(job.scheduled_at)}`;
-    return [{ description: label, amount: cents(Number(job.price) - PRICING.travelFee), kind: 'service' }, travelItem()];
+    const travel = travelItemFor(job.address);
+    return [{ description: label, amount: cents(Number(job.price) - travel.amount), kind: 'service' }, travel];
   }
 
   function getInvoice(id) {
@@ -688,7 +693,7 @@ function createPortal({ db, config, svc, notifier, accounts }) {
     admin.get('/invoices/prefill', (req, res) => {
       const job = q('SELECT * FROM jobs WHERE id = ?').get(Number(req.query.job_id));
       if (!job) throw new HttpError(404, 'Job not found');
-      res.json({ job_id: job.id, items: itemsForJob(job) || [{ description: `${job.service_type || 'Cleaning service'} — ${fmtWhen(job.scheduled_at)}`, amount: 0, kind: 'service' }, travelItem()], travel_item: travelItem() });
+      res.json({ job_id: job.id, items: itemsForJob(job) || [{ description: `${job.service_type || 'Cleaning service'} — ${fmtWhen(job.scheduled_at)}`, amount: 0, kind: 'service' }, travelItemFor(job.address)], travel_item: travelItemFor(job.address) });
     });
     admin.post('/invoices', (req, res) => res.status(201).json(createInvoice(req.body || {})));
     admin.get('/invoices/:id', (req, res) => res.json(hydrateInvoice(getInvoice(id(req)))));
