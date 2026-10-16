@@ -41,6 +41,9 @@ function loadConfig(env = process.env) {
       from: env.TWILIO_FROM_NUMBER || '',
     },
     sendCustomerConfirmation: env.SEND_CUSTOMER_CONFIRMATION !== 'false',
+    // Day-before reminder emails to clients, sent from this hour (Pittsburgh time). REMINDERS=false turns them off.
+    reminders: env.REMINDERS !== 'false',
+    reminderHour: Math.min(20, Math.max(6, Number(env.REMINDER_HOUR) || 10)),
     // Prices always come from public/pricing.js: the server recalculates every estimate it receives.
     // Failed emails/texts are retried automatically: 3 attempts in total, waiting this long (ms) before each retry.
     notifyRetryDelaysMs: (env.NOTIFY_RETRY_DELAYS_MS || '5000,30000').split(',').map(Number).filter((n) => Number.isFinite(n) && n >= 0),

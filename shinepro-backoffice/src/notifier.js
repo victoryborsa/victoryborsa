@@ -22,7 +22,7 @@ function createSenders(config) {
   return {
     emailEnabled: smtpReady,
     smsEnabled: twilioReady,
-    async email({ to, subject, text, html, replyTo }) {
+    async email({ to, subject, text, html, replyTo, attachments }) {
       if (!transport) throw new Error('Email is not configured (set SMTP_HOST and EMAIL_FROM)');
       await transport.sendMail({
         from: `"${config.businessName}" <${config.smtp.from}>`,
@@ -30,6 +30,7 @@ function createSenders(config) {
         subject,
         text,
         html,
+        attachments,
         replyTo: replyTo || config.smtp.replyTo || undefined,
       });
     },

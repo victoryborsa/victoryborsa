@@ -1,4 +1,5 @@
 const { quote, PRICING } = require('../public/pricing');
+const { bookingEmail } = require('./booking-email');
 const { normalizePhone, normalizeEmail, formatPhone, str, num, bool, fmtLocal, HttpError } = require('./util');
 
 const LEAD_STATUSES = ['new', 'contacted', 'quoted', 'booked', 'lost'];
@@ -503,44 +504,63 @@ function createService({ db, notifier, config }) {
   }
 
   // Booking emails to the client: "booked" when a job is made, "moved" when its date, time or address
-  // changes, "cancelled" when it's cancelled. Also saved in the client's conversation so you can see it went.
-  async function notifyCustomer(job, kind) {
+  // changes, "cancelled" when it's cancelled, "reminder" the day before. Saved in the client's conversation too.
+  async function notifyCustomer(job, kind, { series = null, respectOptOut = false } = {}) {
     const customer = job.customer_id ? q('SELECT * FROM customers WHERE id = ?').get(job.customer_id) : null;
-    const account = customer ? q('SELECT email, is_host FROM portal_accounts WHERE customer_id = ? AND enabled = 1').get(customer.id) : null;
+    const account = customer ? q('SELECT email, is_host, email_updates FROM portal_accounts WHERE customer_id = ? AND enabled = 1').get(customer.id) : null;
     const to = (customer && customer.email) || (account && account.email);
     if (!to) return { ok: false, status: 'skipped', error: 'This client has no email address' };
-    const when = fmtLocal(job.scheduled_at, { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-    const first = String(customer.name || '').trim().split(/\s+/)[0] || 'there';
-    const cleaners = (job.employees || []).map((e) => String(e.name).split(/\s+/)[0]);
-    const lines = (job.price_breakdown && job.price_breakdown.lines) || null;
-    const details = [
-      `When: ${when}${job.duration_hours ? ` (about ${job.duration_hours} hour${job.duration_hours === 1 ? '' : 's'})` : ''}`,
-      job.address && `Where: ${job.address}`,
-      job.service_type && `Service: ${job.service_type}`,
-      lines && lines.length
-        ? `Price:\n${lines.map((l) => `  • ${l.kind === 'travel' || l.kind === 'included' ? l.label : `${l.label}: ${l.amount < 0 ? '−' : ''}$${Math.abs(l.amount)}`}`).join('\n')}${job.price != null ? `\n  Total: $${job.price}` : ''}`
-        : job.price != null && `Price: $${job.price}`,
-      cleaners.length && `Your cleaner${cleaners.length > 1 ? 's' : ''}: ${cleaners.join(', ')}`,
-    ].filter(Boolean).join('\n');
-    const portal = account ? `\n\nSee your bookings any time: ${config.publicUrl}/${account.is_host ? 'host/turnovers' : 'portal/bookings'}` : '';
-    const contact = `Need to change something? Reply to this email or call or text ${config.businessPhone}.`;
-    const subjects = {
-      booked: `You're booked: ${fmtLocal(job.scheduled_at)}`,
-      moved: `New time for your cleaning: ${fmtLocal(job.scheduled_at)}`,
-      cancelled: `Your cleaning on ${fmtLocal(job.scheduled_at)} is cancelled`,
-    };
-    const intros = {
-      booked: 'Your cleaning is confirmed. Here are the details:',
-      moved: 'Your cleaning has a new date or time. Here are the updated details:',
-      cancelled: `Your cleaning on ${when} is cancelled. If that's a mistake, just reply and we'll put you back on the schedule.`,
-    };
-    const subject = `${subjects[kind]} — ${config.businessName}`;
-    const text = `Hi ${first},\n\n${intros[kind]}${kind === 'cancelled' ? '' : `\n\n${details}`}${portal}\n\n${contact}\n\nThank you!\n— ${config.businessName}`;
-    const result = await notifier.deliver({ kind: `booking_${kind}`, channel: 'email', to, leadId: job.lead_id || null, payload: { subject, text } });
+    if (respectOptOut && account && !account.email_updates) return { ok: false, status: 'skipped', error: 'Client turned off email updates' };
+    const mail = bookingEmail(kind, { job, customer, account, config, series });
+    const result = await notifier.deliver({ kind: `booking_${kind}`, channel: 'email', to, leadId: job.lead_id || null, payload: mail });
     q(`INSERT INTO messages (lead_id, customer_id, direction, channel, subject, body, status, error) VALUES (?, ?, 'out', 'email', ?, ?, ?, ?)`)
-      .run(job.lead_id || null, customer.id, subject, text, result.ok ? 'sent' : result.retrying ? 'retrying' : result.status, result.error || null);
+      .run(job.lead_id || null, customer.id, mail.subject, mail.text, result.ok ? 'sent' : result.retrying ? 'retrying' : result.status, result.error || null);
     return { ok: result.ok, retrying: Boolean(result.retrying), status: result.retrying ? 'retrying' : result.status, error: result.error || null, to };
   }
+
+  // ---------- repeating bookings ----------
+  const REPEATS = {
+    weekly: { label: 'weekly', days: 7 },
+    biweekly: { label: 'every 2 weeks', days: 14 },
+    every4weeks: { label: 'every 4 weeks', days: 28 },
+    monthly: { label: 'monthly', months: 1 },
+  };
+  function seriesDates(first, repeat, count) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/.exec(first);
+    const rule = REPEATS[repeat];
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      let d;
+      if (rule.months) {
+        // Same day of the month; the 31st becomes the last day of a shorter month.
+        const y = +m[1]; const mo = +m[2] - 1 + i;
+        const last = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+        d = new Date(Date.UTC(y, mo, Math.min(+m[3], last)));
+      } else d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + i * rule.days));
+      out.push(`${d.toISOString().slice(0, 10)}T${m[4]}`);
+    }
+    return out;
+  }
+  const seriesInfo = (repeat, dates) => ({ label: REPEATS[repeat].label, dates });
+
+  // ---------- day-before reminders ----------
+  // Emails every client whose cleaning is tomorrow, once, from config.reminderHour (Pittsburgh time).
+  // Jobs booked in the last 12 hours are skipped: their confirmation just went out.
+  async function sendReminders({ now } = {}) {
+    const local = now || q(`SELECT strftime('%Y-%m-%dT%H:%M', 'now', 'localtime') AS n`).get().n;
+    if (Number(local.slice(11, 13)) < config.reminderHour) return [];
+    const tomorrow = q('SELECT date(?, \'+1 day\') AS d').get(local.slice(0, 10)).d;
+    const due = q(`SELECT id FROM jobs WHERE status = 'scheduled' AND reminder_sent_at IS NULL AND substr(scheduled_at, 1, 10) = ?
+                   AND created_at <= datetime('now', '-12 hours') ORDER BY scheduled_at`).all(tomorrow);
+    const results = [];
+    for (const { id } of due) {
+      // Claim it first so two runs can't both send it.
+      if (!q(`UPDATE jobs SET reminder_sent_at = datetime('now') WHERE id = ? AND reminder_sent_at IS NULL`).run(id).changes) continue;
+      results.push({ job_id: id, ...(await notifyCustomer(getJob(id), 'reminder', { respectOptOut: true })) });
+    }
+    return results;
+  }
+
   const wantsCustomerEmail = (body) => bool(body.notify_customer);
 
   function saveAssignments(jobId, employeeIds) {
@@ -599,18 +619,51 @@ function createService({ db, notifier, config }) {
     const breakdown = leadBreakdown(lead);
     const price = d.price != null ? d.price : lead ? lead.estimated_price : null;
     const service = d.service_type || (lead && lead.service_type ? (PRICING.services[lead.service_type] ? PRICING.services[lead.service_type].label : lead.service_type) : null);
-    const r = q(`INSERT INTO jobs (customer_id, lead_id, property_id, scheduled_at, duration_hours, address, service_type, price, status, notes, price_breakdown)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(d.customer_id, d.lead_id, d.property_id, d.scheduled_at, d.duration_hours, d.address || (prop && prop.address) || cust.address,
-        service, price, d.status, d.notes, breakdown ? JSON.stringify(breakdown) : null);
-    const id = r.lastInsertRowid;
+    const repeat = REPEATS[body.repeat] ? body.repeat : null;
+    const count = repeat ? Math.max(2, Math.min(52, Math.round(Number(body.repeat_count) || 8))) : 1;
+    const dates = repeat ? seriesDates(d.scheduled_at, repeat, count) : [d.scheduled_at];
+    const insert = q(`INSERT INTO jobs (customer_id, lead_id, property_id, scheduled_at, duration_hours, address, service_type, price, status, notes, price_breakdown, repeat)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    let id;
+    db.exec('BEGIN');
+    try {
+      for (const when of dates) {
+        const r = insert.run(d.customer_id, d.lead_id, d.property_id, when, d.duration_hours, d.address || (prop && prop.address) || cust.address,
+          service, price, d.status, d.notes, breakdown ? JSON.stringify(breakdown) : null, repeat);
+        const jobId = Number(r.lastInsertRowid);
+        if (!id) id = jobId;
+        if (repeat) q('UPDATE jobs SET series_id = ? WHERE id = ?').run(id, jobId);
+        if (jobId !== id) saveAssignments(jobId, d.employee_ids);
+      }
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
     const added = saveAssignments(id, d.employee_ids);
     if (d.lead_id) q(`UPDATE leads SET status = 'booked', updated_at = datetime('now') WHERE id = ?`).run(d.lead_id);
     const job = getJob(id);
     job.warnings = findConflicts({ employee_ids: d.employee_ids, scheduled_at: d.scheduled_at, duration_hours: d.duration_hours, exclude_job_id: id });
     if (body.notify_employees !== false && added.length) job.notifications = await notifyAssigned(job, added);
-    if (wantsCustomerEmail(body) && job.status === 'scheduled') job.customer_notification = await notifyCustomer(job, 'booked');
+    if (repeat) job.series = { repeat, dates };
+    if (wantsCustomerEmail(body) && job.status === 'scheduled') job.customer_notification = await notifyCustomer(job, 'booked', { series: repeat ? seriesInfo(repeat, dates) : null });
     return job;
+  }
+
+  // Cancel this visit and every later one in its repeating series.
+  async function cancelFollowing(id, body = {}) {
+    const job = getJob(id);
+    if (!job.series_id) throw new HttpError(400, 'This job is not part of a repeating booking');
+    const rows = q(`SELECT id, scheduled_at FROM jobs WHERE series_id = ? AND status = 'scheduled' AND scheduled_at >= ? ORDER BY scheduled_at`)
+      .all(job.series_id, job.scheduled_at);
+    q(`UPDATE jobs SET status = 'cancelled', updated_at = datetime('now') WHERE series_id = ? AND status = 'scheduled' AND scheduled_at >= ?`)
+      .run(job.series_id, job.scheduled_at);
+    const first = rows.length ? getJob(rows[0].id) : job;
+    const result = { cancelled: rows.length };
+    if (rows.length && wantsCustomerEmail(body)) {
+      result.customer_notification = await notifyCustomer(first, 'cancelled', { series: seriesInfo(job.repeat, rows.map((r) => r.scheduled_at)) });
+    }
+    return result;
   }
 
   async function updateJob(id, body) {
@@ -621,6 +674,7 @@ function createService({ db, notifier, config }) {
     q(`UPDATE jobs SET customer_id=?, lead_id=?, property_id=?, scheduled_at=?, duration_hours=?, address=?, service_type=?, price=?, status=?, notes=?,
        updated_at=datetime('now') WHERE id=?`)
       .run(d.customer_id, d.lead_id, d.property_id, d.scheduled_at, d.duration_hours, address, d.service_type, d.price, d.status, d.notes, id);
+    if (d.scheduled_at !== before.scheduled_at) q('UPDATE jobs SET reminder_sent_at = NULL WHERE id = ?').run(id);
     const added = saveAssignments(id, d.employee_ids);
     const job = getJob(id);
     job.warnings = d.status === 'scheduled'
@@ -682,7 +736,7 @@ function createService({ db, notifier, config }) {
     createLead, submitLead, subscribe, contactInput, updateLead, getLead, listLeads, leadBreakdown, quoteForLead,
     sendMessage, listMessages, recordInboundSms,
     createEmployee, updateEmployee, getEmployee, listEmployees,
-    createJob, updateJob, getJob, listJobs, notifyAssigned, notifyCustomer, findConflicts,
+    createJob, updateJob, cancelFollowing, getJob, listJobs, notifyAssigned, notifyCustomer, sendReminders, findConflicts,
     stats,
   };
 }

@@ -152,3 +152,64 @@ test('a chat reply to a customer who left the website is emailed to them too', a
   assert.match(mail.subject, /replied to your chat/);
   assert.match(mail.text, /We have Friday open/);
 });
+
+test('repeating bookings: every visit is booked, one email lists the dates, later visits can be cancelled together', async (t) => {
+  const s = setup();
+  t.after(s.close);
+  await s.login();
+  const c = (await s.req('/api/admin/customers', { method: 'POST', body: { name: 'Ana Ruiz', email: 'ana@example.com', address: '3 Pine St' } })).data;
+  const res = await s.req('/api/admin/jobs', { method: 'POST', body: { customer_id: c.id, scheduled_at: '2030-01-31T10:00', repeat: 'monthly', repeat_count: 4, price: 189, notify_customer: true } });
+  assert.equal(res.status, 201);
+  // The 31st becomes the last day of shorter months.
+  assert.deepEqual(res.data.series.dates, ['2030-01-31T10:00', '2030-02-28T10:00', '2030-03-31T10:00', '2030-04-30T10:00']);
+  const jobs = (await s.req(`/api/admin/jobs?customer_id=${c.id}`)).data;
+  assert.equal(jobs.length, 4);
+  assert.ok(jobs.every((j) => j.series_id === res.data.id && j.repeat === 'monthly' && j.price === 189));
+
+  const mails = bookingEmails(s, 'ana@example.com');
+  assert.equal(mails.length, 1);
+  assert.match(mails[0].subject, /then monthly/);
+  assert.match(mails[0].text, /Next visits:\n {2}• Thu, Feb 28, 10:00 AM/);
+  assert.match(mails[0].html, /See your bookings|Next visits/);
+  assert.equal(mails[0].attachments[0].filename, 'cleaning.ics');
+  assert.match(mails[0].attachments[0].content, /DTSTART;TZID=America\/New_York:20300131T100000/);
+  assert.match(mails[0].attachments[0].content, /DTEND;TZID=America\/New_York:20300131T130000/);
+
+  // Weekly series.
+  const weekly = await s.req('/api/admin/jobs', { method: 'POST', body: { customer_id: c.id, scheduled_at: '2030-06-03T09:00', repeat: 'biweekly', repeat_count: 3 } });
+  assert.deepEqual(weekly.data.series.dates, ['2030-06-03T09:00', '2030-06-17T09:00', '2030-07-01T09:00']);
+
+  // Cancel from the 2nd monthly visit on: 3 visits cancelled, one email.
+  const second = jobs.find((j) => j.scheduled_at === '2030-02-28T10:00');
+  const cancel = await s.req(`/api/admin/jobs/${second.id}/cancel-following`, { method: 'POST', body: { notify_customer: true } });
+  assert.equal(cancel.data.cancelled, 3);
+  assert.equal(cancel.data.customer_notification.ok, true);
+  const after = (await s.req(`/api/admin/jobs?customer_id=${c.id}`)).data.filter((j) => j.series_id === res.data.id);
+  assert.deepEqual(after.map((j) => j.status), ['scheduled', 'cancelled', 'cancelled', 'cancelled']);
+  assert.match(bookingEmails(s, 'ana@example.com').at(-1).subject, /monthly cleanings are cancelled/);
+  assert.equal((await s.req(`/api/admin/jobs/${weekly.data.id + 5}/cancel-following`, { method: 'POST', body: {} })).status, 404);
+});
+
+test("day-before reminders go out once, after 10 AM, and skip jobs booked in the last 12 hours", async (t) => {
+  const s = setup();
+  t.after(s.close);
+  await s.login();
+  const { db, svc } = s.app.locals;
+  const c = (await s.req('/api/admin/customers', { method: 'POST', body: { name: 'Kim Lee', email: 'kim@example.com' } })).data;
+  const old = (await s.req('/api/admin/jobs', { method: 'POST', body: { customer_id: c.id, scheduled_at: '2030-03-02T09:00' } })).data;
+  const fresh = (await s.req('/api/admin/jobs', { method: 'POST', body: { customer_id: c.id, scheduled_at: '2030-03-02T14:00' } })).data;
+  db.prepare("UPDATE jobs SET created_at = datetime('now', '-2 days') WHERE id = ?").run(old.id);
+
+  assert.deepEqual(await svc.sendReminders({ now: '2030-03-01T08:30' }), []); // too early in the day
+  const sent = await svc.sendReminders({ now: '2030-03-01T10:05' });
+  assert.deepEqual(sent.map((r) => r.job_id), [old.id]);
+  const mail = s.sent.find((m) => m.to === 'kim@example.com' && /Reminder/.test(m.subject));
+  assert.match(mail.subject, /tomorrow, 9:00 AM/);
+  assert.ok(mail.attachments.length === 1);
+  assert.deepEqual(await svc.sendReminders({ now: '2030-03-01T10:15' }), []); // never twice
+  assert.notEqual(fresh.id, old.id);
+
+  // Moving a job to another day lets its reminder go out again for the new date.
+  await s.req(`/api/admin/jobs/${old.id}`, { method: 'PUT', body: { ...old, scheduled_at: '2030-03-05T09:00', employee_ids: [] } });
+  assert.deepEqual((await svc.sendReminders({ now: '2030-03-04T11:00' })).map((r) => r.job_id), [old.id]);
+});

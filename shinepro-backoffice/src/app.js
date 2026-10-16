@@ -148,7 +148,7 @@ function createApp({
   admin.get('/stats', (req, res) => res.json({ ...svc.stats(), unread_forms: website.unreadCount(), unread_chats: unreadChats() }));
   admin.get('/meta', (req, res) => res.json({
     pricing: PRICING, leadStatuses: svc.LEAD_STATUSES, jobStatuses: svc.JOB_STATUSES, invoiceStatuses: portal.INVOICE_STATUSES,
-    smsConfigured: notifier.senders.smsEnabled, googleVoiceNumber: config.googleVoiceNumber,
+    smsConfigured: notifier.senders.smsEnabled, googleVoiceNumber: config.googleVoiceNumber, reminders: config.reminders,
     chat: { aiEnabled: Boolean(ai), verification: config.chatVerification, phoneVerification: config.chatVerification === 'codes' && config.requirePhoneVerification, phoneVerificationReady: Boolean(verifyPhoneToken) },
   }));
   const logColumns = 'id, kind, channel, recipient, status, error, lead_id, form_id, attempts, created_at, updated_at';
@@ -269,6 +269,11 @@ function createApp({
   })));
   admin.post('/jobs', h(async (req, res) => res.status(201).json(await svc.createJob(req.body))));
   admin.get('/jobs/:id', (req, res) => res.json(svc.getJob(id(req))));
+  admin.post('/jobs/:id/notify-cleaners', h(async (req, res) => {
+    const job = svc.getJob(id(req));
+    res.json(await svc.notifyAssigned(job, job.employees.map((e) => e.id), { changed: true }));
+  }));
+  admin.post('/jobs/:id/cancel-following', h(async (req, res) => res.json(await svc.cancelFollowing(id(req), req.body || {}))));
   admin.put('/jobs/:id', h(async (req, res) => res.json(await svc.updateJob(id(req), req.body))));
   admin.delete('/jobs/:id', (req, res) => {
     svc.getJob(id(req));
@@ -350,7 +355,17 @@ function createApp({
     res.status(status).json({ error: status >= 500 && status !== 502 ? 'Something went wrong' : err.message, message_record: err.message_record });
   });
 
-  Object.assign(app.locals, { db, svc, notifier, accounts, portal, website });
+  // Day-before reminder emails: checked every 10 minutes while the server runs (started by server.js).
+  function startReminders() {
+    if (!config.reminders) return null;
+    const run = () => svc.sendReminders().catch((err) => console.error('[reminders]', err));
+    run();
+    const timer = setInterval(run, 10 * 60 * 1000);
+    if (timer.unref) timer.unref();
+    return timer;
+  }
+
+  Object.assign(app.locals, { db, svc, notifier, accounts, portal, website, startReminders });
   return app;
 }
 
