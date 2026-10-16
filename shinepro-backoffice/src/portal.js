@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const express = require('express');
-const { str, num, normalizePhone, HttpError } = require('./util');
+const { str, num, normalizePhone, fmtLocal, HttpError } = require('./util');
 const { PRICING, money: pricingMoney } = require('../public/pricing');
 
 const INVOICE_STATUSES = ['draft', 'sent', 'paid', 'void'];
@@ -29,7 +29,7 @@ const TIME = /^\d{2}:\d{2}$/;
 
 const firstName = (name) => String(name || '').trim().split(/\s+/)[0] || '';
 const money = (n) => `$${Number(n || 0).toFixed(2)}`;
-const fmtWhen = (local) => new Date(local).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const fmtWhen = (local) => fmtLocal(local);
 const fmtDate = (d) => new Date(`${d}T12:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 
 function createPortal({ db, config, svc, notifier, accounts }) {
@@ -412,11 +412,11 @@ function createPortal({ db, config, svc, notifier, accounts }) {
       const scheduled = str(body.scheduled_at, 16) || r.requested_at;
       if (!DATETIME.test(scheduled || '')) throw new HttpError(400, 'Pick a date and time');
       const current = svc.getJob(r.job_id);
-      job = await svc.updateJob(current.id, { ...current, scheduled_at: scheduled, status: 'scheduled', employee_ids: current.employees.map((e) => e.id), notify_employees: false });
+      job = await svc.updateJob(current.id, { ...current, scheduled_at: scheduled, status: 'scheduled', employee_ids: current.employees.map((e) => e.id), notify_employees: false, notify_customer: false });
       if (job.employees.length) await svc.notifyAssigned(job, job.employees.map((e) => e.id), { changed: true });
     } else if (r.kind === 'cancel') {
       const current = svc.getJob(r.job_id);
-      job = await svc.updateJob(current.id, { ...current, status: 'cancelled', employee_ids: current.employees.map((e) => e.id), notify_employees: false });
+      job = await svc.updateJob(current.id, { ...current, status: 'cancelled', employee_ids: current.employees.map((e) => e.id), notify_employees: false, notify_customer: false });
     } else {
       const property = getProperty(r.property_id);
       const scheduled = str(body.scheduled_at, 16) || `${r.requested_at}T${r.checkout_time || property.checkout_time || '11:00'}`;

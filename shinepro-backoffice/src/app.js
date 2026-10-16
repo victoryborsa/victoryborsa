@@ -145,7 +145,7 @@ function createApp({
   admin.use(auth.requireAdmin);
   const id = (req) => Number(req.params.id);
 
-  admin.get('/stats', (req, res) => res.json({ ...svc.stats(), unread_forms: website.unreadCount() }));
+  admin.get('/stats', (req, res) => res.json({ ...svc.stats(), unread_forms: website.unreadCount(), unread_chats: unreadChats() }));
   admin.get('/meta', (req, res) => res.json({
     pricing: PRICING, leadStatuses: svc.LEAD_STATUSES, jobStatuses: svc.JOB_STATUSES, invoiceStatuses: portal.INVOICE_STATUSES,
     smsConfigured: notifier.senders.smsEnabled, googleVoiceNumber: config.googleVoiceNumber,
@@ -273,6 +273,52 @@ function createApp({
   admin.delete('/jobs/:id', (req, res) => {
     svc.getJob(id(req));
     db.prepare('DELETE FROM jobs WHERE id = ?').run(id(req));
+    res.json({ ok: true });
+  });
+
+  // ---------- website chats (two-way chat with customers) ----------
+  const ONLINE_MS = 90 * 1000;
+  const TAKEOVER_MS = 30 * 60 * 1000;
+  function unreadChats() {
+    return db.prepare(`SELECT COUNT(DISTINCT s.lead_id) AS n FROM chat_sessions s JOIN messages m ON m.lead_id = s.lead_id
+                       WHERE m.channel = 'chat' AND m.direction = 'in' AND m.id > s.admin_seen_id`).get().n;
+  }
+  const chatState = (s, now = Date.now()) => ({
+    online: Boolean(s.last_seen_at && now - s.last_seen_at < ONLINE_MS),
+    last_seen_at: s.last_seen_at ? new Date(s.last_seen_at).toISOString() : null,
+    you_are_chatting: Boolean(s.admin_active_at && now - s.admin_active_at < TAKEOVER_MS),
+  });
+  admin.get('/chats', (req, res) => {
+    const now = Date.now();
+    const rows = db.prepare(`SELECT s.*, l.status AS lead_status, l.callback_requested,
+        (SELECT COUNT(*) FROM messages m WHERE m.lead_id = s.lead_id AND m.channel = 'chat' AND m.direction = 'in' AND m.id > s.admin_seen_id) AS unread,
+        (SELECT m.body FROM messages m WHERE m.lead_id = s.lead_id AND m.channel = 'chat' ORDER BY m.id DESC LIMIT 1) AS last_body,
+        (SELECT m.direction FROM messages m WHERE m.lead_id = s.lead_id AND m.channel = 'chat' ORDER BY m.id DESC LIMIT 1) AS last_direction,
+        (SELECT m.status FROM messages m WHERE m.lead_id = s.lead_id AND m.channel = 'chat' ORDER BY m.id DESC LIMIT 1) AS last_status,
+        (SELECT MAX(m.id) FROM messages m WHERE m.lead_id = s.lead_id AND m.channel = 'chat') AS last_id,
+        (SELECT m.created_at FROM messages m WHERE m.lead_id = s.lead_id AND m.channel = 'chat' ORDER BY m.id DESC LIMIT 1) AS last_at
+      FROM chat_sessions s JOIN leads l ON l.id = s.lead_id
+      ORDER BY last_id DESC LIMIT 200`).all();
+    res.json(rows.map((s) => ({
+      lead_id: s.lead_id, name: s.name, email: s.email, phone: s.phone, lead_status: s.lead_status, callback_requested: s.callback_requested,
+      unread: s.unread, last_body: s.last_body, last_direction: s.last_direction, last_status: s.last_status, last_at: s.last_at, ...chatState(s, now),
+    })));
+  });
+  // One chat: its messages (only newer than ?after= when given) and whether the customer is on the website now.
+  // Opening it marks the customer's messages as read.
+  admin.get('/chats/:id', (req, res) => {
+    const s = db.prepare('SELECT * FROM chat_sessions WHERE lead_id = ? ORDER BY id DESC LIMIT 1').get(id(req));
+    if (!s) throw new HttpError(404, 'This lead has no website chat');
+    const after = Number(req.query.after) || 0;
+    const messages = db.prepare('SELECT * FROM messages WHERE lead_id = ? AND id > ? ORDER BY id').all(s.lead_id, after);
+    const maxId = db.prepare(`SELECT MAX(id) AS n FROM messages WHERE lead_id = ?`).get(s.lead_id).n || 0;
+    if (req.query.seen !== '0') db.prepare('UPDATE chat_sessions SET admin_seen_id = MAX(admin_seen_id, ?) WHERE lead_id = ?').run(maxId, s.lead_id);
+    res.json({ lead_id: s.lead_id, name: s.name, email: s.email, phone: s.phone, ...chatState(s), messages });
+  });
+  // Hand the chat back to the AI assistant before the 30 minutes are up.
+  admin.post('/chats/:id/assistant', (req, res) => {
+    const r = db.prepare('UPDATE chat_sessions SET admin_active_at = NULL WHERE lead_id = ?').run(id(req));
+    if (!r.changes) throw new HttpError(404, 'This lead has no website chat');
     res.json({ ok: true });
   });
 

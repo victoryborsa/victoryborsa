@@ -1,10 +1,12 @@
 const { quote, PRICING } = require('../public/pricing');
-const { normalizePhone, normalizeEmail, formatPhone, str, num, bool, HttpError } = require('./util');
+const { normalizePhone, normalizeEmail, formatPhone, str, num, bool, fmtLocal, HttpError } = require('./util');
 
 const LEAD_STATUSES = ['new', 'contacted', 'quoted', 'booked', 'lost'];
 const JOB_STATUSES = ['scheduled', 'completed', 'cancelled'];
 const CONTACT_METHODS = ['phone', 'email', 'text'];
 const DUPLICATE_WINDOW = '-2 minutes';
+// A website chat that hasn't checked in for this long means the customer left the page.
+const CHAT_AWAY_MS = 90 * 1000;
 const ADDON_IDS = PRICING.addons.map((a) => a.id);
 
 // ---------- pricing (public/pricing.js is the only price list) ----------
@@ -321,9 +323,29 @@ function createService({ db, notifier, config }) {
     }
     if (channel === 'chat') {
       // Reply shown live in the customer's website chat window (it checks for new messages every few seconds).
-      if (!lead || !q('SELECT 1 FROM chat_sessions WHERE lead_id = ?').get(lead.id)) throw new HttpError(400, 'This lead has no website chat');
+      const session = lead && q('SELECT * FROM chat_sessions WHERE lead_id = ? ORDER BY id DESC LIMIT 1').get(lead.id);
+      if (!session) throw new HttpError(400, 'This lead has no website chat');
+      const now = Date.now();
+      // The AI assistant waits while you're chatting; the customer's session stays open so they can answer.
+      q('UPDATE chat_sessions SET admin_active_at = ?, expires_at = MAX(expires_at, ?) WHERE id = ?').run(now, now + 7 * 24 * 60 * 60 * 1000, session.id);
       const r = insert.run(leadId, cid, 'out', 'chat', null, text, 'sent', null);
-      return q('SELECT * FROM messages WHERE id = ?').get(r.lastInsertRowid);
+      if (lead.status === 'new') q(`UPDATE leads SET status = 'contacted', updated_at = datetime('now') WHERE id = ?`).run(lead.id);
+      const message = q('SELECT * FROM messages WHERE id = ?').get(r.lastInsertRowid);
+      // Customer isn't on the website right now: email the reply too, so it's never missed.
+      const away = !session.last_seen_at || now - session.last_seen_at > CHAT_AWAY_MS;
+      if (away && session.email) {
+        const result = await notifier.deliver({
+          kind: 'chat_reply_email', channel: 'email', to: session.email, leadId,
+          payload: {
+            subject: `${config.businessName} replied to your chat`,
+            text: `Hi ${String(session.name || '').split(' ')[0] || 'there'},\n\nYou have a reply in the chat on our website:\n\n"${text}"\n\n`
+              + `Reply to this email, open the chat on our website, or call or text ${config.businessPhone}.\n\n— ${config.businessName}`,
+          },
+        });
+        message.emailed = result.ok || Boolean(result.retrying);
+        message.email_error = message.emailed ? null : result.error;
+      }
+      return message;
     }
     if (channel === 'gvoice' || channel === 'sms_in') {
       const outbound = channel === 'gvoice';
@@ -466,7 +488,7 @@ function createService({ db, notifier, config }) {
   }
 
   async function notifyAssigned(job, employeeIds, { changed = false } = {}) {
-    const when = new Date(job.scheduled_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const when = fmtLocal(job.scheduled_at);
     const address = job.address || (job.customer && job.customer.address) || 'address TBD';
     const text = `${config.businessName}: ${changed ? 'Schedule change: your cleaning job is now' : "You're assigned a cleaning job"} ${when} at ${address}`
       + ` for ${job.customer ? job.customer.name : 'a customer'}${job.service_type ? ` (${job.service_type})` : ''}.`
@@ -479,6 +501,47 @@ function createService({ db, notifier, config }) {
     }
     return results;
   }
+
+  // Booking emails to the client: "booked" when a job is made, "moved" when its date, time or address
+  // changes, "cancelled" when it's cancelled. Also saved in the client's conversation so you can see it went.
+  async function notifyCustomer(job, kind) {
+    const customer = job.customer_id ? q('SELECT * FROM customers WHERE id = ?').get(job.customer_id) : null;
+    const account = customer ? q('SELECT email, is_host FROM portal_accounts WHERE customer_id = ? AND enabled = 1').get(customer.id) : null;
+    const to = (customer && customer.email) || (account && account.email);
+    if (!to) return { ok: false, status: 'skipped', error: 'This client has no email address' };
+    const when = fmtLocal(job.scheduled_at, { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const first = String(customer.name || '').trim().split(/\s+/)[0] || 'there';
+    const cleaners = (job.employees || []).map((e) => String(e.name).split(/\s+/)[0]);
+    const lines = (job.price_breakdown && job.price_breakdown.lines) || null;
+    const details = [
+      `When: ${when}${job.duration_hours ? ` (about ${job.duration_hours} hour${job.duration_hours === 1 ? '' : 's'})` : ''}`,
+      job.address && `Where: ${job.address}`,
+      job.service_type && `Service: ${job.service_type}`,
+      lines && lines.length
+        ? `Price:\n${lines.map((l) => `  • ${l.kind === 'travel' || l.kind === 'included' ? l.label : `${l.label}: ${l.amount < 0 ? '−' : ''}$${Math.abs(l.amount)}`}`).join('\n')}${job.price != null ? `\n  Total: $${job.price}` : ''}`
+        : job.price != null && `Price: $${job.price}`,
+      cleaners.length && `Your cleaner${cleaners.length > 1 ? 's' : ''}: ${cleaners.join(', ')}`,
+    ].filter(Boolean).join('\n');
+    const portal = account ? `\n\nSee your bookings any time: ${config.publicUrl}/${account.is_host ? 'host/turnovers' : 'portal/bookings'}` : '';
+    const contact = `Need to change something? Reply to this email or call or text ${config.businessPhone}.`;
+    const subjects = {
+      booked: `You're booked: ${fmtLocal(job.scheduled_at)}`,
+      moved: `New time for your cleaning: ${fmtLocal(job.scheduled_at)}`,
+      cancelled: `Your cleaning on ${fmtLocal(job.scheduled_at)} is cancelled`,
+    };
+    const intros = {
+      booked: 'Your cleaning is confirmed. Here are the details:',
+      moved: 'Your cleaning has a new date or time. Here are the updated details:',
+      cancelled: `Your cleaning on ${when} is cancelled. If that's a mistake, just reply and we'll put you back on the schedule.`,
+    };
+    const subject = `${subjects[kind]} — ${config.businessName}`;
+    const text = `Hi ${first},\n\n${intros[kind]}${kind === 'cancelled' ? '' : `\n\n${details}`}${portal}\n\n${contact}\n\nThank you!\n— ${config.businessName}`;
+    const result = await notifier.deliver({ kind: `booking_${kind}`, channel: 'email', to, leadId: job.lead_id || null, payload: { subject, text } });
+    q(`INSERT INTO messages (lead_id, customer_id, direction, channel, subject, body, status, error) VALUES (?, ?, 'out', 'email', ?, ?, ?, ?)`)
+      .run(job.lead_id || null, customer.id, subject, text, result.ok ? 'sent' : result.retrying ? 'retrying' : result.status, result.error || null);
+    return { ok: result.ok, retrying: Boolean(result.retrying), status: result.retrying ? 'retrying' : result.status, error: result.error || null, to };
+  }
+  const wantsCustomerEmail = (body) => bool(body.notify_customer);
 
   function saveAssignments(jobId, employeeIds) {
     const before = q('SELECT employee_id FROM job_assignments WHERE job_id = ?').all(jobId).map((r) => r.employee_id);
@@ -514,7 +577,20 @@ function createService({ db, notifier, config }) {
     }));
   }
 
-  async function createJob(body) {
+  // Quick booking for someone who isn't a client yet: the booking form can send their details instead of
+  // a customer_id. An existing client with the same email or phone is reused, never duplicated.
+  function clientForBooking(body) {
+    if (num(body.customer_id) || !body.new_customer || typeof body.new_customer !== 'object') return body;
+    const nc = customerInput(body.new_customer);
+    if (!nc.email && !nc.phone) throw new HttpError(400, "Add the new client's phone or email so they can be reached");
+    const existing = findCustomerByContact(nc.email, nc.phone);
+    const customer = existing || createCustomer(body.new_customer, 'admin');
+    if (existing && !existing.address && nc.address) q(`UPDATE customers SET address = ?, updated_at = datetime('now') WHERE id = ?`).run(nc.address, existing.id);
+    return { ...body, customer_id: customer.id };
+  }
+
+  async function createJob(input) {
+    const body = clientForBooking(input);
     const d = jobInput(body);
     const cust = getCustomer(d.customer_id);
     const prop = d.property_id ? q('SELECT address FROM properties WHERE id = ?').get(d.property_id) : null;
@@ -533,21 +609,31 @@ function createService({ db, notifier, config }) {
     const job = getJob(id);
     job.warnings = findConflicts({ employee_ids: d.employee_ids, scheduled_at: d.scheduled_at, duration_hours: d.duration_hours, exclude_job_id: id });
     if (body.notify_employees !== false && added.length) job.notifications = await notifyAssigned(job, added);
+    if (wantsCustomerEmail(body) && job.status === 'scheduled') job.customer_notification = await notifyCustomer(job, 'booked');
     return job;
   }
 
   async function updateJob(id, body) {
-    getJob(id);
+    const before = getJob(id);
     const d = jobInput(body);
+    // Keep the address when the form leaves it blank, like a new booking does.
+    const address = d.address || before.address || (d.property_id && (q('SELECT address FROM properties WHERE id = ?').get(d.property_id) || {}).address) || getCustomer(d.customer_id).address;
     q(`UPDATE jobs SET customer_id=?, lead_id=?, property_id=?, scheduled_at=?, duration_hours=?, address=?, service_type=?, price=?, status=?, notes=?,
        updated_at=datetime('now') WHERE id=?`)
-      .run(d.customer_id, d.lead_id, d.property_id, d.scheduled_at, d.duration_hours, d.address, d.service_type, d.price, d.status, d.notes, id);
+      .run(d.customer_id, d.lead_id, d.property_id, d.scheduled_at, d.duration_hours, address, d.service_type, d.price, d.status, d.notes, id);
     const added = saveAssignments(id, d.employee_ids);
     const job = getJob(id);
     job.warnings = d.status === 'scheduled'
       ? findConflicts({ employee_ids: d.employee_ids, scheduled_at: d.scheduled_at, duration_hours: d.duration_hours, exclude_job_id: Number(id) })
       : [];
     if (body.notify_employees !== false && added.length) job.notifications = await notifyAssigned(job, added);
+    if (wantsCustomerEmail(body)) {
+      const kind = job.status === 'cancelled' && before.status !== 'cancelled' ? 'cancelled'
+        : job.status === 'scheduled' && before.status !== 'scheduled' ? 'booked'
+          : job.status === 'scheduled' && (job.scheduled_at !== before.scheduled_at || (job.address || '') !== (before.address || '')) ? 'moved'
+            : null;
+      if (kind) job.customer_notification = await notifyCustomer(job, kind);
+    }
     return job;
   }
 
@@ -596,7 +682,7 @@ function createService({ db, notifier, config }) {
     createLead, submitLead, subscribe, contactInput, updateLead, getLead, listLeads, leadBreakdown, quoteForLead,
     sendMessage, listMessages, recordInboundSms,
     createEmployee, updateEmployee, getEmployee, listEmployees,
-    createJob, updateJob, getJob, listJobs, notifyAssigned, findConflicts,
+    createJob, updateJob, getJob, listJobs, notifyAssigned, notifyCustomer, findConflicts,
     stats,
   };
 }

@@ -149,6 +149,8 @@
     [/^\/?$/, dashboard],
     [/^\/leads$/, leadsPage],
     [/^\/leads\/(\d+)$/, leadDetail],
+    [/^\/chats$/, chatsPage],
+    [/^\/chats\/(\d+)$/, chatDetail],
     [/^\/customers$/, customersPage],
     [/^\/customers\/(\d+)$/, customerDetail],
     [/^\/employees$/, employeesPage],
@@ -161,7 +163,9 @@
     [/^\/forms$/, formsPage],
   ];
 
+  let pagePoll = null; // a live page (chat) refreshes itself; cleared whenever the page changes
   async function render() {
+    if (pagePoll) { clearInterval(pagePoll); pagePoll = null; }
     const hash = location.hash.replace(/^#/, '') || '/';
     const [path, qs] = hash.split('?');
     const params = new URLSearchParams(qs || '');
@@ -190,7 +194,11 @@
       const fb = $('#forms-badge');
       fb.textContent = s.unread_forms;
       fb.classList.toggle('hidden', !s.unread_forms);
-      document.title = `${s.new_leads ? `(${s.new_leads}) ` : ''}Back Office · Shine Pro Cleaning`;
+      const cb = $('#chats-badge');
+      cb.textContent = s.unread_chats;
+      cb.classList.toggle('hidden', !s.unread_chats);
+      const waiting = s.new_leads + s.unread_chats;
+      document.title = `${waiting ? `(${waiting}) ` : ''}Back Office · Shine Pro Cleaning`;
     } catch { /* ignore */ }
   }
 
@@ -208,11 +216,14 @@
     app.innerHTML = `
       <h1>Back Office</h1>
       ${alertProblems.length ? `<div class="banner warn"><strong>Lead alerts need attention:</strong> ${esc(alertProblems.join('; '))}. New leads are still saved here. <a href="#/alerts">See alert settings →</a></div>` : ''}
+      ${s.unread_chats ? `<div class="banner warn"><strong>💬 ${s.unread_chats} website chat(s) with new messages.</strong> <a href="#/chats">Reply now →</a></div>` : ''}
+      <div class="quick row"><button class="btn" id="quick-book">📅 Book a cleaning</button><a class="btn secondary" href="#/chats">💬 Chats</a><a class="btn secondary" href="#/calendar">🗓 Calendar</a></div>
       ${s.callbacks ? `<div class="banner danger"><strong>📞 ${s.callbacks} customer(s) asked you to call them back.</strong> <a href="#/leads?status=new">Call them now →</a></div>` : ''}
       ${s.pending_requests ? `<div class="banner warn"><strong>📅 ${s.pending_requests} client request(s) waiting</strong> (reschedule, cancel or turnover). <a href="#/requests">Answer them →</a></div>` : ''}
       ${s.failed_alerts ? `<div class="banner danger"><strong>${s.failed_alerts} lead alert(s) failed or were skipped this week.</strong> Check the <a href="#/leads">Leads</a> list so nobody is missed. <a href="#/alerts">Details →</a></div>` : ''}
       <div class="tiles">
         ${tile('#/leads', '📈', 'i-gold', 'Leads', `${s.new_leads} new · ${s.open_leads} open`)}
+        ${tile('#/chats', '💬', 'i-green', 'Chats', `${s.unread_chats} unread`)}
         ${tile('#/jobs', '📋', 'i-blue', 'Bookings', `${s.upcoming_jobs} upcoming`)}
         ${tile('#/calendar', '🗓', 'i-teal', 'Calendar', 'Week view')}
         ${tile('#/customers', '👤', 'i-green', 'Clients', 'Search & manage')}
@@ -238,6 +249,7 @@
           <div class="list">${jobs.length ? jobs.slice(0, 8).map(jobItem).join('') : '<div class="empty">No upcoming jobs</div>'}</div>
         </div>
       </div>`;
+    $('#quick-book').onclick = () => jobForm({});
     bindJobItems();
   }
   const tile = (href, icon, cls, t, d) => `<a class="tile" href="${href}"><span class="icon ${cls}">${icon}</span><span><div class="t">${esc(t)}</div><div class="d">${esc(d)}</div></span><span class="chev">›</span></a>`;
@@ -295,6 +307,7 @@
         <div class="row">
           <select id="lead-status" style="width:auto">${META.leadStatuses.map((s) => `<option ${s === l.status ? 'selected' : ''}>${s}</option>`).join('')}</select>
           <button class="btn secondary" id="edit-lead">Edit</button>
+          ${l.has_chat ? `<a class="btn secondary" href="#/chats/${l.id}">💬 Live chat</a>` : ''}
           <button class="btn" id="book-lead">📅 Book job</button>
         </div>
       </div>
@@ -381,7 +394,7 @@
     const label = m.direction === 'note' ? 'Note'
       : m.channel === 'chat' ? (m.direction === 'in' ? 'Website chat · customer' : m.status === 'ai' ? 'Website chat · AI assistant' : m.status === 'auto' ? 'Website chat · automatic' : 'Website chat · you')
       : `${m.channel === 'sms' ? 'Text' : 'Email'}${m.direction === 'in' ? ' from customer' : ''}${m.status === 'gvoice' ? ' via Google Voice' : ''}`;
-    return `<div class="msg ${cls}${failed ? ' failed' : ''}">${m.subject ? `<strong>${esc(m.subject)}</strong>\n` : ''}${esc(m.body)}
+    return `<div class="msg ${cls}${failed ? ' failed' : ''}" data-id="${m.id}">${m.subject ? `<strong>${esc(m.subject)}</strong>\n` : ''}${esc(m.body)}
       <div class="meta">${esc(label)} · ${esc(fmtAgo(m.created_at))}${failed ? ` · NOT SENT: ${esc(m.error || m.status)}` : ''}</div></div>`;
   }
 
@@ -414,14 +427,97 @@
       if (ch === 'gvoice') openGoogleVoice(form.dataset.phone, form.body.value);
       btn.disabled = true;
       try {
-        await api(endpoint, { method: 'POST', body: { channel: ch, subject: form.subject.value, body: form.body.value } });
-        toast({ chat: 'Sent to website chat ✅', note: 'Note saved', gvoice: 'Message copied — paste it in Google Voice and hit send', sms_in: 'Customer reply saved' }[ch] || 'Message sent ✅');
+        const sent = await api(endpoint, { method: 'POST', body: { channel: ch, subject: form.subject.value, body: form.body.value } });
+        if (sent && sent.emailed) toast("Sent to the chat and emailed (they're not on the website right now) ✅");
+        else toast({ chat: 'Sent to website chat ✅', note: 'Note saved', gvoice: 'Message copied — paste it in Google Voice and hit send', sms_in: 'Customer reply saved' }[ch] || 'Message sent ✅');
         render();
       } catch (err) {
         toast(err.message, true);
         if (err.data && err.data.message_record) render();
       } finally { btn.disabled = false; }
     };
+  }
+
+  // ---------- website chats ----------
+  const seenText = (c) => (c.online ? '<span class="online">● On the website now</span>' : c.last_seen_at ? `Last on the website ${esc(fmtAgo(c.last_seen_at))}` : '');
+  async function chatsPage() {
+    const draw = async () => {
+      const list = await api('/chats');
+      if (!location.hash.startsWith('#/chats')) return;
+      app.innerHTML = `
+        <div class="row between"><h1>Website chats</h1><span class="muted small">Updates by itself</span></div>
+        <p class="muted small">Customers who started a chat on the website. Open one to reply: your message appears in their chat window right away, and if they've left the website it's emailed to them too.</p>
+        <div class="list">${list.length ? list.map((c) => `<a class="item${c.unread ? ' unread' : ''}" href="#/chats/${c.lead_id}">
+          <div class="main"><div class="title">${c.unread ? `<span class="badge">${c.unread}</span> ` : ''}${esc(c.name)} ${c.online ? '<span class="online">●</span>' : ''}</div>
+          <div class="sub">${esc(c.last_direction === 'in' ? '' : c.last_status === 'ai' ? 'Assistant: ' : c.last_status === 'auto' ? 'Automatic: ' : 'You: ')}${esc((c.last_body || '').slice(0, 120))}</div>
+          <div class="sub">${esc([fmtPhone(c.phone), c.email].filter(Boolean).join(' · '))}</div></div>
+          <div style="text-align:right" class="sub small">${esc(fmtAgo(c.last_at))}${c.callback_requested ? '<div style="color:var(--danger)">📞 Call back</div>' : ''}</div></a>`).join('') : '<div class="empty">No website chats yet</div>'}</div>`;
+    };
+    await draw();
+    pagePoll = setInterval(() => { if (!document.hidden) draw().catch(() => {}); }, 10000);
+  }
+
+  async function chatDetail(leadId) {
+    const c = await api(`/chats/${leadId}`);
+    let lastId = c.messages.reduce((m, x) => Math.max(m, x.id), 0);
+    app.innerHTML = `
+      <p><a href="#/chats">← All chats</a></p>
+      <div class="row between"><div><h1 style="margin-bottom:4px">${esc(c.name)}</h1><div class="muted small" id="chat-presence">${seenText(c)}</div></div>
+        <div class="row">${contactLinks(c)}<a class="btn sm secondary" href="#/leads/${c.lead_id}">Lead details</a><button class="btn sm" id="chat-book">📅 Book job</button></div></div>
+      <div class="card chat-live">
+        <div class="thread" id="thread">${c.messages.map(msgHtml).join('')}</div>
+        <form id="chat-reply" class="chat-compose">
+          <textarea name="body" placeholder="Type your reply… (Enter sends, Shift+Enter for a new line)" rows="2"></textarea>
+          <button class="btn">Send</button>
+        </form>
+        <div class="row between" style="margin-top:6px"><span class="muted small" id="assistant-state"></span><button type="button" class="btn sm secondary hidden" id="give-back">Let the assistant answer again</button></div>
+      </div>`;
+    const thread = $('#thread');
+    const form = $('#chat-reply');
+    const paintState = (st) => {
+      $('#chat-presence').innerHTML = seenText(st);
+      $('#assistant-state').textContent = st.you_are_chatting
+        ? "You're chatting: the AI assistant stays quiet for 30 minutes after your last reply."
+        : 'The AI assistant answers new questions until you reply.';
+      $('#give-back').classList.toggle('hidden', !st.you_are_chatting);
+    };
+    paintState(c);
+    thread.scrollTop = thread.scrollHeight;
+    const pull = async () => {
+      const n = await api(`/chats/${leadId}?after=${lastId}`);
+      if (!location.hash.startsWith(`#/chats/${leadId}`)) return;
+      paintState(n);
+      const fresh = n.messages.filter((m) => m.id > lastId && !thread.querySelector(`[data-id="${m.id}"]`));
+      if (!fresh.length) return;
+      const atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 60;
+      thread.insertAdjacentHTML('beforeend', fresh.map(msgHtml).join(''));
+      lastId = Math.max(lastId, ...fresh.map((m) => m.id));
+      if (atBottom) thread.scrollTop = thread.scrollHeight;
+      refreshBadge();
+    };
+    pagePoll = setInterval(() => { if (!document.hidden) pull().catch(() => {}); }, 4000);
+    form.body.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const text = form.body.value.trim();
+      if (!text) return;
+      const btn = $('button', form);
+      btn.disabled = true;
+      try {
+        const m = await api(`/leads/${leadId}/messages`, { method: 'POST', body: { channel: 'chat', body: text } });
+        form.body.value = '';
+        if (m.emailed === false) toast(`Sent to the chat, but the email copy failed: ${m.email_error}`, true);
+        else if (m.emailed) toast("Sent. They're not on the website right now, so it was emailed to them too ✅");
+        await pull();
+      } catch (err) { toast(err.message, true); } finally { btn.disabled = false; form.body.focus(); }
+    };
+    $('#give-back').onclick = async () => { await api(`/chats/${leadId}/assistant`, { method: 'POST', body: {} }); pull(); };
+    $('#chat-book').onclick = async () => {
+      const l = await api(`/leads/${leadId}`);
+      jobForm({ customer_id: l.customer_id, lead_id: l.id, address: [l.address, l.zip].filter(Boolean).join(' '), service_type: serviceLabel(l.service_type), price: l.estimated_price });
+    };
+    form.body.focus();
+    refreshBadge();
   }
 
   // ---------- customers ----------
@@ -578,13 +674,23 @@
 
   async function jobForm(job) {
     const [customers, employees, properties] = await Promise.all([api('/customers'), api('/employees'), api('/properties')]);
-    if (!customers.length) { toast('Add a client first', true); location.hash = '#/customers'; return; }
     const existing = Boolean(job.id);
     const assigned = new Set((job.employees || []).map((e) => e.id));
     const defaultTime = new Date(); defaultTime.setDate(defaultTime.getDate() + 1); defaultTime.setHours(9, 0, 0, 0);
     const services = [...new Set([...Object.values(META.pricing.services).map((s) => s.label), 'Airbnb / STR Turnover', job.service_type].filter(Boolean))];
+    const clientLabel = (c) => `${c.name}${c.phone ? ` · ${fmtPhone(c.phone)}` : ''}${c.email ? ` · ${c.email}` : ''}`;
     const form = modal(existing ? 'Edit job' : 'Book a job', `<div class="form-grid">
-      ${select('customer_id', 'Client *', [['', '— Choose client —'], ...customers.map((c) => [c.id, `${c.name}${c.phone ? ` · ${fmtPhone(c.phone)}` : ''}`])], job.customer_id, { full: true })}
+      ${existing ? '' : `<div class="field full"><label for="f-client-search">Find client (name, phone or email)</label><input id="f-client-search" type="search" placeholder="Start typing…" autocomplete="off"></div>`}
+      ${select('customer_id', 'Client *', [['', customers.length ? '— Choose client —' : '— No clients yet —'], ...(existing ? [] : [['new', '➕ New client…']]), ...customers.map((c) => [c.id, clientLabel(c)])], job.customer_id ?? (customers.length ? '' : 'new'), { full: true })}
+      <div class="field full hidden" id="new-client"><div class="form-grid">
+        ${input('nc_name', 'New client name *', '')}
+        ${input('nc_phone', 'Phone', '', { type: 'tel' })}
+        ${input('nc_email', 'Email (for the confirmation)', '', { type: 'email' })}
+        ${input('nc_address', 'Address', '')}
+      </div></div>
+      <div class="field full"><label>Quick pick</label><div class="row chips" id="quick-times">
+        ${[['Tomorrow 9 AM', 1, 9], ['Tomorrow 1 PM', 1, 13], ['In 2 days 9 AM', 2, 9], ['Next week 9 AM', 7, 9]].map(([l, d, h]) => `<button type="button" class="btn sm secondary" data-days="${d}" data-hour="${h}">${l}</button>`).join('')}
+      </div></div>
       ${input('scheduled_at', 'Date & time *', job.scheduled_at || localISO(defaultTime), { type: 'datetime-local' })}
       ${input('duration_hours', 'Duration (hours)', job.duration_hours || 3, { type: 'number', attrs: 'step="0.5" min="0.5"' })}
       ${select('service_type', 'Service', [['', '—'], ...services.map((s) => [s, s])], job.service_type)}
@@ -598,14 +704,28 @@
         ${employees.filter((e) => e.active || assigned.has(e.id)).map((e) => `<label class="check"><input type="checkbox" name="employee_ids" data-multi="1" value="${e.id}" ${assigned.has(e.id) ? 'checked' : ''}> ${esc(e.name)} <span class="muted small">${esc(fmtPhone(e.phone))}</span></label>`).join('') || '<div class="muted small">No employees yet — <a href="#/employees">add one</a>.</div>'}
         <div class="warn-box hidden" id="conflicts"></div>
       </div>
+      ${checkbox('notify_customer', existing ? 'Email the client if the date, time or address changes, or the job is cancelled' : 'Email the client a booking confirmation now', true)}
+      <div class="muted small field full" id="notify-customer-hint"></div>
       ${checkbox('notify_employees', META.smsConfigured ? 'Text/email newly assigned cleaners the job details' : 'Email newly assigned cleaners the job details', true)}
       ${existing && !META.smsConfigured && (job.employees || []).some((e) => e.phone) ? `<div class="field full"><label>Text cleaners (Google Voice)</label><div class="row">${job.employees.filter((e) => e.phone).map((e) => `<button type="button" class="btn sm secondary" data-gv="${esc(e.phone)}">💬 Text ${esc(e.name.split(' ')[0])}</button>`).join('')}</div><div class="muted small">Copies the job details and opens Google Voice.</div></div>` : ''}
       ${textarea('notes', 'Job notes (visible to cleaner in their text)', job.notes)}
       <input type="hidden" name="lead_id" value="${esc(job.lead_id ?? '')}">
       </div>`, async (data) => {
       data.employee_ids ||= [];
+      if (data.customer_id === 'new') {
+        if (!data.nc_name.trim()) throw new Error("Type the new client's name");
+        data.new_customer = { name: data.nc_name, phone: data.nc_phone, email: data.nc_email, address: data.nc_address };
+        data.customer_id = '';
+        if (!data.address) data.address = data.nc_address;
+      }
+      for (const k of ['nc_name', 'nc_phone', 'nc_email', 'nc_address']) delete data[k];
       const saved = existing ? await api(`/jobs/${job.id}`, { method: 'PUT', body: data }) : await api('/jobs', { method: 'POST', body: data });
       const failed = (saved.notifications || []).filter((n) => !n.ok);
+      const cn = saved.customer_notification;
+      if (cn) {
+        if (cn.ok || cn.retrying) toast(`✅ Client emailed at ${cn.to}`);
+        else toast(`Job saved, but the client email ${cn.status === 'skipped' ? 'was not sent' : 'failed'}: ${cn.error}`, true);
+      }
       if (saved.warnings && saved.warnings.length) toast(`Job saved. Heads up: ${saved.warnings.map((w) => w.message).join(' ')}`, true);
       else if (failed.length) toast(`Job saved, but ${failed.length} cleaner notification(s) failed: ${failed[0].error}`, true);
       else if (!META.smsConfigured && saved.employees.some((e) => e.phone)) toast('Job saved. Open the job to text cleaners via Google Voice.');
@@ -622,6 +742,40 @@
       $('#property-field', form).classList.toggle('hidden', !mine.length);
     };
     syncProperties();
+    // Find a client by typing; the list narrows to matches and picks the only one.
+    const search = $('#f-client-search', form);
+    if (search) {
+      const allOptions = [...form.customer_id.options].map((o) => [o.value, o.textContent]);
+      search.addEventListener('input', () => {
+        const term = search.value.trim().toLowerCase();
+        const termDigits = term.replace(/\D/g, '');
+        const keep = allOptions.filter(([v, l]) => !v || v === 'new' || !term || l.toLowerCase().includes(term) || (termDigits.length >= 3 && l.replace(/\D/g, '').includes(termDigits)));
+        const current = form.customer_id.value;
+        form.customer_id.innerHTML = keep.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+        const matches = keep.filter(([v]) => v && v !== 'new');
+        form.customer_id.value = matches.length === 1 ? matches[0][0] : keep.some(([v]) => v === current) ? current : '';
+        form.customer_id.dispatchEvent(new Event('change'));
+      });
+      search.focus();
+    }
+    const syncNewClient = () => {
+      const isNew = form.customer_id.value === 'new';
+      $('#new-client', form).classList.toggle('hidden', !isNew);
+      const c = customers.find((x) => String(x.id) === form.customer_id.value);
+      const email = isNew ? form.nc_email.value.trim() : c && c.email;
+      $('#notify-customer-hint', form).textContent = form.notify_customer.checked
+        ? (email ? `Goes to ${email}` : isNew ? 'Add an email above so they get the confirmation.' : form.customer_id.value ? "This client has no email address, so they won't get one. Add it on their client page." : '')
+        : '';
+    };
+    form.customer_id.addEventListener('change', syncNewClient);
+    form.notify_customer.addEventListener('change', syncNewClient);
+    form.nc_email.addEventListener('input', syncNewClient);
+    syncNewClient();
+    $$('#quick-times button', form).forEach((b) => (b.onclick = () => {
+      const d = new Date(); d.setDate(d.getDate() + Number(b.dataset.days)); d.setHours(Number(b.dataset.hour), 0, 0, 0);
+      form.scheduled_at.value = localISO(d);
+      form.scheduled_at.dispatchEvent(new Event('change'));
+    }));
     // Warn (never block) when a chosen cleaner already has a job at that time.
     const checkConflicts = async () => {
       const ids = $$('input[name=employee_ids]:checked', form).map((el) => el.value);
@@ -671,10 +825,11 @@
       <div class="week">${days.map((d) => {
         const ds = day(d);
         const list = jobs.filter((j) => j.scheduled_at.startsWith(ds));
-        return `<div class="day ${ds === todayStr ? 'today' : ''}"><div class="dh">${esc(d.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' }))}</div>
+        return `<div class="day ${ds === todayStr ? 'today' : ''}"><div class="dh row between"><span>${esc(d.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' }))}</span>${ds >= todayStr ? `<button type="button" class="btn sm secondary day-add" data-day="${ds}" title="Book on this day">＋</button>` : ''}</div>
           ${list.map((j) => `<a href="#" class="ev ${j.employees.length ? '' : 'unassigned'} ${j.status}" data-job="${j.id}"><strong>${esc(fmtTime(j.scheduled_at))}</strong> ${esc(j.customer ? j.customer.name : '')}<br><span class="muted">${j.employees.length ? esc(j.employees.map((e) => e.name.split(' ')[0]).join(', ')) : '⚠️ unassigned'}</span></a>`).join('')}</div>`;
       }).join('')}</div>`;
     $('#add').onclick = () => jobForm({});
+    $$('.day-add').forEach((b) => (b.onclick = () => jobForm({ scheduled_at: `${b.dataset.day}T09:00` })));
     bindJobItems();
   }
 
@@ -1089,7 +1244,7 @@
   }
 
   window.addEventListener('hashchange', () => { if (META) render(); });
-  // Re-check for new leads every minute while the page is open.
-  setInterval(() => { if (META && !document.hidden) refreshBadge(); }, 60000);
+  // Re-check for new leads and chat messages while the page is open.
+  setInterval(() => { if (META && !document.hidden) refreshBadge(); }, 15000);
   start();
 })();

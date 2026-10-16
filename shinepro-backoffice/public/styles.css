@@ -293,3 +293,13 @@ body.portal .container { flex: 1; width: 100%; }
 .lines tr.total td { font-weight: 700; border-bottom: 0; }
 .item-row { display: grid; grid-template-columns: 1fr 120px auto; gap: 8px; margin-bottom: 6px; align-items: center; }
 .warn-box { background: var(--warn-soft); color: var(--warn); border-radius: 10px; padding: 8px 12px; font-size: 0.9rem; }
+
+/* Website chats and quick booking */
+.online { color: #1a7f37; font-weight: 600; }
+.item.unread .title { font-weight: 800; }
+.chat-live .thread { max-height: 60vh; min-height: 240px; }
+.chat-compose { display: flex; gap: 8px; align-items: flex-end; margin-top: 12px; }
+.chat-compose textarea { flex: 1; min-height: 48px; }
+.quick { gap: 8px; flex-wrap: wrap; margin: 4px 0 16px; }
+.chips { gap: 6px; flex-wrap: wrap; }
+.day .dh .day-add { padding: 0 8px; line-height: 1.6; }
