@@ -114,6 +114,19 @@ for (const file of readdirSync(join(src, "pages")).filter((f) => f.endsWith(".ht
   pages.push({ file, meta, body });
 }
 
+// Photos still served by the old Airo site use the local copy once
+// scripts/fetch-airo-images.mjs has saved it (any image extension).
+const localPhotos = {};
+const photoDir = join(src, "public", "assets", "img", "site");
+if (existsSync(photoDir)) {
+  for (const f of readdirSync(photoDir, { recursive: true })) {
+    const m = String(f).match(/^(.*)\.(jpe?g|png|webp|avif|gif|svg)$/);
+    if (m) localPhotos[m[1].split("\\").join("/")] = "/assets/img/site/" + String(f).split("\\").join("/");
+  }
+}
+const usePhotos = (html) =>
+  html.replace(/https:\/\/pghshinepro\.com\/airo-assets\/([^"')\s]+)/g, (url, p) => localPhotos[p] || url);
+
 for (const { file, meta, body } of pages) {
   const target = outFile(meta.path);
   const vars = {
@@ -124,7 +137,7 @@ for (const { file, meta, body } of pages) {
     robots: meta.noindex ? '<meta name="robots" content="noindex" />' : "",
     head: meta.head || "",
     scripts: (meta.scripts || []).map((s) => `<script src="/assets/js/${s}"></script>`).join("\n  "),
-    content: fillPrices(include(body, file), file)
+    content: usePhotos(fillPrices(include(body, file), file))
   };
   let html = fillPrices(include(partials.layout, "layout"), "layout").replace(/\{\{(\w+)\}\}/g, (_, k) => {
     if (!(k in vars)) throw new Error(`layout: unknown variable ${k}`);
