@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
 const { normalizePhone } = require('./util');
 const { sendViaGateway } = require('./mail-gateway');
+const { sendViaBrevo } = require('./mail-brevo');
 const { PRICING } = require('../public/pricing');
 
 // Real senders. Each returns a promise and throws on failure.
@@ -21,9 +22,14 @@ function createSenders(config) {
   const twilioReady = Boolean(config.twilio.accountSid && config.twilio.authToken && config.twilio.from);
 
   return {
-    emailEnabled: smtpReady || Boolean(config.emailGateway),
+    emailEnabled: smtpReady || Boolean(config.brevo.apiKey) || Boolean(config.emailGateway),
+    emailService: smtpReady ? 'SMTP' : config.brevo.apiKey ? 'Brevo' : config.emailGateway ? 'GoDaddy' : '',
     smsEnabled: twilioReady,
     async email({ to, subject, text, html, replyTo, attachments }) {
+      if (!transport && config.brevo.apiKey) {
+        await sendViaBrevo({ from: config.brevo.from, fromName: config.businessName, to, subject, text, html, attachments, replyTo: replyTo || config.smtp.replyTo || config.alertEmails[0] }, { apiKey: config.brevo.apiKey });
+        return;
+      }
       if (!transport && config.emailGateway) {
         // On GoDaddy: its mail service picks the sender; replies go to the business inbox.
         await sendViaGateway({ to, subject, text, html, attachments, replyTo: replyTo || config.smtp.replyTo || config.alertEmails[0] });

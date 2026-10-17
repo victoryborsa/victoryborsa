@@ -722,6 +722,7 @@ function createService({ db, notifier, config }) {
       failed_alerts: one(`SELECT COUNT(*) FROM notifications WHERE status IN ('failed', 'skipped') AND kind IN ('new_lead', 'contact_message', 'website_form') AND created_at >= datetime('now', '-7 days')`),
       alerts: {
         email_configured: notifier.senders.emailEnabled,
+        email_service: notifier.senders.emailService || '',
         sms_configured: notifier.senders.smsEnabled,
         alert_emails: config.alertEmails.length,
         alert_phones: config.alertPhones.length,

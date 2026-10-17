@@ -1126,7 +1126,7 @@
       <h1>Alerts</h1>
       <div class="card">
         <h2>How you get notified about new leads</h2>
-        ${row(a.email_configured, 'Email sending')}
+        ${row(a.email_configured, a.email_service ? `Email sending (through ${esc(a.email_service)})` : 'Email sending')}
         ${row(a.alert_emails > 0, `Alert email address(es): ${a.alert_emails}`)}
         ${a.sms_configured ? row(a.alert_phones > 0, `Alert phone number(s): ${a.alert_phones}`) : `<div>📱 Texting uses Google Voice <strong>${esc(a.google_voice_number)}</strong>. New-lead alerts come by email, so turn on Gmail notifications on your phone to see them instantly.</div>`}
         <h3 style="margin-top:16px">Website chat</h3>

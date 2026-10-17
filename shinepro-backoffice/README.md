@@ -68,6 +68,8 @@ To try only the chat: `npm run preview`, then open http://localhost:3000/chat-pr
 How it differs from other hosts, all automatic when GoDaddy's `DB_HOST` is present:
 - GoDaddy wipes the app's disk on each deploy, so the database file and uploaded photos are copied to GoDaddy's MySQL within a few seconds of every change, and restored on start (`src/cloud-store.js`; the last 20 copies are kept). Run one copy of the app only.
 - GoDaddy blocks SMTP, so email goes through GoDaddy's own mail service (`src/mail-gateway.js`): no Gmail app password. Replies go to `EMAIL_REPLY_TO`, or the first alert email.
+- GoDaddy's mail service accepted our test emails but they never reached Gmail, so email goes through Brevo's web API instead once `BREVO_API_KEY` is set (`src/mail-brevo.js`, free for 300 emails a day). The sender is `EMAIL_FROM` (default `bookings@pghshinepro.com`), which must be on a domain verified in Brevo. The Alerts page shows which service is in use.
+- To deploy from GitHub, point GoDaddy at this repository's root: the root `package.json` builds and starts this folder.
 - The login-cookie secret is generated once and kept in MySQL unless `SESSION_SECRET` is set, and a default admin password is never used.
 
 **Elsewhere:** see **DEVELOPER_HANDOFF.md**: Render.com (about $7/month) using the included `render.yaml`.

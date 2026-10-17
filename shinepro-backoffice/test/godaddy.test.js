@@ -8,6 +8,8 @@ const http = require('node:http');
 const { DatabaseSync } = require('node:sqlite');
 const { createCloudStore } = require('../src/cloud-store');
 const { sendViaGateway } = require('../src/mail-gateway');
+const { sendViaBrevo } = require('../src/mail-brevo');
+const { createSenders } = require('../src/notifier');
 const { loadConfig } = require('../src/config');
 
 // Stand-in for a mysql2 pool that understands the few statements cloud-store uses.
@@ -157,4 +159,33 @@ test('on GoDaddy, email works without SMTP and MySQL is picked up', () => {
   assert.strictEqual(loadConfig({ DB_HOST: 'db', SMTP_HOST: 'smtp.gmail.com', ADMIN_PASSWORD: 'a-long-password' }).emailGateway, false);
   assert.strictEqual(loadConfig({}).emailGateway, false);
   assert.strictEqual(loadConfig({}).mysql, null);
+});
+
+test('with a Brevo key, emails go through Brevo from the business address', async () => {
+  let got;
+  const fetchImpl = async (url, opts) => {
+    got = { url, headers: opts.headers, body: JSON.parse(opts.body) };
+    return { ok: true, status: 201, json: async () => ({ messageId: '<b-1>' }) };
+  };
+  const out = await sendViaBrevo({
+    from: 'bookings@pghshinepro.com', fromName: 'Shine Pro Cleaning', to: 'lee@example.com', subject: 'Booked', text: 'See you', html: '<p>See you</p>',
+    replyTo: 'pghshinepro@gmail.com', attachments: [{ filename: 'cleaning.ics', content: 'BEGIN:VCALENDAR' }],
+  }, { apiKey: 'k-1', fetchImpl });
+  assert.deepStrictEqual(out, { messageId: '<b-1>' });
+  assert.strictEqual(got.url, 'https://api.brevo.com/v3/smtp/email');
+  assert.strictEqual(got.headers['api-key'], 'k-1');
+  assert.deepStrictEqual(got.body.sender, { email: 'bookings@pghshinepro.com', name: 'Shine Pro Cleaning' });
+  assert.deepStrictEqual(got.body.to, [{ email: 'lee@example.com' }]);
+  assert.deepStrictEqual(got.body.replyTo, { email: 'pghshinepro@gmail.com' });
+  assert.strictEqual(Buffer.from(got.body.attachment[0].content, 'base64').toString(), 'BEGIN:VCALENDAR');
+
+  const refuse = async () => ({ ok: false, status: 400, json: async () => ({ code: 'invalid_parameter', message: 'sender not valid' }) });
+  await assert.rejects(sendViaBrevo({ from: 'a@b.c', to: 'x', subject: 's', text: 't' }, { apiKey: 'k', fetchImpl: refuse }), /sender not valid/);
+
+  // Brevo wins over GoDaddy's mail service once its key is set.
+  const env = { DB_HOST: 'db', ADMIN_PASSWORD: 'a-long-password' };
+  assert.strictEqual(createSenders(loadConfig(env)).emailService, 'GoDaddy');
+  const withKey = createSenders(loadConfig({ ...env, BREVO_API_KEY: 'k' }));
+  assert.strictEqual(withKey.emailService, 'Brevo');
+  assert.strictEqual(withKey.emailEnabled, true);
 });

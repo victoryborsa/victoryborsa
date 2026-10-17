@@ -1,0 +1,12 @@
+{
+  "name": "pghshinepro",
+  "private": true,
+  "description": "Hosting entry point: runs the back office in shinepro-backoffice/ (used when a host deploys this repository from its root, like GoDaddy Node.js Hosting).",
+  "scripts": {
+    "build": "npm ci --prefix shinepro-backoffice --omit=dev",
+    "start": "npm start --prefix shinepro-backoffice"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

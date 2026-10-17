@@ -38,6 +38,11 @@ function loadConfig(env = process.env) {
     // GoDaddy Node.js Hosting: email goes through its built-in mail service instead of SMTP (no password needed).
     // On by default there when SMTP isn't set up; EMAIL_GATEWAY=godaddy or =off forces it either way.
     emailGateway: env.EMAIL_GATEWAY ? env.EMAIL_GATEWAY === 'godaddy' : Boolean(env.DB_HOST && !env.SMTP_HOST),
+    // Brevo's email API (works where SMTP is blocked). When BREVO_API_KEY is set it is used instead of GoDaddy's mail service.
+    brevo: {
+      apiKey: env.BREVO_API_KEY || '',
+      from: env.EMAIL_FROM || 'bookings@pghshinepro.com',
+    },
     // GoDaddy's managed MySQL (it sets these itself). When present, the data is backed up there continuously.
     mysql: env.DB_HOST ? {
       host: env.DB_HOST,
