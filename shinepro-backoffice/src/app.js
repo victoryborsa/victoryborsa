@@ -338,7 +338,9 @@ function createApp({
   const portalPages = /^\/(portal|host)(\/(login|register|forgot|set-password|bookings|invoices(\/\d+)?|profile|properties|turnovers(\/\d+)?))?\/?$/;
   app.get(portalPages, (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'portal.html')));
   app.get(/^\/admin\/invoices\/\d+$/, (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'portal.html')));
-  app.get('/', (req, res) => res.redirect('/quote'));
+  // The back office's own address (admin.pghshinepro.com) opens the admin login. A plain page, not a redirect,
+  // because GoDaddy's health check reads a redirect at / as a problem.
+  app.get('/', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
   app.get('/quote', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'quote.html')));
   app.get('/embed.js', cors, (req, res, next) => {
     res.setHeader('Cache-Control', 'public, max-age=300');
