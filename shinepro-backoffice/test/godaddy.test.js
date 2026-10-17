@@ -151,6 +151,7 @@ test('on GoDaddy, email works without SMTP and MySQL is picked up', () => {
   assert.deepStrictEqual(c.alertEmails, ['pghshinepro@gmail.com']);
   // Never the default password on a live server, even when NODE_ENV isn't set.
   assert.throws(() => loadConfig({ DB_HOST: 'db' }), /ADMIN_PASSWORD/);
+  assert.throws(() => loadConfig({ EMAIL_GATEWAY: 'godaddy' }), /ADMIN_PASSWORD/);
   assert.strictEqual(c.emailGateway, true);
   assert.deepStrictEqual(c.mysql, { host: 'db.internal', port: 3306, database: 'app', user: 'u', password: 'p' });
   assert.strictEqual(loadConfig({ DB_HOST: 'db', SMTP_HOST: 'smtp.gmail.com', ADMIN_PASSWORD: 'a-long-password' }).emailGateway, false);

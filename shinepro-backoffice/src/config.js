@@ -78,13 +78,13 @@ function loadConfig(env = process.env) {
     ? path.join(os.tmpdir(), 'shinepro-uploads')
     : path.join(path.dirname(config.dbFile), 'uploads')));
 
-  // On GoDaddy (MySQL present) the host may not set NODE_ENV, so treat it as live too: never fall back to a
+  // On GoDaddy (MySQL or its mail service in use) the host may not set NODE_ENV, so treat it as live too: never fall back to a
   // default password. Its session secret can be left out: server.js then keeps a generated one in MySQL.
   if (config.mysql) {
     if (!env.PUBLIC_URL) config.publicUrl = 'https://admin.pghshinepro.com';
     if (!config.alertEmails.length) config.alertEmails = ['pghshinepro@gmail.com'];
   }
-  if (isProd || config.mysql) {
+  if (isProd || config.mysql || config.emailGateway) {
     if (config.adminPassword.length < 10) throw new Error('ADMIN_PASSWORD must be set (10+ characters) in production');
     if (!config.mysql && config.sessionSecret.length < 32) throw new Error('SESSION_SECRET must be set (32+ characters) in production');
   }
