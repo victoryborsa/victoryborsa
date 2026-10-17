@@ -133,7 +133,7 @@
   function showLogin() {
     document.body.classList.add('logged-out');
     app.innerHTML = `<div class="login-wrap"><form class="card login" id="login-form">
-      <div class="row" style="margin-bottom:16px"><span class="brand-mark">S</span><strong>Shine Pro Cleaning · Admin</strong></div>
+      <img src="/logo.png" alt="Shine Pro Cleaning" width="720" height="152" style="display:block;width:220px;height:auto;margin:0 auto 6px"><p class="muted" style="text-align:center;margin:0 0 16px">Back office</p>
       ${input('password', 'Admin password', '', { type: 'password', attrs: 'autocomplete="current-password" required' })}
       <button class="btn block" type="submit">Log in</button></form></div>`;
     $('#login-form').onsubmit = async (e) => {
