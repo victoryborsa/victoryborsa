@@ -82,7 +82,7 @@
       '<div class="f full"><label class="ck"><input type="checkbox" name="marketing_opt_in"> Yes, send me occasional offers and news by email or text. (Optional. You can unsubscribe anytime. We will contact you about this estimate either way.)</label></div>' +
       '</div>' +
       '<div class="hp" aria-hidden="true"><label>Company website<input name="company_website" tabindex="-1" autocomplete="off"></label></div>' +
-      '<p class="note">A ' + money(P.travelFee) + ' travel fee is added to every visit. This is an estimate, not a booking: your appointment is confirmed when we contact you to confirm the date and time.</p>' +
+      '<p class="note">Travel is free within ' + P.travelFreeMiles + ' miles of ' + P.travelBase.label + '; farther away a ' + money(P.travelFee) + ' travel fee is added. Enter your ZIP to see which applies. This is an estimate, not a booking: your appointment is confirmed when we contact you to confirm the date and time.</p>' +
       '<div class="err" data-err hidden></div>' +
       '<button type="submit">Request My Estimate</button>' +
       '<p class="muted" style="text-align:center">Questions? Call or text <a href="tel:' + PHONE.replace(/\D/g, '') + '">' + PHONE + '</a></p>' +
@@ -102,7 +102,12 @@
       });
       return o;
     }
+    // The travel line reads like the website's: the label, then the fee or "Free".
+    function lineLabel(l) {
+      return l.kind === 'travel' ? P.travelFeeLabel + (l.amount ? '' : ' (within ' + P.travelFreeMiles + ' miles)') : l.label;
+    }
     function lineAmount(l) {
+      if (l.kind === 'travel' && !l.amount) return 'Free';
       if (l.kind === 'included') return 'Included';
       if (l.kind === 'discount') return '−' + money(Math.abs(l.amount));
       return money(l.amount);
@@ -120,9 +125,9 @@
         box.disabled = included;
         if (included) box.checked = true;
       });
-      var q = SP.quote({ service: v.service_type, size: v.bedrooms, frequency: service.recurring ? v.frequency : 'once', addons: v.addons, organizingHours: v.organizing_hours });
+      var q = SP.quote({ service: v.service_type, size: v.bedrooms, frequency: service.recurring ? v.frequency : 'once', addons: v.addons, organizingHours: v.organizing_hours, zip: v.zip || v.address });
       if (!q) { linesEl.innerHTML = ''; return; }
-      var rows = q.lines.map(function (l) { return '<tr><td>' + escapeHtml(l.label) + '</td><td class="n">' + (l.kind === 'travel' ? '' : lineAmount(l)) + '</td></tr>'; });
+      var rows = q.lines.map(function (l) { return '<tr><td>' + escapeHtml(lineLabel(l)) + '</td><td class="n">' + lineAmount(l) + '</td></tr>'; });
       rows.push('<tr class="t"><td>Total' + (q.unit === 'turn' ? ' per turnover' : ' per visit') + '</td><td class="n">' + (q.quoteOnly ? 'Custom quote' : money(q.total)) + '</td></tr>');
       linesEl.innerHTML = rows.join('');
     }
@@ -159,7 +164,7 @@
         .then(function (res) {
           if (!res.ok) throw new Error(res.d.error || 'Something went wrong');
           var q = res.d.quote;
-          var summary = q && q.lines ? '<table style="margin:10px auto;text-align:left">' + q.lines.map(function (l) { return '<tr><td>' + escapeHtml(l.label) + '</td><td style="text-align:right;padding-left:12px">' + (l.kind === 'travel' ? '' : lineAmount(l)) + '</td></tr>'; }).join('') +
+          var summary = q && q.lines ? '<table style="margin:10px auto;text-align:left">' + q.lines.map(function (l) { return '<tr><td>' + escapeHtml(lineLabel(l)) + '</td><td style="text-align:right;padding-left:12px">' + lineAmount(l) + '</td></tr>'; }).join('') +
             '<tr><td><strong>Total</strong></td><td style="text-align:right;padding-left:12px"><strong>' + (q.total != null ? money(q.total) : 'Custom quote') + '</strong></td></tr></table>' : '';
           mount.innerHTML = '<div class="spq"><div class="ok"><div style="font-size:2.5rem">✨</div><h3>Thank you, ' + escapeHtml(v.name.split(' ')[0]) + '!</h3>' +
             summary + '<p>This is an estimate, not a booking. Your appointment is confirmed when we contact you to confirm the date and time.</p>' +
