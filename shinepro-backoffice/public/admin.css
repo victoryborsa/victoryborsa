@@ -9,6 +9,8 @@ body.admin {
   --text: #17211f;
   --muted: #5b6765;
   --border: #dfe7e5;
+  /* Calendar grid lines: darker than other borders so each day's box stands out. */
+  --grid: #aebdb9;
   --lemon: #f2c230;
   --lemon-soft: #fdf4d3;
   --hour: 56px;
@@ -139,8 +141,8 @@ body.logged-out .container { margin: 0 auto !important; }
 .cal { background: #fff; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
 .cal-scroll { overflow-x: auto; }
 .cal-head, .cal-body { display: grid; grid-template-columns: 56px repeat(var(--days), minmax(120px, 1fr)); min-width: calc(56px + var(--days) * 120px); }
-.cal-head { border-bottom: 1px solid var(--border); position: sticky; top: 0; background: #fff; z-index: 3; }
-.cal-head div { padding: 10px 8px; font-weight: 700; font-size: 0.86rem; text-align: center; border-left: 1px solid var(--border); }
+.cal-head { border-bottom: 1px solid var(--grid); position: sticky; top: 0; background: #fff; z-index: 3; }
+.cal-head div { padding: 10px 8px; font-weight: 700; font-size: 0.86rem; text-align: center; border-left: 1px solid var(--grid); }
 .cal-head div:first-child { border-left: 0; }
 .cal-head .today { color: var(--brand); }
 .cal-head .today b { background: var(--brand); color: #fff; border-radius: 999px; padding: 1px 8px; }
@@ -148,7 +150,7 @@ body.logged-out .container { margin: 0 auto !important; }
 .cal-hours { position: relative; }
 .cal-hours div { height: var(--hour); font-size: 0.72rem; color: var(--muted); text-align: right; padding-right: 6px; transform: translateY(-7px); }
 .cal-col {
-  position: relative; border-left: 1px solid var(--border); cursor: copy;
+  position: relative; border-left: 1px solid var(--grid); cursor: copy;
   background-image: linear-gradient(to bottom, var(--border) 1px, transparent 1px), linear-gradient(to bottom, #f0f4f3 1px, transparent 1px);
   background-size: 100% var(--hour), 100% calc(var(--hour) / 2);
 }
@@ -169,9 +171,9 @@ body.logged-out .container { margin: 0 auto !important; }
 .now-line::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: #d6452f; }
 .cal-hint { color: var(--muted); font-size: 0.85rem; margin: 10px 2px 0; }
 
-.month { display: grid; grid-template-columns: repeat(7, 1fr); background: #fff; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
-.month .mh { padding: 8px; font-weight: 700; font-size: 0.8rem; color: var(--muted); text-align: center; border-bottom: 1px solid var(--border); }
-.month a { min-height: 96px; padding: 6px; border-top: 1px solid var(--border); border-left: 1px solid var(--border); text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 3px; }
+.month { display: grid; grid-template-columns: repeat(7, 1fr); background: #fff; border: 1px solid var(--grid); border-radius: 14px; overflow: hidden; }
+.month .mh { padding: 8px; font-weight: 700; font-size: 0.8rem; color: var(--muted); text-align: center; border-bottom: 1px solid var(--grid); }
+.month a { min-height: 96px; padding: 6px; border-top: 1px solid var(--grid); border-left: 1px solid var(--grid); text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 3px; }
 .month a:nth-child(7n + 8) { border-left: 0; }
 .month a.other { background: #fafbfb; color: #a6b2af; }
 .month a.today .num { background: var(--brand); color: #fff; }
