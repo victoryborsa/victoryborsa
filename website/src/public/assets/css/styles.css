@@ -2606,3 +2606,14 @@ img.img-missing {
     height: 34px;
   }
 }
+
+/* Blog */
+.post-list { display: grid; gap: 16px; }
+.post-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 24px; box-shadow: var(--shadow-sm); }
+.post-card h2 { font-size: clamp(1.25rem, 2.4vw, 1.5rem); margin: 4px 0 8px; }
+.post-card h2 a { text-decoration: none; color: var(--ink); }
+.post-card h2 a:hover { color: var(--accent-ink); text-decoration: underline; }
+.post-card p { color: var(--ink-soft); margin: 0; }
+.post-meta { color: var(--muted); font-size: 0.9rem; margin: 0; }
+.post-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px !important; }
+.post-tags span { font-size: 0.8rem; color: var(--accent-ink); background: var(--accent-soft); padding: 3px 10px; border-radius: 999px; }

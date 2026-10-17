@@ -11,7 +11,7 @@ window.SHINE = {
   // Address of the PGH Shine Pro back office (e.g. "https://admin.pghshinepro.com").
   // When set, every estimate, message, form and newsletter signup is saved there:
   // it checks the price, alerts you, confirms to the customer and keeps a log.
-  backofficeUrl: "",
+  backofficeUrl: "https://admin.pghshinepro.com",
 
   // Used only while backofficeUrl is empty.
   // Leave empty to open the visitor's email app with the request filled in.
