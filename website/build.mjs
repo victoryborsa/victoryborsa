@@ -121,7 +121,8 @@ for (const file of readdirSync(join(src, "pages")).filter((f) => f.endsWith(".ht
 }
 
 // Photos still served by the old Airo site use the local copy once
-// scripts/fetch-airo-images.mjs has saved it (any image extension).
+// a copy has been saved under assets/img/site/ (any image extension). No page
+// uses Airo photos any more; this only guards against an old link.
 const localPhotos = {};
 const photoDir = join(src, "public", "assets", "img", "site");
 if (existsSync(photoDir)) {

@@ -2590,3 +2590,19 @@ img.img-missing {
   color: var(--accent-ink);
 }
 .backbar + .page-hero, .backbar + section { padding-top: clamp(16px, 3vw, 36px); }
+
+/* The business's own logo (from the live site) */
+.brand-logo {
+  display: block;
+  height: 44px;
+  width: auto;
+}
+.brand-logo-light {
+  filter: brightness(0) invert(1);
+  height: 40px;
+}
+@media (max-width: 520px) {
+  .site-header .brand-logo {
+    height: 34px;
+  }
+}
