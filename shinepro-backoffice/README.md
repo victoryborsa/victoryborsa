@@ -58,14 +58,26 @@ To try only the chat: `npm run preview`, then open http://localhost:3000/chat-pr
 
 ## Put it online
 
-See **DEVELOPER_HANDOFF.md**. In short: Render.com (about $7/month) using the included `render.yaml`, on `admin.pghshinepro.com`.
+**On GoDaddy (the plan):** GoDaddy Node.js Hosting, included with GoDaddy Web Hosting (Economy or higher), on `admin.pghshinepro.com`.
+
+1. `npm run package:godaddy` writes `shinepro-backoffice-godaddy.zip` (no `node_modules`, data or secrets).
+2. Upload it as a new Node.js app and add its MySQL database.
+3. Set `ADMIN_PASSWORD` (10+ characters). Optional: `ANTHROPIC_API_KEY` for AI chat answers, `EMAIL_REPLY_TO`, `ALERT_EMAILS` (defaults to pghshinepro@gmail.com), `PUBLIC_URL` (defaults to https://admin.pghshinepro.com).
+4. Publish, then connect `admin.pghshinepro.com` to the app.
+
+How it differs from other hosts, all automatic when GoDaddy's `DB_HOST` is present:
+- GoDaddy wipes the app's disk on each deploy, so the database file and uploaded photos are copied to GoDaddy's MySQL within a few seconds of every change, and restored on start (`src/cloud-store.js`; the last 20 copies are kept). Run one copy of the app only.
+- GoDaddy blocks SMTP, so email goes through GoDaddy's own mail service (`src/mail-gateway.js`): no Gmail app password. Replies go to `EMAIL_REPLY_TO`, or the first alert email.
+- The login-cookie secret is generated once and kept in MySQL unless `SESSION_SECRET` is set, and a default admin password is never used.
+
+**Elsewhere:** see **DEVELOPER_HANDOFF.md**: Render.com (about $7/month) using the included `render.yaml`.
 
 ## Accounts you need
 
 | For | Service | Cost (approx.) |
 |---|---|---|
-| Hosting | Render.com | ~$7/month |
-| Email alerts + email codes | Your Gmail (App Password) | free |
+| Hosting | GoDaddy Web Hosting with Node.js Hosting (or Render.com, ~$7/month) | included in your GoDaddy plan |
+| Email alerts + email codes | GoDaddy's mail service (or your Gmail with an App Password elsewhere) | free |
 | Texting customers | Google Voice (412) 447-8047 | free (you already have it) |
 | Phone verification codes in chat | Firebase Phone Authentication (Google) | free for small volumes, then a few cents per text (check Firebase pricing) |
 | AI chat answers | Anthropic API key (console.anthropic.com) | pay per use, usually a few cents per conversation |

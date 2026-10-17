@@ -312,7 +312,7 @@
       s.failed_alerts && { n: s.failed_alerts, t: `email${s.failed_alerts > 1 ? 's' : ''} that didn't send`, href: '#/alerts', urgent: true },
     ].filter(Boolean);
     const setupProblems = [];
-    if (!a.email_configured) setupProblems.push('email sending (SMTP) is not set up, so customers get no emails');
+    if (!a.email_configured) setupProblems.push('email sending is not set up, so customers get no emails');
     if (!a.alert_emails) setupProblems.push('no ALERT_EMAILS address is set');
 
     const routeItem = (j) => {
@@ -1126,7 +1126,7 @@
       <h1>Alerts</h1>
       <div class="card">
         <h2>How you get notified about new leads</h2>
-        ${row(a.email_configured, 'Email sending (SMTP)')}
+        ${row(a.email_configured, 'Email sending')}
         ${row(a.alert_emails > 0, `Alert email address(es): ${a.alert_emails}`)}
         ${a.sms_configured ? row(a.alert_phones > 0, `Alert phone number(s): ${a.alert_phones}`) : `<div>📱 Texting uses Google Voice <strong>${esc(a.google_voice_number)}</strong>. New-lead alerts come by email, so turn on Gmail notifications on your phone to see them instantly.</div>`}
         <h3 style="margin-top:16px">Website chat</h3>

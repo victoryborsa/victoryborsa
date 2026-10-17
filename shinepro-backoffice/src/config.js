@@ -35,6 +35,17 @@ function loadConfig(env = process.env) {
       from: env.EMAIL_FROM || env.SMTP_USER || '',
       replyTo: env.EMAIL_REPLY_TO || '',
     },
+    // GoDaddy Node.js Hosting: email goes through its built-in mail service instead of SMTP (no password needed).
+    // On by default there when SMTP isn't set up; EMAIL_GATEWAY=godaddy or =off forces it either way.
+    emailGateway: env.EMAIL_GATEWAY ? env.EMAIL_GATEWAY === 'godaddy' : Boolean(env.DB_HOST && !env.SMTP_HOST),
+    // GoDaddy's managed MySQL (it sets these itself). When present, the data is backed up there continuously.
+    mysql: env.DB_HOST ? {
+      host: env.DB_HOST,
+      port: Number(env.DB_PORT) || 3306,
+      database: env.DB_NAME || '',
+      user: env.DB_USER || '',
+      password: env.DB_PASSWORD || '',
+    } : null,
     twilio: {
       accountSid: env.TWILIO_ACCOUNT_SID || '',
       authToken: env.TWILIO_AUTH_TOKEN || '',
@@ -67,9 +78,15 @@ function loadConfig(env = process.env) {
     ? path.join(os.tmpdir(), 'shinepro-uploads')
     : path.join(path.dirname(config.dbFile), 'uploads')));
 
-  if (isProd) {
+  // On GoDaddy (MySQL present) the host may not set NODE_ENV, so treat it as live too: never fall back to a
+  // default password. Its session secret can be left out: server.js then keeps a generated one in MySQL.
+  if (config.mysql) {
+    if (!env.PUBLIC_URL) config.publicUrl = 'https://admin.pghshinepro.com';
+    if (!config.alertEmails.length) config.alertEmails = ['pghshinepro@gmail.com'];
+  }
+  if (isProd || config.mysql) {
     if (config.adminPassword.length < 10) throw new Error('ADMIN_PASSWORD must be set (10+ characters) in production');
-    if (config.sessionSecret.length < 32) throw new Error('SESSION_SECRET must be set (32+ characters) in production');
+    if (!config.mysql && config.sessionSecret.length < 32) throw new Error('SESSION_SECRET must be set (32+ characters) in production');
   }
   if (!config.adminPassword) {
     config.adminPassword = 'changeme123';

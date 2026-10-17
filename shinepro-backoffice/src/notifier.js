@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const { normalizePhone } = require('./util');
+const { sendViaGateway } = require('./mail-gateway');
 const { PRICING } = require('../public/pricing');
 
 // Real senders. Each returns a promise and throws on failure.
@@ -20,9 +21,14 @@ function createSenders(config) {
   const twilioReady = Boolean(config.twilio.accountSid && config.twilio.authToken && config.twilio.from);
 
   return {
-    emailEnabled: smtpReady,
+    emailEnabled: smtpReady || Boolean(config.emailGateway),
     smsEnabled: twilioReady,
     async email({ to, subject, text, html, replyTo, attachments }) {
+      if (!transport && config.emailGateway) {
+        // On GoDaddy: its mail service picks the sender; replies go to the business inbox.
+        await sendViaGateway({ to, subject, text, html, attachments, replyTo: replyTo || config.smtp.replyTo || config.alertEmails[0] });
+        return;
+      }
       if (!transport) throw new Error('Email is not configured (set SMTP_HOST and EMAIL_FROM)');
       await transport.sendMail({
         from: `"${config.businessName}" <${config.smtp.from}>`,
