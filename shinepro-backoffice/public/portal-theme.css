@@ -1,0 +1,178 @@
+/* Client and host portal: the website's look (colors, fonts, logo) on top of
+   the shared back office styles. Only applies to <body class="portal">, so the
+   admin dashboard is unchanged. */
+@font-face { font-family: "Fraunces"; src: url("/fonts/fraunces.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Plus Jakarta Sans"; src: url("/fonts/jakarta-400.woff2") format("woff2"); font-weight: 400 500; font-display: swap; }
+@font-face { font-family: "Plus Jakarta Sans"; src: url("/fonts/jakarta-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Plus Jakarta Sans"; src: url("/fonts/jakarta-700.woff2") format("woff2"); font-weight: 700 800; font-display: swap; }
+
+body.portal {
+  /* Same palette as pghshinepro.com */
+  --brand: #0b6e5c;
+  --brand-dark: #085345;
+  --brand-soft: #e1f0eb;
+  --navy: #10202f;
+  --bg: #f6f4ef;
+  --card: #ffffff;
+  --text: #10202f;
+  --muted: #5d6874;
+  --border: #e2ddd2;
+  --sun: #f0b93a;
+  --night: #0f1d2a;
+  --radius: 18px;
+  --shadow: 0 1px 2px rgba(16, 32, 47, 0.05), 0 8px 24px -12px rgba(16, 32, 47, 0.16);
+  --display: "Fraunces", Georgia, serif;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+.portal h1, .portal .auth-title, .portal .hero-card .big, .portal .modal h2 {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.portal h1 { font-size: clamp(1.8rem, 1.4rem + 1.6vw, 2.4rem); line-height: 1.1; margin-bottom: 6px; }
+.portal .page-sub { color: var(--muted); margin: 0 0 22px; }
+.portal :focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 55%, transparent); outline-offset: 2px; border-radius: 8px; }
+.portal .skip { position: absolute; left: -9999px; top: 8px; background: #fff; padding: 8px 12px; border-radius: 8px; z-index: 60; }
+.portal .skip:focus { left: 8px; }
+.portal .ico { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* Header, matching the website */
+.portal .topbar { background: rgba(246, 244, 239, 0.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom-color: var(--border); }
+.portal .topbar-inner { max-width: 1080px; padding: 10px 20px; min-height: 64px; }
+.portal .brand { gap: 10px; color: var(--text); }
+.portal .brand-logo { width: 36px; height: 36px; flex: none; }
+.portal .brand-text { display: grid; font-family: var(--display); font-weight: 600; font-size: 1.12rem; line-height: 1.05; letter-spacing: -0.01em; }
+.portal .brand-text small { font-family: "Plus Jakarta Sans", sans-serif; font-size: 0.7rem; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
+.portal .pill { background: var(--brand-soft); color: var(--brand-dark); font-size: 0.78rem; }
+.portal .nav a { color: var(--muted); font-weight: 600; font-size: 0.9rem; padding: 8px 12px; border-radius: 999px; }
+.portal .nav a.active, .portal .nav a:hover { background: var(--brand-soft); color: var(--brand-dark); }
+.portal .top-call { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--brand-dark); font-weight: 700; font-size: 0.9rem; padding: 8px 12px; border: 1px solid var(--border); border-radius: 999px; background: #fff; }
+.portal .container { max-width: 1080px; padding: 32px 20px 96px; }
+
+/* Buttons */
+.portal .btn { border-radius: 999px; font-weight: 700; padding: 10px 18px; background: var(--brand); border-color: var(--brand); }
+.portal .btn:hover { background: var(--brand-dark); }
+.portal .btn.secondary { background: #fff; border-color: var(--border); color: var(--text); }
+.portal .btn.secondary:hover { border-color: var(--brand); color: var(--brand-dark); }
+.portal .btn.light { background: #fff; color: var(--night); border-color: #fff; }
+.portal .btn.ghost-light { background: transparent; color: #fff; border-color: rgba(255, 255, 255, 0.35); }
+.portal .btn.ghost-light:hover { background: rgba(255, 255, 255, 0.1); }
+.portal .btn .ico { width: 18px; height: 18px; margin-right: 6px; vertical-align: -3px; }
+
+/* Cards */
+.portal .card, .portal .item, .portal .tile { border-color: var(--border); box-shadow: var(--shadow); }
+.portal .card { border-radius: var(--radius); padding: 22px; }
+.portal .hero-card .label { text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 0.88rem; color: var(--muted); }
+.portal .hero-card .big { font-size: clamp(1.6rem, 1.3rem + 1vw, 2rem); line-height: 1.15; }
+
+/* The one bold element: the next visit */
+.portal .next-visit { background: var(--night); color: #fff; border: 0; position: relative; overflow: hidden; }
+.portal .next-visit::after { content: ""; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(240, 185, 58, 0.22), transparent 70%); pointer-events: none; }
+.portal .next-visit .label, .portal .next-visit .muted { color: rgba(255, 255, 255, 0.72); }
+.portal .next-visit .big { color: #fff; }
+.portal .next-visit .mid { color: rgba(255, 255, 255, 0.92); }
+.portal .when-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--sun); color: var(--night); font-weight: 700; font-size: 0.8rem; padding: 4px 10px; border-radius: 999px; margin-bottom: 12px; }
+.portal .when-chip .ico { width: 15px; height: 15px; }
+.portal .meta { display: grid; gap: 6px; margin: 12px 0 2px; }
+.portal .meta div { display: flex; gap: 8px; align-items: flex-start; }
+.portal .meta .ico { width: 18px; height: 18px; margin-top: 2px; opacity: 0.85; }
+.portal .next-visit .status.st-new { background: rgba(240, 185, 58, 0.2); color: #ffd98a; }
+
+/* Quick actions */
+.portal .section-title { font-family: var(--display); font-weight: 600; font-size: 1.3rem; margin: 28px 0 12px; }
+.portal .tiles { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.portal .tile { padding: 16px 18px; border-radius: 16px; gap: 14px; transition: border-color 0.15s; }
+.portal .tile:hover { transform: none; border-color: var(--brand); }
+.portal .tile .icon { width: 44px; height: 44px; background: var(--brand-soft); color: var(--brand-dark); }
+.portal .tile .icon .ico { width: 22px; height: 22px; }
+.portal .tile.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.portal .tile.primary .icon { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.portal .tile.primary .d { color: rgba(255, 255, 255, 0.82); }
+.portal .tile .t { font-size: 1rem; }
+.portal .tile .d { font-size: 0.88rem; }
+.portal .tile .chev .ico { width: 18px; height: 18px; }
+
+/* Lists */
+.portal .item { border-radius: 14px; padding: 16px; }
+.portal .date-badge { background: var(--brand-soft); color: var(--brand-dark); border-radius: 14px; width: 58px; }
+.portal .date-badge .d { font-family: var(--display); font-weight: 600; font-size: 1.55rem; }
+.portal .item .sub { display: flex; gap: 6px; align-items: flex-start; }
+.portal .item .sub .ico { width: 16px; height: 16px; margin-top: 2px; }
+.portal .tabs button { border-color: var(--border); font-weight: 600; }
+.portal .tabs button.active { background: var(--night); border-color: var(--night); }
+.portal .banner.warn { background: #fbf1d6; border-color: #f1dca1; color: #5e440c; }
+.portal .empty { padding: 48px 16px; }
+
+/* Forms and dialogs */
+.portal input, .portal select, .portal textarea { border-radius: 12px; border-color: var(--border); font: inherit; }
+.portal .modal { border-radius: 22px; }
+.portal .estimate-box { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; margin: 4px 0 12px; }
+.portal .estimate-box h3 { margin: 0 0 6px; font-size: 0.95rem; }
+.portal .q-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.92rem; }
+.portal .q-lines li { display: flex; justify-content: space-between; gap: 12px; }
+.portal .q-lines li span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.portal .q-lines .q-included span:last-child, .portal .q-lines .q-discount span:last-child { color: var(--brand); font-weight: 700; }
+.portal .q-lines .q-travel { border-top: 1px dashed var(--border); padding-top: 4px; }
+.portal .q-lines .q-total { border-top: 1px solid var(--text); padding-top: 6px; font-weight: 800; }
+.portal .addon-picks { display: flex; flex-wrap: wrap; gap: 8px; }
+.portal .addon-picks label { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-size: 0.88rem; cursor: pointer; background: #fff; }
+.portal .addon-picks input { width: auto; margin: 0; accent-color: var(--brand); }
+.portal .addon-picks label.is-included { opacity: 0.6; }
+
+/* Sign-in screens */
+.portal .login-wrap { min-height: calc(100vh - 220px); }
+.portal .login { max-width: 420px; padding: 28px; }
+.portal .login .brand-logo { width: 44px; height: 44px; }
+.portal .auth-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.portal .auth-title { font-size: 1.7rem; margin: 14px 0 6px; }
+.portal .owner-note { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+.portal .portal-footer { background: transparent; border-top-color: var(--border); }
+
+/* Phones: a bottom tab bar instead of the wrapping top menu */
+.portal .tabbar { display: none; }
+@media (max-width: 960px) {
+  .portal .topbar-inner { padding: 8px 16px; min-height: 58px; flex-wrap: nowrap; }
+  .portal .brand-text { font-size: 1rem; }
+  .portal #portal-pill, .portal .nav, .portal .top-call span { display: none !important; }
+  .portal .top-call { padding: 9px; }
+  .portal .container { padding: 22px 16px 120px; }
+  .portal .tabbar:not(.hidden) {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  }
+  .portal .tabbar a { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; text-decoration: none; color: var(--muted); font-size: 0.72rem; font-weight: 600; border-radius: 12px; }
+  .portal .tabbar a .ico { width: 22px; height: 22px; }
+  .portal .tabbar a.active { color: var(--brand-dark); background: var(--brand-soft); }
+  .portal .portal-footer { padding-bottom: 96px; }
+  .portal .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) { .portal * { transition: none !important; } }
+@media print {
+  .portal .tabbar, .portal .top-call, .portal .skip { display: none !important; }
+  body.portal { background: #fff; }
+}
+.portal .label-like { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
+.portal [hidden] { display: none !important; }
+.portal .modal:has(.modal-total) .actions { position: sticky; bottom: 0; background: #fff; margin: 8px -22px -22px; padding: 12px 22px 14px; border-top: 1px solid var(--border); border-radius: 0 0 22px 22px; align-items: center; }
+.portal .modal-total { margin-right: auto; display: grid; line-height: 1.15; }
+.portal .modal-total strong { font-family: var(--display); font-size: 1.35rem; }
+.portal .grid-2 { align-items: start; }
+.portal .btn.danger { background: #fff; color: #b42318; border-color: #f0c9c4; }
+.portal .btn.danger:hover { background: #fdf0ee; }
+.portal .pill, .portal .nav a, .portal .top-call { white-space: nowrap; }
+.portal .nav { flex-wrap: nowrap; }
+@media (max-width: 1180px) { .portal .top-call span { display: none; } .portal .top-call { padding: 9px; } }
+.portal .portal-back { display: inline-flex; align-items: center; gap: 6px; margin: -8px 0 12px -10px; padding: 8px 14px 8px 8px; border-radius: 999px; color: var(--brand-dark); font-weight: 600; font-size: 0.92rem; text-decoration: none; }
+.portal .portal-back:hover { background: var(--brand-soft); }
+.portal .portal-back .ico { width: 18px; height: 18px; transform: rotate(180deg); }
+.portal .brand-img { display: block; height: 40px; width: auto; }
+.portal .login .brand-img { height: 42px; }
+.portal .auth-head { margin-bottom: 6px; }
+@media (max-width: 960px) { .portal .topbar .brand-img { height: 32px; } }

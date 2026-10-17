@@ -1,0 +1,75 @@
+<!--page {
+  "path": "/upholstery-cleaning",
+  "title": "Upholstery Cleaning Pittsburgh | PGH Shine Pro",
+  "description": "Upholstery cleaning in Pittsburgh for sofas, mattresses, chairs and vehicle interiors. Free custom quote; {{travel}} travel fee beyond {{travel miles}} per visit.",
+  "scripts": ["forms.js"]
+} -->
+<section class="page-hero page-hero-media">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow">Upholstery Cleaning</span>
+      <h1>Upholstery cleaning for sofas, mattresses, chairs and car interiors.</h1>
+      <p class="lead">Freshen the fabric pieces you use every day. Add upholstery cleaning on its own or alongside your home cleaning.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="#quote-form">Get a Free Quote</a>
+        <a class="btn btn-ghost" href="tel:+14124478047"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-phone" /></svg> Call (412) 447-8047</a>
+      </div>
+      <!-- @include trust3 -->
+    </div>
+    <img class="page-hero-img" src="/assets/img/own/cleaner-bathroom.jpg" alt="PGH Shine Pro cleaner wiping down a bright bathroom sink" width="640" height="480" fetchpriority="high" />
+  </div>
+</section>
+
+<section class="section steps-section">
+  <div class="wrap">
+    <div class="section-head reveal"><h2>What we clean</h2><p class="lead">Upholstery is quoted by piece and fabric, so tell us what you have.</p></div>
+    <div class="tile-grid tile-grid-4">
+      <div class="tile reveal"><h3>Sofas and sectionals</h3><p>Cushions, arms and backs for everyday spills, pet hair and dust.</p></div>
+      <div class="tile reveal"><h3>Mattresses</h3><p>Surface cleaning to refresh mattresses between guests or seasons.</p></div>
+      <div class="tile reveal"><h3>Chairs</h3><p>Dining chairs, armchairs and office chairs.</p></div>
+      <div class="tile reveal"><h3>Vehicle interiors</h3><p>Fabric seats and interior surfaces of cars and SUVs.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="quote-form">
+  <div class="wrap two-col">
+    <div class="reveal">
+      <h2>Get an upholstery quote</h2>
+      <p class="lead">Tell us which pieces need cleaning and we will send a personalized price.</p>
+      <ul class="check-list check-list-plain" style="margin-top:20px">
+        <li>Free, no-obligation quote. No payment needed to ask.</li>
+        <li>Homes more than {{travel miles}} away have one {{travel}} travel fee per visit, listed on its own line.</li>
+        <li>Sending this form is a quote request. Nothing is booked until we confirm a date and time with you.</li>
+      </ul>
+      <div class="side-call" style="margin-top:24px"><strong>Rather talk it through?</strong><a href="tel:+14124478047">Call (412) 447-8047</a><a href="sms:+14124478047">or text us</a><small>{{biz hours}}</small></div>
+    </div>
+    <form class="form-card reveal" data-form="Upholstery cleaning quote request" novalidate>
+      <div class="form-body">
+        <div class="form-grid">
+          <div class="field full"><label for="up-name">Name *</label><input class="input" id="up-name" name="Name" autocomplete="name" required /><span class="field-error">Please enter your name.</span></div>
+          <!-- @include contact-pref -->
+          <div class="field full"><label for="up-addr">Address or ZIP code *</label><input class="input" id="up-addr" name="Address or ZIP" autocomplete="street-address" required /><span class="field-error">Please enter the address or ZIP code.</span></div>
+          <div class="field"><label for="up-type">What needs cleaning? *</label><select class="select" id="up-type" name="What needs cleaning" required><option value="">Choose one</option><option>Sofa or sectional</option><option>Mattress</option><option>Chairs</option><option>Vehicle interior</option><option>Several items</option><option>Other</option></select><span class="field-error">Please choose one.</span></div>
+          <div class="field"><label for="up-date">Preferred date</label><input class="input" id="up-date" name="Preferred date" type="date" /></div>
+          <div class="field full"><label for="up-count">How many pieces? <span class="opt">(optional)</span></label><input class="input" id="up-count" name="Number of pieces" inputmode="numeric" /></div>
+          <div class="field full"><label for="up-details">Details <span class="opt">(optional)</span></label><textarea class="textarea" id="up-details" name="Details" placeholder="Size, condition, anything we should know"></textarea></div>
+          <label class="consent full"><input type="checkbox" name="consent" value="Yes" required /><span>* PGH Shine Pro may contact me about this quote request.</span></label>
+          <!-- @include marketing-optin -->
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Request My Free Quote</button>
+        <p class="quote-fine">No payment required. We'll contact you with your personalized quote.</p>
+      </div>
+      <!-- @include form-success -->
+    </form>
+  </div>
+</section>
+
+<section class="section final-cta" style="padding-top:0">
+  <div class="wrap">
+    <div class="guarantee reveal">
+      <div><h2>Want the whole home done too?</h2><p>Get an instant flat-rate estimate for house cleaning.</p></div>
+      <div class="final-cta-actions"><a class="btn btn-light" href="/free-estimate">Get a Free Estimate</a><a class="btn btn-outline-light" href="/services">See all prices</a></div>
+    </div>
+  </div>
+</section>

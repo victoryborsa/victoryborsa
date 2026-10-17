@@ -1,0 +1,280 @@
+SHINE PRO CLEANING — INSTRUCTIONS TO PASTE INTO GODADDY AIRO
+=============================================================
+
+HOW TO USE THIS FILE
+- Open your website in GoDaddy Airo.
+- YOUR CHAT SHOWS "temporarily unavailable"? Do STEP 7 first.
+- Copy ONE step at a time (everything between the lines), paste it into Airo, and let it finish.
+- Check the result, then do the next step. Small steps work much better than one huge request.
+- If Airo says it can't do something, copy its answer and ask Claude for help.
+- Never paste passwords or keys into a chat. Enter them only in GoDaddy's own settings screens.
+
+Business facts used below:
+  Business: Shine Pro Cleaning, Pittsburgh PA
+  Website: pghshinepro.com
+  Phone/text (Google Voice): (412) 447-8047
+  Owner alert email: pghshinepro@gmail.com
+  My prices and packages are already correct. DO NOT change any prices.
+
+
+----------------------------------------------------------------
+STEP 1 — Never lose a quote request (fix lead capture + alerts)
+----------------------------------------------------------------
+Please fix and improve how my website handles quote requests. Do not change my prices or packages.
+
+1. Every time someone submits the quote form, SAVE the request in the database FIRST (name, phone, email, address, ZIP, service, bedrooms, bathrooms, square feet, frequency, preferred date, the price shown to them, their message, and whether they agreed to receive offers). Save it even if sending the notification email fails.
+2. Require name, a valid email, and a valid US phone number (10 digits). Show a friendly error message if something is missing. Keep the phone stored in one format, like +14125550123.
+3. Right after saving, email me at pghshinepro@gmail.com with the subject "New quote request: [name] ([price])". Include all their details and a link to open the lead in my admin page.
+4. Also email the customer an automatic confirmation: "Thanks [first name], we received your request. Your estimated price is [price]. We'll contact you shortly. Questions? Call or text (412) 447-8047."
+5. If the same email or phone already exists, attach the new request to the existing client. Don't create a duplicate client.
+6. Add a hidden spam-trap field. If it's filled in, don't save or alert.
+7. After submitting, show a thank-you message with their price and our phone number.
+8. On the admin Leads page, show a warning if any alert email failed to send, so I never miss a lead.
+Then test it: submit a test quote and confirm (a) it appears in Leads, (b) I got the email, (c) the customer got the confirmation.
+
+
+----------------------------------------------------------------
+STEP 2 — Leads page: follow up and reply to customers
+----------------------------------------------------------------
+Please improve my admin "Leads" page:
+
+1. Each lead has a status: New, Contacted, Quoted, Booked, Lost. New leads show first, with a red count badge on the menu.
+2. The lead detail page shows all their details, plus buttons for:
+   - "Call" (opens the phone dialer)
+   - "Text via Google Voice": opens https://voice.google.com/u/0/messages?itemId=t.%2B1XXXXXXXXXX with the customer's number (digits only after +1) in a new tab, and copies my typed message to the clipboard so I can paste it
+   - "Email": a reply box that sends the email to the customer from the website and saves it in the lead's history
+3. A conversation history on each lead showing every email sent, every text I logged, and private notes. Add a "Log customer's text reply" option so I can paste replies they sent to my Google Voice.
+4. Quick-reply templates:
+   - "Hi [first name], this is Shine Pro Cleaning, thanks for your quote request! When would be a good day for your cleaning?"
+   - "Hi [first name], just following up on your cleaning quote. We have openings this week. Would you like to book?"
+   - "Hi [first name], you're all set! We'll see you on the scheduled date."
+5. When I send the first reply, change the status from New to Contacted automatically.
+6. A search box (name, phone, email, address) and filters by status.
+7. A "Book job" button that creates a booking from the lead (see step 4) and marks the lead Booked.
+
+
+----------------------------------------------------------------
+STEP 3 — Clients: add, edit, and collect contacts for marketing
+----------------------------------------------------------------
+Please improve my admin "Clients" page:
+
+1. I can ADD a new client manually and EDIT any client: name, phone, email, street address, city, ZIP, notes (gate code, pets, preferences), and a checkbox "OK to send offers and updates".
+2. I can delete a client (ask me to confirm first).
+3. Search by name, phone, email or address.
+4. Each client page shows their quote requests, bookings, and message history.
+5. Every quote request and chat automatically creates or updates the client, so I collect every email and phone number.
+6. Add two buttons that download a spreadsheet (CSV): "Export all clients" and "Export marketing list" (only people who checked "OK to send offers"). Columns: name, email, phone, address, city, ZIP, opted-in, date added.
+
+
+----------------------------------------------------------------
+STEP 4 — Employees and assigning cleaners to jobs
+----------------------------------------------------------------
+Please improve my admin "Employees", "Scheduling/All Bookings" and "Calendar" pages:
+
+1. Employees: I can ADD and EDIT employees (name, mobile phone, email, role, notes, Active yes/no). Inactive employees can't be assigned but keep their history.
+2. Bookings: create a booking for a client with date and time, duration, address (default to the client's address), service, price, notes, and status (Scheduled, Completed, Cancelled).
+3. Assign one or more cleaners to each booking. When I assign someone, automatically email them the date, time, address, client name, service and notes. Also show a "Text [name] via Google Voice" button that copies those details and opens Google Voice for that employee's number.
+4. On each employee's page, show their upcoming and past jobs.
+5. Calendar: month, week and day views of bookings. Highlight bookings with NO cleaner assigned in orange. Clicking a booking opens it for editing.
+6. On the admin home page, show a count of "Jobs needing a cleaner".
+
+
+----------------------------------------------------------------
+STEP 5 — Website chat: verified customers, AI answers, call-back requests
+----------------------------------------------------------------
+Please upgrade the "Chat With Us" chat on my website:
+
+1. Before chatting, the customer must enter their name, email and mobile phone and VERIFY both:
+   - Email: send a 6-digit code to their email. It expires in 10 minutes, works only once, and locks after 5 wrong tries.
+   - Phone: send a 6-digit code by text message and ask them to enter it.
+   If either code is wrong, do NOT start the chat. (If you need a texting service for the phone code, tell me which one you support and what I need to set up. Note: my Google Voice number can't send automatic codes.)
+2. After verification, save them as a client and a lead (source "Chat"), and email me: "New verified chat: [name], [phone], [email]".
+3. The AI assistant answers questions about our services using ONLY the business information on my website. Keep answers short and friendly. It must NOT quote prices or dollar amounts. For prices, send them to the quote form or offer a call back. If it doesn't know something, it says the team will follow up.
+4. Add a big "Request a call back" button in the chat. It asks "What can we help with?" and "Best time to call (optional)". When submitted:
+   - Save it on the lead and mark the lead "Call back requested" (show these at the top of Leads in red).
+   - Email me immediately with the subject "CALL BACK REQUESTED: [name] [phone]" and their note.
+   - Tell the customer: "Got it! We'll call you at [phone] as soon as possible. Urgent? Call or text (412) 447-8047."
+5. Save every chat message in the lead's conversation history so I can read it in the admin. Let me reply from the admin, and have my reply appear in the customer's chat window.
+6. The chat must not slow down the website: load it only when the visitor opens it.
+
+
+----------------------------------------------------------------
+STEP 6 — SEO: get found on Google (don't change my prices or design)
+----------------------------------------------------------------
+Please do a full SEO and error check of pghshinepro.com and fix what you find:
+
+1. Every page has a unique title (under 60 characters) and meta description (under 155 characters) with local keywords, for example:
+   - Home: "House Cleaning Pittsburgh | Shine Pro Cleaning". Description: "Trusted house cleaning in Pittsburgh. Standard, deep, move-in/out & Airbnb cleaning. Instant online quote or call (412) 447-8047."
+   - Deep cleaning page: "Deep Cleaning Services in Pittsburgh | Shine Pro"
+   - Move in/out page: "Move-In & Move-Out Cleaning Pittsburgh | Shine Pro"
+   - Contact page: "Contact Shine Pro Cleaning | (412) 447-8047"
+2. Each page has exactly one main heading (H1), and headings in a logical order.
+3. Every image has descriptive alt text (e.g. "Clean kitchen after deep cleaning in Pittsburgh"). Compress large images.
+4. Add LocalBusiness / HouseCleaningService structured data (JSON-LD) on the home page, with name "Shine Pro Cleaning", url https://pghshinepro.com, telephone +1-412-447-8047, area served Pittsburgh PA, and our real opening hours.
+5. Make sure there's a sitemap.xml and robots.txt, and that the admin, back office and customer portal pages are hidden from Google (noindex) and not in the sitemap.
+6. Make sure http, https, www and non-www all go to ONE address (https://pghshinepro.com).
+7. Check for broken links, broken images, pages that don't load, and anything that looks wrong on phones. Fix them.
+8. Add a click-to-call phone number (412) 447-8047 in the header on phones.
+9. Give each service its own page with real details (what's included, FAQs) and a "Get a Quote" button near the top.
+10. Improve mobile page speed (target 90+ on Google PageSpeed Insights).
+11. If Google Analytics or Meta Pixel is connected, record a "generate_lead" event when a quote is submitted, a verified chat starts, or a call back is requested.
+Tell me the list of problems you found and what you fixed.
+
+
+----------------------------------------------------------------
+STEP 7 — Fix the chat error + add tap-to-answer questions
+----------------------------------------------------------------
+My website chat has a bug. EVERY message gets the reply "I'm sorry, our assistant is temporarily unavailable. Please call or text us at (412) 447-8047..." Even "I need to clean my house" gets it. Please fix it and rebuild the chat as described below. This replaces the chat design from earlier instructions wherever they differ. Do not change my prices or my site design.
+
+PART A — Find and fix the error
+1. Check why the AI reply fails: the AI connection/integration, API key, credits or usage limit, and model name. Look at the error logs for the chat's AI function and tell me the EXACT error message.
+2. Fix it. Test by typing "Do you clean Airbnb properties?" and confirm a real answer comes back.
+3. Even if the AI is down, the chat must never dead-end. Show: "Thanks! A team member will reply soon. Tap 'Talk to someone' to leave your number, or call/text (412) 447-8047." Also save the customer's message as a lead and email it to pghshinepro@gmail.com, so no question is lost.
+
+PART B — Tap-to-answer menu (works WITHOUT the AI)
+When the chat opens, greet with: "Hi! 👋 How can we help today?" and show these buttons:
+[Get a free estimate] [Services] [Pricing] [What's included] [Availability] [Service area & special requests] [Talk to someone]
+Tapping a topic shows its questions as buttons. Tapping a question shows the answer below (a fixed answer, instant, no AI). After each answer, show buttons: [Get a free estimate] [Talk to someone] [Back to menu]. Customers can still type their own question, which goes to the AI.
+
+SERVICES
+- What cleaning services do you offer? → We offer home, deep, move-in/move-out, Airbnb turnover, and office cleaning. What do you need cleaned?
+- Do you clean houses and apartments? → Yes. Send us your address and the number of bedrooms and bathrooms for an estimate.
+- Do you clean Airbnb properties? → Yes. Tell us the property address, size, and turnover date.
+- Do you clean offices? → Yes. Tell us the location, approximate size, and how often you need cleaning.
+- Do you offer one-time cleaning? → Yes. What would you like cleaned, and when?
+- Do you offer regular cleaning? → Yes. Are you looking for weekly, every two weeks, or monthly visits?
+- Do you do deep cleaning? → Yes. Tell us which areas need extra attention.
+- Do you do move-out cleaning? → Yes. When is your move-out date, and will the property be empty?
+- Do you do move-in cleaning? → Yes. Send us the address, property size, and the date you need it cleaned.
+- Do you clean after events? → Yes. Tell us the event location, date, and what cleanup is needed.
+- Do you clean carpets or upholstery? → Tell us what you need cleaned, and we'll confirm whether we can help.
+
+PRICING
+- How much does cleaning cost? → The price depends on the size and condition of the space. Share a few details for a free estimate.
+- Can I get a free estimate? → Of course. What is the property address, and what type of cleaning do you need?
+- Can you give me a price by text? → Yes. Send us the property details and photos if available, and we'll review them.
+- Is there a minimum charge? → Send us the job details and we'll confirm the price before scheduling.
+- Is there a travel fee? → A $25 travel fee may apply. Send us the address and we'll confirm your total.
+- Do you charge extra for pets? → Please tell us how many cats or dogs you have, and we'll include any applicable fee in your estimate.
+- Do you offer discounts for regular cleaning? → Recurring cleaning may cost less per visit. Tell us how often you'd like service.
+- Do I have to pay online? → We'll explain your payment options when we confirm the booking.
+
+WHAT'S INCLUDED
+- What's included in standard cleaning? → It covers routine cleaning of the main rooms, kitchen, and bathrooms. Tell us about your home for a specific scope.
+- What's included in deep cleaning? → Deep cleaning gives extra attention to buildup and areas that need more time. Tell us your priorities.
+- Will you clean inside the fridge? → Yes, you can request that as an add-on.
+- Will you clean inside the oven? → Yes, you can request that as an add-on.
+- Do you clean inside cabinets? → Yes, you can request that as an add-on.
+- Do you clean interior windows? → Yes, you can request that as an add-on.
+- Can you do laundry? → Yes, you can request one load of laundry as an add-on.
+- Can you wash dishes? → Yes, hand washing dishes is available as an add-on.
+- Can you make the beds? → Tell us which beds need to be made when requesting your estimate.
+- Can I choose what you focus on? → Absolutely. Tell us your top priorities before the cleaning.
+- Can you clean just one room or one area? → Tell us what you need cleaned and we'll let you know what we can offer.
+
+AVAILABILITY
+- Are you available today? → Send us your address and the time you need us. We'll check availability.
+- Are you available this week? → What day works for you, and what type of cleaning do you need?
+- How soon can I book? → Share your preferred date and address, and we'll check the schedule.
+- Do you offer weekend cleaning? → Send us your preferred date and we'll check availability.
+- How long will the cleaning take? → It depends on the size and condition of the space. We can give you an estimate after a few details.
+- Do I need to be home? → You can discuss access arrangements with us before your appointment.
+- How do I reschedule? → Send us your name and appointment date, and we'll help you find another time.
+- How do I cancel? → Send us your name and appointment date so we can help.
+
+SERVICE AREA & SPECIAL REQUESTS
+- What areas do you serve? → We serve Pittsburgh and nearby areas. Send us your address to confirm.
+- Do you come to my ZIP code? → Send us your ZIP code and we'll check.
+- Do you bring cleaning supplies? → Tell us about any product preferences or special surfaces, and we'll confirm supplies before the visit.
+- Can you use my cleaning products? → Let us know which products you'd like us to use, and we'll discuss it before scheduling.
+- I have pets. Is that okay? → Yes. Please tell us whether you have cats or dogs and how many.
+- I have allergies. Can you accommodate that? → Tell us what products or ingredients you need us to avoid before booking.
+- Can I send photos? → Yes. Photos can help us understand the job and prepare a more accurate estimate. (Let them attach photos in the chat.)
+- Can someone call me? → Yes. Leave your name, phone number, and the best time to call. (Opens "Talk to someone".)
+- Can I speak with a person? → Of course. Leave your name and phone number, and we'll follow up. (Opens "Talk to someone".)
+
+PART C — "Get a free estimate" (guided, ONE question at a time, with tap buttons where possible)
+1. "What's the property address (or ZIP code)?" (text)
+2. "What type of cleaning?" [Standard] [Deep] [Move-in/out] [Airbnb turnover] [Office] [Post-event] [Other]
+3. "How big is the property?" Bedrooms [1][2][3][4][5+] and bathrooms [1][1.5][2][2.5][3+]. For offices, approximate square feet.
+4. "When would you like the cleaning?" (date picker) and "How often?" [One time] [Weekly] [Every 2 weeks] [Monthly]
+5. "Any pets?" [No pets] [Cats] [Dogs] [Both], then "How many?"
+6. "Any add-ons?" Multi-select: [Inside fridge] [Inside oven] [Inside cabinets] [Interior windows] [1 load of laundry] [Hand-wash dishes] [None]
+7. "Anything else we should know? You can add photos." (optional text + photo upload)
+8. "Your name, phone number and email so we can send your estimate." Verify the email and phone here, as in step 5. Don't submit until both are verified.
+9. Finish with: "Thanks! We received your request and will contact you to confirm the details and price."
+Then SAVE it as a lead (source "Chat estimate") with every answer, create or update the client, and email pghshinepro@gmail.com with the subject "New chat estimate request: [name] [phone]" and all the answers.
+Show a [Back] button on every question so they can fix an answer.
+
+PART D — "Talk to someone"
+Ask for name, phone (verified), best time to call, and a short note. Save it as a lead marked "Call back requested" (at the top of Leads, in red). Email pghshinepro@gmail.com with the subject "CALL BACK REQUESTED: [name] [phone]". Reply: "Got it! We'll call you as soon as possible. Urgent? Call or text (412) 447-8047."
+
+PART E — Rules for the AI (typed questions only)
+- Answer in 1-3 short sentences using ONLY the answers above and my website's information.
+- Never make up prices. The only price it may mention is the "$25 travel fee may apply" above. For anything else about price, offer [Get a free estimate].
+- If unsure, say the team will confirm, and show [Talk to someone].
+
+PART F — Test and report
+Test on phone and computer:
+(1) Every topic and question button shows the right answer.
+(2) A typed question gets a real AI answer.
+(3) Temporarily break the AI (or simulate an error): the friendly fallback shows, and the message is emailed to me.
+(4) The free-estimate flow completes, the lead appears in Leads, and I get the email.
+(5) "Talk to someone" emails me and shows the lead in red.
+Tell me the exact error you found in Part A and what you changed.
+
+
+----------------------------------------------------------------
+STEP 9 — Address suggestions (autocomplete) + fix address not saving
+----------------------------------------------------------------
+Please add address autocomplete (address suggestions) to my website and admin. Do not change my prices or design.
+
+WHERE: every address field, including:
+- Add Appointment and Edit Appointment ("Property" / "Add property address")
+- Add and Edit Client
+- The quote / free estimate form and the chat estimate
+- Anywhere else I type an address
+
+HOW IT SHOULD WORK:
+1. As I start typing (after 3 characters), show a dropdown of matching real addresses.
+2. Only show US addresses, and prefer addresses near Pittsburgh, PA.
+3. When I tap a suggestion, automatically fill in Street address, City, State and ZIP.
+4. If I type a ZIP code or city first, suggest addresses in that area.
+5. I must still be able to type an address by hand if no suggestion appears. Never block saving.
+6. Fix this bug: in Edit Appointment, the address I type (for example "524 paddington Ln.") appears above the "Street address *" field, which stays empty. Whatever I type or select must go into the Street address field and be saved with the appointment and the client. After saving, reopening the appointment must show the full address.
+7. Also save the address's map coordinates (latitude/longitude) when available, so I can open it in Google Maps later. Add an "Open in Google Maps" link next to each saved address.
+8. Works on phone and computer, and is fast (wait about 0.3 seconds after I stop typing before searching).
+
+SERVICE TO USE: Google Maps Places Autocomplete (Places API).
+- Tell me step by step what I need to set up in Google Cloud (create the key, enable Places API, add billing).
+- Restrict the key to my website domains (pghshinepro.com and www.pghshinepro.com) and to the Places API only.
+- Set a monthly budget alert so I never get a surprise bill.
+- Enter the key in the secure settings/environment, never in visible page code or chat.
+- If you support a different address service that is built into GoDaddy/Airo, tell me and use that instead.
+
+TEST AND REPORT:
+- Edit an appointment, type "524 padd", pick the suggestion, and confirm street, city, state and ZIP fill in and save correctly.
+- Add a new client with a typed address (no suggestion) and confirm it still saves.
+- Tell me what you set up and anything I need to do.
+
+
+----------------------------------------------------------------
+STEP 8 — Final check (paste this last)
+----------------------------------------------------------------
+Please test everything end to end and tell me the result of each item:
+1. Submit a test quote: it appears in Leads with the correct price, I get the alert email, and the customer gets the confirmation.
+2. Reply to that lead by email: the email arrives, and the status changes to Contacted.
+3. "Text via Google Voice" opens Google Voice with the right number.
+4. Add a client, edit them, and export both CSV lists.
+5. Add an employee, create a booking, assign them: they get the job email, and the booking shows on the calendar.
+6. Chat: every tap-to-answer button works, a typed question gets a real answer (no "temporarily unavailable"), the free-estimate flow saves a lead and emails me, wrong verification codes are rejected, and "Talk to someone" emails me.
+7. Every page has a unique title and description, there are no broken links, and the admin pages are hidden from Google.
+List anything that failed and fix it.
+
+
+----------------------------------------------------------------
+THINGS ONLY YOU (THE OWNER) NEED TO DO
+----------------------------------------------------------------
+- Google Business Profile (business.google.com): claim your business as a service-area business, category "House cleaning service", phone (412) 447-8047, website pghshinepro.com.
+- After every cleaning, send the customer your Google review link.
+- On your phone, turn on Gmail notifications so lead alerts pop up instantly.

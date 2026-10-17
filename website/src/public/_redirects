@@ -1,0 +1,11 @@
+# Redirects for Cloudflare Pages or Netlify (the free hosts). GoDaddy uses .htaccess instead.
+/special-event-cleaning   /event-cleanup   301
+/eco-friendly-cleaning    /house-cleaning  301
+# The live site's /book and /quote open the free estimate.
+/book                     /free-estimate   301
+/quote                    /free-estimate   301
+# Client and host portals run on the back office server.
+/portal    https://admin.pghshinepro.com/portal   302
+/portal/*  https://admin.pghshinepro.com/portal/:splat  302
+/host      https://admin.pghshinepro.com/host     302
+/host/*    https://admin.pghshinepro.com/host/:splat    302
