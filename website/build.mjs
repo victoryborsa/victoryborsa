@@ -40,6 +40,13 @@ const pricingFile = join(root, "..", "shinepro-backoffice", "public", "pricing.j
 const { PRICING, money } = createRequire(import.meta.url)(pricingFile);
 cpSync(pricingFile, join(dist, "assets", "js", "pricing.js"));
 
+// The shareable preview has no back office behind it, so its forms fall back
+// to the visitor's email app instead of posting to the live admin.
+if (preview) {
+  const cfgFile = join(dist, "assets", "js", "config.js");
+  writeFileSync(cfgFile, readFileSync(cfgFile, "utf8").replace(/backofficeUrl: "[^"]*"/, 'backofficeUrl: ""'));
+}
+
 function token(kind, args, from) {
   const fail = () => {
     throw new Error(`${from}: unknown price token {{${[kind, ...args].join(" ")}}}`);
