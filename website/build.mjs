@@ -141,6 +141,7 @@ const SERVICE_PAGES = ["/house-cleaning", "/deep-cleaning", "/move-in-out-cleani
 function backbar(path) {
   if (path === "/" || path === "/404") return "";
   const [href, label] = path.startsWith("/cleaning-services/") ? ["/service-areas", "Service areas"]
+    : path.startsWith("/blog/") ? ["/cleaning-tips", "Cleaning tips"]
     : SERVICE_PAGES.includes(path) ? ["/services", "All services"] : ["/", "Home"];
   return `<nav class="backbar" aria-label="Back"><div class="wrap"><a href="${href}" data-back><svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg><span>Back</span></a><a class="backbar-parent" href="${href}">${label}</a></div></nav>`;
 }
