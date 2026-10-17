@@ -211,10 +211,10 @@ Hosts only: `GET|POST /properties` · `GET|PUT /properties/:id` · `GET|POST /tu
 - [ ] **End-to-end chat test on the live site:**
   - The chat won't start with a missing name, a bad email or a bad phone, and the owner gets a "New website chat" email when it starts.
   - Tapping a popular question answers instantly; "I want my house cleaned" gets an answer that starts within about 2 seconds and asks about bedrooms and bathrooms.
-  - The AI's price answers match `pricing.js` and include the $20 travel fee.
+  - The AI's price answers match `pricing.js` and include the $25 travel fee (free within 5 miles).
   - "Request a call back" sends the owner an urgent email.
   - A reply from the admin shows up in the chat.
-- [ ] `SITE_ORIGINS` lists the website's origins. A real test estimate (deep, 2 bedrooms) shows in Admin → Leads at **$329** with the Travel Fee line, the owner email and customer confirmation arrive with the lines and total, and pressing submit twice saves it once.
+- [ ] `SITE_ORIGINS` lists the website's origins. A real test estimate (deep, 2 bedrooms) shows in Admin → Leads at **$334** with a $25 Travel Fee line for a ZIP more than 5 miles from Downtown, or **$309** with a free travel line within 5 miles, the owner email and customer confirmation arrive with the lines and total, and pressing submit twice saves it once.
 - [ ] Contact form, newsletter and one website form (e.g. Careers) each arrive (Leads / Clients with marketing on / Website forms).
 - [ ] On a lead, "Text via Google Voice" opens (412) 447-8047
 - [ ] Owner reviewed `knowledge.md` (all `[CONFIRM]` lines)
