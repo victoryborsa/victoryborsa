@@ -111,12 +111,15 @@
   }
 
   // The travel fee line for a visit: $0 within travelFreeMiles, otherwise travelFee.
+  // input.travel = 'charge' or 'waive' overrides the distance rule (staff only).
   function travelLine(input) {
     const miles = milesAway(input);
-    const free = miles != null && miles <= PRICING.travelFreeMiles;
+    const travel = input && input.travel;
+    const free = travel === 'waive' || (travel !== 'charge' && miles != null && miles <= PRICING.travelFreeMiles);
+    const freeLabel = travel === 'waive' ? `${PRICING.travelFeeLabel} — waived` : `${PRICING.travelFeeLabel} — free within ${PRICING.travelFreeMiles} miles`;
     return {
       kind: 'travel',
-      label: free ? `${PRICING.travelFeeLabel} — free within ${PRICING.travelFreeMiles} miles` : `${PRICING.travelFeeLabel} — ${money(PRICING.travelFee)}`,
+      label: free ? freeLabel : `${PRICING.travelFeeLabel} — ${money(PRICING.travelFee)}`,
       amount: free ? 0 : PRICING.travelFee,
       miles: miles == null ? null : Math.round(miles * 10) / 10,
     };

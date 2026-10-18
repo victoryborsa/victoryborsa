@@ -2,34 +2,58 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0f3d38">
   <title>Back Office · Shine Pro Cleaning</title>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/admin.css">
 </head>
-<body>
-  <header class="topbar hidden" id="topbar">
-    <div class="topbar-inner">
-      <a class="brand" href="#/"><span class="brand-mark">S</span><span><span class="s">Shine Pro</span> <span class="c">Cleaning</span></span></a>
-      <span class="pill">🛡 Admin</span>
-      <span class="spacer"></span>
-      <nav class="nav" id="nav">
-        <a href="#/" data-nav="">Home</a>
-        <a href="#/leads" data-nav="leads">Leads <span class="badge hidden" id="new-leads-badge"></span></a>
-        <a href="#/jobs" data-nav="jobs">Bookings</a>
-        <a href="#/calendar" data-nav="calendar">Calendar</a>
-        <a href="#/requests" data-nav="requests">Requests <span class="badge hidden" id="requests-badge"></span></a>
-        <a href="#/invoices" data-nav="invoices">Invoices</a>
-        <a href="#/forms" data-nav="forms">Forms <span class="badge hidden" id="forms-badge"></span></a>
-        <a href="#/customers" data-nav="customers">Clients</a>
-        <a href="#/employees" data-nav="employees">Employees</a>
-        <a href="#/alerts" data-nav="alerts">Alerts</a>
-        <a href="#" id="logout">Log out</a>
-      </nav>
+<body class="admin logged-out">
+  <aside class="side" id="topbar" aria-label="Main menu">
+    <a class="side-brand" href="#/"><span class="brand-mark">S</span><span>Shine Pro<small>Back office</small></span></a>
+    <button class="btn side-book" type="button" id="side-book">＋ Book a cleaning</button>
+    <nav class="nav" id="nav">
+      <div class="nav-group">
+        <a href="#/" data-nav=""><span class="ni" aria-hidden="true">☀️</span>Today</a>
+        <a href="#/calendar" data-nav="calendar"><span class="ni" aria-hidden="true">🗓</span>Calendar</a>
+        <a href="#/chats" data-nav="chats"><span class="ni" aria-hidden="true">💬</span>Chats <span class="badge hidden" id="chats-badge"></span></a>
+        <a href="#/leads" data-nav="leads"><span class="ni" aria-hidden="true">📈</span>Leads <span class="badge hidden" id="new-leads-badge"></span></a>
+      </div>
+      <div class="nav-group">
+        <a href="#/jobs" data-nav="jobs"><span class="ni" aria-hidden="true">📋</span>Bookings</a>
+        <a href="#/customers" data-nav="customers"><span class="ni" aria-hidden="true">👤</span>Clients</a>
+        <a href="#/employees" data-nav="employees"><span class="ni" aria-hidden="true">🧹</span>Cleaners</a>
+      </div>
+      <div class="nav-group">
+        <a href="#/requests" data-nav="requests"><span class="ni" aria-hidden="true">📨</span>Requests <span class="badge hidden" id="requests-badge"></span></a>
+        <a href="#/invoices" data-nav="invoices"><span class="ni" aria-hidden="true">🧾</span>Invoices</a>
+        <a href="#/forms" data-nav="forms"><span class="ni" aria-hidden="true">📝</span>Website forms <span class="badge hidden" id="forms-badge"></span></a>
+        <a href="#/alerts" data-nav="alerts"><span class="ni" aria-hidden="true">🔔</span>Email log</a>
+      </div>
+      <div class="nav-group">
+        <a href="https://pghshinepro.com/" target="_blank" rel="noopener"><span class="ni" aria-hidden="true">🌐</span>View website ↗</a>
+      </div>
+    </nav>
+    <div class="side-foot">
+      <button type="button" class="linkish" id="alerts-toggle">🔈 Turn on pop-up alerts</button>
+      <a href="#" id="logout">Log out</a>
     </div>
-  </header>
+  </aside>
+  <div class="scrim" id="scrim"></div>
   <main class="container" id="app"></main>
+  <nav class="tabbar" aria-label="Quick menu">
+    <a href="#/" data-tab=""><span aria-hidden="true">☀️</span>Today</a>
+    <a href="#/calendar" data-tab="calendar"><span aria-hidden="true">🗓</span>Calendar</a>
+    <button type="button" class="tab-book" id="tab-book" aria-label="Book a cleaning">＋</button>
+    <a href="#/chats" data-tab="chats"><span aria-hidden="true">💬</span>Chats<span class="dot hidden" id="tab-chats-dot"></span></a>
+    <button type="button" id="tab-more"><span aria-hidden="true">☰</span>More<span class="dot hidden" id="tab-more-dot"></span></button>
+  </nav>
+  <script src="/pricing.js"></script>
   <script src="/admin.js"></script>
 </body>
 </html>

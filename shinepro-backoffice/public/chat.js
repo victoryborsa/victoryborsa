@@ -36,6 +36,7 @@
     '.launch:hover{background:#145249;transform:translateY(-2px)}.launch:focus-visible{outline:3px solid #f5c542;outline-offset:3px}' +
     '.launch .ic{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:15px}' +
     '.launch .badge{position:absolute;top:-4px;right:-2px;width:14px;height:14px;border-radius:50%;background:#f5c542;border:2px solid #fff}' +
+    '.launch.unread{background:#b4531a}.launch.unread .badge{background:#fff;border-color:#b4531a}' +
     '.panel{position:fixed;right:20px;bottom:20px;z-index:2147483001;width:400px;max-width:calc(100vw - 40px);height:min(640px,calc(100vh - 40px));background:#fff;border-radius:20px;box-shadow:0 24px 70px rgba(10,40,36,.32);display:flex;flex-direction:column;overflow:hidden;color:#16201e;font-size:15px;line-height:1.45;animation:pop .18s ease-out}' +
     '@keyframes pop{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}' +
     '.head{background:#1b6f66;color:#fff;padding:14px 12px 14px 16px;display:flex;align-items:center;gap:12px;flex:none}' +
@@ -172,7 +173,7 @@
   launcher.className = 'launch';
   launcher.type = 'button';
   launcher.setAttribute('aria-label', 'Chat with us');
-  launcher.innerHTML = '<span class="ic" aria-hidden="true">💬</span>Chat With Us<span class="badge" aria-hidden="true"></span>';
+  launcher.innerHTML = '<span class="ic" aria-hidden="true">💬</span><span class="label">Chat With Us</span><span class="badge" aria-hidden="true"></span>';
   var panel = document.createElement('div');
   panel.className = 'panel';
   panel.hidden = true;
@@ -197,6 +198,7 @@
     if (window.MutationObserver) new MutationObserver(function () { if (!host.isConnected) mount(); }).observe(document.body, { childList: true });
     state.token = load(local, STORE);
     loadConfig();
+    if (state.token) startPolling();
     if (load(session, OPEN) === '1') open();
   }
   if (document.body) boot(); else document.addEventListener('DOMContentLoaded', boot);
@@ -218,6 +220,7 @@
   }
   function open() {
     launcher.hidden = true; panel.hidden = false;
+    setUnread(false);
     store(session, OPEN, '1');
     if (!state.config) { state.configFailed = false; loadConfig(); }
     render();
@@ -226,7 +229,7 @@
   function close() {
     panel.hidden = true; launcher.hidden = false;
     store(session, OPEN, null);
-    stopPolling();
+    if (!state.token) stopPolling();
     launcher.focus();
   }
 
@@ -377,8 +380,14 @@
     setTimeout(function () {
       state.lastSend = Date.now();
       var done = function (saved) {
-        mine.id = saved.mine.id; reply.id = saved.reply.id; reply.body = saved.reply.body; reply.status = saved.reply.status; reply.typing = false;
-        state.lastId = lastId([saved.mine, saved.reply]);
+        mine.id = saved.mine.id;
+        if (saved.reply) {
+          reply.id = saved.reply.id; reply.body = saved.reply.body; reply.status = saved.reply.status; reply.typing = false;
+        } else {
+          // A team member is chatting with you: no automatic answer, their reply arrives in a moment.
+          state.messages = state.messages.filter(function (m) { return m !== reply; });
+        }
+        state.lastId = lastId(saved.reply ? [saved.mine, saved.reply] : [saved.mine]);
         state.busy = false; render();
       };
       var req = canStream
@@ -387,10 +396,10 @@
             streamMessage(body, {
               mine: function (m) { saved.mine = m; },
               delta: function (d) { reply.typing = false; reply.body += d.text; paint(reply); },
-              done: function (m) { saved.reply = m; },
-            }).then(function () { if (saved.reply) resolve(saved); else reject(new Error('The answer was cut off.')); }, reject);
+              done: function (m) { saved.reply = m; saved.finished = true; },
+            }).then(function () { if (saved.finished && saved.mine) resolve(saved); else reject(new Error('The answer was cut off.')); }, reject);
           })
-        : api('/message', { method: 'POST', body: body }).then(function (d) { return { mine: d.messages[0], reply: d.messages[1] }; });
+        : api('/message', { method: 'POST', body: body }).then(function (d) { return { mine: d.messages[0], reply: d.messages[1] || null }; });
       req.then(done).catch(function (e) {
         // Take the unsent message back out and put it in the box so it can be re-sent.
         state.messages = state.messages.filter(function (m) { return m !== mine && m !== reply; });
@@ -485,11 +494,30 @@
   }
   function fetchMessages() {
     if (!state.token) return;
+    var first = !state.lastId;
     api('/messages?after=' + state.lastId).then(function (list) {
-      if (list.length) { addMessages(list); if (state.view === 'chat' && !state.busy && !panel.hidden) render(); }
+      if (!list.length) return;
+      addMessages(list);
+      // A reply from the team while the chat is closed: say so on the button.
+      if (panel.hidden && !first && list.some(function (m) { return m.direction === 'out'; })) setUnread(true);
+      if (state.view === 'chat' && !state.busy && !panel.hidden) render();
     }).catch(function () { if (!state.token && !panel.hidden) render(); }); // session expired -> back to start
   }
-  function startPolling() { stopPolling(); state.poll = setInterval(function () { if (!panel.hidden && state.view === 'chat' && !state.busy) fetchMessages(); }, 5000); }
+  function setUnread(on) {
+    launcher.classList.toggle('unread', on);
+    launcher.querySelector('.label').textContent = on ? 'New reply from us' : 'Chat With Us';
+  }
+  // Every 5 seconds while the chat is open; every 20 seconds while it's closed, so a reply from the team is never missed.
+  var ticks = 0;
+  function startPolling() {
+    stopPolling();
+    state.poll = setInterval(function () {
+      ticks++;
+      if (!state.token || state.busy) return;
+      if (!panel.hidden && state.view === 'chat') fetchMessages();
+      else if (panel.hidden && ticks % 4 === 0 && !document.hidden) fetchMessages();
+    }, 5000);
+  }
   function stopPolling() { if (state.poll) clearInterval(state.poll); state.poll = null; }
   function endSession() { state.token = null; store(local, STORE, null); state.messages = []; state.lastId = 0; state.view = 'details'; }
 })();

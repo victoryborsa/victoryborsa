@@ -4,7 +4,11 @@ const { normalizeEmail, normalizePhone, formatPhone, str, bool, HttpError } = re
 const { createAnswers } = require('./answers');
 
 const CODE_TTL_MS = 10 * 60 * 1000;
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // renewed every time the customer's chat checks in
+// After you reply from the admin, the AI assistant stays quiet this long so you and the customer talk directly.
+const HUMAN_TAKEOVER_MS = 30 * 60 * 1000;
+// While you're chatting, you get at most one "customer wrote" email per chat this often.
+const ALERT_THROTTLE_MS = 3 * 60 * 1000;
 const MAX_CUSTOMER_MESSAGES = 40;
 const MAX_HISTORY = 40;
 
@@ -131,6 +135,8 @@ function createChatRouter({ db, config, svc, notifier, ai, verifyPhoneToken, cor
     const token = (req.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     const s = token && q('SELECT * FROM chat_sessions WHERE token_hash = ?').get(sha256(token));
     if (!s || s.expires_at < Date.now()) return res.status(401).json({ error: 'Your chat session ended. Please start a new chat.' });
+    const now = Date.now();
+    q('UPDATE chat_sessions SET last_seen_at = ?, expires_at = MAX(expires_at, ?) WHERE id = ?').run(now, now + SESSION_TTL_MS, s.id);
     req.chat = s;
     next();
   };
@@ -168,6 +174,18 @@ function createChatRouter({ db, config, svc, notifier, ai, verifyPhoneToken, cor
       res.status(200).set({ 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' });
       res.flushHeaders();
       send('mine', mine);
+    }
+
+    // You're chatting with this customer from the admin: no AI answer, the message waits for you.
+    if (!preset && s.admin_active_at && Date.now() - s.admin_active_at < HUMAN_TAKEOVER_MS) {
+      if (!s.last_alert_at || Date.now() - s.last_alert_at > ALERT_THROTTLE_MS) {
+        q('UPDATE chat_sessions SET last_alert_at = ? WHERE id = ?').run(Date.now(), s.id);
+        alertOwner('chat_message', s.lead_id, `💬 ${s.name} replied in the website chat`,
+          `${s.name} (${formatPhone(s.phone)}, ${s.email}) wrote:\n\n${text}\n\nReply from the admin's Chats page.`).catch(() => {});
+      }
+      if (!streaming) return res.json({ messages: [mine] });
+      send('done', null);
+      return res.end();
     }
 
     let answer = null;

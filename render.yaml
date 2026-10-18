@@ -13,6 +13,8 @@ services:
         value: production
       - key: NODE_VERSION
         value: "22"
+      - key: TZ
+        value: America/New_York
       - key: DATABASE_FILE
         value: /var/data/shinepro.db
       - key: SESSION_SECRET

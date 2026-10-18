@@ -41,6 +41,16 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
 
+// A local wall-clock time "YYYY-MM-DDTHH:MM" (Pittsburgh time, as typed in the admin) as text,
+// e.g. "Tue, Oct 20, 9:00 AM". Never shifted by the server's own time zone.
+function fmtLocal(local, opts = { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(local || '');
+  if (!m) return String(local || '');
+  const { hour, minute, ...dateOnly } = opts;
+  return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] || 12), +(m[5] || 0)))
+    .toLocaleString('en-US', { ...(m[4] ? opts : dateOnly), timeZone: 'UTC' });
+}
+
 class HttpError extends Error {
   constructor(status, message) {
     super(message);
@@ -48,4 +58,4 @@ class HttpError extends Error {
   }
 }
 
-module.exports = { normalizePhone, formatPhone, normalizeEmail, str, num, bool, escapeHtml, HttpError };
+module.exports = { normalizePhone, formatPhone, normalizeEmail, str, num, bool, escapeHtml, fmtLocal, HttpError };

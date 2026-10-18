@@ -7,15 +7,18 @@
     "test": "test"
   },
   "scripts": {
-    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "start": "node --experimental-sqlite --disable-warning=ExperimentalWarning src/server.js",
+    "build": "echo \"No build step needed\"",
     "dev": "node --disable-warning=ExperimentalWarning --watch src/server.js",
     "preview": "node --disable-warning=ExperimentalWarning scripts/preview.js",
-    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\""
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\"",
+    "package:godaddy": "sh scripts/godaddy-package.sh"
   },
   "license": "UNLICENSED",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
     "express": "^4.22.3",
+    "mysql2": "^3.24.6",
     "nodemailer": "^10.0.10"
   },
   "private": true,

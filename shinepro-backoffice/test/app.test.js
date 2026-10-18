@@ -267,3 +267,20 @@ test('pages and embed are served', async (t) => {
   }
   assert.deepEqual((await s.req('/api/pricing')).data.services.deep.prices, [249, 309, 359, 419, 489]);
 });
+
+test('admin lead can force the travel fee on or off; the website cannot', async (t) => {
+  const s = setup();
+  t.after(s.close);
+  // 15213 is inside the 5-mile free zone: deep, 3 bedrooms = $359 with no travel fee.
+  const pub = await s.req('/api/leads', { method: 'POST', body: { ...quote, travel: 'charge' } });
+  assert.equal(pub.data.estimated_price, 359);
+  await s.login();
+  const base = { name: 'Phone Caller', phone: '4125550111', zip: '15213', service_type: 'deep', size: '3' };
+  const charged = await s.req('/api/admin/leads', { method: 'POST', body: { ...base, travel: 'charge' } });
+  assert.equal(charged.status, 201);
+  assert.equal(charged.data.estimated_price, 384);
+  const auto = await s.req('/api/admin/leads', { method: 'POST', body: { ...base, phone: '4125550112' } });
+  assert.equal(auto.data.estimated_price, 359);
+  const waived = await s.req('/api/admin/leads', { method: 'POST', body: { ...base, phone: '4125550113', zip: '15001', travel: 'waive' } });
+  assert.equal(waived.data.estimated_price, 359);
+});

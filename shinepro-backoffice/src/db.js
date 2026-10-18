@@ -269,6 +269,18 @@ function migrate(db) {
   add('notifications', 'form_id', 'INTEGER');
   add('notifications', 'updated_at', 'TEXT');
   db.exec('CREATE INDEX IF NOT EXISTS idx_notifications_lead ON notifications(lead_id)');
+  // Two-way website chat in the admin.
+  add('chat_sessions', 'last_seen_at', 'INTEGER');               // unix ms the customer's chat last checked in
+  add('chat_sessions', 'admin_seen_id', 'INTEGER NOT NULL DEFAULT 0'); // last message id you've read in the admin
+  add('chat_sessions', 'admin_active_at', 'INTEGER');            // unix ms you last replied: the AI waits while you chat
+  add('chat_sessions', 'last_alert_at', 'INTEGER');              // unix ms of the last "customer wrote" email to you
+  db.exec('CREATE INDEX IF NOT EXISTS idx_chat_sessions_lead ON chat_sessions(lead_id)');
+  // Repeating bookings: every visit is its own job; series_id is the first visit's id.
+  add('jobs', 'series_id', 'INTEGER');
+  add('jobs', 'repeat', 'TEXT');                 // weekly | biweekly | every4weeks | monthly
+  add('jobs', 'reminder_sent_at', 'TEXT');       // the day-before reminder email went out
+  db.exec('CREATE INDEX IF NOT EXISTS idx_jobs_series ON jobs(series_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_messages_lead ON messages(lead_id)');
 }
 
 function openDb(file) {
