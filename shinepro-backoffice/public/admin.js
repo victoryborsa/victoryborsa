@@ -400,14 +400,16 @@
     const services = [['', '— Choose —'], ...Object.entries(META.pricing.services).map(([k, v]) => [k, v.label])];
     const freqs = [['', '— Choose —'], ...Object.entries(META.pricing.frequency).map(([k, v]) => [k, v.label])];
     const l = lead || {};
-    modal(lead ? 'Edit lead' : 'Add lead (phone call, walk-in, referral…)', `<div class="form-grid">
+    const form = modal(lead ? 'Edit lead' : 'Add lead (phone call, walk-in, referral…)', `<div class="form-grid">
       ${input('name', 'Name *', l.name)}${input('phone', 'Phone', fmtPhone(l.phone), { type: 'tel' })}
       ${input('email', 'Email', l.email, { type: 'email' })}${input('zip', 'ZIP', l.zip)}
       ${input('address', 'Address', l.address, { full: true })}
       ${lead ? '' : select('service_type', 'Service', services, l.service_type) + select('frequency', 'Frequency (recurring only)', freqs, l.frequency)
         + select('size', 'Home size', META.pricing.sizes.map((z) => [z.id, z.label]), '2') + input('bathrooms', 'Bathrooms', l.bathrooms, { type: 'number', attrs: 'step="0.5"' })
-        + `<div class="field full"><label>Add-ons (priced by the server from pricing.js; included ones are free)</label>${META.pricing.addons.map((a) => `<label class="check"><input type="checkbox" name="addons" data-multi="str" value="${esc(a.id)}"> ${esc(a.label)} <span class="muted small">${money(a.price)}${a.perHour ? '/hr' : ''}</span></label>`).join('')}</div>`
+        + `<div class="field full"><label>Add-ons (included ones are free)</label>${META.pricing.addons.map((a) => `<label class="check"><input type="checkbox" name="addons" data-multi="str" value="${esc(a.id)}"> ${esc(a.label)} <span class="muted small">${money(a.price)}${a.perHour ? '/hr' : ''}</span></label>`).join('')}</div>`
         + input('organizing_hours', 'Organizing hours', 2, { type: 'number', attrs: 'min="1" max="8"' })
+        + select('travel', `Travel fee ($${META.pricing.travelFee})`, [['', 'Automatic (free within 5 miles of Downtown, by ZIP)'], ['charge', `Charge $${META.pricing.travelFee} travel fee`], ['waive', 'No travel fee']], '')
+        + '<div class="field full"><label>Price</label><div id="lead-total" class="muted small">Choose a service to see the price.</div></div>'
         + input('preferred_time', 'Preferred time', l.preferred_time)}
       ${input('preferred_date', 'Preferred date', l.preferred_date)}
       ${lead ? input('estimated_price', 'Quoted price ($)', l.estimated_price, { type: 'number' }) : ''}
@@ -417,6 +419,24 @@
       if (lead) { await api(`/leads/${lead.id}`, { method: 'PATCH', body: data }); toast('Lead updated'); render(); }
       else { const created = await api('/leads', { method: 'POST', body: data }); toast('Lead added'); location.hash = `#/leads/${created.id}`; }
     }, lead ? { danger: { label: 'Delete lead', confirm: 'Delete this lead and its messages?', action: async () => { await api(`/leads/${lead.id}`, { method: 'DELETE' }); location.hash = '#/leads'; } } } : {});
+    if (!lead && window.ShinePricing) {
+      // Live total from the same pricing.js the server uses to save the estimate.
+      const box = $('#lead-total', form);
+      const draw = () => {
+        const d = formData(form);
+        const addons = d.addons || [];
+        const q = d.service_type ? window.ShinePricing.quote({
+          service: d.service_type, size: d.size, frequency: d.frequency || undefined, addons,
+          organizingHours: addons.includes('organizing') ? d.organizing_hours : undefined, zip: d.zip || d.address, travel: d.travel || undefined,
+        }) : null;
+        box.className = q ? '' : 'muted small';
+        box.innerHTML = !q ? 'Choose a service to see the price.'
+          : linesTable({ lines: q.lines, total: q.quoteOnly ? null : q.total }) + (q.needsFrequency ? '<div class="muted small">Pick a frequency for the recurring discount.</div>' : '');
+      };
+      form.addEventListener('input', draw);
+      form.addEventListener('change', draw);
+      draw();
+    }
   }
 
   async function leadDetail(id) {

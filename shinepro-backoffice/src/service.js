@@ -29,7 +29,8 @@ const present = (v) => v !== undefined && v !== null && v !== '';
 
 // Turns what the browser sent into stored fields plus the server's own quote.
 // Any price the browser sends (estimated_price, estimated_total) is ignored.
-function priceRequest(body) {
+// opts.staff: the admin form may force the travel fee on or off (body.travel = 'charge' | 'waive').
+function priceRequest(body, { staff = false } = {}) {
   const rawService = present(body.service) ? body.service : body.service_type;
   const serviceId = resolveKey(PRICING.services, rawService);
   const rawSize = present(body.size) ? body.size : body.bedrooms;
@@ -39,7 +40,8 @@ function priceRequest(body) {
   const addons = parseAddons(body.addons);
   const rawHours = present(body.organizing_hours) ? body.organizing_hours : body.organizingHours;
   const organizing_hours = addons.includes('organizing') ? clampHours(rawHours) : null;
-  const q = serviceId ? quote({ service: serviceId, size: size == null ? undefined : String(size), frequency, addons, organizingHours: organizing_hours, zip: body.zip || body.address, lat: body.lat, lon: body.lon }) : null;
+  const q = serviceId ? quote({ service: serviceId, size: size == null ? undefined : String(size), frequency, addons, organizingHours: organizing_hours, zip: body.zip || body.address, lat: body.lat, lon: body.lon,
+    travel: staff && ['charge', 'waive'].includes(body.travel) ? body.travel : undefined }) : null;
   return {
     service_type: serviceId || str(rawService, 60), // an unknown service is kept as text, with no price
     frequency: frequency || str(body.frequency, 40),
@@ -212,7 +214,7 @@ function createService({ db, notifier, config }) {
   function submitLead(body, source = 'website', { dedupe = false, priced = true } = {}) {
     const contact = contactInput(body);
     const request_id = validRequestId(body.request_id);
-    const p = priced ? priceRequest(body)
+    const p = priced ? priceRequest(body, { staff: source === 'admin' })
       : { service_type: str(body.service_type, 60), frequency: null, bedrooms: null, addons: [], organizing_hours: null, quote: null };
     const bd = breakdownOf(p.quote);
     const lead = {
